@@ -21,16 +21,26 @@ A lightweight Electron desktop app for pisonet member login. Connects to a Mikro
 - **public/css/style.css** — Shared styles
 - **preload.js** — Electron preload script; exposes `electronAPI.setSessionState()` and `electronAPI.triggerShutdown()` for IPC
 
+## Member Registration
+- Login card has Login/Register tabs
+- Register tab: username, password, confirm password → creates user on MikroTik via REST API → automatically opens Insert Coin for the new user
+- Registration flow: `POST /api/hotspot/register` → MikroTik REST API `/rest/ip/hotspot/user/add` → then Insert Coin with username as voucher
+- Requires MikroTik RouterOS v7+ REST API and router credentials configured in admin panel
+
 ## Admin Panel
 - Triggered by typing "zxc1" on the login screen (no visible button)
 - First-time: register admin password; subsequently: login with password
-- Settings: computer name, auto-shutdown timer (minutes), background image upload/remove, change password, stop app
+- Settings: computer name, auto-shutdown timer (minutes), background image upload/remove, router API credentials (IP, user, password), change password, stop app
+- Router API settings: needed for member registration (MikroTik REST API access)
 - Background images: PNG/JPEG/GIF, max 10MB, saved to `data/uploads/background.*`
 - GIF warning shown for memory concerns on low-end devices
-- Settings broadcast to all WebSocket clients in real-time
+- Settings broadcast to all WebSocket clients in real-time (router credentials excluded from broadcasts)
+
+## Hotspot API
+- `POST /api/hotspot/register` — Register new member on MikroTik hotspot (username, password → REST API)
 
 ## Admin API
-- `GET /api/admin/status` — Check if registered + current settings (public)
+- `GET /api/admin/status` — Check if registered + current settings (public, excludes router credentials)
 - `POST /api/admin/register` — First-time admin setup (returns token)
 - `POST /api/admin/login` — Admin login (returns token)
 - `POST /api/admin/change-password` — Change admin password (requires token)

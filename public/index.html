@@ -216,6 +216,57 @@
       box-shadow: 0 0 15px rgba(255,106,0,0.2);
     }
 
+    .tab-bar {
+      display: flex; gap: 0; margin-bottom: 16px;
+    }
+    .tab-btn {
+      flex: 1; padding: 10px 8px; border: none; cursor: pointer;
+      font-family: 'Orbitron', monospace; font-size: 11px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      background: rgba(10,10,18,0.6); color: var(--text-muted);
+      border-bottom: 2px solid var(--dark-border);
+      transition: all 0.3s;
+    }
+    .tab-btn.active {
+      color: var(--neon-cyan);
+      border-bottom-color: var(--neon-cyan);
+      background: rgba(0,240,255,0.05);
+      text-shadow: 0 0 8px rgba(0,240,255,0.4);
+    }
+    .tab-btn:hover:not(.active) {
+      color: var(--text);
+      background: rgba(0,240,255,0.03);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .btn-register {
+      width: 100%; padding: 12px;
+      background: linear-gradient(135deg, rgba(57,255,20,0.15), rgba(0,240,255,0.1));
+      border: 1px solid var(--neon-green);
+      border-radius: 2px;
+      color: var(--neon-green);
+      font-family: 'Orbitron', monospace;
+      font-size: 13px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      cursor: pointer; position: relative; overflow: hidden;
+      transition: all 0.3s;
+      text-shadow: 0 0 10px rgba(57,255,20,0.5);
+    }
+    .btn-register:hover {
+      background: linear-gradient(135deg, rgba(57,255,20,0.25), rgba(0,240,255,0.15));
+      box-shadow: 0 0 20px rgba(57,255,20,0.3);
+    }
+    .btn-register:disabled { opacity: 0.4; cursor: not-allowed; }
+    .success-msg {
+      background: rgba(57,255,20,0.1); color: var(--neon-green);
+      border: 1px solid rgba(57,255,20,0.3);
+      padding: 8px 12px; border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px; margin-bottom: 14px; display: none;
+    }
+    .success-msg.visible { display: block; }
+
     .hotspot-status {
       text-align: center; margin-top: 16px;
       font-family: 'Share Tech Mono', monospace;
@@ -485,20 +536,48 @@
     <div class="cyber-line"></div>
 
     <div class="login-card">
-      <div id="error-msg" class="error-msg"></div>
-      <div class="form-group">
-        <label>// Username</label>
-        <input type="text" id="username" placeholder="enter username" autocomplete="username" />
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('login')">Login</button>
+        <button class="tab-btn" onclick="switchTab('register')">Register</button>
       </div>
-      <div class="form-group">
-        <label>// Password</label>
-        <input type="password" id="password" placeholder="enter password" autocomplete="current-password" />
+
+      <div id="tab-login" class="tab-content active">
+        <div id="error-msg" class="error-msg"></div>
+        <div class="form-group">
+          <label>// Username</label>
+          <input type="text" id="username" placeholder="enter username" autocomplete="username" />
+        </div>
+        <div class="form-group">
+          <label>// Password</label>
+          <input type="password" id="password" placeholder="enter password" autocomplete="current-password" />
+        </div>
+        <button class="btn-cyber" id="login-btn" onclick="doLogin()">
+          <span id="login-text">Authenticate</span>
+          <span id="login-spinner" class="spinner hidden"></span>
+        </button>
+        <button class="btn-coin-cyber" id="insert-coin-btn" onclick="openInsertCoin()">&#9670; Insert Coin &#9670;</button>
       </div>
-      <button class="btn-cyber" id="login-btn" onclick="doLogin()">
-        <span id="login-text">Authenticate</span>
-        <span id="login-spinner" class="spinner hidden"></span>
-      </button>
-      <button class="btn-coin-cyber" id="insert-coin-btn" onclick="openInsertCoin()">&#9670; Insert Coin &#9670;</button>
+
+      <div id="tab-register" class="tab-content">
+        <div id="reg-error-msg" class="error-msg"></div>
+        <div id="reg-success-msg" class="success-msg"></div>
+        <div class="form-group">
+          <label>// New Username</label>
+          <input type="text" id="reg-username" placeholder="choose a username" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label>// New Password</label>
+          <input type="password" id="reg-password" placeholder="choose a password" autocomplete="new-password" />
+        </div>
+        <div class="form-group">
+          <label>// Confirm Password</label>
+          <input type="password" id="reg-confirm" placeholder="confirm password" autocomplete="new-password" />
+        </div>
+        <button class="btn-register" id="reg-btn" onclick="doRegister()">
+          <span id="reg-text">Register &amp; Insert Coin</span>
+          <span id="reg-spinner" class="spinner hidden"></span>
+        </button>
+      </div>
     </div>
 
     <div id="hotspot-status" class="hotspot-status" style="color:var(--text-muted)">[ connecting to hotspot... ]</div>
@@ -594,6 +673,23 @@
           <div class="file-size-hint">PNG, JPEG, GIF (max 10MB)</div>
           <div class="gif-warning" id="gif-warning">&#9888; GIF animations may use more memory</div>
           <button class="btn-admin danger" style="margin-top:8px;width:100%" onclick="removeBackground()">Remove Background</button>
+        </div>
+
+        <div class="admin-section">
+          <h3>&#9670; Router API (MikroTik)</h3>
+          <div class="form-group">
+            <label>// Router IP / Hostname</label>
+            <input type="text" id="admin-router-ip" placeholder="pisonet.app" />
+          </div>
+          <div class="form-group">
+            <label>// Router Username</label>
+            <input type="text" id="admin-router-user" placeholder="admin" />
+          </div>
+          <div class="form-group">
+            <label>// Router Password</label>
+            <input type="password" id="admin-router-pw" placeholder="router password" />
+          </div>
+          <button class="btn-admin" onclick="saveRouterSettings()">Save Router Settings</button>
         </div>
 
         <div class="admin-section">
@@ -987,6 +1083,9 @@
         document.getElementById('admin-computer-name').value = resp.settings.computerName || '';
         document.getElementById('admin-shutdown-time').value = resp.settings.autoShutdownSeconds > 0 ? Math.round(resp.settings.autoShutdownSeconds / 60) : 0;
         updateBgPreview(resp.settings.backgroundImage);
+        document.getElementById('admin-router-ip').value = resp.settings.routerIp || 'pisonet.app';
+        document.getElementById('admin-router-user').value = resp.settings.routerUser || 'admin';
+        document.getElementById('admin-router-pw').value = resp.settings.routerPassword || '';
       }
     }
 
@@ -1043,7 +1142,108 @@
       await fetch('/api/admin/stop-app', { method: 'POST', headers: { 'x-admin-token': adminToken } }).catch(() => {});
     }
 
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'register' && i === 1));
+      });
+      document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+      document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+    }
+
+    function showRegError(msg) {
+      const el = document.getElementById('reg-error-msg');
+      el.textContent = '> ' + msg;
+      el.classList.add('visible');
+      document.getElementById('reg-success-msg').classList.remove('visible');
+      setTimeout(() => el.classList.remove('visible'), 6000);
+    }
+
+    function showRegSuccess(msg) {
+      const el = document.getElementById('reg-success-msg');
+      el.textContent = '> ' + msg;
+      el.classList.add('visible');
+      document.getElementById('reg-error-msg').classList.remove('visible');
+      setTimeout(() => el.classList.remove('visible'), 8000);
+    }
+
+    async function doRegister() {
+      const username = document.getElementById('reg-username').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const confirm = document.getElementById('reg-confirm').value;
+      if (!username || !password) { showRegError('Username and password required'); return; }
+      if (username.length < 3) { showRegError('Username must be at least 3 characters'); return; }
+      if (password.length < 3) { showRegError('Password must be at least 3 characters'); return; }
+      if (password !== confirm) { showRegError('Passwords do not match'); return; }
+
+      const btn = document.getElementById('reg-btn');
+      btn.disabled = true;
+      document.getElementById('reg-text').classList.add('hidden');
+      document.getElementById('reg-spinner').classList.remove('hidden');
+
+      const resp = await fetch('/api/hotspot/register', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      }).then(r => r.json()).catch(err => ({ success: false, error: err.message }));
+
+      btn.disabled = false;
+      document.getElementById('reg-text').classList.remove('hidden');
+      document.getElementById('reg-spinner').classList.add('hidden');
+
+      if (!resp.success) { showRegError(resp.error || 'Registration failed'); return; }
+
+      showRegSuccess('Account created! Opening Insert Coin...');
+
+      document.getElementById('username').value = username;
+      document.getElementById('password').value = password;
+
+      setTimeout(() => {
+        openInsertCoinForNewUser(username);
+      }, 1000);
+    }
+
+    async function openInsertCoinForNewUser(username) {
+      const modal = document.getElementById('coin-modal');
+      modal.classList.add('active');
+      document.getElementById('coin-total').textContent = '0';
+      document.getElementById('coin-time').textContent = '0m 0s';
+      document.getElementById('coin-timer').textContent = '30s';
+      document.getElementById('coin-voucher-display').innerHTML = '';
+
+      const clientIp = loginData?.ip || '';
+      const clientMac = loginData?.mac || '';
+
+      const topUpResp = await fetch('/api/vendo/topup', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voucher: username, ip: clientIp, mac: clientMac, type: 'N' }),
+      }).then(r => r.json()).catch(err => ({ success: false, error: err.message }));
+
+      if (!topUpResp.success || (topUpResp.data && topUpResp.data.status !== 'success')) {
+        closeCoinModal();
+        showRegError('Insert Coin: ' + (topUpResp.error || topUpResp.data?.errorCode || 'Vendo unreachable'));
+        return;
+      }
+
+      activeVoucher = topUpResp.data.voucher || username;
+      document.getElementById('coin-voucher-display').innerHTML = 'Voucher: <span>' + activeVoucher + '</span>';
+      if (coinCheckInterval) clearInterval(coinCheckInterval);
+      coinCheckInterval = setInterval(checkCoin, 1000);
+    }
+
+    async function saveRouterSettings() {
+      const routerIp = document.getElementById('admin-router-ip').value.trim();
+      const routerUser = document.getElementById('admin-router-user').value.trim();
+      const routerPassword = document.getElementById('admin-router-pw').value;
+      const resp = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+        body: JSON.stringify({ routerIp, routerUser, routerPassword }),
+      }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) showAdminMsg('admin-panel-msg', 'Router settings saved', 'success');
+      else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+    }
+
     document.getElementById('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+    document.getElementById('reg-confirm').addEventListener('keydown', (e) => { if (e.key === 'Enter') doRegister(); });
     document.getElementById('admin-pw-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('admin-auth-btn').click(); });
 
     let settingsWs = null;

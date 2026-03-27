@@ -183,9 +183,10 @@ function showLoginWindow() {
 
   function showWindow() {
     if (loginWindow && !loginWindow.isDestroyed() && !loginWindow.isVisible()) {
-      loginWindow.show();
       loginWindow.setBounds({ x, y, width, height });
+      loginWindow.setKiosk(true);
       loginWindow.setAlwaysOnTop(true, 'screen-saver');
+      loginWindow.show();
       loginWindow.moveTop();
       loginWindow.focus();
     }

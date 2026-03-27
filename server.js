@@ -331,6 +331,94 @@ app.post('/api/hotspot/logout', async (req, res) => {
   }
 });
 
+const registerAttempts = new Map();
+const REG_MAX = 3;
+const REG_LOCKOUT_MS = 600000;
+
+function checkRegLimit(ip) {
+  const entry = registerAttempts.get(ip);
+  if (!entry) return true;
+  if (entry.lockedUntil > 0 && Date.now() < entry.lockedUntil) return false;
+  if (entry.lockedUntil > 0 && Date.now() >= entry.lockedUntil) { registerAttempts.delete(ip); return true; }
+  return true;
+}
+function recordRegAttempt(ip) {
+  const entry = registerAttempts.get(ip) || { count: 0, lockedUntil: 0 };
+  entry.count++;
+  if (entry.count >= REG_MAX) { entry.lockedUntil = Date.now() + REG_LOCKOUT_MS; entry.count = 0; }
+  registerAttempts.set(ip, entry);
+}
+
+app.post('/api/hotspot/register', async (req, res) => {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  if (!checkRegLimit(ip)) return res.status(429).json({ success: false, error: 'Too many registrations. Try again in 10 minutes.' });
+
+  const { username, password } = req.body;
+  if (!username || !password) return res.json({ success: false, error: 'Username and password required' });
+  if (username.length < 3 || username.length > 30) return res.json({ success: false, error: 'Username must be 3-30 characters' });
+  if (!/^[a-zA-Z0-9._-]+$/.test(username)) return res.json({ success: false, error: 'Username: letters, numbers, dots, dashes only' });
+  if (password.length < 3 || password.length > 64) return res.json({ success: false, error: 'Password must be 3-64 characters' });
+
+  const s = settings.getSettings();
+  const routerIp = s.routerIp || HOTSPOT_DNS;
+  const routerUser = s.routerUser || 'admin';
+  const routerPassword = s.routerPassword || '';
+
+  if (!routerPassword) {
+    return res.json({ success: false, error: 'Router API credentials not configured. Set them in admin panel.' });
+  }
+
+  try {
+    const authHeader = 'Basic ' + Buffer.from(`${routerUser}:${routerPassword}`).toString('base64');
+
+    const checkResp = await fetch(`http://${routerIp}/rest/ip/hotspot/user?name=${encodeURIComponent(username)}`, {
+      headers: { 'Authorization': authHeader },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (checkResp.ok) {
+      const existing = await checkResp.json();
+      if (Array.isArray(existing) && existing.length > 0) {
+        return res.json({ success: false, error: 'Username already exists' });
+      }
+    }
+
+    const addResp = await fetch(`http://${routerIp}/rest/ip/hotspot/user/add`, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: username,
+        password: password,
+        server: 'all',
+        profile: 'default',
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!addResp.ok) {
+      const errText = await addResp.text();
+      console.log('[Register] MikroTik error:', addResp.status, errText);
+      let errMsg = 'Failed to create user on router';
+      try {
+        const errData = JSON.parse(errText);
+        if (errData.detail) errMsg = errData.detail;
+        if (errData.message) errMsg = errData.message;
+      } catch (_) {}
+      return res.json({ success: false, error: errMsg });
+    }
+
+    recordRegAttempt(ip);
+    console.log('[Register] User created:', username);
+    res.json({ success: true, message: 'User registered successfully' });
+  } catch (err) {
+    console.log('[Register] Error:', err.message);
+    res.json({ success: false, error: `Cannot reach router API: ${err.message}` });
+  }
+});
+
 app.post('/api/vendo/topup', async (req, res) => {
   const { voucher, ip, mac, type } = req.body;
   try {
@@ -425,7 +513,9 @@ app.get('/api/session/poll', (req, res) => {
 });
 
 app.get('/api/admin/status', (req, res) => {
-  res.json({ registered: settings.isAdminRegistered(), settings: settings.getSettings() });
+  const s = settings.getSettings();
+  const { routerPassword, routerUser, routerIp, ...publicSettings } = s;
+  res.json({ registered: settings.isAdminRegistered(), settings: publicSettings });
 });
 
 app.post('/api/admin/register', (req, res) => {
@@ -514,7 +604,8 @@ app.post('/api/admin/stop-app', verifyToken, (req, res) => {
 
 function broadcastSettings() {
   const s = settings.getSettings();
-  const msg = JSON.stringify({ type: 'settings', data: s });
+  const { routerPassword, routerUser, routerIp, ...publicSettings } = s;
+  const msg = JSON.stringify({ type: 'settings', data: publicSettings });
   for (const ws of wsClients) {
     try { if (ws.readyState === 1) ws.send(msg); } catch (e) {}
   }
