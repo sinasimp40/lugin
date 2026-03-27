@@ -905,6 +905,27 @@
       btn.disabled = true;
       document.getElementById('login-text').classList.add('hidden');
       document.getElementById('login-spinner').classList.remove('hidden');
+
+      const statusResp = await fetch('/api/hotspot/status').then(r => r.json()).catch(() => null);
+      if (statusResp && statusResp.success && statusResp.data && statusResp.data.isLogin) {
+        const activeUser = statusResp.data.username || '';
+        console.log('[Login] Already logged in as:', activeUser);
+        if (activeUser.toLowerCase() === username.toLowerCase()) {
+          btn.disabled = false;
+          document.getElementById('login-text').classList.remove('hidden');
+          document.getElementById('login-spinner').classList.add('hidden');
+          showSession(statusResp.data);
+          showError('Already logged in as ' + activeUser);
+          return;
+        } else {
+          console.log('[Login] Different user active:', activeUser, '— logging out first');
+          if (statusResp.data.logoutLink) {
+            await fetch('/api/hotspot/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logoutLink: statusResp.data.logoutLink }) }).catch(() => {});
+            await new Promise(r => setTimeout(r, 1000));
+          }
+        }
+      }
+
       const resp = await fetch('/api/hotspot/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -974,12 +995,30 @@
     }
 
     async function doLogout() {
-      const link = sessionData?.logoutLink;
       const ip = sessionData?.ip || loginData?.ip || '';
       const mac = sessionData?.mac || loginData?.mac || '';
-      console.log('[doLogout] logoutLink:', link, 'ip:', ip, 'mac:', mac);
-      if (link) await fetch('/api/hotspot/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logoutLink: link }) }).catch(() => {});
+      const isVoucherSession = sessionData?.username && !sessionData.username.startsWith('mem-');
+
+      let logoutLink = sessionData?.logoutLink || '';
+      if (!logoutLink) {
+        const statusResp = await fetch('/api/hotspot/status').then(r => r.json()).catch(() => null);
+        if (statusResp && statusResp.success && statusResp.data) {
+          logoutLink = statusResp.data.logoutLink || '';
+        }
+      }
+      console.log('[doLogout] logoutLink:', logoutLink, 'ip:', ip, 'mac:', mac, 'isVoucher:', isVoucherSession);
+
+      if (logoutLink) {
+        await fetch('/api/hotspot/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logoutLink }) }).catch(() => {});
+      }
+
       if (ip || mac) await callPisonetDone(ip, mac);
+
+      if (isVoucherSession) {
+        if (!logoutLink) logoutLink = '';
+        await fetch('/api/hotspot/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logoutLink: '' }) }).catch(() => {});
+      }
+
       showLoggedOut();
     }
 
@@ -1433,12 +1472,19 @@
 
       const fullUsername = 'mem-' + username.toLowerCase();
 
-      const checkResp = await fetch('/api/pisonet/check-member', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: fullUsername }),
-      }).then(r => r.json()).catch(() => ({ exists: false, checkFailed: true }));
+      const [checkVendo, checkHotspot] = await Promise.all([
+        fetch('/api/pisonet/check-member', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: fullUsername }),
+        }).then(r => r.json()).catch(() => ({ exists: false, checkFailed: true })),
+        fetch('/api/hotspot/check-user', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: fullUsername }),
+        }).then(r => r.json()).catch(() => ({ exists: false, checkFailed: true })),
+      ]);
+      console.log('[Register] check-member:', JSON.stringify(checkVendo), 'check-hotspot:', JSON.stringify(checkHotspot));
 
-      if (checkResp.exists) {
+      if (checkVendo.exists || checkHotspot.exists) {
         btn.disabled = false;
         document.getElementById('reg-text').classList.remove('hidden');
         document.getElementById('reg-spinner').classList.add('hidden');
