@@ -956,12 +956,30 @@
       return parts.join(' ');
     }
 
+    async function callPisonetDone(ip, mac) {
+      console.log('[pisonet/done] Sending ip:', ip, 'mac:', mac);
+      try {
+        const resp = await fetch('/api/pisonet/done', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ ip: ip, mac: mac })
+        });
+        const result = await resp.json();
+        console.log('[pisonet/done] Response:', JSON.stringify(result));
+        return result;
+      } catch (err) {
+        console.log('[pisonet/done] Error:', err.message);
+        return { success: false, error: err.message };
+      }
+    }
+
     async function doLogout() {
       const link = sessionData?.logoutLink;
       const ip = sessionData?.ip || loginData?.ip || '';
       const mac = sessionData?.mac || loginData?.mac || '';
+      console.log('[doLogout] logoutLink:', link, 'ip:', ip, 'mac:', mac);
       if (link) await fetch('/api/hotspot/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logoutLink: link }) }).catch(() => {});
-      if (ip || mac) await fetch('/api/pisonet/done', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ip, mac }) }).catch(() => {});
+      if (ip || mac) await callPisonetDone(ip, mac);
       showLoggedOut();
     }
 
@@ -1037,6 +1055,7 @@
               const savedVoucher = coinVoucherCode;
               const coins = parseInt(d.totalCoinReceived, 10) || totalCoinReceived;
               closeCoinModal();
+              console.log('[auto-close expired] state:', savedState, 'ip:', savedIp, 'mac:', savedMac, 'coins:', coins);
               if (savedState === 'polling-voucher' && savedVoucher && coins > 0) {
                 showError('Activating voucher...');
                 const useResp = await fetch('/api/vendo/use-voucher?' + new URLSearchParams({ voucher: savedVoucher }), { method: 'GET' }).then(r => r.json()).catch(() => ({ success: false }));
@@ -1046,7 +1065,7 @@
                 await fetch('/api/vendo/cancel-topup?' + new URLSearchParams({ voucher: savedVoucher, mac: savedMac }), { method: 'GET' }).catch(() => {});
                 showError('Coin slot expired.');
               } else {
-                await fetch('/api/pisonet/done', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: savedIp, mac: savedMac }) }).catch(() => {});
+                await callPisonetDone(savedIp, savedMac);
                 showError(coins > 0 ? 'Payment complete! ' + coins + ' coin(s) received.' : 'Coin slot expired.');
               }
               init();
@@ -1066,6 +1085,7 @@
             const savedVoucher = coinVoucherCode;
             const coins = parseInt(d.totalCoinReceived, 10) || totalCoinReceived;
             closeCoinModal();
+            console.log('[auto-close cancelled] state:', savedState, 'ip:', savedIp, 'mac:', savedMac, 'coins:', coins);
             if (savedState === 'polling-voucher' && savedVoucher && coins > 0) {
               showError('Activating voucher...');
               const useResp = await fetch('/api/vendo/use-voucher?' + new URLSearchParams({ voucher: savedVoucher }), { method: 'GET' }).then(r => r.json()).catch(() => ({ success: false }));
@@ -1075,7 +1095,7 @@
               await fetch('/api/vendo/cancel-topup?' + new URLSearchParams({ voucher: savedVoucher, mac: savedMac }), { method: 'GET' }).catch(() => {});
               showError('Coin slot cancelled.');
             } else {
-              await fetch('/api/pisonet/done', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: savedIp, mac: savedMac }) }).catch(() => {});
+              await callPisonetDone(savedIp, savedMac);
               showError(coins > 0 ? 'Payment complete!' : 'Coin slot cancelled.');
             }
             init();
@@ -1171,17 +1191,19 @@
     }
 
     function closeCoinModal() { stopCoinPolling(); if (coinAbortController) { coinAbortController.abort(); coinAbortController = null; } activeVoucher = ''; coinSlotBusy = false; coinIsVoucherFlow = false; coinVoucherCode = ''; coinFlowState = 'idle'; document.getElementById('coin-modal').classList.remove('active'); }
+
     async function cancelCoin() {
       const savedIp = coinClientIp;
       const savedMac = coinClientMac;
       const savedState = coinFlowState;
       const savedVoucher = coinVoucherCode;
       closeCoinModal();
+      console.log('[cancelCoin] state:', savedState, 'ip:', savedIp, 'mac:', savedMac);
       if (savedState === 'polling-voucher' && savedVoucher) {
         await fetch('/api/vendo/cancel-topup?' + new URLSearchParams({ voucher: savedVoucher, mac: savedMac }), { method: 'GET' }).catch(() => {});
       } else if (savedState === 'opening-voucher') {
-      } else if (savedState.includes('pisonet')) {
-        await fetch('/api/pisonet/done', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: savedIp, mac: savedMac }) }).catch(() => {});
+      } else if (savedState.includes('pisonet') || savedState === 'idle') {
+        await callPisonetDone(savedIp, savedMac);
       }
     }
     async function donePaying() {
@@ -1191,6 +1213,7 @@
       const savedState = coinFlowState;
       const savedVoucher = coinVoucherCode;
       closeCoinModal();
+      console.log('[donePaying] state:', savedState, 'ip:', savedIp, 'mac:', savedMac, 'coins:', coinsInserted);
 
       if (savedState === 'polling-voucher' && savedVoucher && coinsInserted > 0) {
         showError('Activating voucher...');
@@ -1206,9 +1229,9 @@
         showError('No coins inserted. Cancelled.');
       } else if (savedState === 'opening-voucher') {
         showError('Cancelled.');
-      } else if (savedState.includes('pisonet')) {
-        showError('Finalizing payment...');
-        await fetch('/api/pisonet/done', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: savedIp, mac: savedMac }) }).catch(() => {});
+      } else {
+        showError('Finalizing...');
+        await callPisonetDone(savedIp, savedMac);
         showError(coinsInserted > 0 ? 'Payment complete! ' + coinsInserted + ' coin(s) received.' : 'Done.');
       }
       init();
