@@ -325,9 +325,26 @@ app.post('/api/hotspot/logout', async (req, res) => {
     if (!logoutLink) {
       logoutLink = `http://${HOTSPOT_DNS}/logout`;
     }
-    const fullLogoutUrl = logoutLink + (logoutLink.includes('?') ? '&' : '?') + 'erase-cookie=on';
-    console.log('[Logout] POST to:', fullLogoutUrl);
-    await fetch(fullLogoutUrl, { method: 'POST', signal: AbortSignal.timeout(5000) });
+
+    const eraseUrl = logoutLink + (logoutLink.includes('?') ? '&' : '?') + 'erase-cookie=on';
+    console.log('[Logout] Step 1 - POST with erase-cookie:', eraseUrl);
+    const resp1 = await fetch(eraseUrl, { method: 'POST', signal: AbortSignal.timeout(5000) });
+    const text1 = await resp1.text();
+    console.log('[Logout] Step 1 response:', resp1.status, 'length:', text1.length);
+
+    console.log('[Logout] Step 2 - GET logoutLink:', logoutLink);
+    const resp2 = await fetch(logoutLink, { signal: AbortSignal.timeout(5000) });
+    const text2 = await resp2.text();
+    console.log('[Logout] Step 2 response:', resp2.status, 'length:', text2.length);
+
+    console.log('[Logout] Step 3 - Verify status');
+    try {
+      const verifyResp = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(3000) });
+      const verifyBuf = Buffer.from(await verifyResp.arrayBuffer());
+      const verifyData = parseHotspotResponse(verifyBuf);
+      console.log('[Logout] Verify - isLogin:', verifyData.isLogin, 'username:', verifyData.username);
+    } catch (_) { console.log('[Logout] Verify failed'); }
+
     res.json({ success: true });
   } catch (err) {
     console.log('[Logout] Error:', err.message);
