@@ -9,7 +9,7 @@
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
 
-    .session-panel { display: none; }
+    .session-panel { display: none; position: fixed; right: 10px; bottom: 10px; width: 260px; height: 80px; z-index: 99; }
     .session-panel.active { display: block; }
     .login-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100vh; }
     .login-panel.hidden { display: none; }
@@ -42,7 +42,8 @@
 
     .session-compact {
       padding: 10px 14px;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
       display: flex;
       flex-direction: column;
       justify-content: center;
