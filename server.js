@@ -388,7 +388,7 @@ app.post('/api/pisonet/register', async (req, res) => {
   try {
     const url = `http://${VENDO_IP}/pisonet/register`;
     const body = { macAddress: mac || '', ip: ip || '', username, password: password || username };
-    console.log('[Pisonet] register:', url, JSON.stringify(body));
+    console.log('[Pisonet] register:', url, JSON.stringify({ macAddress: body.macAddress, ip: body.ip, username: body.username }));
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

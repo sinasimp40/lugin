@@ -961,6 +961,55 @@
     let coinAbortController = null;
     let coinClientIp = '';
     let coinClientMac = '';
+    let coinPollInterval = null;
+    let coinPollActive = false;
+
+    let coinPollGeneration = 0;
+
+    function startCoinPolling(username) {
+      stopCoinPolling();
+      coinPollActive = true;
+      const gen = ++coinPollGeneration;
+      let lastTotal = 0;
+      let inFlight = false;
+      const poll = async () => {
+        if (!coinPollActive || gen !== coinPollGeneration || inFlight) return;
+        inFlight = true;
+        try {
+          const resp = await fetch('/api/vendo/check-coin?voucher=' + encodeURIComponent(username)).then(r => r.json()).catch(() => null);
+          if (!coinPollActive || gen !== coinPollGeneration) return;
+          if (resp && resp.success && resp.data) {
+            const d = resp.data;
+            const coins = d.totalCoin || d.coinCount || d.TotalCoin || d.CoinCount || d.totalAmount || d.TotalAmount || 0;
+            const minutes = d.minutes || d.Minutes || d.totalMinutes || d.TotalMinutes || d.time || d.Time || 0;
+            const status = (d.status || d.Status || '').toString().toLowerCase();
+            if (coins > 0 || lastTotal > 0) {
+              document.getElementById('coin-total').textContent = coins;
+              lastTotal = coins;
+            }
+            if (minutes > 0) {
+              const m = Math.floor(minutes);
+              const s = Math.round((minutes - m) * 60);
+              document.getElementById('coin-time').textContent = m + 'm ' + s + 's';
+            }
+            if (status === 'done' || status === 'completed' || status === 'finish' || status === 'finished') {
+              stopCoinPolling();
+              closeCoinModal();
+              showError('Payment complete!');
+              init();
+              return;
+            }
+          }
+        } catch (_) {} finally { inFlight = false; }
+      };
+      poll();
+      coinPollInterval = setInterval(poll, 2000);
+    }
+
+    function stopCoinPolling() {
+      coinPollActive = false;
+      if (coinPollInterval) { clearInterval(coinPollInterval); coinPollInterval = null; }
+    }
 
     async function openInsertCoin() {
       if (coinSlotBusy) return;
@@ -1008,9 +1057,10 @@
         return;
       }
       activeVoucher = username;
+      startCoinPolling(username);
     }
 
-    function closeCoinModal() { if (coinAbortController) { coinAbortController.abort(); coinAbortController = null; } activeVoucher = ''; coinSlotBusy = false; document.getElementById('coin-modal').classList.remove('active'); }
+    function closeCoinModal() { stopCoinPolling(); if (coinAbortController) { coinAbortController.abort(); coinAbortController = null; } activeVoucher = ''; coinSlotBusy = false; document.getElementById('coin-modal').classList.remove('active'); }
     async function cancelCoin() {
       closeCoinModal();
       await fetch('/api/pisonet/done', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: coinClientIp, mac: coinClientMac }) }).catch(() => {});
@@ -1306,6 +1356,7 @@
       }
 
       activeVoucher = username;
+      startCoinPolling(username);
     }
 
     document.getElementById('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
