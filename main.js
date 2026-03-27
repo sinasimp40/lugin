@@ -99,8 +99,31 @@ app.on('second-instance', () => {
 
 app.whenReady().then(() => {
   process.env.PORT = String(PORT);
+
+  function waitForServer(retries) {
+    const http = require('http');
+    return new Promise((resolve) => {
+      function check() {
+        http.get(`${APP_URL}/api/admin/status`, (res) => {
+          let body = '';
+          res.on('data', c => body += c);
+          res.on('end', () => resolve());
+        }).on('error', () => {
+          if (retries > 0) {
+            setTimeout(() => { retries--; check(); }, 200);
+          } else {
+            resolve();
+          }
+        });
+      }
+      check();
+    });
+  }
+
   require('./server');
-  showLoginWindow();
+  waitForServer(25).then(() => {
+    showLoginWindow();
+  });
 });
 
 function showLoginWindow() {
