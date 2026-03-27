@@ -1198,8 +1198,25 @@
       document.getElementById('reg-text').classList.add('hidden');
       document.getElementById('reg-spinner').classList.remove('hidden');
 
-      const clientIp = loginData?.ip || '';
-      const clientMac = loginData?.mac || '';
+      let clientIp = loginData?.ip || '';
+      let clientMac = loginData?.mac || '';
+
+      if (!clientIp || !clientMac) {
+        try {
+          const loginResp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => null);
+          if (loginResp && loginResp.ip) clientIp = loginResp.ip;
+          if (loginResp && loginResp.mac) clientMac = loginResp.mac;
+        } catch (_) {}
+      }
+
+      if (!clientIp && !clientMac) {
+        btn.disabled = false;
+        document.getElementById('reg-text').classList.remove('hidden');
+        document.getElementById('reg-spinner').classList.add('hidden');
+        showRegError('Cannot get device IP/MAC. Check network connection.');
+        return;
+      }
+
       const fullUsername = 'mem-' + username.toLowerCase();
 
       const regResp = await fetch('/api/pisonet/register', {
@@ -1214,8 +1231,8 @@
       if (!regResp.success) {
         const rawErr = regResp.error || '';
         const errLower = rawErr.toLowerCase();
-        if (errLower.includes('exist') || errLower.includes('already') || errLower.includes('duplicate')) {
-          showRegError('Username already taken. Choose a different one.');
+        if (errLower.includes('exist') || errLower.includes('already') || errLower.includes('duplicate') || errLower.includes('registered')) {
+          showRegError('Member already registered. Use Login instead.');
         } else if (errLower.includes('cannot reach')) {
           showRegError('Cannot reach vendo. Check if it is powered on.');
         } else {

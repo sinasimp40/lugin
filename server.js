@@ -397,11 +397,13 @@ app.post('/api/pisonet/register', async (req, res) => {
     });
     const text = await resp.text();
     console.log('[Pisonet] register response:', resp.status, text);
-    try {
-      const data = JSON.parse(text);
-      res.json({ success: resp.ok, data });
-    } catch (_) {
-      res.json({ success: resp.ok, data: text });
+    let data;
+    try { data = JSON.parse(text); } catch (_) { data = text; }
+    if (!resp.ok) {
+      const errMsg = (typeof data === 'object' && data !== null) ? (data.message || data.error || data.errorCode || JSON.stringify(data)) : (text || 'Registration failed');
+      res.json({ success: false, error: errMsg, data });
+    } else {
+      res.json({ success: true, data });
     }
   } catch (err) {
     console.log('[Pisonet] register error:', err.message);
