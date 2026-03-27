@@ -378,7 +378,7 @@ app.post('/api/hotspot/check-user', async (req, res) => {
     res.json({ exists: false });
   } catch (err) {
     console.log('[Check User] Error:', err.message);
-    res.json({ exists: false, error: err.message });
+    res.json({ exists: false, checkFailed: true, error: 'Cannot reach hotspot to verify username' });
   }
 });
 

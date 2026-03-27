@@ -948,7 +948,14 @@
       setTimeout(() => init(), 500);
     }
 
+    let coinSlotBusy = false;
+    let coinRequestId = 0;
+    let coinAbortController = null;
     async function openInsertCoin() {
+      if (coinSlotBusy) return;
+      coinSlotBusy = true;
+      const myRequestId = ++coinRequestId;
+      coinAbortController = new AbortController();
       const modal = document.getElementById('coin-modal');
       modal.classList.add('active');
       document.getElementById('coin-total').textContent = '0';
@@ -959,7 +966,9 @@
       const clientMac = loginData?.mac || sessionData?.mac || '';
       const username = sessionData?.username || document.getElementById('username').value.trim() || '';
       const isExtend = sessionData ? true : false;
-      const topUpResp = await fetch('/api/vendo/topup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ voucher: username, ip: clientIp, mac: clientMac, type: isExtend ? 'E' : 'N' }) }).then(r => r.json()).catch(err => ({ success: false, error: err.message }));
+      const topUpResp = await fetch('/api/vendo/topup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ voucher: username, ip: clientIp, mac: clientMac, type: isExtend ? 'E' : 'N' }), signal: coinAbortController.signal }).then(r => r.json()).catch(err => ({ success: false, error: err.name === 'AbortError' ? 'Cancelled' : err.message, aborted: err.name === 'AbortError' }));
+      if (myRequestId !== coinRequestId) return;
+      if (topUpResp.aborted) return;
       if (!topUpResp.success) {
         closeCoinModal();
         showError('Insert Coin: ' + (topUpResp.error || 'Vendo unreachable'));
@@ -981,12 +990,15 @@
         document.getElementById('coin-timer').textContent = Math.ceil((parseInt(data.remainingTime) || 0) / 1000) + 's';
       } else if (data.errorCode === 'coin.slot.timeout' || data.errorCode === 'coins.wait.expired') {
         (parseInt(document.getElementById('coin-total').textContent) || 0) > 0 ? donePaying() : (closeCoinModal(), showError('Insert Coin: Timeout'));
-      } else if (data.errorCode === 'coin.slot.readingCoin' || data.errorCode === 'coin.is.reading') {
-        document.getElementById('coin-timer').textContent = '...';
+      } else if (data.errorCode === 'coin.slot.readingCoin' || data.errorCode === 'coin.is.reading' || data.errorCode === 'coin.not.inserted') {
+        if (data.errorCode === 'coin.not.inserted') { /* waiting for coins, do nothing */ }
+        else document.getElementById('coin-timer').textContent = '...';
+      } else if (data.errorCode === 'coinslot.cancelled') {
+        (parseInt(document.getElementById('coin-total').textContent) || 0) > 0 ? donePaying() : closeCoinModal();
       } else if (data.errorCode) { closeCoinModal(); showError('Insert Coin: ' + data.errorCode); }
     }
 
-    function closeCoinModal() { if (coinCheckInterval) clearInterval(coinCheckInterval); coinCheckInterval = null; activeVoucher = ''; document.getElementById('coin-modal').classList.remove('active'); }
+    function closeCoinModal() { if (coinAbortController) { coinAbortController.abort(); coinAbortController = null; } if (coinCheckInterval) clearInterval(coinCheckInterval); coinCheckInterval = null; activeVoucher = ''; coinSlotBusy = false; document.getElementById('coin-modal').classList.remove('active'); }
     async function cancelCoin() { if (activeVoucher) await fetch('/api/vendo/cancel', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ voucher: activeVoucher }) }).catch(() => {}); closeCoinModal(); }
     async function donePaying() { if (activeVoucher) await fetch('/api/vendo/use-voucher', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ voucher: activeVoucher }) }).catch(() => {}); closeCoinModal(); sessionData ? null : init(); }
 
@@ -1160,7 +1172,7 @@
       const checkResp = await fetch('/api/hotspot/check-user', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username }),
-      }).then(r => r.json()).catch(() => ({ exists: false }));
+      }).then(r => r.json()).catch(() => ({ exists: false, checkFailed: true, error: 'Cannot connect to server' }));
 
       btn.disabled = false;
       document.getElementById('reg-text').classList.remove('hidden');
@@ -1168,6 +1180,10 @@
 
       if (checkResp.exists) {
         showRegError('Username already taken. Choose a different one.');
+        return;
+      }
+      if (checkResp.checkFailed) {
+        showRegError('Cannot verify username — hotspot offline. Try again later.');
         return;
       }
 
@@ -1181,6 +1197,10 @@
     }
 
     async function openInsertCoinForNewUser(username) {
+      if (coinSlotBusy) return;
+      coinSlotBusy = true;
+      const myRequestId = ++coinRequestId;
+      coinAbortController = new AbortController();
       const modal = document.getElementById('coin-modal');
       modal.classList.add('active');
       document.getElementById('coin-total').textContent = '0';
@@ -1194,7 +1214,10 @@
       const topUpResp = await fetch('/api/vendo/topup', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ voucher: username, ip: clientIp, mac: clientMac, type: 'N' }),
-      }).then(r => r.json()).catch(err => ({ success: false, error: err.message }));
+        signal: coinAbortController.signal,
+      }).then(r => r.json()).catch(err => ({ success: false, error: err.name === 'AbortError' ? 'Cancelled' : err.message, aborted: err.name === 'AbortError' }));
+      if (myRequestId !== coinRequestId) return;
+      if (topUpResp.aborted) return;
 
       if (!topUpResp.success) {
         closeCoinModal();
