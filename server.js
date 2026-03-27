@@ -385,8 +385,10 @@ app.post('/api/hotspot/check-user', async (req, res) => {
 app.post('/api/vendo/topup', async (req, res) => {
   const { voucher, ip, mac, type } = req.body;
   try {
+    const cfg = settings.getSettings();
+    const interfaceName = cfg.hotspotInterface || 'bridge-pisonet-app';
     const extendTime = type === 'E' ? '1' : '0';
-    const url = `http://${VENDO_IP}/topUp?voucher=${encodeURIComponent(voucher || '')}&ipAddress=${encodeURIComponent(ip || '')}&mac=${encodeURIComponent(mac || '')}&extendTime=${extendTime}`;
+    const url = `http://${VENDO_IP}/topUp?voucher=${encodeURIComponent(voucher || '')}&ipAddress=${encodeURIComponent(ip || '')}&mac=${encodeURIComponent(mac || '')}&extendTime=${extendTime}&interfaceName=${encodeURIComponent(interfaceName)}`;
     console.log('[Vendo] topUp:', url);
     const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const text = await resp.text();
@@ -395,8 +397,7 @@ app.post('/api/vendo/topup', async (req, res) => {
       const data = JSON.parse(text);
       const vendoOk = data.status === 'true' || data.status === true || data.status === 'success';
       if (vendoOk) {
-        const coinProof = issueCoinProof(voucher);
-        res.json({ success: true, data, coinProof });
+        res.json({ success: true, data });
       } else {
         res.json({ success: false, error: data.errorCode || data.message || 'Vendo rejected request', data });
       }
@@ -460,84 +461,6 @@ app.get('/api/vendo/rates', async (req, res) => {
       res.json({ success: true, data: text });
     }
   } catch (err) {
-    res.json({ success: false, error: err.message });
-  }
-});
-
-async function createRouterUser(username, password, limitUptime) {
-  const cfg = settings.getSettings();
-  if (!cfg.routerIp || !cfg.routerUser) {
-    throw new Error('Router not configured. Set Router IP and credentials in Admin Panel.');
-  }
-  const baseUrl = `http://${cfg.routerIp}/rest`;
-  const authHeader = 'Basic ' + Buffer.from(`${cfg.routerUser}:${cfg.routerPassword}`).toString('base64');
-  const headers = { 'Content-Type': 'application/json', 'Authorization': authHeader };
-
-  const checkResp = await fetch(`${baseUrl}/ip/hotspot/user?name=${encodeURIComponent(username)}`, {
-    headers, signal: AbortSignal.timeout(5000),
-  });
-  if (!checkResp.ok) throw new Error('Cannot connect to router: ' + checkResp.status + ' ' + checkResp.statusText);
-  const existing = await checkResp.json();
-  if (Array.isArray(existing) && existing.length > 0) {
-    const user = existing[0];
-    const patchBody = {};
-    if (user.server !== cfg.hotspotServer) patchBody.server = cfg.hotspotServer;
-    if (user.profile !== cfg.hotspotProfile) patchBody.profile = cfg.hotspotProfile;
-    if (password) patchBody.password = password;
-    if (limitUptime) patchBody['limit-uptime'] = limitUptime;
-
-    if (Object.keys(patchBody).length > 0) {
-      const patchResp = await fetch(`${baseUrl}/ip/hotspot/user/${user['.id']}`, {
-        method: 'PATCH', headers, body: JSON.stringify(patchBody), signal: AbortSignal.timeout(5000),
-      });
-      if (!patchResp.ok) throw new Error('Failed to update user: ' + (await patchResp.text()));
-    }
-    return { action: 'updated', username };
-  }
-
-  const body = {
-    name: username,
-    password: password || username,
-    server: cfg.hotspotServer,
-    profile: cfg.hotspotProfile,
-  };
-  if (limitUptime) body['limit-uptime'] = limitUptime;
-
-  const createResp = await fetch(`${baseUrl}/ip/hotspot/user`, {
-    method: 'PUT', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(5000),
-  });
-  if (!createResp.ok) {
-    const errText = await createResp.text();
-    throw new Error('Failed to create user: ' + errText);
-  }
-  return { action: 'created', username };
-}
-
-const coinProofTokens = new Map();
-function issueCoinProof(username) {
-  const token = crypto.randomBytes(16).toString('hex');
-  coinProofTokens.set(token, { username, issued: Date.now() });
-  for (const [k, v] of coinProofTokens) {
-    if (Date.now() - v.issued > 120000) coinProofTokens.delete(k);
-  }
-  return token;
-}
-
-app.post('/api/router/create-user', async (req, res) => {
-  const { username, password, coinProof } = req.body;
-  if (!username) return res.json({ success: false, error: 'Username required' });
-  if (!coinProof) return res.json({ success: false, error: 'Payment proof required' });
-  const proof = coinProofTokens.get(coinProof);
-  if (!proof || proof.username !== username || Date.now() - proof.issued > 120000) {
-    return res.json({ success: false, error: 'Invalid or expired payment proof' });
-  }
-  coinProofTokens.delete(coinProof);
-  try {
-    const result = await createRouterUser(username, password || username);
-    console.log('[Router] User', result.action, ':', username);
-    res.json({ success: true, ...result });
-  } catch (err) {
-    console.log('[Router] Create user error:', err.message);
     res.json({ success: false, error: err.message });
   }
 });
