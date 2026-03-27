@@ -485,26 +485,38 @@ app.post('/api/pisonet/logout', async (req, res) => {
   } else {
     try {
       const body = { macAddress: mac || '', ip: ip || '', username: username || '' };
-      console.log('[Pisonet] voucher logout, body:', JSON.stringify(body));
+      console.log('[Pisonet] voucher stopTime attempt, body:', JSON.stringify(body));
 
-      const endpoints = [
-        { name: 'logout', url: `http://${VENDO_IP}/pisonet/logout`, body },
-        { name: 'done', url: `http://${VENDO_IP}/pisonet/done`, body: { macAddress: mac || '', ip: ip || '' } },
-      ];
+      let stopped = false;
+      const stopUrl = `http://${VENDO_IP}/pisonet/stopTime`;
+      try {
+        const stopResp = await fetch(stopUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(5000),
+        });
+        const stopText = await stopResp.text();
+        console.log('[Pisonet] stopTime response:', stopResp.status, stopText);
+        stopped = stopResp.status === 200;
+      } catch (err) {
+        console.log('[Pisonet] stopTime error:', err.message);
+      }
 
-      for (const ep of endpoints) {
+      if (!stopped) {
+        console.log('[Pisonet] stopTime failed, falling back to /pisonet/logout');
         try {
-          console.log(`[Pisonet] trying ${ep.name}:`, ep.url);
-          const resp = await fetch(ep.url, {
+          const logoutUrl = `http://${VENDO_IP}/pisonet/logout`;
+          const logoutResp = await fetch(logoutUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(ep.body),
+            body: JSON.stringify(body),
             signal: AbortSignal.timeout(5000),
           });
-          const text = await resp.text();
-          console.log(`[Pisonet] ${ep.name} response:`, resp.status, text.substring(0, 200));
-        } catch (err) {
-          console.log(`[Pisonet] ${ep.name} error:`, err.message);
+          const logoutText = await logoutResp.text();
+          console.log('[Pisonet] fallback logout response:', logoutResp.status, logoutText);
+        } catch (err2) {
+          console.log('[Pisonet] fallback logout error:', err2.message);
         }
       }
 
