@@ -120,7 +120,16 @@ app.whenReady().then(() => {
     });
   }
 
-  require('./server');
+  try {
+    require('./server');
+  } catch (err) {
+    console.error('[Electron] Failed to start server:', err);
+    const { dialog } = require('electron');
+    dialog.showErrorBox('Pisonet App Error', 'Server failed to start:\n' + err.message);
+    app.quit();
+    return;
+  }
+
   waitForServer(25).then(() => {
     showLoginWindow();
   });
@@ -154,15 +163,31 @@ function showLoginWindow() {
   });
 
   Menu.setApplicationMenu(null);
+
+  function showWindow() {
+    if (loginWindow && !loginWindow.isDestroyed() && !loginWindow.isVisible()) {
+      loginWindow.show();
+      loginWindow.setBounds({ x, y, width, height });
+      loginWindow.setAlwaysOnTop(true, 'screen-saver');
+      loginWindow.moveTop();
+      loginWindow.focus();
+    }
+  }
+
   loginWindow.loadURL(APP_URL);
 
-  loginWindow.once('ready-to-show', () => {
-    loginWindow.show();
-    loginWindow.setBounds({ x, y, width, height });
-    loginWindow.setAlwaysOnTop(true, 'screen-saver');
-    loginWindow.moveTop();
-    loginWindow.focus();
+  loginWindow.once('ready-to-show', showWindow);
+
+  loginWindow.webContents.on('did-fail-load', () => {
+    console.log('[Electron] Page failed to load, retrying in 1s...');
+    setTimeout(() => {
+      if (loginWindow && !loginWindow.isDestroyed()) {
+        loginWindow.loadURL(APP_URL);
+      }
+    }, 1000);
   });
+
+  setTimeout(showWindow, 5000);
 
   loginWindow.on('blur', () => {
     if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
