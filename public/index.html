@@ -4,130 +4,501 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pisonet App</title>
-  <link rel="stylesheet" href="css/style.css" />
   <style>
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
-    body { background: linear-gradient(135deg, #0a0e1a 0%, #0d1626 50%, #091020 100%); }
-    #bg-layer { position: fixed; inset: 0; z-index: 0; background-size: cover; background-position: center; background-repeat: no-repeat; }
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+    :root {
+      --neon-cyan: #00f0ff;
+      --neon-magenta: #ff2d95;
+      --neon-yellow: #f0ff00;
+      --neon-green: #39ff14;
+      --neon-orange: #ff6a00;
+      --dark-bg: #0a0a12;
+      --dark-surface: #12121e;
+      --dark-card: #1a1a2e;
+      --dark-border: #2a2a40;
+      --text: #e0e0f0;
+      --text-muted: #6a6a8a;
+    }
+    body { background: var(--dark-bg); color: var(--text); }
+
+    #bg-layer {
+      position: fixed; inset: 0; z-index: 0;
+      background-size: cover; background-position: center; background-repeat: no-repeat;
+    }
+    #bg-layer::after {
+      content: ''; position: absolute; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+      pointer-events: none;
+    }
+
+    .scanlines {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,240,255,0.015) 2px, rgba(0,240,255,0.015) 4px);
+    }
+
+    .grid-bg {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(0,240,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,240,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    .drag-region { -webkit-app-region: drag; height: 24px; width: 100%; position: fixed; top: 0; left: 0; z-index: 50; }
+
+    .login-panel {
+      position: relative; z-index: 2;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      width: 100%; height: 100vh;
+    }
+    .login-panel.hidden { display: none; }
+
+    .glitch-container { text-align: center; margin-bottom: 32px; min-height: 60px; position: relative; }
+    .glitch-text {
+      font-family: 'Orbitron', monospace;
+      font-size: 36px; font-weight: 900;
+      color: var(--neon-cyan);
+      text-transform: uppercase;
+      letter-spacing: 6px;
+      position: relative;
+      text-shadow:
+        0 0 10px rgba(0,240,255,0.8),
+        0 0 20px rgba(0,240,255,0.5),
+        0 0 40px rgba(0,240,255,0.3),
+        0 0 80px rgba(0,240,255,0.15);
+    }
+    .glitch-text::before, .glitch-text::after {
+      content: attr(data-text);
+      position: absolute; top: 0; left: 0; right: 0;
+      overflow: hidden;
+    }
+    .glitch-text::before {
+      animation: glitch-1 2.5s infinite linear alternate-reverse;
+      clip-path: inset(0 0 80% 0);
+      color: var(--neon-magenta);
+      text-shadow: -2px 0 var(--neon-magenta);
+    }
+    .glitch-text::after {
+      animation: glitch-2 2.5s infinite linear alternate-reverse;
+      clip-path: inset(80% 0 0 0);
+      color: var(--neon-cyan);
+      text-shadow: 2px 0 var(--neon-cyan);
+    }
+    @keyframes glitch-1 {
+      0% { clip-path: inset(20% 0 60% 0); transform: translate(-2px, 1px); }
+      20% { clip-path: inset(50% 0 20% 0); transform: translate(1px, -1px); }
+      40% { clip-path: inset(10% 0 70% 0); transform: translate(-1px, 2px); }
+      60% { clip-path: inset(40% 0 30% 0); transform: translate(2px, 0); }
+      80% { clip-path: inset(70% 0 10% 0); transform: translate(-1px, -1px); }
+      100% { clip-path: inset(30% 0 50% 0); transform: translate(1px, 1px); }
+    }
+    @keyframes glitch-2 {
+      0% { clip-path: inset(60% 0 20% 0); transform: translate(2px, -1px); }
+      20% { clip-path: inset(30% 0 50% 0); transform: translate(-1px, 1px); }
+      40% { clip-path: inset(80% 0 5% 0); transform: translate(1px, -2px); }
+      60% { clip-path: inset(15% 0 60% 0); transform: translate(-2px, 0); }
+      80% { clip-path: inset(45% 0 30% 0); transform: translate(1px, 1px); }
+      100% { clip-path: inset(70% 0 15% 0); transform: translate(-1px, -1px); }
+    }
+
+    .cyber-line {
+      width: 200px; height: 2px; margin: 0 auto 30px;
+      background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--neon-magenta), transparent);
+      box-shadow: 0 0 10px rgba(0,240,255,0.5);
+      animation: line-pulse 3s ease-in-out infinite;
+    }
+    @keyframes line-pulse {
+      0%, 100% { opacity: 0.6; width: 200px; }
+      50% { opacity: 1; width: 260px; }
+    }
+
+    .login-card {
+      width: 360px; max-width: 90vw;
+      background: rgba(18,18,30,0.85);
+      border: 1px solid var(--dark-border);
+      border-radius: 4px;
+      padding: 24px;
+      position: relative;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 0 30px rgba(0,0,0,0.6), inset 0 1px 0 rgba(0,240,255,0.1);
+    }
+    .login-card::before {
+      content: ''; position: absolute; top: -1px; left: 20px; right: 20px; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+    }
+    .login-card::after {
+      content: ''; position: absolute; bottom: -1px; left: 40px; right: 40px; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--neon-magenta), transparent);
+    }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block; font-family: 'Share Tech Mono', monospace;
+      font-size: 11px; font-weight: 400; color: var(--neon-cyan);
+      text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px;
+      text-shadow: 0 0 5px rgba(0,240,255,0.3);
+    }
+    .form-group input {
+      width: 100%; padding: 12px 14px;
+      background: rgba(10,10,18,0.8);
+      border: 1px solid var(--dark-border);
+      border-radius: 2px; color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 14px; outline: none;
+      transition: all 0.3s;
+    }
+    .form-group input:focus {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 10px rgba(0,240,255,0.2), inset 0 0 10px rgba(0,240,255,0.05);
+    }
+    .form-group input::placeholder { color: #3a3a5a; }
+
+    .btn-cyber {
+      width: 100%; padding: 12px;
+      background: linear-gradient(135deg, rgba(0,240,255,0.15), rgba(255,45,149,0.1));
+      border: 1px solid var(--neon-cyan);
+      border-radius: 2px;
+      color: var(--neon-cyan);
+      font-family: 'Orbitron', monospace;
+      font-size: 13px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      cursor: pointer; position: relative; overflow: hidden;
+      transition: all 0.3s;
+      text-shadow: 0 0 10px rgba(0,240,255,0.5);
+    }
+    .btn-cyber:hover {
+      background: linear-gradient(135deg, rgba(0,240,255,0.25), rgba(255,45,149,0.15));
+      box-shadow: 0 0 20px rgba(0,240,255,0.3), inset 0 0 20px rgba(0,240,255,0.05);
+    }
+    .btn-cyber:active { transform: scale(0.98); }
+    .btn-cyber:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-cyber::after {
+      content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+      background: linear-gradient(45deg, transparent, rgba(0,240,255,0.05), transparent);
+      animation: btn-shine 3s linear infinite;
+    }
+    @keyframes btn-shine {
+      0% { transform: translateX(-100%) rotate(45deg); }
+      100% { transform: translateX(100%) rotate(45deg); }
+    }
+
+    .btn-coin-cyber {
+      width: 100%; padding: 10px; margin-top: 10px;
+      background: rgba(255,106,0,0.1);
+      border: 1px solid var(--neon-orange);
+      border-radius: 2px;
+      color: var(--neon-orange);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px; font-weight: 600;
+      letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; transition: all 0.3s;
+      text-shadow: 0 0 8px rgba(255,106,0,0.4);
+    }
+    .btn-coin-cyber:hover {
+      background: rgba(255,106,0,0.2);
+      box-shadow: 0 0 15px rgba(255,106,0,0.2);
+    }
+
+    .hotspot-status {
+      text-align: center; margin-top: 16px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px; letter-spacing: 1px;
+    }
+    .hotspot-status.online { color: var(--neon-green); text-shadow: 0 0 8px rgba(57,255,20,0.4); }
+    .hotspot-status.offline { color: var(--neon-magenta); text-shadow: 0 0 8px rgba(255,45,149,0.4); }
+
+    .error-msg {
+      background: rgba(255,45,149,0.1); color: var(--neon-magenta);
+      border: 1px solid rgba(255,45,149,0.3);
+      padding: 8px 12px; border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px; margin-bottom: 14px; display: none;
+    }
+    .error-msg.visible { display: block; }
+
+    .shutdown-panel {
+      margin-top: 24px; text-align: center; padding: 20px;
+      background: rgba(18,18,30,0.6);
+      border: 1px solid rgba(255,45,149,0.2);
+      border-radius: 4px; position: relative;
+      backdrop-filter: blur(10px);
+      max-width: 360px; width: 90vw;
+    }
+    .shutdown-panel::before {
+      content: ''; position: absolute; top: -1px; left: 30px; right: 30px; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--neon-magenta), transparent);
+    }
+    .shutdown-panel.hidden { display: none; }
+    .shutdown-header {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--neon-magenta); margin-bottom: 12px;
+      text-shadow: 0 0 5px rgba(255,45,149,0.4);
+    }
+    .shutdown-hex-ring {
+      position: relative; width: 130px; height: 130px; margin: 0 auto 12px;
+    }
+    .shutdown-hex-ring svg { width: 100%; height: 100%; }
+    .hex-track { fill: none; stroke: rgba(255,45,149,0.15); stroke-width: 3; }
+    .hex-progress {
+      fill: none; stroke: var(--neon-magenta); stroke-width: 3;
+      stroke-linecap: round; stroke-dasharray: 360; stroke-dashoffset: 0;
+      transition: stroke-dashoffset 1s linear;
+      filter: drop-shadow(0 0 6px rgba(255,45,149,0.6));
+    }
+    .hex-progress.warning { stroke: var(--neon-yellow); filter: drop-shadow(0 0 6px rgba(240,255,0,0.6)); }
+    .hex-progress.danger { stroke: var(--neon-magenta); animation: hex-pulse 1s ease-in-out infinite; }
+    @keyframes hex-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .shutdown-time-display {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-family: 'Orbitron', monospace;
+      font-size: 24px; font-weight: 800;
+      color: var(--neon-magenta); letter-spacing: 2px;
+      text-shadow: 0 0 15px rgba(255,45,149,0.6), 0 0 30px rgba(255,45,149,0.3);
+    }
+    .shutdown-time-display.warning {
+      color: var(--neon-yellow);
+      text-shadow: 0 0 15px rgba(240,255,0,0.6), 0 0 30px rgba(240,255,0,0.3);
+    }
+    .shutdown-time-display.danger {
+      animation: time-blink 0.8s step-start infinite;
+    }
+    @keyframes time-blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .shutdown-label-bottom {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px; color: rgba(255,45,149,0.5); letter-spacing: 2px;
+    }
 
     .session-panel { display: none; position: fixed; right: 10px; bottom: 10px; width: 260px; height: 80px; z-index: 99; }
     .session-panel.active { display: block; }
-    .login-panel { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100vh; }
-    .login-panel.hidden { display: none; }
-
-    .computer-name-display { text-align: center; margin-bottom: 30px; min-height: 40px; }
-    .computer-name-text { font-size: 28px; font-weight: 800; color: #fff; letter-spacing: 3px; text-transform: uppercase; font-family: 'Courier New', monospace; text-shadow: 0 0 20px rgba(0,102,204,0.6), 0 0 40px rgba(0,102,204,0.3); }
-
-    .shutdown-countdown { text-align: center; margin-top: 20px; }
-    .shutdown-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(231,76,60,0.7); font-weight: 600; margin-bottom: 4px; }
-    .shutdown-timer { font-size: 36px; font-weight: 800; font-family: 'Courier New', monospace; color: #e74c3c; letter-spacing: 3px; text-shadow: 0 0 15px rgba(231,76,60,0.5); }
-    .shutdown-timer.warning { color: #f39c12; text-shadow: 0 0 15px rgba(243,156,18,0.5); }
-    .shutdown-bar { width: 200px; height: 3px; margin: 8px auto 0; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
-    .shutdown-bar-fill { height: 100%; background: #e74c3c; border-radius: 2px; transition: width 1s linear; }
-    .shutdown-countdown.hidden { display: none; }
-
-    .error-msg { background: rgba(231,76,60,0.15); color: #e74c3c; padding: 8px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; display: none; }
-    .error-msg.visible { display: block; }
-
-    .hotspot-status { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 12px; }
-    .hotspot-status.online { color: #2ecc71; }
-    .hotspot-status.offline { color: #e74c3c; }
-
-    .coin-section { margin-top: 8px; }
-    .btn-coin { background: #f39c12; color: #000; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 700; width: 100%; transition: all 0.2s; }
-    .btn-coin:hover { background: #e67e22; }
-    .btn-coin:disabled { opacity: 0.5; cursor: not-allowed; }
-    .coin-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
-    .coin-modal.active { display: flex; }
-    .coin-modal-content { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 340px; max-width: 95vw; text-align: center; }
-    .coin-modal-content h3 { color: #f39c12; margin-bottom: 12px; font-size: 18px; }
-    .coin-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; }
-    .coin-stat { background: var(--surface2); border-radius: 8px; padding: 10px; }
-    .coin-stat .val { font-size: 20px; font-weight: 700; color: #fff; }
-    .coin-stat .lbl { font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin-top: 2px; }
-    .coin-timer { font-size: 24px; font-weight: 700; color: #f39c12; margin: 8px 0; }
-    .coin-voucher { font-size: 14px; color: var(--text-muted); margin: 4px 0; word-break: break-all; }
-    .coin-voucher span { color: #2ecc71; font-weight: 700; }
-    .btn-row { display: flex; gap: 8px; margin-top: 16px; }
-    .btn-row .btn { flex: 1; }
-
-    .session-compact { padding: 10px 14px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 6px; background: linear-gradient(135deg, #0d1520 0%, #152232 50%, #0d1520 100%); border-radius: 8px; border: 1px solid rgba(46,204,113,0.2); -webkit-app-region: drag; cursor: move; }
-    .session-timer { font-size: 20px; font-weight: 700; font-family: 'Courier New', monospace; color: #2ecc71; text-align: center; letter-spacing: 2px; line-height: 1; text-shadow: 0 0 10px rgba(46,204,113,0.5); }
-    .session-timer.warning { color: #f39c12; text-shadow: 0 0 10px rgba(243,156,18,0.5); }
-    .session-timer.danger { color: #e74c3c; text-shadow: 0 0 10px rgba(231,76,60,0.5); }
+    .session-compact {
+      padding: 10px 14px; width: 100%; height: 100%;
+      display: flex; flex-direction: column; justify-content: center; gap: 6px;
+      background: linear-gradient(135deg, #0a0a14 0%, #14142a 50%, #0a0a14 100%);
+      border-radius: 4px;
+      border: 1px solid rgba(0,240,255,0.2);
+      -webkit-app-region: drag; cursor: move;
+      box-shadow: 0 0 20px rgba(0,240,255,0.1);
+    }
+    .session-timer {
+      font-family: 'Orbitron', monospace;
+      font-size: 20px; font-weight: 700;
+      color: var(--neon-cyan); text-align: center;
+      letter-spacing: 3px; line-height: 1;
+      text-shadow: 0 0 10px rgba(0,240,255,0.6), 0 0 20px rgba(0,240,255,0.3);
+    }
+    .session-timer.warning { color: var(--neon-yellow); text-shadow: 0 0 10px rgba(240,255,0,0.6); }
+    .session-timer.danger { color: var(--neon-magenta); text-shadow: 0 0 10px rgba(255,45,149,0.6); }
     .session-bottom { display: flex; align-items: center; justify-content: space-between; }
-    .session-bottom .user-name { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
-    .session-bottom .btn-logout-sm { -webkit-app-region: no-drag; background: rgba(46,204,113,0.12); border: 1px solid rgba(46,204,113,0.3); color: #2ecc71; padding: 3px 12px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: 600; flex-shrink: 0; transition: all 0.15s; }
-    .session-bottom .btn-logout-sm:hover { background: rgba(46,204,113,0.25); border-color: #2ecc71; }
-    .drag-region { -webkit-app-region: drag; height: 24px; width: 100%; position: fixed; top: 0; left: 0; z-index: 50; }
+    .session-bottom .user-name {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px; color: rgba(0,240,255,0.4);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;
+      letter-spacing: 1px;
+    }
+    .session-bottom .btn-logout-sm {
+      -webkit-app-region: no-drag;
+      background: rgba(0,240,255,0.08);
+      border: 1px solid rgba(0,240,255,0.3);
+      color: var(--neon-cyan); padding: 3px 12px;
+      border-radius: 2px; cursor: pointer;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px; font-weight: 600;
+      letter-spacing: 2px; text-transform: uppercase;
+      transition: all 0.2s;
+    }
+    .session-bottom .btn-logout-sm:hover {
+      background: rgba(0,240,255,0.2);
+      box-shadow: 0 0 10px rgba(0,240,255,0.2);
+    }
 
-    .admin-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 200; align-items: center; justify-content: center; }
+    .coin-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; align-items: center; justify-content: center; }
+    .coin-modal.active { display: flex; }
+    .coin-modal-content {
+      background: var(--dark-surface); border: 1px solid var(--dark-border);
+      border-radius: 4px; padding: 24px; width: 340px; max-width: 95vw; text-align: center;
+      box-shadow: 0 0 40px rgba(0,0,0,0.6); position: relative;
+    }
+    .coin-modal-content::before {
+      content: ''; position: absolute; top: -1px; left: 20px; right: 20px; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--neon-orange), transparent);
+    }
+    .coin-modal-content h3 {
+      font-family: 'Orbitron', monospace; color: var(--neon-orange);
+      font-size: 16px; letter-spacing: 2px; margin-bottom: 12px;
+      text-shadow: 0 0 10px rgba(255,106,0,0.4);
+    }
+    .coin-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; }
+    .coin-stat {
+      background: rgba(10,10,18,0.6); border: 1px solid var(--dark-border);
+      border-radius: 4px; padding: 10px;
+    }
+    .coin-stat .val {
+      font-family: 'Orbitron', monospace;
+      font-size: 18px; font-weight: 700; color: var(--neon-orange);
+      text-shadow: 0 0 8px rgba(255,106,0,0.4);
+    }
+    .coin-stat .lbl {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px; color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: 1px; margin-top: 2px;
+    }
+    .coin-timer {
+      font-family: 'Orbitron', monospace;
+      font-size: 22px; font-weight: 700; color: var(--neon-orange); margin: 8px 0;
+      text-shadow: 0 0 10px rgba(255,106,0,0.5);
+    }
+    .coin-voucher {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px; color: var(--text-muted); margin: 4px 0; word-break: break-all;
+    }
+    .coin-voucher span { color: var(--neon-green); }
+    .btn-row { display: flex; gap: 8px; margin-top: 16px; }
+    .btn-row .btn-cyber-sm {
+      flex: 1; padding: 10px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
+      border-radius: 2px; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-cancel {
+      background: rgba(255,45,149,0.1); border: 1px solid var(--neon-magenta);
+      color: var(--neon-magenta);
+    }
+    .btn-cancel:hover { background: rgba(255,45,149,0.2); }
+    .btn-confirm {
+      background: rgba(0,240,255,0.1); border: 1px solid var(--neon-cyan);
+      color: var(--neon-cyan);
+    }
+    .btn-confirm:hover { background: rgba(0,240,255,0.2); }
+
+    .admin-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; align-items: center; justify-content: center; }
     .admin-modal.active { display: flex; }
-    .admin-box { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; width: 420px; max-width: 95vw; max-height: 90vh; overflow-y: auto; padding: 28px; box-shadow: 0 8px 40px rgba(0,0,0,0.6); }
-    .admin-box h2 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 20px; text-align: center; }
-    .admin-box .form-group { margin-bottom: 14px; }
-    .admin-box .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .admin-box .form-group input, .admin-box .form-group select { width: 100%; padding: 10px 12px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; outline: none; }
-    .admin-box .form-group input:focus { border-color: var(--primary); }
-    .admin-section { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px; }
-    .admin-section h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 12px; font-weight: 700; }
-    .admin-msg { padding: 8px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; display: none; }
-    .admin-msg.success { display: block; background: rgba(46,204,113,0.15); color: #2ecc71; }
-    .admin-msg.error { display: block; background: rgba(231,76,60,0.15); color: #e74c3c; }
-    .bg-preview { width: 100%; height: 80px; border-radius: 8px; background: var(--bg2); border: 1px solid var(--border); margin-bottom: 8px; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 12px; }
+    .admin-box {
+      background: var(--dark-surface); border: 1px solid var(--dark-border);
+      border-radius: 4px; width: 420px; max-width: 95vw; max-height: 90vh;
+      overflow-y: auto; padding: 28px;
+      box-shadow: 0 0 50px rgba(0,0,0,0.6); position: relative;
+    }
+    .admin-box::before {
+      content: ''; position: absolute; top: -1px; left: 20px; right: 20px; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--neon-magenta), transparent);
+    }
+    .admin-box h2 {
+      font-family: 'Orbitron', monospace;
+      font-size: 16px; font-weight: 700; color: var(--neon-cyan);
+      letter-spacing: 3px; text-align: center; margin-bottom: 20px;
+      text-shadow: 0 0 10px rgba(0,240,255,0.4);
+    }
+    .admin-box .form-group label { color: var(--neon-cyan); }
+    .admin-section {
+      border-top: 1px solid var(--dark-border);
+      padding-top: 16px; margin-top: 16px;
+    }
+    .admin-section h3 {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px; text-transform: uppercase; letter-spacing: 2px;
+      color: var(--neon-magenta); margin-bottom: 12px;
+      text-shadow: 0 0 5px rgba(255,45,149,0.3);
+    }
+    .admin-msg {
+      padding: 8px 12px; border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px; margin-bottom: 12px; display: none;
+    }
+    .admin-msg.success { display: block; background: rgba(57,255,20,0.1); color: var(--neon-green); border: 1px solid rgba(57,255,20,0.3); }
+    .admin-msg.error { display: block; background: rgba(255,45,149,0.1); color: var(--neon-magenta); border: 1px solid rgba(255,45,149,0.3); }
+    .bg-preview {
+      width: 100%; height: 80px; border-radius: 4px;
+      background: var(--dark-bg); border: 1px solid var(--dark-border);
+      margin-bottom: 8px; background-size: cover; background-position: center;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted);
+      font-family: 'Share Tech Mono', monospace; font-size: 11px;
+    }
     .btn-group { display: flex; gap: 8px; margin-top: 8px; }
-    .btn-group .btn { flex: 1; }
+    .btn-group .btn-cyber-sm { flex: 1; }
+    .btn-admin {
+      padding: 8px 14px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+      border-radius: 2px; cursor: pointer; transition: all 0.2s;
+      background: rgba(0,240,255,0.1); border: 1px solid rgba(0,240,255,0.3);
+      color: var(--neon-cyan);
+    }
+    .btn-admin:hover { background: rgba(0,240,255,0.2); box-shadow: 0 0 10px rgba(0,240,255,0.2); }
+    .btn-admin.danger {
+      background: rgba(255,45,149,0.1); border-color: rgba(255,45,149,0.3);
+      color: var(--neon-magenta);
+    }
+    .btn-admin.danger:hover { background: rgba(255,45,149,0.2); box-shadow: 0 0 10px rgba(255,45,149,0.2); }
     .file-input-wrap { position: relative; }
     .file-input-wrap input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-    .file-size-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-    .gif-warning { font-size: 11px; color: #f39c12; margin-top: 4px; display: none; }
+    .file-size-hint { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--text-muted); margin-top: 4px; letter-spacing: 1px; }
+    .gif-warning { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--neon-yellow); margin-top: 4px; display: none; letter-spacing: 1px; }
 
-    @keyframes scramble-glow { 0%, 100% { text-shadow: 0 0 20px rgba(0,102,204,0.6), 0 0 40px rgba(0,102,204,0.3); } 50% { text-shadow: 0 0 30px rgba(0,102,204,0.9), 0 0 60px rgba(0,102,204,0.5); } }
-    .computer-name-text.animate { animation: scramble-glow 2s ease-in-out infinite; }
-    @keyframes pulse-danger { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-    .shutdown-timer.pulse { animation: pulse-danger 1s ease-in-out infinite; }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(0,240,255,0.3); border-top-color: var(--neon-cyan);
+      border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block;
+    }
+    .hidden { display: none !important; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .corner-deco { position: fixed; z-index: 1; pointer-events: none; }
+    .corner-tl { top: 10px; left: 10px; width: 30px; height: 30px; border-top: 2px solid rgba(0,240,255,0.3); border-left: 2px solid rgba(0,240,255,0.3); }
+    .corner-tr { top: 10px; right: 10px; width: 30px; height: 30px; border-top: 2px solid rgba(0,240,255,0.3); border-right: 2px solid rgba(0,240,255,0.3); }
+    .corner-bl { bottom: 10px; left: 10px; width: 30px; height: 30px; border-bottom: 2px solid rgba(255,45,149,0.3); border-left: 2px solid rgba(255,45,149,0.3); }
+    .corner-br { bottom: 10px; right: 10px; width: 30px; height: 30px; border-bottom: 2px solid rgba(255,45,149,0.3); border-right: 2px solid rgba(255,45,149,0.3); }
   </style>
 </head>
 <body>
   <div id="bg-layer"></div>
+  <div class="scanlines"></div>
+  <div class="grid-bg"></div>
   <div class="drag-region"></div>
+  <div class="corner-deco corner-tl"></div>
+  <div class="corner-deco corner-tr"></div>
+  <div class="corner-deco corner-bl"></div>
+  <div class="corner-deco corner-br"></div>
 
   <div id="login-panel" class="login-panel">
-    <div class="auth-container">
-      <div id="computer-name-area" class="computer-name-display">
-        <div class="computer-name-text" id="computer-name-el"></div>
-      </div>
+    <div class="glitch-container">
+      <div class="glitch-text" id="computer-name-el" data-text=""></div>
+    </div>
+    <div class="cyber-line"></div>
 
+    <div class="login-card">
       <div id="error-msg" class="error-msg"></div>
-
-      <div class="form-card">
-        <div class="form-group">
-          <label>Username</label>
-          <input type="text" id="username" placeholder="Enter username" autocomplete="username" />
-        </div>
-        <div class="form-group">
-          <label>Password</label>
-          <input type="password" id="password" placeholder="Enter password" autocomplete="current-password" />
-        </div>
-        <button class="btn btn-primary" id="login-btn" onclick="doLogin()" style="width:100%">
-          <span id="login-text">Login</span>
-          <span id="login-spinner" class="spinner hidden"></span>
-        </button>
-        <div class="coin-section">
-          <button class="btn-coin" id="insert-coin-btn" onclick="openInsertCoin()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;display:inline-block"><circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" font-size="14" font-weight="bold" fill="currentColor" stroke="none">&#8369;</text></svg> Insert Coin
-          </button>
-        </div>
+      <div class="form-group">
+        <label>// Username</label>
+        <input type="text" id="username" placeholder="enter username" autocomplete="username" />
       </div>
-
-      <div id="hotspot-status" class="hotspot-status">Connecting to hotspot...</div>
-
-      <div id="shutdown-area" class="shutdown-countdown hidden">
-        <div class="shutdown-label">Auto Shutdown</div>
-        <div class="shutdown-timer" id="shutdown-timer">--:--</div>
-        <div class="shutdown-bar"><div class="shutdown-bar-fill" id="shutdown-bar-fill" style="width:100%"></div></div>
+      <div class="form-group">
+        <label>// Password</label>
+        <input type="password" id="password" placeholder="enter password" autocomplete="current-password" />
       </div>
+      <button class="btn-cyber" id="login-btn" onclick="doLogin()">
+        <span id="login-text">Authenticate</span>
+        <span id="login-spinner" class="spinner hidden"></span>
+      </button>
+      <button class="btn-coin-cyber" id="insert-coin-btn" onclick="openInsertCoin()">&#9670; Insert Coin &#9670;</button>
+    </div>
+
+    <div id="hotspot-status" class="hotspot-status" style="color:var(--text-muted)">[ connecting to hotspot... ]</div>
+
+    <div id="shutdown-area" class="shutdown-panel hidden">
+      <div class="shutdown-header">&#9888; System Auto Shutdown &#9888;</div>
+      <div class="shutdown-hex-ring">
+        <svg viewBox="0 0 120 120">
+          <circle class="hex-track" cx="60" cy="60" r="52" />
+          <circle class="hex-progress" id="shutdown-ring" cx="60" cy="60" r="52"
+            transform="rotate(-90 60 60)" />
+        </svg>
+        <div class="shutdown-time-display" id="shutdown-timer">--:--</div>
+      </div>
+      <div class="shutdown-label-bottom">[ time remaining ]</div>
     </div>
   </div>
 
@@ -143,17 +514,17 @@
 
   <div id="coin-modal" class="coin-modal">
     <div class="coin-modal-content">
-      <h3>&#8369; Insert Coin</h3>
-      <p style="font-size:13px;color:var(--text-muted)">Please insert coin into the machine</p>
+      <h3>&#9670; Insert Coin &#9670;</h3>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text-muted);letter-spacing:1px">Insert coin into the machine</p>
       <div class="coin-voucher" id="coin-voucher-display"></div>
       <div class="coin-timer" id="coin-timer">30s</div>
       <div class="coin-stats">
         <div class="coin-stat"><div class="val" id="coin-total">0</div><div class="lbl">Coins</div></div>
-        <div class="coin-stat"><div class="val" id="coin-time">0h:0m:0s</div><div class="lbl">Time</div></div>
+        <div class="coin-stat"><div class="val" id="coin-time">0m 0s</div><div class="lbl">Time</div></div>
       </div>
       <div class="btn-row">
-        <button class="btn btn-outline" onclick="cancelCoin()" style="border-color:#e74c3c;color:#e74c3c">Cancel</button>
-        <button class="btn btn-primary" onclick="donePaying()">I'm Done</button>
+        <button class="btn-cyber-sm btn-cancel" onclick="cancelCoin()">Cancel</button>
+        <button class="btn-cyber-sm btn-confirm" onclick="donePaying()">Done</button>
       </div>
     </div>
   </div>
@@ -164,16 +535,16 @@
         <h2 id="admin-title">Admin Access</h2>
         <div id="admin-auth-msg" class="admin-msg"></div>
         <div class="form-group">
-          <label id="admin-pw-label">Password</label>
-          <input type="password" id="admin-pw-input" placeholder="Enter admin password" />
+          <label id="admin-pw-label">// Password</label>
+          <input type="password" id="admin-pw-input" placeholder="enter admin password" />
         </div>
         <div id="admin-pw-confirm-group" class="form-group" style="display:none">
-          <label>Confirm Password</label>
-          <input type="password" id="admin-pw-confirm" placeholder="Confirm password" />
+          <label>// Confirm Password</label>
+          <input type="password" id="admin-pw-confirm" placeholder="confirm password" />
         </div>
         <div class="btn-group">
-          <button class="btn btn-outline" onclick="closeAdmin()">Cancel</button>
-          <button class="btn btn-primary" id="admin-auth-btn" onclick="adminAuth()">Login</button>
+          <button class="btn-admin" onclick="closeAdmin()">Cancel</button>
+          <button class="btn-admin" id="admin-auth-btn" onclick="adminAuth()">Login</button>
         </div>
       </div>
 
@@ -182,51 +553,51 @@
         <div id="admin-panel-msg" class="admin-msg"></div>
 
         <div class="admin-section" style="border-top:none;padding-top:0;margin-top:0">
-          <h3>Computer Name</h3>
+          <h3>&#9670; Computer Name</h3>
           <div class="form-group">
             <input type="text" id="admin-computer-name" placeholder="Enter computer name" maxlength="30" />
           </div>
-          <button class="btn btn-primary btn-sm" onclick="saveComputerName()">Save</button>
+          <button class="btn-admin" onclick="saveComputerName()">Save</button>
         </div>
 
         <div class="admin-section">
-          <h3>Auto Shutdown Timer</h3>
+          <h3>&#9670; Auto Shutdown Timer</h3>
           <div class="form-group">
-            <label>Minutes until shutdown (0 = disabled)</label>
+            <label>// Minutes until shutdown (0 = disabled)</label>
             <input type="number" id="admin-shutdown-time" placeholder="0" min="0" max="1440" />
           </div>
-          <button class="btn btn-primary btn-sm" onclick="saveShutdownTime()">Save</button>
+          <button class="btn-admin" onclick="saveShutdownTime()">Save</button>
         </div>
 
         <div class="admin-section">
-          <h3>Background Image</h3>
-          <div class="bg-preview" id="admin-bg-preview">No background</div>
+          <h3>&#9670; Background Image</h3>
+          <div class="bg-preview" id="admin-bg-preview">[ no background ]</div>
           <div class="file-input-wrap">
-            <button class="btn btn-outline btn-sm" style="width:100%">Choose Image</button>
+            <button class="btn-admin" style="width:100%">Choose Image</button>
             <input type="file" accept="image/png,image/jpeg,image/gif" onchange="uploadBackground(this)" />
           </div>
           <div class="file-size-hint">PNG, JPEG, GIF (max 10MB)</div>
-          <div class="gif-warning" id="gif-warning">GIF animations may use more memory on lower-end devices</div>
-          <button class="btn btn-outline btn-sm" style="border-color:#e74c3c;color:#e74c3c;margin-top:8px;width:100%" onclick="removeBackground()">Remove Background</button>
+          <div class="gif-warning" id="gif-warning">&#9888; GIF animations may use more memory</div>
+          <button class="btn-admin danger" style="margin-top:8px;width:100%" onclick="removeBackground()">Remove Background</button>
         </div>
 
         <div class="admin-section">
-          <h3>Change Admin Password</h3>
+          <h3>&#9670; Change Admin Password</h3>
           <div class="form-group">
-            <label>Current Password</label>
-            <input type="password" id="admin-old-pw" placeholder="Current password" />
+            <label>// Current Password</label>
+            <input type="password" id="admin-old-pw" placeholder="current password" />
           </div>
           <div class="form-group">
-            <label>New Password</label>
-            <input type="password" id="admin-new-pw" placeholder="New password" />
+            <label>// New Password</label>
+            <input type="password" id="admin-new-pw" placeholder="new password" />
           </div>
-          <button class="btn btn-primary btn-sm" onclick="changeAdminPassword()">Change Password</button>
+          <button class="btn-admin" onclick="changeAdminPassword()">Change Password</button>
         </div>
 
         <div class="admin-section">
           <div class="btn-group">
-            <button class="btn btn-outline" onclick="closeAdmin()">Close</button>
-            <button class="btn btn-danger" onclick="stopApp()">Stop App</button>
+            <button class="btn-admin" onclick="closeAdmin()">Close</button>
+            <button class="btn-admin danger" onclick="stopApp()">Stop App</button>
           </div>
         </div>
       </div>
@@ -249,35 +620,28 @@
     let shutdownLeft = 0;
     let shutdownInterval = null;
     let appSettings = {};
+    const RING_CIRCUMFERENCE = 2 * Math.PI * 52;
 
     function notifyElectron(state) {
-      if (window.electronAPI && window.electronAPI.setSessionState) {
-        window.electronAPI.setSessionState(state);
-      }
+      if (window.electronAPI && window.electronAPI.setSessionState) window.electronAPI.setSessionState(state);
     }
 
-    function scrambleText(el, finalText, duration) {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*';
+    function glitchScramble(el, finalText, duration) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*<>{}[]';
       const len = finalText.length;
-      const steps = 20;
+      const steps = 30;
       const stepTime = duration / steps;
       let step = 0;
-      el.classList.add('animate');
+      el.setAttribute('data-text', finalText);
       const iv = setInterval(() => {
         step++;
         let result = '';
         for (let i = 0; i < len; i++) {
-          if (i < (step / steps) * len) {
-            result += finalText[i];
-          } else {
-            result += chars[Math.floor(Math.random() * chars.length)];
-          }
+          if (i < (step / steps) * len) result += finalText[i];
+          else result += chars[Math.floor(Math.random() * chars.length)];
         }
         el.textContent = result;
-        if (step >= steps) {
-          clearInterval(iv);
-          el.textContent = finalText;
-        }
+        if (step >= steps) { clearInterval(iv); el.textContent = finalText; }
       }, stepTime);
     }
 
@@ -285,9 +649,12 @@
       appSettings = s;
       const nameEl = document.getElementById('computer-name-el');
       if (s.computerName) {
-        scrambleText(nameEl, s.computerName.toUpperCase(), 800);
+        const upper = s.computerName.toUpperCase();
+        glitchScramble(nameEl, upper, 1200);
+        nameEl.setAttribute('data-text', upper);
       } else {
         nameEl.textContent = '';
+        nameEl.setAttribute('data-text', '');
       }
       applyBackground(s.backgroundImage);
       updateShutdownConfig(s.autoShutdownSeconds || 0);
@@ -320,9 +687,7 @@
           shutdownLeft--;
           updateShutdownDisplay();
           if (shutdownLeft <= 0) {
-            if (window.electronAPI && window.electronAPI.triggerShutdown) {
-              window.electronAPI.triggerShutdown();
-            }
+            if (window.electronAPI && window.electronAPI.triggerShutdown) window.electronAPI.triggerShutdown();
           }
         }
       }, 1000);
@@ -330,19 +695,23 @@
 
     function updateShutdownDisplay() {
       const el = document.getElementById('shutdown-timer');
+      const ring = document.getElementById('shutdown-ring');
       const h = Math.floor(shutdownLeft / 3600);
       const m = Math.floor((shutdownLeft % 3600) / 60);
       const s = shutdownLeft % 60;
-      if (h > 0) {
-        el.textContent = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-      } else {
-        el.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-      }
-      el.className = 'shutdown-timer';
-      if (shutdownLeft <= 60) el.classList.add('pulse');
-      else if (shutdownLeft <= 300) el.classList.add('warning');
-      const pct = shutdownTotal > 0 ? (shutdownLeft / shutdownTotal * 100) : 0;
-      document.getElementById('shutdown-bar-fill').style.width = pct + '%';
+      el.textContent = h > 0
+        ? String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0')
+        : String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+
+      el.className = 'shutdown-time-display';
+      ring.className = 'hex-progress';
+      if (shutdownLeft <= 30) { el.classList.add('danger'); ring.classList.add('danger'); }
+      else if (shutdownLeft <= 60) { el.classList.add('warning'); ring.classList.add('warning'); }
+
+      const pct = shutdownTotal > 0 ? (shutdownLeft / shutdownTotal) : 0;
+      const offset = RING_CIRCUMFERENCE * (1 - pct);
+      ring.style.strokeDasharray = RING_CIRCUMFERENCE;
+      ring.style.strokeDashoffset = offset;
     }
 
     async function loadSettings() {
@@ -387,20 +756,20 @@
       const resp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => ({ success: false }));
       const statusEl = document.getElementById('hotspot-status');
       if (!resp.success) {
-        statusEl.textContent = 'Cannot reach hotspot (' + (resp.error || 'offline') + ')';
+        statusEl.textContent = '[ hotspot offline: ' + (resp.error || 'unreachable') + ' ]';
         statusEl.className = 'hotspot-status offline';
         return;
       }
       loginData = resp.data;
       if (loginData.isLogin) { showSession(loginData); return; }
-      statusEl.textContent = 'Connected to hotspot';
+      statusEl.textContent = '[ hotspot connected ]';
       statusEl.className = 'hotspot-status online';
       if (loginData.error && loginData.error !== '') showError(loginData.error);
     }
 
     function showError(msg) {
       const el = document.getElementById('error-msg');
-      el.textContent = msg;
+      el.textContent = '> ' + msg;
       el.classList.add('visible');
       setTimeout(() => el.classList.remove('visible'), 6000);
     }
@@ -420,8 +789,8 @@
       btn.disabled = false;
       document.getElementById('login-text').classList.remove('hidden');
       document.getElementById('login-spinner').classList.add('hidden');
-      if (resp.success && resp.data) { showSession(resp.data); }
-      else { showError(resp.error || 'Login failed'); await init(); }
+      if (resp.success && resp.data) showSession(resp.data);
+      else { showError(resp.error || 'Authentication failed'); await init(); }
     }
 
     function showSession(data) {
@@ -492,7 +861,7 @@
       const modal = document.getElementById('coin-modal');
       modal.classList.add('active');
       document.getElementById('coin-total').textContent = '0';
-      document.getElementById('coin-time').textContent = '0h:0m:0s';
+      document.getElementById('coin-time').textContent = '0m 0s';
       document.getElementById('coin-timer').textContent = '30s';
       document.getElementById('coin-voucher-display').innerHTML = '';
       const clientIp = loginData?.ip || sessionData?.ip || '';
@@ -513,11 +882,11 @@
 
     async function checkCoin() {
       const resp = await fetch('/api/vendo/check-coin?voucher=' + encodeURIComponent(activeVoucher)).then(r => r.json()).catch(() => null);
-      if (!resp || !resp.success) { closeCoinModal(); showError('Insert Coin: Lost connection to vendo'); return; }
+      if (!resp || !resp.success) { closeCoinModal(); showError('Insert Coin: Lost connection'); return; }
       const data = resp.data;
       if (data.status === 'success') {
         document.getElementById('coin-total').textContent = parseInt(data.totalCoinReceived) || 0;
-        if (data.totalTime) { document.getElementById('coin-time').textContent = formatUptime(Math.floor((parseInt(data.totalTime) || 0) / 1000)); }
+        if (data.totalTime) document.getElementById('coin-time').textContent = formatUptime(Math.floor((parseInt(data.totalTime) || 0) / 1000));
         document.getElementById('coin-timer').textContent = Math.ceil((parseInt(data.remainingTime) || 0) / 1000) + 's';
       } else if (data.errorCode === 'coin.slot.timeout') {
         (parseInt(document.getElementById('coin-total').textContent) || 0) > 0 ? donePaying() : (closeCoinModal(), showError('Insert Coin: Timeout'));
@@ -545,24 +914,21 @@
     async function openAdmin() {
       const resp = await fetch('/api/admin/status').then(r => r.json()).catch(() => ({}));
       const modal = document.getElementById('admin-modal');
-      const authView = document.getElementById('admin-auth-view');
-      const panelView = document.getElementById('admin-panel-view');
-      authView.style.display = 'block';
-      panelView.style.display = 'none';
+      document.getElementById('admin-auth-view').style.display = 'block';
+      document.getElementById('admin-panel-view').style.display = 'none';
       document.getElementById('admin-auth-msg').className = 'admin-msg';
-      document.getElementById('admin-auth-msg').textContent = '';
       document.getElementById('admin-pw-input').value = '';
       document.getElementById('admin-pw-confirm').value = '';
 
       if (!resp.registered) {
-        document.getElementById('admin-title').textContent = 'Setup Admin Password';
-        document.getElementById('admin-pw-label').textContent = 'New Password';
+        document.getElementById('admin-title').textContent = 'Setup Admin';
+        document.getElementById('admin-pw-label').textContent = '// New Password';
         document.getElementById('admin-pw-confirm-group').style.display = 'block';
         document.getElementById('admin-auth-btn').textContent = 'Register';
         document.getElementById('admin-auth-btn').onclick = adminRegister;
       } else {
         document.getElementById('admin-title').textContent = 'Admin Access';
-        document.getElementById('admin-pw-label').textContent = 'Password';
+        document.getElementById('admin-pw-label').textContent = '// Password';
         document.getElementById('admin-pw-confirm-group').style.display = 'none';
         document.getElementById('admin-auth-btn').textContent = 'Login';
         document.getElementById('admin-auth-btn').onclick = adminLogin;
@@ -573,27 +939,29 @@
 
     function closeAdmin() { document.getElementById('admin-modal').classList.remove('active'); adminToken = null; }
 
-    function showAdminMsg(containerId, msg, type) {
-      const el = document.getElementById(containerId);
-      el.textContent = msg; el.className = 'admin-msg ' + type;
-      setTimeout(() => { el.className = 'admin-msg'; el.textContent = ''; }, 4000);
+    function showAdminMsg(id, msg, type) {
+      const el = document.getElementById(id);
+      el.textContent = '> ' + msg; el.className = 'admin-msg ' + type;
+      setTimeout(() => { el.className = 'admin-msg'; }, 4000);
     }
+
+    function adminAuth() {}
 
     async function adminRegister() {
       const pw = document.getElementById('admin-pw-input').value;
       const confirm = document.getElementById('admin-pw-confirm').value;
-      if (pw.length < 4) { showAdminMsg('admin-auth-msg', 'Password must be at least 4 characters', 'error'); return; }
+      if (pw.length < 4) { showAdminMsg('admin-auth-msg', 'Minimum 4 characters', 'error'); return; }
       if (pw !== confirm) { showAdminMsg('admin-auth-msg', 'Passwords do not match', 'error'); return; }
       const resp = await fetch('/api/admin/register', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ password: pw }) }).then(r => r.json()).catch(() => ({ success: false }));
       if (resp.success) { adminToken = resp.token; showAdminPanel(); }
-      else showAdminMsg('admin-auth-msg', resp.error || 'Registration failed', 'error');
+      else showAdminMsg('admin-auth-msg', resp.error || 'Failed', 'error');
     }
 
     async function adminLogin() {
       const pw = document.getElementById('admin-pw-input').value;
       const resp = await fetch('/api/admin/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ password: pw }) }).then(r => r.json()).catch(() => ({ success: false }));
       if (resp.success) { adminToken = resp.token; showAdminPanel(); }
-      else showAdminMsg('admin-auth-msg', resp.error || 'Login failed', 'error');
+      else showAdminMsg('admin-auth-msg', resp.error || 'Failed', 'error');
     }
 
     async function showAdminPanel() {
@@ -609,25 +977,21 @@
 
     function updateBgPreview(bgInfo) {
       const el = document.getElementById('admin-bg-preview');
-      if (bgInfo && bgInfo.filename) {
-        el.style.backgroundImage = 'url(/uploads/' + bgInfo.filename + '?t=' + Date.now() + ')';
-        el.textContent = '';
-      } else {
-        el.style.backgroundImage = ''; el.textContent = 'No background';
-      }
+      if (bgInfo && bgInfo.filename) { el.style.backgroundImage = 'url(/uploads/' + bgInfo.filename + '?t=' + Date.now() + ')'; el.textContent = ''; }
+      else { el.style.backgroundImage = ''; el.textContent = '[ no background ]'; }
     }
 
     async function saveComputerName() {
       const name = document.getElementById('admin-computer-name').value.trim();
       const resp = await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify({ computerName: name }) }).then(r => r.json()).catch(() => ({ success: false }));
-      if (resp.success) { showAdminMsg('admin-panel-msg', 'Computer name saved', 'success'); applySettings(resp.settings); }
+      if (resp.success) { showAdminMsg('admin-panel-msg', 'Saved', 'success'); applySettings(resp.settings); }
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
     }
 
     async function saveShutdownTime() {
       const minutes = parseInt(document.getElementById('admin-shutdown-time').value) || 0;
       const resp = await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify({ autoShutdownSeconds: minutes * 60 }) }).then(r => r.json()).catch(() => ({ success: false }));
-      if (resp.success) { showAdminMsg('admin-panel-msg', 'Shutdown timer saved', 'success'); applySettings(resp.settings); }
+      if (resp.success) { showAdminMsg('admin-panel-msg', 'Saved', 'success'); applySettings(resp.settings); }
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
     }
 
@@ -636,25 +1000,25 @@
       if (!file) return;
       if (file.size > 10 * 1024 * 1024) { showAdminMsg('admin-panel-msg', 'File too large (max 10MB)', 'error'); return; }
       const allowed = ['image/png', 'image/jpeg', 'image/gif'];
-      if (!allowed.includes(file.type)) { showAdminMsg('admin-panel-msg', 'Only PNG, JPEG, GIF allowed', 'error'); return; }
+      if (!allowed.includes(file.type)) { showAdminMsg('admin-panel-msg', 'Only PNG, JPEG, GIF', 'error'); return; }
       document.getElementById('gif-warning').style.display = file.type === 'image/gif' ? 'block' : 'none';
       const buffer = await file.arrayBuffer();
       const resp = await fetch('/api/admin/background', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'x-admin-token': adminToken, 'x-filename': file.name, 'x-mime-type': file.type }, body: buffer }).then(r => r.json()).catch(() => ({ success: false }));
-      if (resp.success) { showAdminMsg('admin-panel-msg', 'Background uploaded', 'success'); updateBgPreview(resp.background); applyBackground(resp.background); }
-      else showAdminMsg('admin-panel-msg', resp.error || 'Upload failed', 'error');
+      if (resp.success) { showAdminMsg('admin-panel-msg', 'Uploaded', 'success'); updateBgPreview(resp.background); applyBackground(resp.background); }
+      else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
       input.value = '';
     }
 
     async function removeBackground() {
       const resp = await fetch('/api/admin/background', { method: 'DELETE', headers: { 'x-admin-token': adminToken } }).then(r => r.json()).catch(() => ({ success: false }));
-      if (resp.success) { showAdminMsg('admin-panel-msg', 'Background removed', 'success'); updateBgPreview(null); applyBackground(null); }
+      if (resp.success) { showAdminMsg('admin-panel-msg', 'Removed', 'success'); updateBgPreview(null); applyBackground(null); }
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
     }
 
     async function changeAdminPassword() {
       const oldPw = document.getElementById('admin-old-pw').value;
       const newPw = document.getElementById('admin-new-pw').value;
-      if (newPw.length < 4) { showAdminMsg('admin-panel-msg', 'New password must be at least 4 characters', 'error'); return; }
+      if (newPw.length < 4) { showAdminMsg('admin-panel-msg', 'Minimum 4 characters', 'error'); return; }
       const resp = await fetch('/api/admin/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify({ oldPassword: oldPw, newPassword: newPw }) }).then(r => r.json()).catch(() => ({ success: false }));
       if (resp.success) { adminToken = resp.token; showAdminMsg('admin-panel-msg', 'Password changed', 'success'); document.getElementById('admin-old-pw').value = ''; document.getElementById('admin-new-pw').value = ''; }
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
@@ -664,8 +1028,8 @@
       await fetch('/api/admin/stop-app', { method: 'POST', headers: { 'x-admin-token': adminToken } }).catch(() => {});
     }
 
-    document.getElementById('password').addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
-    document.getElementById('admin-pw-input').addEventListener('keydown', function(e) { if (e.key === 'Enter') document.getElementById('admin-auth-btn').click(); });
+    document.getElementById('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+    document.getElementById('admin-pw-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('admin-auth-btn').click(); });
 
     let settingsWs = null;
     function connectSettingsWs() {
