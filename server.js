@@ -313,42 +313,23 @@ app.get('/api/hotspot/status', async (req, res) => {
 app.post('/api/hotspot/logout', async (req, res) => {
   let { logoutLink } = req.body;
   try {
-    const statusResp = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(5000) });
-    const buffer = Buffer.from(await statusResp.arrayBuffer());
-    const statusData = parseHotspotResponse(buffer);
-    console.log('[Logout] Status check - isLogin:', statusData.isLogin, 'username:', statusData.username, 'logoutLink:', statusData.logoutLink);
-
-    if (!logoutLink && statusData.logoutLink) {
-      logoutLink = statusData.logoutLink;
+    if (!logoutLink) {
+      try {
+        const statusResp = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(5000) });
+        const buffer = Buffer.from(await statusResp.arrayBuffer());
+        const statusData = parseHotspotResponse(buffer);
+        logoutLink = statusData.logoutLink;
+        console.log('[Logout] Got link from status:', logoutLink);
+      } catch (_) {}
     }
-
     if (!logoutLink) {
       logoutLink = `http://${HOTSPOT_DNS}/logout`;
     }
-
     console.log('[Logout] Calling:', logoutLink);
-    const logoutResp = await fetch(logoutLink, { signal: AbortSignal.timeout(5000), redirect: 'follow' });
-    const logoutText = await logoutResp.text();
-    console.log('[Logout] Response status:', logoutResp.status, 'length:', logoutText.length);
-
-    const verifyResp = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(3000) }).catch(() => null);
-    if (verifyResp) {
-      const verifyBuf = Buffer.from(await verifyResp.arrayBuffer());
-      const verifyData = parseHotspotResponse(verifyBuf);
-      console.log('[Logout] Verify - still logged in:', verifyData.isLogin, 'username:', verifyData.username);
-      if (verifyData.isLogin) {
-        console.log('[Logout] Session still active, trying fallback logout');
-        const fallbackLink = verifyData.logoutLink || `http://${HOTSPOT_DNS}/logout`;
-        await fetch(fallbackLink, { signal: AbortSignal.timeout(5000), redirect: 'follow' }).catch(() => {});
-      }
-    }
-
+    await fetch(logoutLink, { signal: AbortSignal.timeout(5000) });
     res.json({ success: true });
   } catch (err) {
     console.log('[Logout] Error:', err.message);
-    try {
-      await fetch(`http://${HOTSPOT_DNS}/logout`, { signal: AbortSignal.timeout(3000) }).catch(() => {});
-    } catch (_) {}
     res.json({ success: false, error: err.message });
   }
 });

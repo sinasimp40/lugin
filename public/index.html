@@ -995,30 +995,12 @@
     }
 
     async function doLogout() {
+      const link = sessionData?.logoutLink || '';
       const ip = sessionData?.ip || loginData?.ip || '';
       const mac = sessionData?.mac || loginData?.mac || '';
-      const isVoucherSession = sessionData?.username && !sessionData.username.startsWith('mem-');
-
-      let logoutLink = sessionData?.logoutLink || '';
-      if (!logoutLink) {
-        const statusResp = await fetch('/api/hotspot/status').then(r => r.json()).catch(() => null);
-        if (statusResp && statusResp.success && statusResp.data) {
-          logoutLink = statusResp.data.logoutLink || '';
-        }
-      }
-      console.log('[doLogout] logoutLink:', logoutLink, 'ip:', ip, 'mac:', mac, 'isVoucher:', isVoucherSession);
-
-      if (logoutLink) {
-        await fetch('/api/hotspot/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logoutLink }) }).catch(() => {});
-      }
-
+      console.log('[doLogout] logoutLink:', link, 'ip:', ip, 'mac:', mac);
+      await fetch('/api/hotspot/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logoutLink: link }) }).catch(() => {});
       if (ip || mac) await callPisonetDone(ip, mac);
-
-      if (isVoucherSession) {
-        if (!logoutLink) logoutLink = '';
-        await fetch('/api/hotspot/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logoutLink: '' }) }).catch(() => {});
-      }
-
       showLoggedOut();
     }
 
