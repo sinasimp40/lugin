@@ -444,26 +444,70 @@ app.post('/api/pisonet/register', async (req, res) => {
 
 app.post('/api/pisonet/logout', async (req, res) => {
   const { ip, mac, username } = req.body;
-  try {
-    const url = `http://${VENDO_IP}/pisonet/logout`;
-    const body = { macAddress: mac || '', ip: ip || '', username: username || '' };
-    console.log('[Pisonet] logout:', url, JSON.stringify(body));
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(5000),
-    });
-    const text = await resp.text();
-    console.log('[Pisonet] logout response:', resp.status, text);
+  const isMember = username && username.startsWith('mem-');
+
+  if (isMember) {
     try {
-      res.json({ success: true, data: JSON.parse(text) });
-    } catch (_) {
-      res.json({ success: true, data: text });
+      const url = `http://${VENDO_IP}/pisonet/logout`;
+      const body = { macAddress: mac || '', ip: ip || '', username: username || '' };
+      console.log('[Pisonet] member logout:', url, JSON.stringify(body));
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(5000),
+      });
+      const text = await resp.text();
+      console.log('[Pisonet] member logout response:', resp.status, text);
+      try { res.json({ success: true, data: JSON.parse(text) }); }
+      catch (_) { res.json({ success: true, data: text }); }
+    } catch (err) {
+      console.log('[Pisonet] member logout error:', err.message);
+      res.json({ success: false, error: err.message });
     }
-  } catch (err) {
-    console.log('[Pisonet] logout error:', err.message);
-    res.json({ success: false, error: 'Cannot reach vendo: ' + err.message });
+  } else {
+    try {
+      const body = { macAddress: mac || '', ip: ip || '', username: username || '' };
+      console.log('[Pisonet] voucher stopTime attempt, body:', JSON.stringify(body));
+
+      let stopped = false;
+      const stopUrl = `http://${VENDO_IP}/pisonet/stopTime`;
+      try {
+        const stopResp = await fetch(stopUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(5000),
+        });
+        const stopText = await stopResp.text();
+        console.log('[Pisonet] stopTime response:', stopResp.status, stopText);
+        stopped = stopResp.status === 200;
+      } catch (err) {
+        console.log('[Pisonet] stopTime error:', err.message);
+      }
+
+      if (!stopped) {
+        console.log('[Pisonet] stopTime failed, falling back to /pisonet/logout');
+        try {
+          const logoutUrl = `http://${VENDO_IP}/pisonet/logout`;
+          const logoutResp = await fetch(logoutUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(5000),
+          });
+          const logoutText = await logoutResp.text();
+          console.log('[Pisonet] fallback logout response:', logoutResp.status, logoutText);
+        } catch (err2) {
+          console.log('[Pisonet] fallback logout error:', err2.message);
+        }
+      }
+
+      res.json({ success: true });
+    } catch (err) {
+      console.log('[Pisonet] voucher logout error:', err.message);
+      res.json({ success: false, error: err.message });
+    }
   }
 });
 
