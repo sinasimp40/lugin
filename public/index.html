@@ -994,27 +994,40 @@
       }
     }
 
+    function mikrotikLogoutDirect(logoutLink) {
+      return new Promise((resolve) => {
+        const eraseUrl = logoutLink + (logoutLink.includes('?') ? '&' : '?') + 'erase-cookie=on';
+        console.log('[doLogout] Direct MikroTik logout from browser:', eraseUrl);
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = eraseUrl;
+        document.body.appendChild(iframe);
+        setTimeout(() => {
+          try { document.body.removeChild(iframe); } catch(_) {}
+          console.log('[doLogout] MikroTik logout iframe done');
+          resolve();
+        }, 3000);
+      });
+    }
+
     async function doLogout() {
       const link = sessionData?.logoutLink || '';
       const ip = sessionData?.ip || loginData?.ip || '';
       const mac = sessionData?.mac || loginData?.mac || '';
       const username = sessionData?.username || '';
       const isMember = username && username.startsWith('mem-');
-      console.log('[doLogout] ip:', ip, 'mac:', mac, 'username:', username, 'isMember:', isMember);
+      console.log('[doLogout] ip:', ip, 'mac:', mac, 'username:', username, 'isMember:', isMember, 'logoutLink:', link);
+
+      if (!isMember && link) {
+        await mikrotikLogoutDirect(link);
+        console.log('[doLogout] MikroTik direct logout completed - On Logout script should have triggered');
+      }
 
       const pisoResp = await fetch('/api/pisonet/logout', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ip, mac, username })
       }).then(r => r.json()).catch(e => ({ error: e.message }));
       console.log('[doLogout] pisonet/logout response:', JSON.stringify(pisoResp));
-
-      if (!isMember && link) {
-        const hsResp = await fetch('/api/hotspot/logout', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ logoutLink: link })
-        }).then(r => r.json()).catch(e => ({ error: e.message }));
-        console.log('[doLogout] hotspot/logout (triggers On Logout script):', JSON.stringify(hsResp));
-      }
 
       showLoggedOut();
     }
