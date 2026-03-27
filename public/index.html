@@ -266,7 +266,7 @@
       }, 1000);
 
       if (statusInterval) clearInterval(statusInterval);
-      statusInterval = setInterval(pollStatus, 10000);
+      statusInterval = setInterval(pollStatus, 5000);
 
       notifyElectron('logged-in');
     }

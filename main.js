@@ -12,9 +12,52 @@ process.on('unhandledRejection', (err) => {
 
 let loginWindow;
 let sessionWindow;
+let isQuitting = false;
 
 const SESSION_WIDTH = 260;
 const SESSION_HEIGHT = 80;
+
+function performLogout() {
+  return new Promise((resolve) => {
+    const http = require('http');
+    const statusReq = http.get(`${APP_URL}/api/hotspot/status`, (res) => {
+      let body = '';
+      res.on('data', (chunk) => body += chunk);
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(body);
+          if (data.success && data.data && data.data.isLogin) {
+            const logoutLink = data.data.logoutLink || '';
+            const postData = JSON.stringify({ logoutLink });
+            const logoutReq = http.request(`${APP_URL}/api/hotspot/logout`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) },
+            }, () => resolve());
+            logoutReq.on('error', () => resolve());
+            logoutReq.write(postData);
+            logoutReq.end();
+          } else {
+            resolve();
+          }
+        } catch (e) { resolve(); }
+      });
+    });
+    statusReq.on('error', () => resolve());
+    setTimeout(resolve, 8000);
+  });
+}
+
+app.on('before-quit', (event) => {
+  if (!isQuitting) {
+    isQuitting = true;
+    event.preventDefault();
+    console.log('[Electron] App closing, performing logout...');
+    performLogout().finally(() => {
+      console.log('[Electron] Logout done, quitting.');
+      app.exit(0);
+    });
+  }
+});
 
 app.whenReady().then(() => {
   process.env.PORT = String(PORT);
