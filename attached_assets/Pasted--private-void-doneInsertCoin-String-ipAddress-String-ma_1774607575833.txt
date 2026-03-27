@@ -1,0 +1,106 @@
+ private void doneInsertCoin(String ipAddress, String macAddress)
+ {
+     try
+     {
+         var requestObj = new JsonObject
+         {
+             ["macAddress"] = macAddress,
+             ["ip"] = ipAddress
+         };
+
+         String url = "http://" + Properties.Settings.Default.KioskIpAddress + ":8989/pisonet/done";
+
+         String jsonRequest = requestObj.ToString();
+
+         HttpContent httpContent = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
+
+
+         var response = HttpClientManager.createHttpClient().PostAsync(url, httpContent);
+
+
+         var HttpResponse = response.Result;
+
+         HttpResponse = response.Result;
+
+         var responseString = HttpResponse.Content.ReadAsStringAsync().Result;
+     }
+     catch (Exception ex)
+     {
+
+     }
+ }
+
+
+
+  private void registerMemberWorker_DoWork(object sender, DoWorkEventArgs e)
+  {
+      try
+      {
+          availButton.NotifyDefault(false);
+
+          var response = HttpClientManager.createHttpClient().GetAsync("http://" + Properties.Settings.Default.HotspotAddress + "/status");
+
+          var HttpResponse = response.Result;
+
+          var responseString = HttpResponse.Content.ReadAsStringAsync().Result;
+
+          responseString = responseString.Replace("\\", "\\\\");
+
+          var root = JsonValue.Parse(responseString);
+
+          String ipAddress = root["ip"].ToString();
+          String macAddress = root["mac"].ToString();
+
+          Dictionary<String, String> request = (Dictionary<String, String>)e.Argument;
+
+          String username = ("mem-" + request["username"]).ToLower();
+          String password = request["password"];
+
+          var requestObj = new JsonObject
+          {
+              ["macAddress"] = macAddress,
+              ["ip"] = ipAddress,
+              ["username"] = username,
+              ["password"] = password
+          };
+
+          String url = "http://" + Properties.Settings.Default.KioskIpAddress + ":8989/pisonet/register";
+
+          String jsonRequest = requestObj.ToString();
+
+          HttpContent httpContent = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
+
+          response = HttpClientManager.createHttpClient().PostAsync(url, httpContent);
+
+          HttpResponse = response.Result;
+
+
+--insert coin--
+
+                var requestObj = new JsonObject
+                {
+                    ["macAddress"] = macAddress,
+                    ["ip"] = ipAddress
+                };
+
+                String url = "http://" + Properties.Settings.Default.KioskIpAddress + ":8989/pisonet/avail";
+
+                String jsonRequest = requestObj.ToString();
+
+                HttpContent httpContent = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
+
+                response = HttpClientManager.createHttpClient().PostAsync(url, httpContent);
+
+                HttpResponse = response.Result;
+
+                responseString = HttpResponse.Content.ReadAsStringAsync().Result;
+
+                responseString = responseString.Replace("\\", "\\\\");
+
+                Dictionary<String, String> result = new Dictionary<String, String>
+                {
+                    { "success", "true" },
+                    { "macAddress", macAddress },
+                    { "ip", ipAddress },
+                    { "availResponse", responseString }
+                };
