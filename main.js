@@ -19,6 +19,7 @@ let loginWindow;
 let sessionWindow;
 let isQuitting = false;
 let currentState = 'logged-out';
+let focusGuardInterval = null;
 
 const SESSION_WIDTH = 260;
 const SESSION_HEIGHT = 80;
@@ -53,20 +54,31 @@ function performLogout() {
   });
 }
 
+function reclaimFocus() {
+  if (loginWindow && !loginWindow.isDestroyed()) {
+    loginWindow.setKiosk(true);
+    loginWindow.setAlwaysOnTop(true, 'screen-saver');
+    loginWindow.moveTop();
+    loginWindow.focus();
+  }
+}
+
 function registerKeyBlocks() {
-  try {
-    globalShortcut.register('Alt+Tab', () => {});
-    globalShortcut.register('Alt+F4', () => {});
-    globalShortcut.register('Super', () => {});
-    globalShortcut.register('Super+D', () => {});
-    globalShortcut.register('Super+E', () => {});
-    globalShortcut.register('Super+R', () => {});
-    globalShortcut.register('Super+L', () => {});
-    globalShortcut.register('Ctrl+Alt+Delete', () => {});
-    globalShortcut.register('Alt+Escape', () => {});
-    globalShortcut.register('Alt+Space', () => {});
-  } catch (e) {
-    console.log('[Electron] Some shortcuts could not be registered:', e.message);
+  const shortcuts = [
+    'Alt+Tab', 'Alt+F4', 'Alt+Escape', 'Alt+Space',
+    'Super', 'Super+D', 'Super+E', 'Super+R', 'Super+L',
+    'Super+Tab', 'Super+X', 'Super+I', 'Super+S', 'Super+A',
+    'Ctrl+Shift+Escape',
+    'Ctrl+Escape',
+    'F11',
+  ];
+  for (const sc of shortcuts) {
+    try {
+      const ok = globalShortcut.register(sc, reclaimFocus);
+      if (!ok) console.log(`[Electron] Shortcut ${sc} not available (OS-reserved)`);
+    } catch (e) {
+      console.log(`[Electron] Could not register ${sc}:`, e.message);
+    }
   }
 }
 
@@ -82,6 +94,10 @@ app.on('before-quit', (event) => {
     event.preventDefault();
     console.log('[Electron] App closing, performing logout...');
     unregisterKeyBlocks();
+    if (focusGuardInterval) {
+      clearInterval(focusGuardInterval);
+      focusGuardInterval = null;
+    }
     performLogout().finally(() => {
       console.log('[Electron] Logout done, quitting.');
       app.exit(0);
@@ -154,6 +170,7 @@ function showLoginWindow() {
     closable: false,
     skipTaskbar: true,
     alwaysOnTop: true,
+    kiosk: true,
     enableLargerThanScreen: true,
     webPreferences: {
       nodeIntegration: false,
@@ -191,11 +208,27 @@ function showLoginWindow() {
 
   loginWindow.on('blur', () => {
     if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
-      loginWindow.setAlwaysOnTop(true, 'screen-saver');
-      loginWindow.moveTop();
-      loginWindow.focus();
+      setTimeout(() => {
+        if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
+          loginWindow.setKiosk(true);
+          loginWindow.setAlwaysOnTop(true, 'screen-saver');
+          loginWindow.moveTop();
+          loginWindow.focus();
+        }
+      }, 100);
     }
   });
+
+  focusGuardInterval = setInterval(() => {
+    if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
+      if (!loginWindow.isFocused()) {
+        loginWindow.setKiosk(true);
+        loginWindow.setAlwaysOnTop(true, 'screen-saver');
+        loginWindow.moveTop();
+        loginWindow.focus();
+      }
+    }
+  }, 500);
 }
 
 function showSessionWindow() {
@@ -262,6 +295,10 @@ function handleStateChange(state) {
   if (state === 'logged-in') {
     currentState = 'logged-in';
     unregisterKeyBlocks();
+    if (focusGuardInterval) {
+      clearInterval(focusGuardInterval);
+      focusGuardInterval = null;
+    }
 
     if (sessionWindow && !sessionWindow.isDestroyed()) return;
     showSessionWindow();
@@ -275,7 +312,6 @@ function handleStateChange(state) {
   } else if (state === 'logged-out') {
     currentState = 'logged-out';
     stopPolling();
-    registerKeyBlocks();
     if (loginWindow && !loginWindow.isDestroyed()) return;
     showLoginWindow();
     setTimeout(() => {

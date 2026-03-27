@@ -44,9 +44,18 @@ A lightweight Electron desktop app for pisonet member login. Connects to a Mikro
 ## Electron Hardening
 - Single instance lock — prevents duplicate app instances
 - `skipTaskbar: true` — hidden from taskbar
-- Blocks Alt+Tab, Alt+F4, Win key, Alt+Escape, Alt+Space in login view only
-- Keys unblocked when user is logged in (session view)
+- `kiosk: true` — Electron's built-in kiosk mode for login window
+- `globalShortcut` blocks Alt+Tab, Alt+F4, Win/Super keys, Ctrl+Shift+Esc, F11 in login view
+- Focus guard: 500ms interval + blur handler aggressively reclaim focus when in login state
+- Keys unblocked and kiosk disabled when user is logged in (session view)
 - Auto-shutdown: timer counts down in login view, triggers OS shutdown via IPC
+- **Windows Kiosk Scripts** (in app resources folder after install):
+  - `kiosk-setup.bat` — Apply registry tweaks to disable Task Manager, Windows key, Lock Workstation, etc. for current user. Run once, then log out/in.
+  - `kiosk-disable.bat` — Reverse all kiosk registry tweaks. Run to restore normal Windows behavior.
+  - Note: Ctrl+Alt+Del cannot be blocked by any app — only Windows Group Policy or registry can limit what appears on that screen
+
+## Fonts
+- Orbitron + Share Tech Mono bundled locally in `public/fonts/` (offline-ready, no Google Fonts dependency)
 
 ## WebSocket
 - Path: `/ws/session`

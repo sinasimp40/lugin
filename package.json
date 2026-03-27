@@ -21,10 +21,16 @@
       "server.js",
       "src/**/*",
       "public/**/*",
+      "kiosk-setup.bat",
+      "kiosk-disable.bat",
       "node_modules/**/*",
       "!node_modules/.cache",
       "!node_modules/electron",
       "!node_modules/electron-builder"
+    ],
+    "extraResources": [
+      { "from": "kiosk-setup.bat", "to": "kiosk-setup.bat" },
+      { "from": "kiosk-disable.bat", "to": "kiosk-disable.bat" }
     ]
   },
   "keywords": [
