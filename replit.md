@@ -23,24 +23,22 @@ A lightweight Electron desktop app for pisonet member login. Connects to a Mikro
 
 ## Member Registration
 - Login card has Login/Register tabs
-- Register tab: username, password, confirm password → creates user on MikroTik via REST API → automatically opens Insert Coin for the new user
-- Registration flow: `POST /api/hotspot/register` → MikroTik REST API `/rest/ip/hotspot/user/add` → then Insert Coin with username as voucher
-- Requires MikroTik RouterOS v7+ REST API and router credentials configured in admin panel
+- Register tab: username + password fields
+- Registration flow: user picks username/password → Insert Coin opens directly with username as voucher → JuanFi vendo (`/topUp` + `/useVoucher`) handles creating the hotspot user on MikroTik automatically
+- No Router REST API credentials needed — JuanFi's NodeMCU has its own connection to the MikroTik router
+- After registration + payment, username/password are pre-filled in the login form
+- Note: JuanFi typically sets the MikroTik password to match the voucher/username
 
 ## Admin Panel
 - Triggered by typing "zxc1" on the login screen (no visible button)
 - First-time: register admin password; subsequently: login with password
-- Settings: computer name, auto-shutdown timer (minutes), background image upload/remove, router API credentials (IP, user, password), change password, stop app
-- Router API settings: needed for member registration (MikroTik REST API access)
+- Settings: computer name, auto-shutdown timer (minutes), background image upload/remove, change password, stop app
 - Background images: PNG/JPEG/GIF, max 10MB, saved to `data/uploads/background.*`
 - GIF warning shown for memory concerns on low-end devices
-- Settings broadcast to all WebSocket clients in real-time (router credentials excluded from broadcasts)
-
-## Hotspot API
-- `POST /api/hotspot/register` — Register new member on MikroTik hotspot (username, password → REST API)
+- Settings broadcast to all WebSocket clients in real-time
 
 ## Admin API
-- `GET /api/admin/status` — Check if registered + current settings (public, excludes router credentials)
+- `GET /api/admin/status` — Check if registered + current settings
 - `POST /api/admin/register` — First-time admin setup (returns token)
 - `POST /api/admin/login` — Admin login (returns token)
 - `POST /api/admin/change-password` — Change admin password (requires token)
@@ -83,9 +81,13 @@ A lightweight Electron desktop app for pisonet member login. Connects to a Mikro
 ## JuanFi Vendo API (NodeMCU at 10.0.0.5:8989)
 - `GET /topUp?voucher=X&ip=Y&mac=Z&type=E|N` — Start coin insertion (E=extend, N=new)
 - `GET /checkCoin?voucher=X` — Poll coin status (every 1s)
-- `GET /useVoucher?voucher=X` — Activate voucher after payment
+- `GET /useVoucher?voucher=X` — Activate voucher after payment (JuanFi creates MikroTik user)
 - `GET /cancelTopUp?voucher=X` — Cancel coin insertion
 - `GET /getRates` — Get rate table
+
+## Legacy Code (unused)
+- `renderer/` — Old Electron renderer files, replaced by `public/` + `preload.js`
+- `src/db.js` — Old database module with router_config schema, unused
 
 ## Dependencies
 - `express` + `ws` (production)

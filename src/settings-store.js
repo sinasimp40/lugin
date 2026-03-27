@@ -81,9 +81,6 @@ function getSettings() {
     computerName: s.computerName !== undefined ? s.computerName : 'COMPUTER SHOP',
     autoShutdownSeconds: s.autoShutdownSeconds !== undefined ? s.autoShutdownSeconds : 180,
     backgroundImage: s.backgroundImage || null,
-    routerIp: s.routerIp || 'pisonet.app',
-    routerUser: s.routerUser || 'admin',
-    routerPassword: s.routerPassword || '',
   };
 }
 
@@ -92,9 +89,6 @@ function updateSettings(updates) {
   if (updates.computerName !== undefined) s.computerName = updates.computerName;
   if (updates.autoShutdownSeconds !== undefined) s.autoShutdownSeconds = parseInt(updates.autoShutdownSeconds) || 0;
   if (updates.backgroundImage !== undefined) s.backgroundImage = updates.backgroundImage;
-  if (updates.routerIp !== undefined) s.routerIp = updates.routerIp;
-  if (updates.routerUser !== undefined) s.routerUser = updates.routerUser;
-  if (updates.routerPassword !== undefined) s.routerPassword = updates.routerPassword;
   save(s);
   return getSettings();
 }

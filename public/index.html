@@ -562,16 +562,12 @@
         <div id="reg-error-msg" class="error-msg"></div>
         <div id="reg-success-msg" class="success-msg"></div>
         <div class="form-group">
-          <label>// New Username</label>
-          <input type="text" id="reg-username" placeholder="choose a username" autocomplete="off" />
+          <label>// Choose Username</label>
+          <input type="text" id="reg-username" placeholder="pick your username" autocomplete="off" />
         </div>
         <div class="form-group">
-          <label>// New Password</label>
-          <input type="password" id="reg-password" placeholder="choose a password" autocomplete="new-password" />
-        </div>
-        <div class="form-group">
-          <label>// Confirm Password</label>
-          <input type="password" id="reg-confirm" placeholder="confirm password" autocomplete="new-password" />
+          <label>// Choose Password</label>
+          <input type="password" id="reg-password" placeholder="pick your password" autocomplete="new-password" />
         </div>
         <button class="btn-register" id="reg-btn" onclick="doRegister()">
           <span id="reg-text">Register &amp; Insert Coin</span>
@@ -675,22 +671,6 @@
           <button class="btn-admin danger" style="margin-top:8px;width:100%" onclick="removeBackground()">Remove Background</button>
         </div>
 
-        <div class="admin-section">
-          <h3>&#9670; Router API (MikroTik)</h3>
-          <div class="form-group">
-            <label>// Router IP / Hostname</label>
-            <input type="text" id="admin-router-ip" placeholder="pisonet.app" />
-          </div>
-          <div class="form-group">
-            <label>// Router Username</label>
-            <input type="text" id="admin-router-user" placeholder="admin" />
-          </div>
-          <div class="form-group">
-            <label>// Router Password</label>
-            <input type="password" id="admin-router-pw" placeholder="router password" />
-          </div>
-          <button class="btn-admin" onclick="saveRouterSettings()">Save Router Settings</button>
-        </div>
 
         <div class="admin-section">
           <h3>&#9670; Change Admin Password</h3>
@@ -1083,9 +1063,6 @@
         document.getElementById('admin-computer-name').value = resp.settings.computerName || '';
         document.getElementById('admin-shutdown-time').value = resp.settings.autoShutdownSeconds > 0 ? Math.round(resp.settings.autoShutdownSeconds / 60) : 0;
         updateBgPreview(resp.settings.backgroundImage);
-        document.getElementById('admin-router-ip').value = resp.settings.routerIp || 'pisonet.app';
-        document.getElementById('admin-router-user').value = resp.settings.routerUser || 'admin';
-        document.getElementById('admin-router-pw').value = resp.settings.routerPassword || '';
       }
     }
 
@@ -1169,36 +1146,19 @@
     async function doRegister() {
       const username = document.getElementById('reg-username').value.trim();
       const password = document.getElementById('reg-password').value;
-      const confirm = document.getElementById('reg-confirm').value;
-      if (!username || !password) { showRegError('Username and password required'); return; }
+      if (!username) { showRegError('Username required'); return; }
       if (username.length < 3) { showRegError('Username must be at least 3 characters'); return; }
+      if (!/^[a-zA-Z0-9._-]+$/.test(username)) { showRegError('Letters, numbers, dots, dashes only'); return; }
+      if (!password) { showRegError('Password required'); return; }
       if (password.length < 3) { showRegError('Password must be at least 3 characters'); return; }
-      if (password !== confirm) { showRegError('Passwords do not match'); return; }
-
-      const btn = document.getElementById('reg-btn');
-      btn.disabled = true;
-      document.getElementById('reg-text').classList.add('hidden');
-      document.getElementById('reg-spinner').classList.remove('hidden');
-
-      const resp = await fetch('/api/hotspot/register', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      }).then(r => r.json()).catch(err => ({ success: false, error: err.message }));
-
-      btn.disabled = false;
-      document.getElementById('reg-text').classList.remove('hidden');
-      document.getElementById('reg-spinner').classList.add('hidden');
-
-      if (!resp.success) { showRegError(resp.error || 'Registration failed'); return; }
-
-      showRegSuccess('Account created! Opening Insert Coin...');
 
       document.getElementById('username').value = username;
       document.getElementById('password').value = password;
 
+      showRegSuccess('Opening Insert Coin...');
       setTimeout(() => {
         openInsertCoinForNewUser(username);
-      }, 1000);
+      }, 500);
     }
 
     async function openInsertCoinForNewUser(username) {
@@ -1229,21 +1189,8 @@
       coinCheckInterval = setInterval(checkCoin, 1000);
     }
 
-    async function saveRouterSettings() {
-      const routerIp = document.getElementById('admin-router-ip').value.trim();
-      const routerUser = document.getElementById('admin-router-user').value.trim();
-      const routerPassword = document.getElementById('admin-router-pw').value;
-      const resp = await fetch('/api/admin/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
-        body: JSON.stringify({ routerIp, routerUser, routerPassword }),
-      }).then(r => r.json()).catch(() => ({ success: false }));
-      if (resp.success) showAdminMsg('admin-panel-msg', 'Router settings saved', 'success');
-      else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
-    }
-
     document.getElementById('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
-    document.getElementById('reg-confirm').addEventListener('keydown', (e) => { if (e.key === 'Enter') doRegister(); });
+    document.getElementById('reg-password').addEventListener('keydown', (e) => { if (e.key === 'Enter') doRegister(); });
     document.getElementById('admin-pw-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('admin-auth-btn').click(); });
 
     let settingsWs = null;
