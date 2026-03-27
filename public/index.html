@@ -1000,11 +1000,19 @@
       const mac = sessionData?.mac || loginData?.mac || '';
       const username = sessionData?.username || '';
       console.log('[doLogout] logoutLink:', link, 'ip:', ip, 'mac:', mac, 'username:', username);
+      console.log('[doLogout] full sessionData:', JSON.stringify(sessionData));
 
-      await fetch('/api/pisonet/logout', {
+      const pisoResp = await fetch('/api/pisonet/logout', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ip, mac, username })
-      }).catch(() => {});
+      }).then(r => r.json()).catch(e => ({ error: e.message }));
+      console.log('[doLogout] pisonet/logout response:', JSON.stringify(pisoResp));
+
+      const hsResp = await fetch('/api/hotspot/logout', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logoutLink: link })
+      }).then(r => r.json()).catch(e => ({ error: e.message }));
+      console.log('[doLogout] hotspot/logout response:', JSON.stringify(hsResp));
 
       showLoggedOut();
     }
