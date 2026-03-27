@@ -116,21 +116,43 @@ app.on('second-instance', () => {
 app.whenReady().then(() => {
   process.env.PORT = String(PORT);
 
+  const path = require('path');
+  const settings = require('./src/settings-store');
+  const userDataDir = path.join(app.getPath('userData'), 'pisonet-data');
+  settings.setDataDir(userDataDir);
+  console.log('[Electron] Data dir:', userDataDir);
+
   function waitForServer(retries) {
     const http = require('http');
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       function check() {
         http.get(`${APP_URL}/api/admin/status`, (res) => {
           let body = '';
           res.on('data', c => body += c);
-          res.on('end', () => resolve());
+          res.on('end', () => {
+            try {
+              const data = JSON.parse(body);
+              if (data.registered !== undefined) {
+                resolve();
+              } else {
+                retry();
+              }
+            } catch (_) {
+              retry();
+            }
+          });
         }).on('error', () => {
-          if (retries > 0) {
-            setTimeout(() => { retries--; check(); }, 200);
-          } else {
-            resolve();
-          }
+          retry();
         });
+
+        function retry() {
+          if (retries > 0) {
+            retries--;
+            setTimeout(check, 300);
+          } else {
+            reject(new Error('Server did not start in time'));
+          }
+        }
       }
       check();
     });
@@ -146,8 +168,13 @@ app.whenReady().then(() => {
     return;
   }
 
-  waitForServer(25).then(() => {
+  waitForServer(40).then(() => {
     showLoginWindow();
+  }).catch((err) => {
+    console.error('[Electron] Server startup failed:', err.message);
+    const { dialog } = require('electron');
+    dialog.showErrorBox('Pisonet App Error', 'Server did not respond.\nPort 5000 may be in use by another program.\n\nClose any other Pisonet instances and try again.');
+    app.quit();
   });
 });
 

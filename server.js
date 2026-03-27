@@ -609,6 +609,13 @@ function stopWsPolling() {
   }
 }
 
+server.on('error', (err) => {
+  console.error('[Server] Listen error:', err.message);
+  if (err.code === 'EADDRINUSE') {
+    console.error('[Server] Port', PORT, 'is already in use');
+  }
+});
+
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Pisonet App running at http://0.0.0.0:${PORT}`);
   if (typeof process.send === 'function') process.send('server-ready');
