@@ -1,7 +1,12 @@
-const { app, BrowserWindow, Menu, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, globalShortcut } = require('electron');
 
 const PORT = 5000;
 const APP_URL = `http://127.0.0.1:${PORT}`;
+
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+}
 
 process.on('uncaughtException', (err) => {
   console.error('[Electron] Uncaught exception:', err.message);
@@ -13,6 +18,7 @@ process.on('unhandledRejection', (err) => {
 let loginWindow;
 let sessionWindow;
 let isQuitting = false;
+let currentState = 'logged-out';
 
 const SESSION_WIDTH = 260;
 const SESSION_HEIGHT = 80;
@@ -47,15 +53,47 @@ function performLogout() {
   });
 }
 
+function registerKeyBlocks() {
+  try {
+    globalShortcut.register('Alt+Tab', () => {});
+    globalShortcut.register('Alt+F4', () => {});
+    globalShortcut.register('Super', () => {});
+    globalShortcut.register('Super+D', () => {});
+    globalShortcut.register('Super+E', () => {});
+    globalShortcut.register('Super+R', () => {});
+    globalShortcut.register('Super+L', () => {});
+    globalShortcut.register('Ctrl+Alt+Delete', () => {});
+    globalShortcut.register('Alt+Escape', () => {});
+    globalShortcut.register('Alt+Space', () => {});
+  } catch (e) {
+    console.log('[Electron] Some shortcuts could not be registered:', e.message);
+  }
+}
+
+function unregisterKeyBlocks() {
+  try {
+    globalShortcut.unregisterAll();
+  } catch (e) {}
+}
+
 app.on('before-quit', (event) => {
   if (!isQuitting) {
     isQuitting = true;
     event.preventDefault();
     console.log('[Electron] App closing, performing logout...');
+    unregisterKeyBlocks();
     performLogout().finally(() => {
       console.log('[Electron] Logout done, quitting.');
       app.exit(0);
     });
+  }
+});
+
+app.on('second-instance', () => {
+  if (loginWindow && !loginWindow.isDestroyed()) {
+    loginWindow.focus();
+  } else if (sessionWindow && !sessionWindow.isDestroyed()) {
+    sessionWindow.focus();
   }
 });
 
@@ -69,6 +107,9 @@ function showLoginWindow() {
   const { screen } = require('electron');
   const { x, y, width, height } = screen.getPrimaryDisplay().bounds;
 
+  currentState = 'logged-out';
+  registerKeyBlocks();
+
   loginWindow = new BrowserWindow({
     x, y, width, height,
     title: 'Pisonet App',
@@ -79,7 +120,7 @@ function showLoginWindow() {
     minimizable: false,
     maximizable: false,
     closable: false,
-    skipTaskbar: false,
+    skipTaskbar: true,
     alwaysOnTop: true,
     enableLargerThanScreen: true,
     webPreferences: {
@@ -101,7 +142,7 @@ function showLoginWindow() {
   });
 
   loginWindow.on('blur', () => {
-    if (loginWindow && !loginWindow.isDestroyed()) {
+    if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
       loginWindow.setAlwaysOnTop(true, 'screen-saver');
       loginWindow.moveTop();
       loginWindow.focus();
@@ -126,7 +167,7 @@ function showSessionWindow() {
     closable: false,
     fullscreen: false,
     fullscreenable: false,
-    skipTaskbar: false,
+    skipTaskbar: true,
     alwaysOnTop: true,
     transparent: true,
     show: false,
@@ -156,8 +197,24 @@ ipcMain.on('session-state', (event, state) => {
   handleStateChange(state);
 });
 
+ipcMain.on('trigger-shutdown', () => {
+  console.log('[Electron] Shutdown triggered from renderer');
+  const { exec } = require('child_process');
+  exec('shutdown /s /t 10 /f', (err) => {
+    if (err) {
+      console.log('[Electron] Shutdown command failed (non-Windows?):', err.message);
+      exec('shutdown -h now', (err2) => {
+        if (err2) console.log('[Electron] Linux shutdown also failed:', err2.message);
+      });
+    }
+  });
+});
+
 function handleStateChange(state) {
   if (state === 'logged-in') {
+    currentState = 'logged-in';
+    unregisterKeyBlocks();
+
     if (sessionWindow && !sessionWindow.isDestroyed()) return;
     showSessionWindow();
     setTimeout(() => {
@@ -168,7 +225,9 @@ function handleStateChange(state) {
     }, 500);
     startPolling();
   } else if (state === 'logged-out') {
+    currentState = 'logged-out';
     stopPolling();
+    registerKeyBlocks();
     if (loginWindow && !loginWindow.isDestroyed()) return;
     showLoginWindow();
     setTimeout(() => {

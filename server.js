@@ -1,8 +1,10 @@
 const express = require('express');
 const path = require('path');
 const crypto = require('crypto');
+const fs = require('fs');
 const { WebSocketServer } = require('ws');
 const http = require('http');
+const settings = require('./src/settings-store');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -10,9 +12,54 @@ const PORT = process.env.PORT || 5000;
 const HOTSPOT_DNS = 'pisonet.app';
 const VENDO_IP = '10.0.0.5:8989';
 
+const adminTokens = new Map();
+const loginAttempts = new Map();
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 300000;
+
+function generateToken() {
+  const token = crypto.randomBytes(32).toString('hex');
+  adminTokens.set(token, Date.now() + 3600000);
+  return token;
+}
+function invalidateAllTokens() {
+  adminTokens.clear();
+}
+function checkRateLimit(ip) {
+  const entry = loginAttempts.get(ip);
+  if (!entry) return true;
+  if (entry.lockedUntil > 0 && Date.now() < entry.lockedUntil) return false;
+  if (entry.lockedUntil > 0 && Date.now() >= entry.lockedUntil) { loginAttempts.delete(ip); return true; }
+  return true;
+}
+function recordFailedAttempt(ip) {
+  const entry = loginAttempts.get(ip) || { count: 0, lockedUntil: 0 };
+  entry.count++;
+  if (entry.count >= MAX_ATTEMPTS) { entry.lockedUntil = Date.now() + LOCKOUT_MS; entry.count = 0; }
+  loginAttempts.set(ip, entry);
+}
+function clearAttempts(ip) { loginAttempts.delete(ip); }
+function verifyToken(req, res, next) {
+  const token = req.headers['x-admin-token'];
+  if (!token || !adminTokens.has(token) || adminTokens.get(token) < Date.now()) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+  next();
+}
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/uploads/:filename', (req, res) => {
+  const basename = path.basename(req.params.filename);
+  if (!basename || basename.startsWith('.')) return res.status(400).end();
+  const filepath = path.join(settings.getUploadsDir(), basename);
+  const resolved = path.resolve(filepath);
+  if (!resolved.startsWith(path.resolve(settings.getUploadsDir()))) return res.status(403).end();
+  if (!fs.existsSync(resolved)) return res.status(404).end();
+  res.sendFile(resolved);
+});
 
 function extractChapBytes(buffer, fieldName, nextFieldName) {
   const startMarkers = [
@@ -376,6 +423,102 @@ app.get('/api/session/poll', (req, res) => {
   }
   res.json({ event: evt });
 });
+
+app.get('/api/admin/status', (req, res) => {
+  res.json({ registered: settings.isAdminRegistered(), settings: settings.getSettings() });
+});
+
+app.post('/api/admin/register', (req, res) => {
+  if (settings.isAdminRegistered()) return res.json({ success: false, error: 'Already registered' });
+  const { password } = req.body;
+  if (!password || password.length < 4) return res.json({ success: false, error: 'Password must be at least 4 characters' });
+  settings.registerAdmin(password);
+  const token = generateToken();
+  res.json({ success: true, token });
+});
+
+app.post('/api/admin/login', (req, res) => {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  if (!checkRateLimit(ip)) return res.status(429).json({ success: false, error: 'Too many attempts. Try again in 5 minutes.' });
+  const { password } = req.body;
+  if (!settings.verifyAdmin(password)) {
+    recordFailedAttempt(ip);
+    return res.json({ success: false, error: 'Wrong password' });
+  }
+  clearAttempts(ip);
+  const token = generateToken();
+  res.json({ success: true, token });
+});
+
+app.post('/api/admin/change-password', verifyToken, (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  if (!newPassword || newPassword.length < 4) return res.json({ success: false, error: 'Password must be at least 4 characters' });
+  if (!settings.changeAdminPassword(oldPassword, newPassword)) return res.json({ success: false, error: 'Wrong current password' });
+  invalidateAllTokens();
+  const token = generateToken();
+  res.json({ success: true, token });
+});
+
+app.get('/api/admin/settings', verifyToken, (req, res) => {
+  res.json({ success: true, settings: settings.getSettings() });
+});
+
+app.post('/api/admin/settings', verifyToken, (req, res) => {
+  const updated = settings.updateSettings(req.body);
+  broadcastSettings();
+  res.json({ success: true, settings: updated });
+});
+
+app.post('/api/admin/background', verifyToken, (req, res) => {
+  const contentType = req.headers['content-type'] || '';
+  if (!contentType.startsWith('application/octet-stream') && !contentType.startsWith('image/')) {
+    return res.status(400).json({ success: false, error: 'Invalid content type' });
+  }
+  const filename = req.headers['x-filename'] || 'background.png';
+  const mime = req.headers['x-mime-type'] || 'image/png';
+  const allowed = ['image/png', 'image/jpeg', 'image/gif'];
+  if (!allowed.includes(mime)) return res.status(400).json({ success: false, error: 'Only PNG, JPEG, GIF allowed' });
+
+  const chunks = [];
+  let totalSize = 0;
+  req.on('data', (chunk) => {
+    totalSize += chunk.length;
+    if (totalSize > 10 * 1024 * 1024) {
+      req.destroy();
+      return;
+    }
+    chunks.push(chunk);
+  });
+  req.on('end', () => {
+    if (totalSize > 10 * 1024 * 1024) return res.status(400).json({ success: false, error: 'File too large (max 10MB)' });
+    const buffer = Buffer.concat(chunks);
+    const meta = settings.saveBackgroundImage(buffer, filename, mime);
+    broadcastSettings();
+    res.json({ success: true, background: meta });
+  });
+});
+
+app.delete('/api/admin/background', verifyToken, (req, res) => {
+  settings.removeBackgroundImage();
+  broadcastSettings();
+  res.json({ success: true });
+});
+
+app.post('/api/admin/stop-app', verifyToken, (req, res) => {
+  res.json({ success: true });
+  setTimeout(() => {
+    if (typeof process.send === 'function') process.send('admin-stop');
+    process.exit(0);
+  }, 500);
+});
+
+function broadcastSettings() {
+  const s = settings.getSettings();
+  const msg = JSON.stringify({ type: 'settings', data: s });
+  for (const ws of wsClients) {
+    try { if (ws.readyState === 1) ws.send(msg); } catch (e) {}
+  }
+}
 
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws/session' });
