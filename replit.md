@@ -14,25 +14,31 @@ A lightweight Electron desktop app for pisonet member login. Connects to a Mikro
 
 ## Architecture
 - **main.js** — Electron main process; single instance lock, manages login window (fullscreen, frameless, skipTaskbar) and session window (260x80, bottom-right); blocks Alt+Tab/Alt+F4/Win keys in login view only; auto-logout on quit; IPC for shutdown
-- **server.js** — Express server + WebSocket server; proxies requests to `pisonet.app` hotspot (avoids CORS), handles CHAP hashing, proxies vendo API calls, broadcasts session status via WebSocket; admin API endpoints
-- **src/settings-store.js** — JSON file settings storage in `./data/`; scrypt password hashing; manages computer name, auto-shutdown timer, background image metadata
+- **server.js** — Express server + WebSocket server; proxies requests to `pisonet.app` hotspot (avoids CORS), handles CHAP hashing, proxies vendo API calls, JuanFi pisonet admin API integration, broadcasts session status via WebSocket; admin API endpoints
+- **src/settings-store.js** — JSON file settings storage in `./data/`; scrypt password hashing; manages computer name, auto-shutdown timer, background image metadata, JuanFi pisonet config
 - **public/index.html** — Login UI + session view + insert coin modal + admin modal (single page); scramble text computer name, auto-shutdown countdown, secret "zxc1" admin trigger
 - **public/session.html** — Compact session view (used by Electron's 260x80 session window)
 - **public/css/style.css** — Shared styles
 - **preload.js** — Electron preload script; exposes `electronAPI.setSessionState()` and `electronAPI.triggerShutdown()` for IPC
 
-## Member Registration
+## Member Registration & Time Addition (JuanFi Pisonet Admin API)
 - Login card has Login/Register tabs
 - Register tab: username + password fields
-- Registration flow: user picks username/password → Insert Coin opens directly with username as voucher → JuanFi vendo (`/topUp` + `/useVoucher`) handles creating the hotspot user on MikroTik automatically
-- No Router REST API credentials needed — JuanFi's NodeMCU has its own connection to the MikroTik router
-- After registration + payment, username/password are pre-filled in the login form
-- Note: JuanFi typically sets the MikroTik password to match the voucher/username
+- Registration flow:
+  1. `POST /api/hotspot/check-user` — Pre-check if username exists (login probe); blocks if hotspot unreachable
+  2. User inserts coins via JuanFi vendo (`/topUp` with `interfaceName=bridge-pisonet-app` → `/checkCoin` polling)
+  3. When Done clicked: `POST /api/pisonet/confirm-payment` verifies coins via vendo checkCoin, issues signed payment proof token
+  4. `POST /api/pisonet/add-time` sends to JuanFi admin API at `http://10.0.0.5:8989/admin/api/pisonet/unit/addTime` with Bearer auth
+  5. JuanFi creates the hotspot user on the correct pisonet server (bridge-pisonet-app)
+  6. `/cancelTopUp` stops the vendo coin slot
+- Payment proof tokens: short-lived (2min), tied to username, prevents unauthorized add-time calls
+- JuanFi admin auth: server logs into `http://10.0.0.5:8989/admin/api/login` to get Bearer token, caches for ~1hr
 
 ## Admin Panel
 - Triggered by typing "zxc1" on the login screen (no visible button)
 - First-time: register admin password; subsequently: login with password
 - Settings: computer name, auto-shutdown timer (minutes), background image upload/remove, change password, stop app
+- JuanFi Pisonet settings: hotspot interface name, JuanFi admin username/password, pisonet unit name
 - Background images: PNG/JPEG/GIF, max 10MB, saved to `data/uploads/background.*`
 - GIF warning shown for memory concerns on low-end devices
 - Settings broadcast to all WebSocket clients in real-time
@@ -48,6 +54,10 @@ A lightweight Electron desktop app for pisonet member login. Connects to a Mikro
 - `DELETE /api/admin/background` — Remove background image (requires token)
 - `POST /api/admin/stop-app` — Stop the application (requires token)
 - Token: in-memory, 1hr expiry, sent via `x-admin-token` header
+
+## Pisonet API
+- `POST /api/pisonet/confirm-payment` — Verify coins via vendo, issue payment proof token
+- `POST /api/pisonet/add-time` — Call JuanFi admin API to add time (requires payment proof)
 
 ## Electron Hardening
 - Single instance lock — prevents duplicate app instances
@@ -79,31 +89,21 @@ A lightweight Electron desktop app for pisonet member login. Connects to a Mikro
 - `status.html` → `{ isLogin, logoutLink, sessionTimeLeft, uptime, username, mac, ip, units }`
 
 ## JuanFi Vendo API (NodeMCU at 10.0.0.5:8989)
-- `GET /topUp?voucher=X&ipAddress=Y&mac=Z&extendTime=0|1` — Start coin insertion (0=new, 1=extend)
+- `GET /topUp?voucher=X&ipAddress=Y&mac=Z&extendTime=0|1&interfaceName=bridge-pisonet-app` — Start coin insertion
 - `GET /checkCoin?voucher=X` — Poll coin status (every 1s); returns `status:"true"` with coin data or errorCode
 - `GET /cancelTopUp?voucher=X` — Cancel/stop coin insertion
 - `GET /getRates` — Get rate table
 - Response format: `{ status: "true"|"false", voucher, errorCode, totalCoinReceived, totalTime, remainingTime }`
 - Error codes: `coins.wait.expired`, `coin.not.inserted`, `coinslot.cancelled`, `coinslot.busy`, `coin.slot.banned`, `coin.slot.notavailable`, `no.internet.detected`, `coin.is.reading`
-- **NOTE**: `/useVoucher` is NOT used — JuanFi creates users on wrong hotspot server. We use JuanFi only for coin collection, then create users ourselves via RouterOS REST API.
 
-## Registration Flow (Coin → RouterOS User Creation)
-1. `POST /api/hotspot/check-user` — Pre-check if username exists (login probe); blocks if hotspot unreachable
-2. User inserts coins via JuanFi vendo (`/topUp` → `/checkCoin` polling)
-3. When Done clicked: `/cancelTopUp` to stop vendo, then `POST /api/router/create-user` creates MikroTik user via RouterOS REST API
-4. User is created with correct server (`hs-bridge-pisonet-app`), profile (`denfi`), and password
-
-## RouterOS REST API Integration
-- `POST /api/router/create-user` — Creates/updates MikroTik hotspot user via REST API at `http://{routerIp}/rest/ip/hotspot/user`
-- Uses admin-configured router credentials (IP, username, password)
-- Sets hotspot server name and profile from admin settings
-- If user exists, patches server/profile/password; if new, creates with all correct fields
-- Router credentials stored in settings, never exposed to public endpoints
+## JuanFi Admin API (at 10.0.0.5:8989)
+- `POST /admin/api/login` — Login with username/password, returns Bearer token
+- `POST /admin/api/pisonet/unit/addTime` — Add time to pisonet unit (requires Bearer token)
 
 ## Admin Panel Settings
-- Router IP, Username, Password — for RouterOS REST API access
-- Hotspot Server Name — default `hs-bridge-pisonet-app`
-- Hotspot Profile — default `denfi`
+- Hotspot Interface — default `bridge-pisonet-app` (passed to vendo topUp)
+- JuanFi Admin Username/Password — for pisonet admin API auth
+- Pisonet Unit Name — e.g. `PC 1`
 - Computer Name, Auto Shutdown Timer, Background Image
 
 ## Legacy Code (unused)
@@ -129,3 +129,4 @@ npm run build        # Produces installer in dist/
 - Device must be connected to the MikroTik hotspot WiFi network
 - Hotspot DNS name must be `pisonet.app`
 - JuanFi vendo NodeMCU must be reachable at `10.0.0.5:8989` for Insert Coin
+- Vendo IP (`10.0.0.5`) must be in MikroTik Walled Garden (accessible before login)

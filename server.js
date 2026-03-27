@@ -465,6 +465,104 @@ app.get('/api/vendo/rates', async (req, res) => {
   }
 });
 
+let juanfiAdminToken = null;
+let juanfiTokenExpiry = 0;
+
+async function getJuanfiToken() {
+  const cfg = settings.getSettings();
+  if (!cfg.juanfiAdminPass) throw new Error('JuanFi admin password not configured. Set it in Admin Panel.');
+  if (juanfiAdminToken && Date.now() < juanfiTokenExpiry) return juanfiAdminToken;
+
+  const loginUrl = `http://${VENDO_IP}/admin/api/login`;
+  console.log('[JuanFi] Logging in to admin:', loginUrl);
+  const resp = await fetch(loginUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: cfg.juanfiAdminUser || 'admin', password: cfg.juanfiAdminPass }),
+    signal: AbortSignal.timeout(5000),
+  });
+  const data = await resp.json();
+  if (!resp.ok || !data.token) throw new Error('JuanFi admin login failed: ' + (data.message || data.error || resp.status));
+  juanfiAdminToken = data.token;
+  juanfiTokenExpiry = Date.now() + 3500000;
+  console.log('[JuanFi] Admin login OK, token acquired');
+  return juanfiAdminToken;
+}
+
+const pisonetProofTokens = new Map();
+function issuePisonetProof(username, totalCoins) {
+  const token = crypto.randomBytes(16).toString('hex');
+  pisonetProofTokens.set(token, { username, totalCoins, issued: Date.now() });
+  for (const [k, v] of pisonetProofTokens) {
+    if (Date.now() - v.issued > 120000) pisonetProofTokens.delete(k);
+  }
+  return token;
+}
+
+app.post('/api/pisonet/confirm-payment', async (req, res) => {
+  const { voucher, username } = req.body;
+  if (!voucher || !username) return res.json({ success: false, error: 'Missing params' });
+  try {
+    const url = `http://${VENDO_IP}/checkCoin?voucher=${encodeURIComponent(voucher)}`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
+    const data = JSON.parse(await resp.text());
+    const coins = parseInt(data.totalCoinReceived) || 0;
+    if (coins <= 0) return res.json({ success: false, error: 'No coins detected' });
+    const totalTime = parseInt(data.totalTime) || 0;
+    const minutes = Math.floor(totalTime / 60000);
+    const token = issuePisonetProof(username, coins);
+    console.log('[Pisonet] Payment confirmed: user=%s coins=%d minutes=%d', username, coins, minutes);
+    res.json({ success: true, paymentProof: token, coins, minutes });
+  } catch (err) {
+    res.json({ success: false, error: 'Cannot verify payment: ' + err.message });
+  }
+});
+
+app.post('/api/pisonet/add-time', async (req, res) => {
+  const { username, mac, minutes, paymentProof } = req.body;
+  if (!username) return res.json({ success: false, error: 'Username required' });
+  if (!paymentProof) return res.json({ success: false, error: 'Payment proof required' });
+  const proof = pisonetProofTokens.get(paymentProof);
+  if (!proof || proof.username !== username || Date.now() - proof.issued > 120000) {
+    return res.json({ success: false, error: 'Invalid or expired payment proof' });
+  }
+  pisonetProofTokens.delete(paymentProof);
+  try {
+    const cfg = settings.getSettings();
+    const token = await getJuanfiToken();
+    const addTimeUrl = `http://${VENDO_IP}/admin/api/pisonet/unit/addTime`;
+    const body = {
+      username: username,
+      mac: mac || '',
+      minutes: minutes || 0,
+      unit: cfg.pisonetUnitName || 'PC 1',
+    };
+    console.log('[JuanFi] addTime:', addTimeUrl, JSON.stringify(body));
+    const resp = await fetch(addTimeUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(5000),
+    });
+    const text = await resp.text();
+    console.log('[JuanFi] addTime response:', resp.status, text);
+    try {
+      const data = JSON.parse(text);
+      if (resp.ok) {
+        res.json({ success: true, data });
+      } else {
+        if (resp.status === 401) { juanfiAdminToken = null; juanfiTokenExpiry = 0; }
+        res.json({ success: false, error: data.message || data.error || 'addTime failed', data });
+      }
+    } catch (_) {
+      res.json({ success: resp.ok, data: text });
+    }
+  } catch (err) {
+    console.log('[JuanFi] addTime error:', err.message);
+    res.json({ success: false, error: err.message });
+  }
+});
+
 let sessionEvent = null;
 
 app.post('/api/session/trigger', (req, res) => {

@@ -673,12 +673,24 @@
 
 
         <div class="admin-section">
-          <h3>&#9670; Hotspot Interface</h3>
+          <h3>&#9670; JuanFi Pisonet</h3>
           <div class="form-group">
-            <label>// Interface name for vendo (e.g. bridge-pisonet-app)</label>
+            <label>// Hotspot Interface (e.g. bridge-pisonet-app)</label>
             <input type="text" id="admin-hotspot-interface" placeholder="bridge-pisonet-app" />
           </div>
-          <button class="btn-admin" onclick="saveHotspotInterface()">Save</button>
+          <div class="form-group">
+            <label>// JuanFi Admin Username</label>
+            <input type="text" id="admin-juanfi-user" placeholder="admin" />
+          </div>
+          <div class="form-group">
+            <label>// JuanFi Admin Password</label>
+            <input type="password" id="admin-juanfi-pass" placeholder="vendo admin password" />
+          </div>
+          <div class="form-group">
+            <label>// Pisonet Unit Name (e.g. PC 1)</label>
+            <input type="text" id="admin-pisonet-unit" placeholder="PC 1" />
+          </div>
+          <button class="btn-admin" onclick="savePisonetSettings()">Save Pisonet Settings</button>
         </div>
 
         <div class="admin-section">
@@ -1016,11 +1028,40 @@
     }
     async function donePaying() {
       const v = activeVoucher;
+      const username = document.getElementById('username').value.trim() || (sessionData ? sessionData.username : '');
+      const mac = loginData?.mac || sessionData?.mac || '';
+      const isNewUser = !sessionData;
+
+      if (!username || !v) { closeCoinModal(); init(); return; }
+
+      showError('Confirming payment...');
+      const confirmResp = await fetch('/api/pisonet/confirm-payment', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voucher: v, username }),
+      }).then(r => r.json()).catch(err => ({ success: false, error: err.message }));
+
       closeCoinModal();
+
+      if (!confirmResp.success) {
+        showError('Payment error: ' + (confirmResp.error || 'Unknown'));
+        return;
+      }
+
       if (v) {
         await fetch('/api/vendo/cancel', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ voucher: v }) }).catch(() => {});
       }
-      showError('Payment received! Logging in...');
+
+      showError(isNewUser ? 'Registering account...' : 'Adding time...');
+      const addResp = await fetch('/api/pisonet/add-time', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, mac, minutes: confirmResp.minutes || 0, paymentProof: confirmResp.paymentProof }),
+      }).then(r => r.json()).catch(err => ({ success: false, error: err.message }));
+
+      if (!addResp.success) {
+        showError('Failed: ' + (addResp.error || 'Unknown error'));
+        return;
+      }
+      showError(isNewUser ? 'Account created! Logging in...' : 'Time added!');
       init();
     }
 
@@ -1097,11 +1138,10 @@
         document.getElementById('admin-computer-name').value = resp.settings.computerName || '';
         document.getElementById('admin-shutdown-time').value = resp.settings.autoShutdownSeconds > 0 ? Math.round(resp.settings.autoShutdownSeconds / 60) : 0;
         updateBgPreview(resp.settings.backgroundImage);
-        document.getElementById('admin-router-ip').value = resp.settings.routerIp || '';
-        document.getElementById('admin-router-user').value = resp.settings.routerUser || '';
-        document.getElementById('admin-router-password').value = resp.settings.routerPassword || '';
-        document.getElementById('admin-hotspot-server').value = resp.settings.hotspotServer || 'hs-bridge-pisonet-app';
-        document.getElementById('admin-hotspot-profile').value = resp.settings.hotspotProfile || 'denfi';
+        document.getElementById('admin-hotspot-interface').value = resp.settings.hotspotInterface || 'bridge-pisonet-app';
+        document.getElementById('admin-juanfi-user').value = resp.settings.juanfiAdminUser || 'admin';
+        document.getElementById('admin-juanfi-pass').value = resp.settings.juanfiAdminPass || '';
+        document.getElementById('admin-pisonet-unit').value = resp.settings.pisonetUnitName || 'PC 1';
       }
     }
 
@@ -1125,10 +1165,15 @@
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
     }
 
-    async function saveHotspotInterface() {
-      const body = { hotspotInterface: document.getElementById('admin-hotspot-interface').value.trim() };
+    async function savePisonetSettings() {
+      const body = {
+        hotspotInterface: document.getElementById('admin-hotspot-interface').value.trim(),
+        juanfiAdminUser: document.getElementById('admin-juanfi-user').value.trim(),
+        juanfiAdminPass: document.getElementById('admin-juanfi-pass').value,
+        pisonetUnitName: document.getElementById('admin-pisonet-unit').value.trim(),
+      };
       const resp = await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ success: false }));
-      if (resp.success) showAdminMsg('admin-panel-msg', 'Hotspot interface saved', 'success');
+      if (resp.success) showAdminMsg('admin-panel-msg', 'Pisonet settings saved', 'success');
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
     }
 

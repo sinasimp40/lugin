@@ -82,6 +82,9 @@ function getSettings() {
     autoShutdownSeconds: s.autoShutdownSeconds !== undefined ? s.autoShutdownSeconds : 180,
     backgroundImage: s.backgroundImage || null,
     hotspotInterface: s.hotspotInterface || 'bridge-pisonet-app',
+    juanfiAdminUser: s.juanfiAdminUser || 'admin',
+    juanfiAdminPass: s.juanfiAdminPass || '',
+    pisonetUnitName: s.pisonetUnitName || 'PC 1',
   };
 }
 
@@ -100,6 +103,9 @@ function updateSettings(updates) {
   if (updates.autoShutdownSeconds !== undefined) s.autoShutdownSeconds = parseInt(updates.autoShutdownSeconds) || 0;
   if (updates.backgroundImage !== undefined) s.backgroundImage = updates.backgroundImage;
   if (updates.hotspotInterface !== undefined) s.hotspotInterface = updates.hotspotInterface;
+  if (updates.juanfiAdminUser !== undefined) s.juanfiAdminUser = updates.juanfiAdminUser;
+  if (updates.juanfiAdminPass !== undefined) s.juanfiAdminPass = updates.juanfiAdminPass;
+  if (updates.pisonetUnitName !== undefined) s.pisonetUnitName = updates.pisonetUnitName;
   save(s);
   return getSettings();
 }
