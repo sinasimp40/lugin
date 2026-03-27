@@ -82,6 +82,9 @@ function getSettings() {
     autoShutdownSeconds: s.autoShutdownSeconds !== undefined ? s.autoShutdownSeconds : 180,
     backgroundImage: s.backgroundImage || null,
     pisonetUnitName: s.pisonetUnitName || 'PC 1',
+    routerIp: s.routerIp || '',
+    routerUser: s.routerUser || '',
+    routerPass: s.routerPass || '',
   };
 }
 
@@ -100,6 +103,9 @@ function updateSettings(updates) {
   if (updates.autoShutdownSeconds !== undefined) s.autoShutdownSeconds = parseInt(updates.autoShutdownSeconds) || 0;
   if (updates.backgroundImage !== undefined) s.backgroundImage = updates.backgroundImage;
   if (updates.pisonetUnitName !== undefined) s.pisonetUnitName = updates.pisonetUnitName;
+  if (updates.routerIp !== undefined) s.routerIp = updates.routerIp;
+  if (updates.routerUser !== undefined) s.routerUser = updates.routerUser;
+  if (updates.routerPass !== undefined) s.routerPass = updates.routerPass;
   save(s);
   return getSettings();
 }

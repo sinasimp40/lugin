@@ -682,6 +682,25 @@
         </div>
 
         <div class="admin-section">
+          <h3>&#9670; MikroTik Router API</h3>
+          <div class="form-group">
+            <label>// Router IP (e.g. 192.168.88.1)</label>
+            <input type="text" id="admin-router-ip" placeholder="192.168.88.1" />
+          </div>
+          <div class="form-group">
+            <label>// Router Username</label>
+            <input type="text" id="admin-router-user" placeholder="admin" />
+          </div>
+          <div class="form-group">
+            <label>// Router Password</label>
+            <input type="password" id="admin-router-pass" placeholder="password" />
+          </div>
+          <button class="btn-admin" onclick="saveRouterSettings()">Save Router Settings</button>
+          <button class="btn-admin" onclick="testRouterConnection()" style="margin-left:8px">Test Connection</button>
+          <div id="router-test-result" style="margin-top:6px;font-size:12px;"></div>
+        </div>
+
+        <div class="admin-section">
           <h3>&#9670; Change Admin Password</h3>
           <div class="form-group">
             <label>// Current Password</label>
@@ -1010,7 +1029,7 @@
 
       const hsResp = await fetch('/api/hotspot/logout', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ logoutLink: link })
+        body: JSON.stringify({ logoutLink: link, username, mac, ip })
       }).then(r => r.json()).catch(e => ({ error: e.message }));
       console.log('[doLogout] hotspot/logout response:', JSON.stringify(hsResp));
 
@@ -1345,6 +1364,9 @@
         document.getElementById('admin-shutdown-time').value = resp.settings.autoShutdownSeconds > 0 ? Math.round(resp.settings.autoShutdownSeconds / 60) : 0;
         updateBgPreview(resp.settings.backgroundImage);
         document.getElementById('admin-pisonet-unit').value = resp.settings.pisonetUnitName || 'PC 1';
+        document.getElementById('admin-router-ip').value = resp.settings.routerIp || '';
+        document.getElementById('admin-router-user').value = resp.settings.routerUser || '';
+        document.getElementById('admin-router-pass').value = resp.settings.routerPass || '';
       }
     }
 
@@ -1373,6 +1395,31 @@
       const resp = await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ success: false }));
       if (resp.success) showAdminMsg('admin-panel-msg', 'Pisonet settings saved', 'success');
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+    }
+
+    async function saveRouterSettings() {
+      const body = {
+        routerIp: document.getElementById('admin-router-ip').value.trim(),
+        routerUser: document.getElementById('admin-router-user').value.trim(),
+        routerPass: document.getElementById('admin-router-pass').value,
+      };
+      const resp = await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) showAdminMsg('admin-panel-msg', 'Router settings saved', 'success');
+      else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+    }
+
+    async function testRouterConnection() {
+      const el = document.getElementById('router-test-result');
+      el.textContent = 'Testing...';
+      el.style.color = '#0ff';
+      const resp = await fetch('/api/admin/test-router', { headers: { 'x-admin-token': adminToken } }).then(r => r.json()).catch(() => ({ success: false, error: 'Request failed' }));
+      if (resp.success) {
+        el.textContent = 'Connected! Active sessions: ' + (resp.activeCount || 0);
+        el.style.color = '#0f0';
+      } else {
+        el.textContent = 'Failed: ' + (resp.error || 'Unknown error');
+        el.style.color = '#f44';
+      }
     }
 
     async function uploadBackground(input) {
