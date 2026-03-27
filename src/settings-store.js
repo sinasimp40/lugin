@@ -78,8 +78,8 @@ function changeAdminPassword(oldPassword, newPassword) {
 function getSettings() {
   const s = load();
   return {
-    computerName: s.computerName || '',
-    autoShutdownSeconds: s.autoShutdownSeconds || 0,
+    computerName: s.computerName !== undefined ? s.computerName : 'COMPUTER SHOP',
+    autoShutdownSeconds: s.autoShutdownSeconds !== undefined ? s.autoShutdownSeconds : 180,
     backgroundImage: s.backgroundImage || null,
   };
 }
