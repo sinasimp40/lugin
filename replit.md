@@ -58,12 +58,10 @@ Uses pisonet API for coin slot control + `/checkCoin` for real-time updates:
 2. `GET /checkCoin?voucher={username}` polls every 1s
 3. Done/Cancel → `POST /pisonet/done` to finalize
 
-### Voucher Mode (Walk-Up / Not Logged In)
-Uses topUp API to generate a voucher, then activates it:
-1. `GET /topUp?voucher=&ip={ip}&mac={mac}&extendTime=0` → generates voucher code
-2. `GET /checkCoin?voucher={code}` polls every 1s
-3. Done with coins → `GET /useVoucher?voucher={code}` to auto-login
-4. Cancel/no coins → `GET /cancelTopUp?voucher={code}&mac={mac}`
+### Walk-Up Mode (Not Logged In)
+User physically inserts coins at the kiosk. The kiosk generates & activates a voucher.
+The app background-polls `/api/hotspot/login-data` every 3s on the login screen.
+When `isLogin: true` is detected → auto-shows the session (auto-connect).
 
 ### Common Polling (Both Modes)
 - `status == "true"` → coin received → update UI

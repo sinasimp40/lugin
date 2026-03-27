@@ -851,19 +851,43 @@
       if (sessionWs) { sessionWs.onclose = null; sessionWs.close(); sessionWs = null; }
     }
 
+    let loginPollTimer = null;
+
     async function init() {
       const resp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => ({ success: false }));
       const statusEl = document.getElementById('hotspot-status');
       if (!resp.success) {
         statusEl.textContent = '[ hotspot offline: ' + (resp.error || 'unreachable') + ' ]';
         statusEl.className = 'hotspot-status offline';
+        startLoginPolling();
         return;
       }
       loginData = resp.data;
-      if (loginData.isLogin) { showSession(loginData); return; }
+      if (loginData.isLogin) { stopLoginPolling(); showSession(loginData); return; }
       statusEl.textContent = '[ hotspot connected ]';
       statusEl.className = 'hotspot-status online';
       if (loginData.error && loginData.error !== '') showError(loginData.error);
+      startLoginPolling();
+    }
+
+    function startLoginPolling() {
+      stopLoginPolling();
+      loginPollTimer = setInterval(async () => {
+        if (sessionData) { stopLoginPolling(); return; }
+        try {
+          const resp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => null);
+          if (resp && resp.success && resp.data && resp.data.isLogin) {
+            stopLoginPolling();
+            loginData = resp.data;
+            showSession(loginData);
+            showError('Session detected — auto-connected!');
+          }
+        } catch (_) {}
+      }, 3000);
+    }
+
+    function stopLoginPolling() {
+      if (loginPollTimer) { clearInterval(loginPollTimer); loginPollTimer = null; }
     }
 
     function showError(msg) {
@@ -1137,53 +1161,8 @@
         startCoinPolling(username);
 
       } else {
-        document.getElementById('coin-voucher-display').innerHTML = 'Generating voucher...';
-        coinFlowState = 'opening-voucher';
-
-        const topupParams = new URLSearchParams();
-        topupParams.set('voucher', '');
-        topupParams.set('ip', coinClientIp);
-        topupParams.set('mac', coinClientMac);
-        topupParams.set('extendTime', '0');
-
-        const topupResp = await fetch('/api/vendo/topup?' + topupParams.toString(), {
-          signal: coinAbortController.signal,
-        }).then(r => r.json()).catch(err => ({ success: false, error: err.name === 'AbortError' ? 'Cancelled' : err.message, aborted: err.name === 'AbortError' }));
-
-        if (myRequestId !== coinRequestId) return;
-        if (topupResp.aborted) return;
-
-        if (!topupResp.success) {
-          closeCoinModal();
-          showError('Insert Coin: ' + (topupResp.error || 'Vendo unreachable'));
-          return;
-        }
-
-        const topupData = topupResp.data || {};
-        const topupStatus = (topupData.status || '').toString().toLowerCase();
-        if (topupStatus !== 'true') {
-          closeCoinModal();
-          const errCode = topupData.errorCode || '';
-          const errMsg = errCode === 'coinslot.busy' ? 'Coin slot is busy. Try again shortly.'
-            : errCode === 'coin.slot.banned' ? 'This device has been banned.'
-            : errCode || 'Vendo rejected request.';
-          showError(errMsg);
-          return;
-        }
-
-        const voucherCode = topupData.voucher || '';
-        if (!voucherCode) {
-          closeCoinModal();
-          showError('No voucher code received from vendo.');
-          return;
-        }
-
-        activeVoucher = voucherCode;
-        coinIsVoucherFlow = true;
-        coinVoucherCode = voucherCode;
-        coinFlowState = 'polling-voucher';
-        document.getElementById('coin-voucher-display').innerHTML = 'Voucher: <span>' + voucherCode + '</span>';
-        startCoinPolling(voucherCode);
+        closeCoinModal();
+        showError('Insert coins at the kiosk. The app will auto-detect your session.');
       }
     }
 
