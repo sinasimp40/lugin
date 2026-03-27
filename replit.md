@@ -64,8 +64,8 @@ The app background-polls `/api/hotspot/login-data` every 3s on the login screen.
 When `isLogin: true` is detected → auto-shows the session (auto-connect).
 
 ### Logout Flow
-1. Calls MikroTik `logoutLink` to terminate hotspot session
-2. Calls `POST /pisonet/done` to signal vendo the session is ending
+1. Calls `POST /pisonet/logout` with `{ macAddress, ip, username }` on vendo (the real logout)
+2. Calls MikroTik `logoutLink` to also terminate hotspot session
 3. Waits 5 seconds before re-polling (prevents re-detecting stale session)
 
 ### Member Registration

@@ -998,9 +998,13 @@
       const link = sessionData?.logoutLink || '';
       const ip = sessionData?.ip || loginData?.ip || '';
       const mac = sessionData?.mac || loginData?.mac || '';
-      console.log('[doLogout] logoutLink:', link, 'ip:', ip, 'mac:', mac);
-      await fetch('/api/hotspot/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logoutLink: link }) }).catch(() => {});
-      if (ip || mac) await callPisonetDone(ip, mac);
+      const username = sessionData?.username || '';
+      console.log('[doLogout] logoutLink:', link, 'ip:', ip, 'mac:', mac, 'username:', username);
+      await fetch('/api/pisonet/logout', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip, mac, username })
+      }).catch(() => {});
+      if (link) await fetch('/api/hotspot/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logoutLink: link }) }).catch(() => {});
       showLoggedOut();
     }
 

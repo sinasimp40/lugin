@@ -441,6 +441,31 @@ app.post('/api/pisonet/register', async (req, res) => {
   }
 });
 
+app.post('/api/pisonet/logout', async (req, res) => {
+  const { ip, mac, username } = req.body;
+  try {
+    const url = `http://${VENDO_IP}/pisonet/logout`;
+    const body = { macAddress: mac || '', ip: ip || '', username: username || '' };
+    console.log('[Pisonet] logout:', url, JSON.stringify(body));
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(5000),
+    });
+    const text = await resp.text();
+    console.log('[Pisonet] logout response:', resp.status, text);
+    try {
+      res.json({ success: true, data: JSON.parse(text) });
+    } catch (_) {
+      res.json({ success: true, data: text });
+    }
+  } catch (err) {
+    console.log('[Pisonet] logout error:', err.message);
+    res.json({ success: false, error: 'Cannot reach vendo: ' + err.message });
+  }
+});
+
 app.post('/api/pisonet/avail', async (req, res) => {
   const { ip, mac } = req.body;
   try {
