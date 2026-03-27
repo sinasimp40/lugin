@@ -75,6 +75,41 @@
     let interval = null;
     let logoutLink = '';
 
+    let ws = null;
+    let wsReconnectTimer = null;
+
+    function connectWs() {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${proto}//${location.host}/ws/session`);
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'status' && msg.data) {
+            if (msg.data.isLogin) {
+              document.getElementById('username').textContent = msg.data.username || 'User';
+              timeLeft = parseInt(msg.data.sessionTimeLeft) || 0;
+              if (msg.data.logoutLink) logoutLink = msg.data.logoutLink;
+              updateTimer();
+            }
+          } else if (msg.type === 'logged-out') {
+            if (window.electronAPI && window.electronAPI.setSessionState) {
+              window.electronAPI.setSessionState('logged-out');
+            }
+          }
+        } catch (e) {}
+      };
+
+      ws.onclose = () => {
+        ws = null;
+        wsReconnectTimer = setTimeout(connectWs, 3000);
+      };
+
+      ws.onerror = () => {
+        if (ws) ws.close();
+      };
+    }
+
     async function loadStatus() {
       try {
         const resp = await fetch('/api/hotspot/status');
@@ -129,10 +164,10 @@
     });
 
     loadStatus();
+    connectWs();
     interval = setInterval(() => {
       if (timeLeft > 0) { timeLeft--; updateTimer(); }
     }, 1000);
-    setInterval(loadStatus, 5000);
   </script>
 </body>
 </html>

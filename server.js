@@ -1,6 +1,8 @@
 const express = require('express');
 const path = require('path');
 const crypto = require('crypto');
+const { WebSocketServer } = require('ws');
+const http = require('http');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -375,6 +377,93 @@ app.get('/api/session/poll', (req, res) => {
   res.json({ event: evt });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server, path: '/ws/session' });
+
+let lastSessionData = null;
+let wsPollingInterval = null;
+let wsClients = new Set();
+
+wss.on('connection', (ws) => {
+  wsClients.add(ws);
+  console.log('[WS] Client connected, total:', wsClients.size);
+
+  if (lastSessionData) {
+    ws.send(JSON.stringify({ type: 'status', data: lastSessionData }));
+  }
+
+  ws.on('close', () => {
+    wsClients.delete(ws);
+    console.log('[WS] Client disconnected, total:', wsClients.size);
+    if (wsClients.size === 0) stopWsPolling();
+  });
+
+  ws.on('error', () => {
+    wsClients.delete(ws);
+    if (wsClients.size === 0) stopWsPolling();
+  });
+
+  if (wsClients.size === 1) startWsPolling();
+});
+
+function broadcast(msg) {
+  const data = JSON.stringify(msg);
+  for (const ws of wsClients) {
+    try {
+      if (ws.readyState === 1) {
+        ws.send(data);
+      } else {
+        wsClients.delete(ws);
+      }
+    } catch (e) {
+      wsClients.delete(ws);
+    }
+  }
+  if (wsClients.size === 0) stopWsPolling();
+}
+
+async function pollHotspotForWs() {
+  try {
+    const resp = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(5000) });
+    const buffer = Buffer.from(await resp.arrayBuffer());
+    const data = parseHotspotResponse(buffer);
+
+    const wasLoggedIn = lastSessionData?.isLogin;
+    const prevTime = lastSessionData?.sessionTimeLeft;
+    const newTime = parseInt(data.sessionTimeLeft) || 0;
+
+    lastSessionData = data;
+
+    if (prevTime !== undefined && newTime > parseInt(prevTime)) {
+      console.log('[WS] Time increased:', prevTime, '->', newTime);
+    }
+
+    broadcast({ type: 'status', data });
+
+    if (wasLoggedIn && !data.isLogin) {
+      broadcast({ type: 'logged-out' });
+    }
+  } catch (err) {
+    broadcast({ type: 'error', error: err.message });
+  }
+}
+
+function startWsPolling() {
+  if (wsPollingInterval) return;
+  console.log('[WS] Starting server-side polling');
+  pollHotspotForWs();
+  wsPollingInterval = setInterval(pollHotspotForWs, 5000);
+}
+
+function stopWsPolling() {
+  if (wsPollingInterval) {
+    clearInterval(wsPollingInterval);
+    wsPollingInterval = null;
+    lastSessionData = null;
+    console.log('[WS] Stopped server-side polling');
+  }
+}
+
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Pisonet App running at http://0.0.0.0:${PORT}`);
 });

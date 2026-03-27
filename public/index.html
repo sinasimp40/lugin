@@ -180,11 +180,57 @@
     let localTimeLeft = 0;
     let coinCheckInterval = null;
     let activeVoucher = '';
+    let sessionWs = null;
+    let wsReconnectTimer = null;
 
     function notifyElectron(state) {
       if (window.electronAPI && window.electronAPI.setSessionState) {
         window.electronAPI.setSessionState(state);
       }
+    }
+
+    function connectSessionWs() {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      sessionWs = new WebSocket(`${proto}//${location.host}/ws/session`);
+
+      sessionWs.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'status' && msg.data) {
+            if (msg.data.isLogin) {
+              const newTime = parseInt(msg.data.sessionTimeLeft) || 0;
+              localTimeLeft = newTime;
+              updateTimerDisplay();
+              if (msg.data.username) {
+                document.getElementById('session-username').textContent = msg.data.username;
+              }
+              if (msg.data.logoutLink && sessionData) {
+                sessionData.logoutLink = msg.data.logoutLink;
+              }
+            } else if (sessionData) {
+              showLoggedOut();
+            }
+          } else if (msg.type === 'logged-out' && sessionData) {
+            showLoggedOut();
+          }
+        } catch (e) {}
+      };
+
+      sessionWs.onclose = () => {
+        sessionWs = null;
+        if (sessionData) {
+          wsReconnectTimer = setTimeout(connectSessionWs, 3000);
+        }
+      };
+
+      sessionWs.onerror = () => {
+        if (sessionWs) sessionWs.close();
+      };
+    }
+
+    function disconnectSessionWs() {
+      if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+      if (sessionWs) { sessionWs.onclose = null; sessionWs.close(); sessionWs = null; }
     }
 
     async function init() {
@@ -266,7 +312,9 @@
       }, 1000);
 
       if (statusInterval) clearInterval(statusInterval);
-      statusInterval = setInterval(pollStatus, 5000);
+
+      disconnectSessionWs();
+      connectSessionWs();
 
       notifyElectron('logged-in');
     }
@@ -335,6 +383,7 @@
       if (statusInterval) clearInterval(statusInterval);
       countdownInterval = null;
       statusInterval = null;
+      disconnectSessionWs();
 
       document.getElementById('session-panel').classList.remove('active');
       document.getElementById('login-panel').classList.remove('hidden');
