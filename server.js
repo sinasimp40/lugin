@@ -424,9 +424,9 @@ app.post('/api/pisonet/avail', async (req, res) => {
     const text = await resp.text();
     console.log('[Pisonet] avail response:', resp.status, text);
     try {
-      res.json({ success: resp.ok, data: JSON.parse(text) });
+      res.json({ success: true, data: JSON.parse(text) });
     } catch (_) {
-      res.json({ success: resp.ok, data: text });
+      res.json({ success: true, data: text });
     }
   } catch (err) {
     console.log('[Pisonet] avail error:', err.message);
@@ -449,9 +449,9 @@ app.post('/api/pisonet/done', async (req, res) => {
     const text = await resp.text();
     console.log('[Pisonet] done response:', resp.status, text);
     try {
-      res.json({ success: resp.ok, data: JSON.parse(text) });
+      res.json({ success: true, data: JSON.parse(text) });
     } catch (_) {
-      res.json({ success: resp.ok, data: text });
+      res.json({ success: true, data: text });
     }
   } catch (err) {
     console.log('[Pisonet] done error:', err.message);

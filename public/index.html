@@ -710,7 +710,6 @@
     let statusInterval = null;
     let countdownInterval = null;
     let localTimeLeft = 0;
-    let coinCheckInterval = null;
     let activeVoucher = '';
     let sessionWs = null;
     let wsReconnectTimer = null;
@@ -960,6 +959,8 @@
     let coinSlotBusy = false;
     let coinRequestId = 0;
     let coinAbortController = null;
+    let coinClientIp = '';
+    let coinClientMac = '';
 
     async function openInsertCoin() {
       if (coinSlotBusy) return;
@@ -968,18 +969,34 @@
       coinAbortController = new AbortController();
       const modal = document.getElementById('coin-modal');
       modal.classList.add('active');
-      document.getElementById('coin-total').textContent = '0';
-      document.getElementById('coin-time').textContent = '0m 0s';
+      document.getElementById('coin-total').textContent = '--';
+      document.getElementById('coin-time').textContent = '--';
       document.getElementById('coin-timer').textContent = '--';
       document.getElementById('coin-voucher-display').innerHTML = '';
-      const clientIp = loginData?.ip || sessionData?.ip || '';
-      const clientMac = loginData?.mac || sessionData?.mac || '';
+
+      coinClientIp = loginData?.ip || sessionData?.ip || '';
+      coinClientMac = loginData?.mac || sessionData?.mac || '';
       const username = sessionData?.username || document.getElementById('username').value.trim() || '';
+
+      if (!coinClientIp || !coinClientMac) {
+        try {
+          const loginResp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => null);
+          if (loginResp && loginResp.ip) coinClientIp = loginResp.ip;
+          if (loginResp && loginResp.mac) coinClientMac = loginResp.mac;
+        } catch (_) {}
+      }
+
+      if (!coinClientIp && !coinClientMac) {
+        closeCoinModal();
+        showError('Cannot get device IP/MAC. Check network connection.');
+        return;
+      }
+
       document.getElementById('coin-voucher-display').innerHTML = 'User: <span>' + username + '</span>';
 
       const availResp = await fetch('/api/pisonet/avail', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ip: clientIp, mac: clientMac }),
+        body: JSON.stringify({ ip: coinClientIp, mac: coinClientMac }),
         signal: coinAbortController.signal,
       }).then(r => r.json()).catch(err => ({ success: false, error: err.name === 'AbortError' ? 'Cancelled' : err.message, aborted: err.name === 'AbortError' }));
 
@@ -991,39 +1008,17 @@
         return;
       }
       activeVoucher = username;
-      if (coinCheckInterval) clearInterval(coinCheckInterval);
-      coinCheckInterval = setInterval(checkCoin, 1000);
     }
 
-    async function checkCoin() {
-      const resp = await fetch('/api/vendo/check-coin?voucher=' + encodeURIComponent(activeVoucher)).then(r => r.json()).catch(() => null);
-      if (!resp || !resp.success) return;
-      const data = resp.data;
-      if (data.status === 'success' || data.status === 'true' || data.status === true) {
-        document.getElementById('coin-total').textContent = parseInt(data.totalCoinReceived) || 0;
-        if (data.totalTime) document.getElementById('coin-time').textContent = formatUptime(Math.floor((parseInt(data.totalTime) || 0) / 1000));
-        if (data.remainingTime) document.getElementById('coin-timer').textContent = Math.ceil((parseInt(data.remainingTime) || 0) / 1000) + 's';
-      } else if (data.errorCode === 'coin.slot.timeout' || data.errorCode === 'coins.wait.expired') {
-        (parseInt(document.getElementById('coin-total').textContent) || 0) > 0 ? donePaying() : (closeCoinModal(), showError('Insert Coin: Timeout'));
-      } else if (data.errorCode === 'coin.slot.readingCoin' || data.errorCode === 'coin.is.reading' || data.errorCode === 'coin.not.inserted') {
-      } else if (data.errorCode === 'coinslot.cancelled') {
-        (parseInt(document.getElementById('coin-total').textContent) || 0) > 0 ? donePaying() : closeCoinModal();
-      } else if (data.errorCode) { closeCoinModal(); showError('Insert Coin: ' + data.errorCode); }
-    }
-
-    function closeCoinModal() { if (coinAbortController) { coinAbortController.abort(); coinAbortController = null; } if (coinCheckInterval) clearInterval(coinCheckInterval); coinCheckInterval = null; activeVoucher = ''; coinSlotBusy = false; document.getElementById('coin-modal').classList.remove('active'); }
+    function closeCoinModal() { if (coinAbortController) { coinAbortController.abort(); coinAbortController = null; } activeVoucher = ''; coinSlotBusy = false; document.getElementById('coin-modal').classList.remove('active'); }
     async function cancelCoin() {
-      const clientIp = loginData?.ip || sessionData?.ip || '';
-      const clientMac = loginData?.mac || sessionData?.mac || '';
       closeCoinModal();
-      await fetch('/api/pisonet/done', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: clientIp, mac: clientMac }) }).catch(() => {});
+      await fetch('/api/pisonet/done', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: coinClientIp, mac: coinClientMac }) }).catch(() => {});
     }
     async function donePaying() {
-      const clientIp = loginData?.ip || sessionData?.ip || '';
-      const clientMac = loginData?.mac || sessionData?.mac || '';
       closeCoinModal();
       showError('Finalizing payment...');
-      await fetch('/api/pisonet/done', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: clientIp, mac: clientMac }) }).catch(() => {});
+      await fetch('/api/pisonet/done', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: coinClientIp, mac: coinClientMac }) }).catch(() => {});
       showError('Payment complete!');
       init();
     }
@@ -1245,17 +1240,31 @@
       coinAbortController = new AbortController();
       const modal = document.getElementById('coin-modal');
       modal.classList.add('active');
-      document.getElementById('coin-total').textContent = '0';
-      document.getElementById('coin-time').textContent = '0m 0s';
+      document.getElementById('coin-total').textContent = '--';
+      document.getElementById('coin-time').textContent = '--';
       document.getElementById('coin-timer').textContent = '--';
       document.getElementById('coin-voucher-display').innerHTML = 'User: <span>' + username + '</span>';
 
-      const clientIp = loginData?.ip || '';
-      const clientMac = loginData?.mac || '';
+      coinClientIp = loginData?.ip || '';
+      coinClientMac = loginData?.mac || '';
+
+      if (!coinClientIp || !coinClientMac) {
+        try {
+          const loginResp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => null);
+          if (loginResp && loginResp.ip) coinClientIp = loginResp.ip;
+          if (loginResp && loginResp.mac) coinClientMac = loginResp.mac;
+        } catch (_) {}
+      }
+
+      if (!coinClientIp && !coinClientMac) {
+        closeCoinModal();
+        showRegError('Cannot get device IP/MAC. Check network connection.');
+        return;
+      }
 
       const availResp = await fetch('/api/pisonet/avail', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ip: clientIp, mac: clientMac }),
+        body: JSON.stringify({ ip: coinClientIp, mac: coinClientMac }),
         signal: coinAbortController.signal,
       }).then(r => r.json()).catch(err => ({ success: false, error: err.name === 'AbortError' ? 'Cancelled' : err.message, aborted: err.name === 'AbortError' }));
       if (myRequestId !== coinRequestId) return;
@@ -1280,8 +1289,6 @@
       }
 
       activeVoucher = username;
-      if (coinCheckInterval) clearInterval(coinCheckInterval);
-      coinCheckInterval = setInterval(checkCoin, 1000);
     }
 
     document.getElementById('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
