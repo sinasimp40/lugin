@@ -1,0 +1,43 @@
+{
+  "name": "pisonet-app",
+  "version": "1.0.0",
+  "description": "Pisonet Member Login Portal",
+  "main": "main.js",
+  "scripts": {
+    "start": "node server.js",
+    "electron": "electron .",
+    "build": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.pisonet.app",
+    "productName": "Pisonet App",
+    "asar": false,
+    "win": {
+      "target": "nsis"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "server.js",
+      "public/**/*",
+      "node_modules/**/*",
+      "!node_modules/.cache",
+      "!node_modules/electron",
+      "!node_modules/electron-builder"
+    ]
+  },
+  "keywords": [
+    "pisonet",
+    "hotspot",
+    "mikrotik"
+  ],
+  "author": "Admin",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "electron": "^41.0.4",
+    "electron-builder": "^26.8.1"
+  }
+}

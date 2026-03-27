@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pisonet App - Login</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+
+    .session-panel { display: none; }
+    .session-panel.active { display: block; }
+    .login-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100vh; }
+    .login-panel.hidden { display: none; }
+
+    .error-msg { background: rgba(231,76,60,0.15); color: #e74c3c; padding: 8px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; display: none; }
+    .error-msg.visible { display: block; }
+
+    .hotspot-status { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 12px; }
+    .hotspot-status.online { color: #2ecc71; }
+    .hotspot-status.offline { color: #e74c3c; }
+
+    .coin-section { margin-top: 8px; }
+    .btn-coin { background: #f39c12; color: #000; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 700; width: 100%; transition: all 0.2s; }
+    .btn-coin:hover { background: #e67e22; }
+    .btn-coin:disabled { opacity: 0.5; cursor: not-allowed; }
+    .coin-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+    .coin-modal.active { display: flex; }
+    .coin-modal-content { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 340px; max-width: 95vw; text-align: center; }
+    .coin-modal-content h3 { color: #f39c12; margin-bottom: 12px; font-size: 18px; }
+    .coin-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; }
+    .coin-stat { background: var(--surface2); border-radius: 8px; padding: 10px; }
+    .coin-stat .val { font-size: 20px; font-weight: 700; color: #fff; }
+    .coin-stat .lbl { font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin-top: 2px; }
+    .coin-timer { font-size: 24px; font-weight: 700; color: #f39c12; margin: 8px 0; }
+    .coin-voucher { font-size: 14px; color: var(--text-muted); margin: 4px 0; word-break: break-all; }
+    .coin-voucher span { color: #2ecc71; font-weight: 700; }
+
+    .btn-row { display: flex; gap: 8px; margin-top: 16px; }
+    .btn-row .btn { flex: 1; }
+
+    .session-compact {
+      padding: 10px 14px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+      background: linear-gradient(135deg, #0d1520 0%, #152232 50%, #0d1520 100%);
+      border-radius: 8px;
+      border: 1px solid rgba(46,204,113,0.2);
+      -webkit-app-region: drag;
+      cursor: move;
+    }
+    .session-timer {
+      font-size: 20px;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      color: #2ecc71;
+      text-align: center;
+      letter-spacing: 2px;
+      line-height: 1;
+      text-shadow: 0 0 10px rgba(46,204,113,0.5);
+    }
+    .session-timer.warning { color: #f39c12; text-shadow: 0 0 10px rgba(243,156,18,0.5); }
+    .session-timer.danger { color: #e74c3c; text-shadow: 0 0 10px rgba(231,76,60,0.5); }
+    .session-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .session-bottom .user-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.45);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 140px;
+    }
+    .session-bottom .btn-logout-sm {
+      -webkit-app-region: no-drag;
+      background: rgba(46,204,113,0.12);
+      border: 1px solid rgba(46,204,113,0.3);
+      color: #2ecc71;
+      padding: 3px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 600;
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .session-bottom .btn-logout-sm:hover { background: rgba(46,204,113,0.25); border-color: #2ecc71; }
+
+    .drag-region { -webkit-app-region: drag; height: 24px; width: 100%; position: fixed; top: 0; left: 0; z-index: 50; }
+  </style>
+</head>
+<body class="auth-body">
+  <div class="drag-region"></div>
+
+  <div id="login-panel" class="login-panel">
+    <div class="auth-container">
+      <div class="logo-area">
+        <div class="logo-icon">&#128187;</div>
+        <h1>Pisonet App</h1>
+        <p class="subtitle">Member Login</p>
+      </div>
+
+      <div id="error-msg" class="error-msg"></div>
+
+      <div class="form-card">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="username" placeholder="Enter username" autocomplete="username" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="password" placeholder="Enter password" autocomplete="current-password" />
+        </div>
+        <button class="btn btn-primary" id="login-btn" onclick="doLogin()" style="width:100%">
+          <span id="login-text">Login</span>
+          <span id="login-spinner" class="spinner hidden"></span>
+        </button>
+
+        <div class="coin-section">
+          <button class="btn-coin" id="insert-coin-btn" onclick="openInsertCoin()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;display:inline-block"><circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" font-size="14" font-weight="bold" fill="currentColor" stroke="none">₱</text></svg> Insert Coin
+          </button>
+        </div>
+      </div>
+
+      <div id="hotspot-status" class="hotspot-status">Connecting to hotspot...</div>
+    </div>
+  </div>
+
+  <div id="session-panel" class="session-panel">
+    <div class="session-compact">
+      <div class="session-timer" id="timer-remaining">--:--:--</div>
+      <div class="session-bottom">
+        <div class="user-name" id="session-username">User</div>
+        <button class="btn-logout-sm" onclick="doLogout()">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="coin-modal" class="coin-modal">
+    <div class="coin-modal-content">
+      <h3>&#8369; Insert Coin</h3>
+      <p style="font-size:13px;color:var(--text-muted)">Please insert coin into the machine</p>
+
+      <div class="coin-voucher" id="coin-voucher-display"></div>
+      <div class="coin-timer" id="coin-timer">30s</div>
+
+      <div class="coin-stats">
+        <div class="coin-stat">
+          <div class="val" id="coin-total">0</div>
+          <div class="lbl">Coins</div>
+        </div>
+        <div class="coin-stat">
+          <div class="val" id="coin-time">0h:0m:0s</div>
+          <div class="lbl">Time</div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-outline" onclick="cancelCoin()" style="border-color:#e74c3c;color:#e74c3c">Cancel</button>
+        <button class="btn btn-primary" onclick="donePaying()">I'm Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let loginData = null;
+    let sessionData = null;
+    let statusInterval = null;
+    let countdownInterval = null;
+    let localTimeLeft = 0;
+    let coinCheckInterval = null;
+    let activeVoucher = '';
+
+    function notifyElectron(state) {
+      if (window.electronAPI && window.electronAPI.setSessionState) {
+        window.electronAPI.setSessionState(state);
+      }
+    }
+
+    async function init() {
+      const resp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => ({ success: false }));
+      const statusEl = document.getElementById('hotspot-status');
+
+      if (!resp.success) {
+        statusEl.textContent = 'Cannot reach hotspot (' + (resp.error || 'offline') + ')';
+        statusEl.className = 'hotspot-status offline';
+        return;
+      }
+
+      loginData = resp.data;
+
+      if (loginData.isLogin) {
+        showSession(loginData);
+        return;
+      }
+
+      statusEl.textContent = 'Connected to hotspot';
+      statusEl.className = 'hotspot-status online';
+
+      if (loginData.error && loginData.error !== '') {
+        showError(loginData.error);
+      }
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('error-msg');
+      el.textContent = msg;
+      el.classList.add('visible');
+      setTimeout(() => el.classList.remove('visible'), 6000);
+    }
+
+    async function doLogin() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      if (!username || !password) { showError('Enter username and password'); return; }
+
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true;
+      document.getElementById('login-text').classList.add('hidden');
+      document.getElementById('login-spinner').classList.remove('hidden');
+
+      const resp = await fetch('/api/hotspot/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      }).then(r => r.json()).catch(err => ({ success: false, error: err.message }));
+
+      btn.disabled = false;
+      document.getElementById('login-text').classList.remove('hidden');
+      document.getElementById('login-spinner').classList.add('hidden');
+
+      if (resp.success && resp.data) {
+        showSession(resp.data);
+      } else {
+        showError(resp.error || 'Login failed');
+        await init();
+      }
+    }
+
+    function showSession(data) {
+      sessionData = data;
+      document.getElementById('login-panel').classList.add('hidden');
+      document.getElementById('session-panel').classList.add('active');
+      document.body.style.background = 'transparent';
+      document.body.className = '';
+
+      document.getElementById('session-username').textContent = data.username || 'User';
+
+      localTimeLeft = parseInt(data.sessionTimeLeft) || 0;
+      updateTimerDisplay();
+
+      if (countdownInterval) clearInterval(countdownInterval);
+      countdownInterval = setInterval(() => {
+        if (localTimeLeft > 0) {
+          localTimeLeft--;
+          updateTimerDisplay();
+        }
+      }, 1000);
+
+      if (statusInterval) clearInterval(statusInterval);
+      statusInterval = setInterval(pollStatus, 10000);
+
+      notifyElectron('logged-in');
+    }
+
+    async function pollStatus() {
+      const resp = await fetch('/api/hotspot/status').then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success && resp.data) {
+        if (!resp.data.isLogin) {
+          showLoggedOut();
+          return;
+        }
+        localTimeLeft = parseInt(resp.data.sessionTimeLeft) || 0;
+        updateTimerDisplay();
+      }
+    }
+
+    function updateTimerDisplay() {
+      const el = document.getElementById('timer-remaining');
+      const d = Math.floor(localTimeLeft / 86400);
+      const h = Math.floor((localTimeLeft % 86400) / 3600);
+      const m = Math.floor((localTimeLeft % 3600) / 60);
+      const s = localTimeLeft % 60;
+
+      if (d > 0) {
+        el.textContent = d + 'd ' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+      } else {
+        el.textContent = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+      }
+
+      el.className = 'session-timer';
+      if (localTimeLeft <= 60) el.classList.add('danger');
+      else if (localTimeLeft <= 300) el.classList.add('warning');
+    }
+
+    function formatUptime(secs) {
+      const d = Math.floor(secs / 86400);
+      const h = Math.floor((secs % 86400) / 3600);
+      const m = Math.floor((secs % 3600) / 60);
+      const s = secs % 60;
+      let parts = [];
+      if (d > 0) parts.push(d + 'd');
+      if (h > 0 || d > 0) parts.push(h + 'h');
+      parts.push(m + 'm');
+      parts.push(s + 's');
+      return parts.join(' ');
+    }
+
+    function updateUptimeDisplay(secs) {
+      document.getElementById('session-uptime').textContent = formatUptime(secs);
+    }
+
+    async function doLogout() {
+      const link = sessionData?.logoutLink;
+      if (link) {
+        await fetch('/api/hotspot/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ logoutLink: link }),
+        }).catch(() => {});
+      }
+      showLoggedOut();
+    }
+
+    function showLoggedOut() {
+      if (countdownInterval) clearInterval(countdownInterval);
+      if (statusInterval) clearInterval(statusInterval);
+      countdownInterval = null;
+      statusInterval = null;
+
+      document.body.className = 'auth-body';
+      document.body.style.background = '';
+      document.getElementById('session-panel').classList.remove('active');
+      document.getElementById('login-panel').classList.remove('hidden');
+      document.getElementById('password').value = '';
+
+      const usernameEl = document.getElementById('username');
+      const passwordEl = document.getElementById('password');
+      const loginBtn = document.getElementById('login-btn');
+      usernameEl.disabled = false;
+      passwordEl.disabled = false;
+      loginBtn.disabled = false;
+
+      sessionData = null;
+      loginData = null;
+
+      notifyElectron('logged-out');
+
+      setTimeout(() => init(), 500);
+    }
+
+    async function openInsertCoin() {
+      const modal = document.getElementById('coin-modal');
+      modal.classList.add('active');
+      document.getElementById('coin-total').textContent = '0';
+      document.getElementById('coin-time').textContent = '0h:0m:0s';
+      document.getElementById('coin-timer').textContent = '30s';
+      document.getElementById('coin-voucher-display').innerHTML = '';
+
+      const clientIp = loginData?.ip || sessionData?.ip || '';
+      const clientMac = loginData?.mac || sessionData?.mac || '';
+      const username = sessionData?.username || document.getElementById('username').value.trim() || '';
+      const isExtend = sessionData ? true : false;
+
+      const topUpResp = await fetch('/api/vendo/topup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          voucher: username,
+          ip: clientIp,
+          mac: clientMac,
+          type: isExtend ? 'E' : 'N',
+        }),
+      }).then(r => r.json()).catch(err => ({ success: false, error: err.message }));
+
+      if (!topUpResp.success || (topUpResp.data && topUpResp.data.status !== 'success')) {
+        closeCoinModal();
+        const errMsg = topUpResp.error || topUpResp.data?.errorCode || 'Vendo unreachable';
+        showError('Insert Coin: ' + errMsg);
+        return;
+      }
+
+      activeVoucher = topUpResp.data.voucher || username;
+      document.getElementById('coin-voucher-display').innerHTML = 'Voucher: <span>' + activeVoucher + '</span>';
+
+      if (coinCheckInterval) clearInterval(coinCheckInterval);
+      coinCheckInterval = setInterval(checkCoin, 1000);
+    }
+
+    async function checkCoin() {
+      const resp = await fetch('/api/vendo/check-coin?voucher=' + encodeURIComponent(activeVoucher))
+        .then(r => r.json()).catch(() => null);
+
+      if (!resp || !resp.success) {
+        closeCoinModal();
+        showError('Insert Coin: Lost connection to vendo');
+        return;
+      }
+
+      const data = resp.data;
+
+      if (data.status === 'success') {
+        const coins = parseInt(data.totalCoinReceived) || 0;
+        document.getElementById('coin-total').textContent = coins;
+
+        if (data.totalTime) {
+          const totalMs = parseInt(data.totalTime) || 0;
+          const totalSecs = Math.floor(totalMs / 1000);
+          document.getElementById('coin-time').textContent = formatUptime(totalSecs);
+        }
+
+        const remaining = parseInt(data.remainingTime) || 0;
+        const remSecs = Math.ceil(remaining / 1000);
+        document.getElementById('coin-timer').textContent = remSecs + 's';
+      } else if (data.errorCode === 'coin.slot.timeout') {
+        const coins = parseInt(document.getElementById('coin-total').textContent) || 0;
+        if (coins > 0) {
+          donePaying();
+        } else {
+          closeCoinModal();
+          showError('Insert Coin: Timeout - no coins inserted');
+        }
+      } else if (data.errorCode === 'coin.slot.readingCoin') {
+        document.getElementById('coin-timer').textContent = '...';
+      } else if (data.errorCode) {
+        closeCoinModal();
+        showError('Insert Coin: ' + data.errorCode);
+      }
+    }
+
+    function closeCoinModal() {
+      if (coinCheckInterval) clearInterval(coinCheckInterval);
+      coinCheckInterval = null;
+      activeVoucher = '';
+      document.getElementById('coin-modal').classList.remove('active');
+    }
+
+    async function cancelCoin() {
+      if (activeVoucher) {
+        await fetch('/api/vendo/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ voucher: activeVoucher }),
+        }).catch(() => {});
+      }
+      closeCoinModal();
+    }
+
+    async function donePaying() {
+      if (activeVoucher) {
+        await fetch('/api/vendo/use-voucher', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ voucher: activeVoucher }),
+        }).catch(() => {});
+      }
+      closeCoinModal();
+
+      if (sessionData) {
+        pollStatus();
+      } else {
+        init();
+      }
+    }
+
+    document.getElementById('password').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') doLogin();
+    });
+
+    init();
+  </script>
+</body>
+</html>

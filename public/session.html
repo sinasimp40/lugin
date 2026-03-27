@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Session</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+  .box {
+    width: 100%;
+    height: 100%;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #0d1520 0%, #152232 50%, #0d1520 100%);
+    border-radius: 8px;
+    border: 1px solid rgba(46,204,113,0.2);
+    -webkit-app-region: drag;
+    cursor: move;
+  }
+  .timer {
+    font-size: 20px;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    color: #2ecc71;
+    text-align: center;
+    letter-spacing: 2px;
+    line-height: 1;
+    text-shadow: 0 0 10px rgba(46,204,113,0.5);
+  }
+  .timer.warning { color: #f39c12; text-shadow: 0 0 10px rgba(243,156,18,0.5); }
+  .timer.danger { color: #e74c3c; text-shadow: 0 0 10px rgba(231,76,60,0.5); }
+  .bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .user {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.45);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+  }
+  .logout-btn {
+    -webkit-app-region: no-drag;
+    background: rgba(46,204,113,0.12);
+    border: 1px solid rgba(46,204,113,0.3);
+    color: #2ecc71;
+    padding: 3px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+  .logout-btn:hover { background: rgba(46,204,113,0.25); border-color: #2ecc71; }
+</style>
+</head>
+<body>
+  <div class="box">
+    <div class="timer" id="timer">--:--:--</div>
+    <div class="bottom">
+      <div class="user" id="username">User</div>
+      <button class="logout-btn" id="logout-btn">Logout</button>
+    </div>
+  </div>
+
+  <script>
+    let timeLeft = 0;
+    let interval = null;
+    let logoutLink = '';
+
+    async function loadStatus() {
+      try {
+        const resp = await fetch('/api/hotspot/status');
+        const data = await resp.json();
+        if (data.success && data.data && data.data.isLogin) {
+          document.getElementById('username').textContent = data.data.username || 'User';
+          timeLeft = parseInt(data.data.sessionTimeLeft) || 0;
+          if (data.data.logoutLink) logoutLink = data.data.logoutLink;
+          updateTimer();
+        }
+      } catch (e) {}
+    }
+
+    function updateTimer() {
+      const el = document.getElementById('timer');
+      const d = Math.floor(timeLeft / 86400);
+      const h = Math.floor((timeLeft % 86400) / 3600);
+      const m = Math.floor((timeLeft % 3600) / 60);
+      const s = timeLeft % 60;
+      if (d > 0) {
+        el.textContent = d + 'd ' + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+      } else {
+        el.textContent = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+      }
+      el.className = 'timer';
+      if (timeLeft <= 60) el.classList.add('danger');
+      else if (timeLeft <= 300) el.classList.add('warning');
+    }
+
+    async function doLogout() {
+      document.getElementById('logout-btn').disabled = true;
+      document.getElementById('logout-btn').textContent = '...';
+      try {
+        await fetch('/api/hotspot/logout', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({logoutLink: logoutLink || ''})
+        });
+      } catch(e) {}
+      try {
+        await fetch('/api/session/trigger', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({action: 'logged-out'})
+        });
+      } catch(e) {}
+    }
+
+    document.getElementById('logout-btn').addEventListener('click', (e) => {
+      e.preventDefault();
+      doLogout();
+    });
+
+    loadStatus();
+    interval = setInterval(() => {
+      if (timeLeft > 0) { timeLeft--; updateTimer(); }
+    }, 1000);
+    setInterval(loadStatus, 10000);
+  </script>
+</body>
+</html>
