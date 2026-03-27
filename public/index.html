@@ -999,19 +999,11 @@
       const ip = sessionData?.ip || loginData?.ip || '';
       const mac = sessionData?.mac || loginData?.mac || '';
       const username = sessionData?.username || '';
-      const isMember = username.startsWith('mem-');
-      console.log('[doLogout] logoutLink:', link, 'ip:', ip, 'mac:', mac, 'username:', username, 'isMember:', isMember);
+      console.log('[doLogout] logoutLink:', link, 'ip:', ip, 'mac:', mac, 'username:', username);
 
-      if (isMember) {
-        await fetch('/api/pisonet/logout', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ip, mac, username })
-        }).catch(() => {});
-      }
-
-      await fetch('/api/hotspot/logout', {
+      await fetch('/api/pisonet/logout', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ logoutLink: link })
+        body: JSON.stringify({ ip, mac, username })
       }).catch(() => {});
 
       showLoggedOut();
