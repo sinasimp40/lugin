@@ -325,8 +325,9 @@ app.post('/api/hotspot/logout', async (req, res) => {
     if (!logoutLink) {
       logoutLink = `http://${HOTSPOT_DNS}/logout`;
     }
-    console.log('[Logout] Calling:', logoutLink);
-    await fetch(logoutLink, { signal: AbortSignal.timeout(5000) });
+    const fullLogoutUrl = logoutLink + (logoutLink.includes('?') ? '&' : '?') + 'erase-cookie=on';
+    console.log('[Logout] POST to:', fullLogoutUrl);
+    await fetch(fullLogoutUrl, { method: 'POST', signal: AbortSignal.timeout(5000) });
     res.json({ success: true });
   } catch (err) {
     console.log('[Logout] Error:', err.message);
