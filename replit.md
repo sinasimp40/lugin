@@ -50,21 +50,26 @@ These are the actual pisonet endpoints provided by the JuanFi developer (NOT the
 7. User clicks Done → `POST /pisonet/done` finalizes payment
 8. Username/password pre-filled in login form for immediate login
 
-## Insert Coin Flow (Pisonet — Members)
-Uses pisonet API for coin slot control + wifi hotspot `/checkCoin` for real-time updates:
+## Insert Coin Flow (Two Modes)
 
-1. `POST /pisonet/avail` with `{ macAddress, ip }` → opens coin slot on vendo
-2. `GET /checkCoin?voucher={username}` polls every 1s for real-time coin/time data
-3. CheckCoin response fields: `status`, `totalCoinReceived`, `remainingTime`, `timeAdded`, `errorCode`
-4. `status == "true"` → coin received → update UI (totalCoinReceived, timeAdded)
-5. `errorCode == "coin.is.reading"` → show "Reading..." 
-6. `errorCode == "coins.wait.expired"` + `remainingTime == 0` → kiosk closed coin slot:
-   - Calls `POST /pisonet/done` with `{ macAddress, ip }` to finalize
-   - Auto-closes Insert Coin modal
-7. `errorCode == "coinslot.cancelled"` → same as above
-8. User can also click Done/Cancel manually → calls `POST /pisonet/done`
+### Pisonet Mode (Logged-In Members + New Registrations)
+Uses pisonet API for coin slot control + `/checkCoin` for real-time updates:
+1. `POST /pisonet/avail` with `{ macAddress, ip }` → opens coin slot
+2. `GET /checkCoin?voucher={username}` polls every 1s
+3. Done/Cancel → `POST /pisonet/done` to finalize
 
-This flow applies to: logged-in members (extend time), new registrations, and login-screen Insert Coin.
+### Voucher Mode (Walk-Up / Not Logged In)
+Uses topUp API to generate a voucher, then activates it:
+1. `GET /topUp?voucher=&ip={ip}&mac={mac}&extendTime=0` → generates voucher code
+2. `GET /checkCoin?voucher={code}` polls every 1s
+3. Done with coins → `GET /useVoucher?voucher={code}` to auto-login
+4. Cancel/no coins → `GET /cancelTopUp?voucher={code}&mac={mac}`
+
+### Common Polling (Both Modes)
+- `status == "true"` → coin received → update UI
+- `errorCode == "coin.is.reading"` → show "Reading..."
+- `errorCode == "coins.wait.expired"` + `remainingTime == 0` → auto-close modal, finalize
+- `errorCode == "coinslot.cancelled"` → auto-close modal, finalize
 
 ## Admin Panel
 - Triggered by typing "zxc1" on the login screen (no visible button)
