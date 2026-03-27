@@ -50,33 +50,21 @@ These are the actual pisonet endpoints provided by the JuanFi developer (NOT the
 7. User clicks Done → `POST /pisonet/done` finalizes payment
 8. Username/password pre-filled in login form for immediate login
 
-## Insert Coin Flow (Logged-In Members / Extend Time)
-1. User clicks Insert Coin on session panel (has active session/username)
-2. `GET /topUp?voucher={username}&ipAddress={ip}&mac={mac}&extendTime=1` opens coin slot
-3. Vendo returns `{ status: "true", voucher: "..." }` on success
-4. `GET /checkCoin?voucher={code}` polls every 1s — exact JuanFi API
-5. Response fields: `status`, `totalCoinReceived`, `totalCoin`, `remainingTime`, `timeAdded`, `errorCode`, `newCoin`
-6. `status == "true"` → coin received, update UI with totalCoinReceived + timeAdded
-7. `errorCode == "coin.is.reading"` → show "Reading..." in timer
-8. `errorCode == "coins.wait.expired"` + `remainingTime == 0` → coin slot closed:
-   - If coins > 0 → payment complete, time added to session
-   - If coins == 0 → `GET /cancelTopUp?voucher={code}&mac={mac}` cancels
-9. `errorCode == "coinslot.cancelled"` → slot cancelled
-10. User can also click Done/Cancel on modal manually
+## Insert Coin Flow (Pisonet — Members)
+Uses pisonet API for coin slot control + wifi hotspot `/checkCoin` for real-time updates:
 
-## Insert Coin Flow (Walk-Up / No Login)
-1. User clicks Insert Coin on login screen WITHOUT being logged in
-2. `GET /topUp?voucher=&ipAddress={ip}&mac={mac}&extendTime=0` generates a voucher
-3. Vendo returns `{ status: "true", voucher: "XXXXX" }`
-4. Voucher code displayed in modal, same `/checkCoin` polling as above
-5. When done (vendo closes coin slot OR user clicks Done):
-   - If coins > 0 → `GET /useVoucher?voucher={code}` activates on MikroTik → auto-login
-   - If coins == 0 → `GET /cancelTopUp?voucher={code}&mac={mac}` cancels
+1. `POST /pisonet/avail` with `{ macAddress, ip }` → opens coin slot on vendo
+2. `GET /checkCoin?voucher={username}` polls every 1s for real-time coin/time data
+3. CheckCoin response fields: `status`, `totalCoinReceived`, `remainingTime`, `timeAdded`, `errorCode`
+4. `status == "true"` → coin received → update UI (totalCoinReceived, timeAdded)
+5. `errorCode == "coin.is.reading"` → show "Reading..." 
+6. `errorCode == "coins.wait.expired"` + `remainingTime == 0` → kiosk closed coin slot:
+   - Calls `POST /pisonet/done` with `{ macAddress, ip }` to finalize
+   - Auto-closes Insert Coin modal
+7. `errorCode == "coinslot.cancelled"` → same as above
+8. User can also click Done/Cancel manually → calls `POST /pisonet/done`
 
-## Insert Coin Flow (New Registration)
-1. After `/pisonet/register` succeeds, opens Insert Coin modal
-2. `GET /topUp?voucher={mem-username}&ipAddress={ip}&mac={mac}&extendTime=0` opens coin slot
-3. Same `/checkCoin` polling and handling as logged-in flow
+This flow applies to: logged-in members (extend time), new registrations, and login-screen Insert Coin.
 
 ## Admin Panel
 - Triggered by typing "zxc1" on the login screen (no visible button)
