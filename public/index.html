@@ -965,38 +965,52 @@
     let coinPollActive = false;
 
     let coinPollGeneration = 0;
+    let coinIsVoucherFlow = false;
+    let coinVoucherCode = '';
 
-    function startCoinPolling(username) {
+    function startCoinPolling(voucherOrUsername) {
       stopCoinPolling();
       coinPollActive = true;
       const gen = ++coinPollGeneration;
       let lastTotal = 0;
       let inFlight = false;
+      const doneErrors = ['coins.wait.expired', 'coinslot.cancelled'];
       const poll = async () => {
         if (!coinPollActive || gen !== coinPollGeneration || inFlight) return;
         inFlight = true;
         try {
-          const resp = await fetch('/api/vendo/check-coin?voucher=' + encodeURIComponent(username)).then(r => r.json()).catch(() => null);
+          const resp = await fetch('/api/vendo/check-coin?voucher=' + encodeURIComponent(voucherOrUsername)).then(r => r.json()).catch(() => null);
           if (!coinPollActive || gen !== coinPollGeneration) return;
           if (resp && resp.success && resp.data) {
             const d = resp.data;
-            const coins = d.totalCoin || d.coinCount || d.TotalCoin || d.CoinCount || d.totalAmount || d.TotalAmount || 0;
-            const minutes = d.minutes || d.Minutes || d.totalMinutes || d.TotalMinutes || d.time || d.Time || 0;
+            const coins = d.totalCoinReceived || d.totalCoin || d.coinCount || d.TotalCoinReceived || d.totalAmount || 0;
+            const totalTime = d.totalTime || d.totalMinutes || d.minutes || d.TotalTime || d.time || 0;
+            const errCode = (d.errorCode || d.error_code || d.ErrorCode || '').toString().toLowerCase();
             const status = (d.status || d.Status || '').toString().toLowerCase();
+
             if (coins > 0 || lastTotal > 0) {
               document.getElementById('coin-total').textContent = coins;
               lastTotal = coins;
             }
-            if (minutes > 0) {
-              const m = Math.floor(minutes);
-              const s = Math.round((minutes - m) * 60);
+            if (totalTime > 0) {
+              const m = Math.floor(totalTime);
+              const s = Math.round((totalTime - m) * 60);
               document.getElementById('coin-time').textContent = m + 'm ' + s + 's';
             }
-            if (status === 'done' || status === 'completed' || status === 'finish' || status === 'finished') {
+
+            if (doneErrors.includes(errCode) || status === 'done' || status === 'completed') {
               stopCoinPolling();
-              closeCoinModal();
-              showError('Payment complete!');
-              init();
+              if (coinIsVoucherFlow && coinVoucherCode && lastTotal > 0) {
+                await finalizeVoucherFlow(coinVoucherCode);
+              } else {
+                closeCoinModal();
+                if (lastTotal > 0) {
+                  showError('Payment complete!');
+                } else {
+                  showError('Coin slot closed.');
+                }
+                init();
+              }
               return;
             }
           }
@@ -1009,6 +1023,20 @@
     function stopCoinPolling() {
       coinPollActive = false;
       if (coinPollInterval) { clearInterval(coinPollInterval); coinPollInterval = null; }
+    }
+
+    async function finalizeVoucherFlow(voucher) {
+      closeCoinModal();
+      showError('Activating voucher...');
+      const useResp = await fetch('/api/vendo/use-voucher?voucher=' + encodeURIComponent(voucher)).then(r => r.json()).catch(() => ({ success: false }));
+      if (useResp.success) {
+        showError('Voucher activated! Logging in...');
+        init();
+      } else {
+        showError('Voucher activation failed. Try logging in manually.');
+      }
+      coinIsVoucherFlow = false;
+      coinVoucherCode = '';
     }
 
     async function openInsertCoin() {
@@ -1025,7 +1053,7 @@
 
       coinClientIp = loginData?.ip || sessionData?.ip || '';
       coinClientMac = loginData?.mac || sessionData?.mac || '';
-      const username = sessionData?.username || document.getElementById('username').value.trim() || '';
+      const username = sessionData?.username || '';
 
       if (!coinClientIp || !coinClientMac) {
         try {
@@ -1041,36 +1069,65 @@
         return;
       }
 
-      document.getElementById('coin-voucher-display').innerHTML = 'User: <span>' + username + '</span>';
-
-      const availResp = await fetch('/api/pisonet/avail', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ip: coinClientIp, mac: coinClientMac }),
-        signal: coinAbortController.signal,
-      }).then(r => r.json()).catch(err => ({ success: false, error: err.name === 'AbortError' ? 'Cancelled' : err.message, aborted: err.name === 'AbortError' }));
-
-      if (myRequestId !== coinRequestId) return;
-      if (availResp.aborted) return;
-      if (!availResp.success) {
-        closeCoinModal();
-        showError('Insert Coin: ' + (availResp.error || 'Vendo unreachable'));
-        return;
+      if (username) {
+        document.getElementById('coin-voucher-display').innerHTML = 'User: <span>' + username + '</span>';
+        const availResp = await fetch('/api/pisonet/avail', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ip: coinClientIp, mac: coinClientMac }),
+          signal: coinAbortController.signal,
+        }).then(r => r.json()).catch(err => ({ success: false, error: err.name === 'AbortError' ? 'Cancelled' : err.message, aborted: err.name === 'AbortError' }));
+        if (myRequestId !== coinRequestId) return;
+        if (availResp.aborted) return;
+        if (!availResp.success) {
+          closeCoinModal();
+          showError('Insert Coin: ' + (availResp.error || 'Vendo unreachable'));
+          return;
+        }
+        activeVoucher = username;
+        coinIsVoucherFlow = false;
+        startCoinPolling(username);
+      } else {
+        const topupResp = await fetch('/api/vendo/topup?mac=' + encodeURIComponent(coinClientMac), {
+          signal: coinAbortController.signal,
+        }).then(r => r.json()).catch(err => ({ success: false, error: err.name === 'AbortError' ? 'Cancelled' : err.message, aborted: err.name === 'AbortError' }));
+        if (myRequestId !== coinRequestId) return;
+        if (topupResp.aborted) return;
+        if (!topupResp.success) {
+          closeCoinModal();
+          showError('Insert Coin: ' + (topupResp.error || 'Vendo unreachable'));
+          return;
+        }
+        const voucherCode = topupResp.data?.voucherCode || topupResp.data?.voucher || topupResp.data?.code || '';
+        if (!voucherCode) {
+          closeCoinModal();
+          showError('No voucher code received from vendo.');
+          return;
+        }
+        coinIsVoucherFlow = true;
+        coinVoucherCode = voucherCode;
+        activeVoucher = voucherCode;
+        document.getElementById('coin-voucher-display').innerHTML = 'Voucher: <span>' + voucherCode + '</span>';
+        startCoinPolling(voucherCode);
       }
-      activeVoucher = username;
-      startCoinPolling(username);
     }
 
-    function closeCoinModal() { stopCoinPolling(); if (coinAbortController) { coinAbortController.abort(); coinAbortController = null; } activeVoucher = ''; coinSlotBusy = false; document.getElementById('coin-modal').classList.remove('active'); }
+    function closeCoinModal() { stopCoinPolling(); if (coinAbortController) { coinAbortController.abort(); coinAbortController = null; } activeVoucher = ''; coinSlotBusy = false; coinIsVoucherFlow = false; coinVoucherCode = ''; document.getElementById('coin-modal').classList.remove('active'); }
     async function cancelCoin() {
       closeCoinModal();
       await fetch('/api/pisonet/done', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: coinClientIp, mac: coinClientMac }) }).catch(() => {});
     }
     async function donePaying() {
+      const wasVoucherFlow = coinIsVoucherFlow;
+      const savedVoucher = coinVoucherCode;
       closeCoinModal();
       showError('Finalizing payment...');
-      await fetch('/api/pisonet/done', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: coinClientIp, mac: coinClientMac }) }).catch(() => {});
-      showError('Payment complete!');
-      init();
+      if (wasVoucherFlow && savedVoucher) {
+        await finalizeVoucherFlow(savedVoucher);
+      } else {
+        await fetch('/api/pisonet/done', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: coinClientIp, mac: coinClientMac }) }).catch(() => {});
+        showError('Payment complete!');
+        init();
+      }
     }
 
     document.addEventListener('keydown', (e) => {

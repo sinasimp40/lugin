@@ -50,12 +50,22 @@ These are the actual pisonet endpoints provided by the JuanFi developer (NOT the
 7. User clicks Done → `POST /pisonet/done` finalizes payment
 8. Username/password pre-filled in login form for immediate login
 
-## Insert Coin Flow (Existing Users)
-1. User clicks Insert Coin on login screen or session panel
+## Insert Coin Flow (Logged-In Members)
+1. User clicks Insert Coin on session panel (has active session/username)
 2. `POST /pisonet/avail` sends `{ macAddress, ip }` to start coin slot
-3. `/checkCoin` polls for coin status every 1s
-4. User clicks Done → `POST /pisonet/done` finalizes payment
-5. Time is added to existing session
+3. `/checkCoin` polls for coin status every 2s (shows coins + time in modal)
+4. User clicks Done on modal OR vendo signals done → `POST /pisonet/done` finalizes
+5. Auto-close: vendo `errorCode` = `coins.wait.expired` or `coinslot.cancelled` closes modal
+6. Time is added to existing member session
+
+## Insert Coin Flow (Walk-Up / No Login)
+1. User clicks Insert Coin on login screen WITHOUT being logged in
+2. `GET /topUp?macAddress=MAC` generates a voucher code on the vendo
+3. Voucher code displayed in modal, `/checkCoin?voucher=CODE` polls every 2s
+4. User inserts coins, modal shows real-time amount + time
+5. When done (user clicks Done or vendo closes coin slot):
+   - `GET /useVoucher?voucher=CODE` activates the voucher on MikroTik
+   - User auto-logs in with the purchased time
 
 ## Admin Panel
 - Triggered by typing "zxc1" on the login screen (no visible button)
