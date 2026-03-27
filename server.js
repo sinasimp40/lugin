@@ -310,96 +310,24 @@ app.get('/api/hotspot/status', async (req, res) => {
   }
 });
 
-async function mikrotikApiRemoveSession(username, mac, ip) {
-  const s = settings.getSettings();
-  if (!s.routerIp || !s.routerUser) {
-    console.log('[MikroTik API] Router credentials not configured');
-    return false;
-  }
-  const baseUrl = `http://${s.routerIp}/rest`;
-  const auth = 'Basic ' + Buffer.from(`${s.routerUser}:${s.routerPass || ''}`).toString('base64');
-  const headers = { 'Authorization': auth, 'Content-Type': 'application/json' };
-
-  try {
-    const activeResp = await fetch(`${baseUrl}/ip/hotspot/active`, {
-      headers, signal: AbortSignal.timeout(5000),
-    });
-    if (!activeResp.ok) {
-      console.log('[MikroTik API] Failed to get active sessions:', activeResp.status);
-      return false;
-    }
-    const sessions = await activeResp.json();
-    console.log('[MikroTik API] Active sessions:', sessions.length);
-
-    const targets = sessions.filter(s =>
-      (username && s.user === username) ||
-      (mac && s['mac-address'] && s['mac-address'].toUpperCase() === mac.toUpperCase()) ||
-      (ip && s.address === ip)
-    );
-    console.log('[MikroTik API] Matching sessions to remove:', targets.length);
-
-    for (const session of targets) {
-      const id = session['.id'];
-      console.log('[MikroTik API] Removing active session:', id, 'user:', session.user);
-      await fetch(`${baseUrl}/ip/hotspot/active/${encodeURIComponent(id)}`, {
-        method: 'DELETE', headers, signal: AbortSignal.timeout(5000),
-      }).catch(e => console.log('[MikroTik API] Remove error:', e.message));
-    }
-
-    try {
-      const cookieResp = await fetch(`${baseUrl}/ip/hotspot/cookie`, {
-        headers, signal: AbortSignal.timeout(5000),
-      });
-      if (cookieResp.ok) {
-        const cookies = await cookieResp.json();
-        const cookieTargets = cookies.filter(c =>
-          (username && c.user === username) ||
-          (mac && c['mac-address'] && c['mac-address'].toUpperCase() === mac.toUpperCase())
-        );
-        console.log('[MikroTik API] Matching cookies to remove:', cookieTargets.length);
-        for (const cookie of cookieTargets) {
-          const id = cookie['.id'];
-          await fetch(`${baseUrl}/ip/hotspot/cookie/${encodeURIComponent(id)}`, {
-            method: 'DELETE', headers, signal: AbortSignal.timeout(5000),
-          }).catch(e => console.log('[MikroTik API] Cookie remove error:', e.message));
-        }
-      }
-    } catch (e) {
-      console.log('[MikroTik API] Cookie cleanup error:', e.message);
-    }
-
-    return targets.length > 0;
-  } catch (err) {
-    console.log('[MikroTik API] Error:', err.message);
-    return false;
-  }
-}
-
 app.post('/api/hotspot/logout', async (req, res) => {
-  const { logoutLink, username, mac, ip } = req.body;
+  let { logoutLink } = req.body;
   try {
-    const apiRemoved = await mikrotikApiRemoveSession(username, mac, ip);
-    console.log('[Logout] MikroTik API remove result:', apiRemoved);
-
-    if (!apiRemoved) {
-      let link = logoutLink;
-      if (!link) {
-        try {
-          const statusResp = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(5000) });
-          const buffer = Buffer.from(await statusResp.arrayBuffer());
-          const statusData = parseHotspotResponse(buffer);
-          link = statusData.logoutLink;
-          console.log('[Logout] Got link from status:', link);
-        } catch (_) {}
-      }
-      if (!link) {
-        link = `http://${HOTSPOT_DNS}/logout`;
-      }
-      const fullLogoutUrl = link + (link.includes('?') ? '&' : '?') + 'erase-cookie=on';
-      console.log('[Logout] Fallback POST to:', fullLogoutUrl);
-      await fetch(fullLogoutUrl, { method: 'POST', signal: AbortSignal.timeout(5000) });
+    if (!logoutLink) {
+      try {
+        const statusResp = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(5000) });
+        const buffer = Buffer.from(await statusResp.arrayBuffer());
+        const statusData = parseHotspotResponse(buffer);
+        logoutLink = statusData.logoutLink;
+        console.log('[Logout] Got link from status:', logoutLink);
+      } catch (_) {}
     }
-
+    if (!logoutLink) {
+      logoutLink = `http://${HOTSPOT_DNS}/logout`;
+    }
+    const fullLogoutUrl = logoutLink + (logoutLink.includes('?') ? '&' : '?') + 'erase-cookie=on';
+    console.log('[Logout] POST to:', fullLogoutUrl);
+    await fetch(fullLogoutUrl, { method: 'POST', signal: AbortSignal.timeout(5000) });
     res.json({ success: true });
   } catch (err) {
     console.log('[Logout] Error:', err.message);
@@ -737,26 +665,6 @@ app.post('/api/admin/settings', verifyToken, (req, res) => {
   const updated = settings.updateSettings(req.body);
   broadcastSettings();
   res.json({ success: true, settings: updated });
-});
-
-app.get('/api/admin/test-router', verifyToken, async (req, res) => {
-  const s = settings.getSettings();
-  if (!s.routerIp || !s.routerUser) {
-    return res.json({ success: false, error: 'Router IP and username not configured' });
-  }
-  try {
-    const auth = 'Basic ' + Buffer.from(`${s.routerUser}:${s.routerPass || ''}`).toString('base64');
-    const resp = await fetch(`http://${s.routerIp}/rest/ip/hotspot/active`, {
-      headers: { 'Authorization': auth }, signal: AbortSignal.timeout(5000),
-    });
-    if (!resp.ok) {
-      return res.json({ success: false, error: 'HTTP ' + resp.status + ' - check credentials' });
-    }
-    const data = await resp.json();
-    res.json({ success: true, activeCount: data.length });
-  } catch (err) {
-    res.json({ success: false, error: err.message });
-  }
 });
 
 app.post('/api/admin/background', verifyToken, (req, res) => {

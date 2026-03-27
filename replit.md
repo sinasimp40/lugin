@@ -68,8 +68,6 @@ When `isLogin: true` is detected → auto-shows the session (auto-connect).
 2. Calls MikroTik `logoutLink + ?erase-cookie=on` via POST to fully terminate hotspot session (not just pause)
 3. Waits 5 seconds before re-polling (prevents re-detecting stale session)
 - CRITICAL: MikroTik logout MUST use `?erase-cookie=on` parameter and POST method. Without it, the session is only "paused" (can be resumed), not terminated.
-- If router API credentials are configured, logout uses RouterOS REST API (`/rest/ip/hotspot/active/remove` + `/rest/ip/hotspot/cookie/remove`) to forcibly remove the active session and cookie. Falls back to logoutLink+erase-cookie if API not configured.
-- Router settings (IP, username, password) configurable in admin panel under "MikroTik Router API" section. Test Connection button verifies connectivity.
 
 ### Member Registration
 1. Pre-check: `POST /api/pisonet/check-member` queries vendo `/pisonet/member?username=X`
