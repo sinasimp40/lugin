@@ -1179,7 +1179,25 @@
 
       if (!topUpResp.success || (topUpResp.data && topUpResp.data.status !== 'success')) {
         closeCoinModal();
-        showRegError('Insert Coin: ' + (topUpResp.error || topUpResp.data?.errorCode || 'Vendo unreachable'));
+        const rawErr = topUpResp.error || topUpResp.data?.errorCode || topUpResp.data?.message || '';
+        const errLower = String(rawErr).toLowerCase();
+        let friendlyMsg;
+        if (errLower.includes('exist') || errLower.includes('already') || errLower.includes('duplicate')) {
+          friendlyMsg = 'Username already taken. Choose a different one.';
+        } else if (errLower.includes('busy') || errLower.includes('coinslot.busy')) {
+          friendlyMsg = 'Vendo is busy. Please try again shortly.';
+        } else if (errLower.includes('banned') || errLower.includes('coin.slot.banned')) {
+          friendlyMsg = 'This device has been temporarily blocked.';
+        } else if (errLower.includes('notavailable') || errLower.includes('not.available')) {
+          friendlyMsg = 'Coin slot not available right now.';
+        } else if (errLower.includes('no.internet') || errLower.includes('nointernet')) {
+          friendlyMsg = 'No internet detected on vendo.';
+        } else if (!rawErr || errLower.includes('fetch') || errLower.includes('timeout') || errLower.includes('unreachable')) {
+          friendlyMsg = 'Cannot reach vendo. Check if it is powered on.';
+        } else {
+          friendlyMsg = rawErr;
+        }
+        showRegError(friendlyMsg);
         return;
       }
 
