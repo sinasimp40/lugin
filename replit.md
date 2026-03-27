@@ -79,11 +79,19 @@ A lightweight Electron desktop app for pisonet member login. Connects to a Mikro
 - `status.html` → `{ isLogin, logoutLink, sessionTimeLeft, uptime, username, mac, ip, units }`
 
 ## JuanFi Vendo API (NodeMCU at 10.0.0.5:8989)
-- `GET /topUp?voucher=X&ip=Y&mac=Z&type=E|N` — Start coin insertion (E=extend, N=new)
-- `GET /checkCoin?voucher=X` — Poll coin status (every 1s)
+- `GET /topUp?voucher=X&ipAddress=Y&mac=Z&extendTime=0|1` — Start coin insertion (0=new, 1=extend)
+- `GET /checkCoin?voucher=X` — Poll coin status (every 1s); returns `status:"true"` with coin data or errorCode
 - `GET /useVoucher?voucher=X` — Activate voucher after payment (JuanFi creates MikroTik user)
 - `GET /cancelTopUp?voucher=X` — Cancel coin insertion
 - `GET /getRates` — Get rate table
+- Response format: `{ status: "true"|"false", voucher, errorCode, totalCoinReceived, totalTime, remainingTime }`
+- Error codes: `coins.wait.expired`, `coin.not.inserted`, `coinslot.cancelled`, `coinslot.busy`, `coin.slot.banned`, `coin.slot.notavailable`, `no.internet.detected`, `coin.is.reading`
+
+## Username Pre-Check
+- `POST /api/hotspot/check-user` — Checks if a username exists on MikroTik by attempting a hotspot login (password=username, JuanFi default)
+- If login succeeds → user exists → immediately logouts → returns `{ exists: true }`
+- If login fails → user likely doesn't exist → returns `{ exists: false }`
+- Called before triggering coin slot during registration to prevent wasting coins on duplicate usernames
 
 ## Legacy Code (unused)
 - `renderer/` — Old Electron renderer files, replaced by `public/` + `preload.js`

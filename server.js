@@ -332,17 +332,73 @@ app.post('/api/hotspot/logout', async (req, res) => {
 });
 
 
+app.post('/api/hotspot/check-user', async (req, res) => {
+  const { username } = req.body;
+  if (!username) return res.json({ exists: false });
+
+  try {
+    const freshData = await fetchLoginData();
+    const loginLink = freshData.loginLink || `http://${HOTSPOT_DNS}/login`;
+
+    let loginPassword = username;
+    const chapAvailable = freshData.chapIdHex && freshData.chapIdHex.length > 0 && freshData.chapChallengeHex && freshData.chapChallengeHex.length > 0;
+    if (chapAvailable) {
+      const chapIdBuf = Buffer.from(freshData.chapIdHex, 'hex');
+      const challengeBuf = Buffer.from(freshData.chapChallengeHex, 'hex');
+      const passwordBuf = Buffer.from(username, 'latin1');
+      const combined = Buffer.concat([chapIdBuf, passwordBuf, challengeBuf]);
+      loginPassword = crypto.createHash('md5').update(combined).digest('hex');
+    }
+
+    const postData = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(loginPassword)}&dst=&popup=true`;
+    const loginResp = await fetch(loginLink, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: postData,
+      redirect: 'follow',
+      signal: AbortSignal.timeout(5000),
+    });
+
+    const respBuffer = Buffer.from(await loginResp.arrayBuffer());
+    const data = parseHotspotResponse(respBuffer);
+    console.log('[Check User]', username, '→ isLogin:', data.isLogin, 'error:', data.error);
+
+    if (data.isLogin) {
+      if (data.logoutLink) {
+        try { await fetch(data.logoutLink, { signal: AbortSignal.timeout(3000) }); } catch (_) {}
+      }
+      return res.json({ exists: true });
+    }
+
+    const err = (data.error || '').toLowerCase();
+    if (err.includes('already logged in') || err.includes('has reached') || err.includes('limit')) {
+      return res.json({ exists: true });
+    }
+
+    res.json({ exists: false });
+  } catch (err) {
+    console.log('[Check User] Error:', err.message);
+    res.json({ exists: false, error: err.message });
+  }
+});
+
 app.post('/api/vendo/topup', async (req, res) => {
   const { voucher, ip, mac, type } = req.body;
   try {
-    const vendoType = type === 'E' ? '&type=E' : '&type=N';
-    const url = `http://${VENDO_IP}/topUp?voucher=${encodeURIComponent(voucher || '')}&ip=${encodeURIComponent(ip || '')}&mac=${encodeURIComponent(mac || '')}${vendoType}`;
+    const extendTime = type === 'E' ? '1' : '0';
+    const url = `http://${VENDO_IP}/topUp?voucher=${encodeURIComponent(voucher || '')}&ipAddress=${encodeURIComponent(ip || '')}&mac=${encodeURIComponent(mac || '')}&extendTime=${extendTime}`;
     console.log('[Vendo] topUp:', url);
     const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const text = await resp.text();
     console.log('[Vendo] topUp response:', text);
     try {
-      res.json({ success: true, data: JSON.parse(text) });
+      const data = JSON.parse(text);
+      const vendoOk = data.status === 'true' || data.status === true || data.status === 'success';
+      if (vendoOk) {
+        res.json({ success: true, data });
+      } else {
+        res.json({ success: false, error: data.errorCode || data.message || 'Vendo rejected request', data });
+      }
     } catch (_) {
       res.json({ success: true, data: text });
     }

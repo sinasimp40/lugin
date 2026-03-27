@@ -960,9 +960,9 @@
       const username = sessionData?.username || document.getElementById('username').value.trim() || '';
       const isExtend = sessionData ? true : false;
       const topUpResp = await fetch('/api/vendo/topup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ voucher: username, ip: clientIp, mac: clientMac, type: isExtend ? 'E' : 'N' }) }).then(r => r.json()).catch(err => ({ success: false, error: err.message }));
-      if (!topUpResp.success || (topUpResp.data && topUpResp.data.status !== 'success')) {
+      if (!topUpResp.success) {
         closeCoinModal();
-        showError('Insert Coin: ' + (topUpResp.error || topUpResp.data?.errorCode || 'Vendo unreachable'));
+        showError('Insert Coin: ' + (topUpResp.error || 'Vendo unreachable'));
         return;
       }
       activeVoucher = topUpResp.data.voucher || username;
@@ -975,13 +975,13 @@
       const resp = await fetch('/api/vendo/check-coin?voucher=' + encodeURIComponent(activeVoucher)).then(r => r.json()).catch(() => null);
       if (!resp || !resp.success) { closeCoinModal(); showError('Insert Coin: Lost connection'); return; }
       const data = resp.data;
-      if (data.status === 'success') {
+      if (data.status === 'success' || data.status === 'true' || data.status === true) {
         document.getElementById('coin-total').textContent = parseInt(data.totalCoinReceived) || 0;
         if (data.totalTime) document.getElementById('coin-time').textContent = formatUptime(Math.floor((parseInt(data.totalTime) || 0) / 1000));
         document.getElementById('coin-timer').textContent = Math.ceil((parseInt(data.remainingTime) || 0) / 1000) + 's';
-      } else if (data.errorCode === 'coin.slot.timeout') {
+      } else if (data.errorCode === 'coin.slot.timeout' || data.errorCode === 'coins.wait.expired') {
         (parseInt(document.getElementById('coin-total').textContent) || 0) > 0 ? donePaying() : (closeCoinModal(), showError('Insert Coin: Timeout'));
-      } else if (data.errorCode === 'coin.slot.readingCoin') {
+      } else if (data.errorCode === 'coin.slot.readingCoin' || data.errorCode === 'coin.is.reading') {
         document.getElementById('coin-timer').textContent = '...';
       } else if (data.errorCode) { closeCoinModal(); showError('Insert Coin: ' + data.errorCode); }
     }
@@ -1152,6 +1152,25 @@
       if (!password) { showRegError('Password required'); return; }
       if (password.length < 3) { showRegError('Password must be at least 3 characters'); return; }
 
+      const btn = document.getElementById('reg-btn');
+      btn.disabled = true;
+      document.getElementById('reg-text').classList.add('hidden');
+      document.getElementById('reg-spinner').classList.remove('hidden');
+
+      const checkResp = await fetch('/api/hotspot/check-user', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username }),
+      }).then(r => r.json()).catch(() => ({ exists: false }));
+
+      btn.disabled = false;
+      document.getElementById('reg-text').classList.remove('hidden');
+      document.getElementById('reg-spinner').classList.add('hidden');
+
+      if (checkResp.exists) {
+        showRegError('Username already taken. Choose a different one.');
+        return;
+      }
+
       document.getElementById('username').value = username;
       document.getElementById('password').value = password;
 
@@ -1177,22 +1196,22 @@
         body: JSON.stringify({ voucher: username, ip: clientIp, mac: clientMac, type: 'N' }),
       }).then(r => r.json()).catch(err => ({ success: false, error: err.message }));
 
-      if (!topUpResp.success || (topUpResp.data && topUpResp.data.status !== 'success')) {
+      if (!topUpResp.success) {
         closeCoinModal();
-        const rawErr = topUpResp.error || topUpResp.data?.errorCode || topUpResp.data?.message || '';
-        const errLower = String(rawErr).toLowerCase();
+        const rawErr = topUpResp.error || '';
+        const errLower = rawErr.toLowerCase();
         let friendlyMsg;
         if (errLower.includes('exist') || errLower.includes('already') || errLower.includes('duplicate')) {
           friendlyMsg = 'Username already taken. Choose a different one.';
-        } else if (errLower.includes('busy') || errLower.includes('coinslot.busy')) {
+        } else if (errLower.includes('busy')) {
           friendlyMsg = 'Vendo is busy. Please try again shortly.';
-        } else if (errLower.includes('banned') || errLower.includes('coin.slot.banned')) {
+        } else if (errLower.includes('banned')) {
           friendlyMsg = 'This device has been temporarily blocked.';
         } else if (errLower.includes('notavailable') || errLower.includes('not.available')) {
           friendlyMsg = 'Coin slot not available right now.';
-        } else if (errLower.includes('no.internet') || errLower.includes('nointernet')) {
+        } else if (errLower.includes('no.internet')) {
           friendlyMsg = 'No internet detected on vendo.';
-        } else if (!rawErr || errLower.includes('fetch') || errLower.includes('timeout') || errLower.includes('unreachable')) {
+        } else if (!rawErr || errLower.includes('cannot reach')) {
           friendlyMsg = 'Cannot reach vendo. Check if it is powered on.';
         } else {
           friendlyMsg = rawErr;
