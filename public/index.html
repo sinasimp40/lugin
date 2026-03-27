@@ -251,8 +251,6 @@
       sessionData = data;
       document.getElementById('login-panel').classList.add('hidden');
       document.getElementById('session-panel').classList.add('active');
-      document.body.style.background = 'transparent';
-      document.body.className = '';
 
       document.getElementById('session-username').textContent = data.username || 'User';
 
@@ -338,8 +336,6 @@
       countdownInterval = null;
       statusInterval = null;
 
-      document.body.className = 'auth-body';
-      document.body.style.background = '';
       document.getElementById('session-panel').classList.remove('active');
       document.getElementById('login-panel').classList.remove('hidden');
       document.getElementById('password').value = '';

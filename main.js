@@ -115,7 +115,7 @@ ipcMain.on('session-state', (event, state) => {
 
 function handleStateChange(state) {
   if (state === 'logged-in') {
-    setWindowsTaskbarHidden(false);
+    if (sessionWindow && !sessionWindow.isDestroyed()) return;
     showSessionWindow();
     setTimeout(() => {
       if (loginWindow && !loginWindow.isDestroyed()) {
@@ -126,6 +126,7 @@ function handleStateChange(state) {
     startPolling();
   } else if (state === 'logged-out') {
     stopPolling();
+    if (loginWindow && !loginWindow.isDestroyed()) return;
     showLoginWindow();
     setTimeout(() => {
       if (sessionWindow && !sessionWindow.isDestroyed()) {
