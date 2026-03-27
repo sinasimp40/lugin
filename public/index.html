@@ -673,6 +673,31 @@
 
 
         <div class="admin-section">
+          <h3>&#9670; Router Settings</h3>
+          <div class="form-group">
+            <label>// Router IP (e.g. 192.168.88.1)</label>
+            <input type="text" id="admin-router-ip" placeholder="192.168.88.1" />
+          </div>
+          <div class="form-group">
+            <label>// Router Username</label>
+            <input type="text" id="admin-router-user" placeholder="admin" />
+          </div>
+          <div class="form-group">
+            <label>// Router Password</label>
+            <input type="password" id="admin-router-password" placeholder="router password" />
+          </div>
+          <div class="form-group">
+            <label>// Hotspot Server Name</label>
+            <input type="text" id="admin-hotspot-server" placeholder="hs-bridge-pisonet-app" />
+          </div>
+          <div class="form-group">
+            <label>// Hotspot Profile</label>
+            <input type="text" id="admin-hotspot-profile" placeholder="denfi" />
+          </div>
+          <button class="btn-admin" onclick="saveRouterSettings()">Save Router Settings</button>
+        </div>
+
+        <div class="admin-section">
           <h3>&#9670; Change Admin Password</h3>
           <div class="form-group">
             <label>// Current Password</label>
@@ -951,6 +976,7 @@
     let coinSlotBusy = false;
     let coinRequestId = 0;
     let coinAbortController = null;
+    let activeCoinProof = '';
     async function openInsertCoin() {
       if (coinSlotBusy) return;
       coinSlotBusy = true;
@@ -975,6 +1001,7 @@
         return;
       }
       activeVoucher = topUpResp.data.voucher || username;
+      activeCoinProof = topUpResp.coinProof || '';
       document.getElementById('coin-voucher-display').innerHTML = 'Voucher: <span>' + activeVoucher + '</span>';
       if (coinCheckInterval) clearInterval(coinCheckInterval);
       coinCheckInterval = setInterval(checkCoin, 1000);
@@ -998,9 +1025,36 @@
       } else if (data.errorCode) { closeCoinModal(); showError('Insert Coin: ' + data.errorCode); }
     }
 
-    function closeCoinModal() { if (coinAbortController) { coinAbortController.abort(); coinAbortController = null; } if (coinCheckInterval) clearInterval(coinCheckInterval); coinCheckInterval = null; activeVoucher = ''; coinSlotBusy = false; document.getElementById('coin-modal').classList.remove('active'); }
-    async function cancelCoin() { if (activeVoucher) await fetch('/api/vendo/cancel', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ voucher: activeVoucher }) }).catch(() => {}); closeCoinModal(); }
-    async function donePaying() { if (activeVoucher) await fetch('/api/vendo/use-voucher', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ voucher: activeVoucher }) }).catch(() => {}); closeCoinModal(); sessionData ? null : init(); }
+    function closeCoinModal() { if (coinAbortController) { coinAbortController.abort(); coinAbortController = null; } if (coinCheckInterval) clearInterval(coinCheckInterval); coinCheckInterval = null; activeVoucher = ''; activeCoinProof = ''; coinSlotBusy = false; document.getElementById('coin-modal').classList.remove('active'); }
+    async function cancelCoin() {
+      const v = activeVoucher;
+      closeCoinModal();
+      if (v) await fetch('/api/vendo/cancel', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ voucher: v }) }).catch(() => {});
+    }
+    async function donePaying() {
+      const v = activeVoucher;
+      const proof = activeCoinProof;
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value || username;
+      const isNewUser = !sessionData;
+      closeCoinModal();
+      if (v) {
+        await fetch('/api/vendo/cancel', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ voucher: v }) }).catch(() => {});
+      }
+      if (isNewUser && username) {
+        showError('Creating account...');
+        const createResp = await fetch('/api/router/create-user', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, coinProof: proof }),
+        }).then(r => r.json()).catch(err => ({ success: false, error: err.message }));
+        if (!createResp.success) {
+          showError('Account creation failed: ' + (createResp.error || 'Unknown error'));
+          return;
+        }
+        showError('Account created! You can now login.');
+      }
+      init();
+    }
 
     document.addEventListener('keydown', (e) => {
       if (document.getElementById('admin-modal').classList.contains('active')) return;
@@ -1075,6 +1129,11 @@
         document.getElementById('admin-computer-name').value = resp.settings.computerName || '';
         document.getElementById('admin-shutdown-time').value = resp.settings.autoShutdownSeconds > 0 ? Math.round(resp.settings.autoShutdownSeconds / 60) : 0;
         updateBgPreview(resp.settings.backgroundImage);
+        document.getElementById('admin-router-ip').value = resp.settings.routerIp || '';
+        document.getElementById('admin-router-user').value = resp.settings.routerUser || '';
+        document.getElementById('admin-router-password').value = resp.settings.routerPassword || '';
+        document.getElementById('admin-hotspot-server').value = resp.settings.hotspotServer || 'hs-bridge-pisonet-app';
+        document.getElementById('admin-hotspot-profile').value = resp.settings.hotspotProfile || 'denfi';
       }
     }
 
@@ -1095,6 +1154,19 @@
       const minutes = parseInt(document.getElementById('admin-shutdown-time').value) || 0;
       const resp = await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify({ autoShutdownSeconds: minutes * 60 }) }).then(r => r.json()).catch(() => ({ success: false }));
       if (resp.success) { showAdminMsg('admin-panel-msg', 'Saved', 'success'); applySettings(resp.settings); }
+      else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+    }
+
+    async function saveRouterSettings() {
+      const body = {
+        routerIp: document.getElementById('admin-router-ip').value.trim(),
+        routerUser: document.getElementById('admin-router-user').value.trim(),
+        routerPassword: document.getElementById('admin-router-password').value,
+        hotspotServer: document.getElementById('admin-hotspot-server').value.trim(),
+        hotspotProfile: document.getElementById('admin-hotspot-profile').value.trim(),
+      };
+      const resp = await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) showAdminMsg('admin-panel-msg', 'Router settings saved', 'success');
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
     }
 
@@ -1244,6 +1316,7 @@
       }
 
       activeVoucher = topUpResp.data.voucher || username;
+      activeCoinProof = topUpResp.coinProof || '';
       document.getElementById('coin-voucher-display').innerHTML = 'Voucher: <span>' + activeVoucher + '</span>';
       if (coinCheckInterval) clearInterval(coinCheckInterval);
       coinCheckInterval = setInterval(checkCoin, 1000);

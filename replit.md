@@ -81,17 +81,30 @@ A lightweight Electron desktop app for pisonet member login. Connects to a Mikro
 ## JuanFi Vendo API (NodeMCU at 10.0.0.5:8989)
 - `GET /topUp?voucher=X&ipAddress=Y&mac=Z&extendTime=0|1` — Start coin insertion (0=new, 1=extend)
 - `GET /checkCoin?voucher=X` — Poll coin status (every 1s); returns `status:"true"` with coin data or errorCode
-- `GET /useVoucher?voucher=X` — Activate voucher after payment (JuanFi creates MikroTik user)
-- `GET /cancelTopUp?voucher=X` — Cancel coin insertion
+- `GET /cancelTopUp?voucher=X` — Cancel/stop coin insertion
 - `GET /getRates` — Get rate table
 - Response format: `{ status: "true"|"false", voucher, errorCode, totalCoinReceived, totalTime, remainingTime }`
 - Error codes: `coins.wait.expired`, `coin.not.inserted`, `coinslot.cancelled`, `coinslot.busy`, `coin.slot.banned`, `coin.slot.notavailable`, `no.internet.detected`, `coin.is.reading`
+- **NOTE**: `/useVoucher` is NOT used — JuanFi creates users on wrong hotspot server. We use JuanFi only for coin collection, then create users ourselves via RouterOS REST API.
 
-## Username Pre-Check
-- `POST /api/hotspot/check-user` — Checks if a username exists on MikroTik by attempting a hotspot login (password=username, JuanFi default)
-- If login succeeds → user exists → immediately logouts → returns `{ exists: true }`
-- If login fails → user likely doesn't exist → returns `{ exists: false }`
-- Called before triggering coin slot during registration to prevent wasting coins on duplicate usernames
+## Registration Flow (Coin → RouterOS User Creation)
+1. `POST /api/hotspot/check-user` — Pre-check if username exists (login probe); blocks if hotspot unreachable
+2. User inserts coins via JuanFi vendo (`/topUp` → `/checkCoin` polling)
+3. When Done clicked: `/cancelTopUp` to stop vendo, then `POST /api/router/create-user` creates MikroTik user via RouterOS REST API
+4. User is created with correct server (`hs-bridge-pisonet-app`), profile (`denfi`), and password
+
+## RouterOS REST API Integration
+- `POST /api/router/create-user` — Creates/updates MikroTik hotspot user via REST API at `http://{routerIp}/rest/ip/hotspot/user`
+- Uses admin-configured router credentials (IP, username, password)
+- Sets hotspot server name and profile from admin settings
+- If user exists, patches server/profile/password; if new, creates with all correct fields
+- Router credentials stored in settings, never exposed to public endpoints
+
+## Admin Panel Settings
+- Router IP, Username, Password — for RouterOS REST API access
+- Hotspot Server Name — default `hs-bridge-pisonet-app`
+- Hotspot Profile — default `denfi`
+- Computer Name, Auto Shutdown Timer, Background Image
 
 ## Legacy Code (unused)
 - `renderer/` — Old Electron renderer files, replaced by `public/` + `preload.js`

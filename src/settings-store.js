@@ -81,6 +81,20 @@ function getSettings() {
     computerName: s.computerName !== undefined ? s.computerName : 'COMPUTER SHOP',
     autoShutdownSeconds: s.autoShutdownSeconds !== undefined ? s.autoShutdownSeconds : 180,
     backgroundImage: s.backgroundImage || null,
+    routerIp: s.routerIp || '',
+    routerUser: s.routerUser || '',
+    routerPassword: s.routerPassword || '',
+    hotspotServer: s.hotspotServer || 'hs-bridge-pisonet-app',
+    hotspotProfile: s.hotspotProfile || 'denfi',
+  };
+}
+
+function getPublicSettings() {
+  const s = getSettings();
+  return {
+    computerName: s.computerName,
+    autoShutdownSeconds: s.autoShutdownSeconds,
+    backgroundImage: s.backgroundImage,
   };
 }
 
@@ -89,6 +103,11 @@ function updateSettings(updates) {
   if (updates.computerName !== undefined) s.computerName = updates.computerName;
   if (updates.autoShutdownSeconds !== undefined) s.autoShutdownSeconds = parseInt(updates.autoShutdownSeconds) || 0;
   if (updates.backgroundImage !== undefined) s.backgroundImage = updates.backgroundImage;
+  if (updates.routerIp !== undefined) s.routerIp = updates.routerIp;
+  if (updates.routerUser !== undefined) s.routerUser = updates.routerUser;
+  if (updates.routerPassword !== undefined) s.routerPassword = updates.routerPassword;
+  if (updates.hotspotServer !== undefined) s.hotspotServer = updates.hotspotServer;
+  if (updates.hotspotProfile !== undefined) s.hotspotProfile = updates.hotspotProfile;
   save(s);
   return getSettings();
 }
@@ -143,6 +162,7 @@ module.exports = {
   verifyAdmin,
   changeAdminPassword,
   getSettings,
+  getPublicSettings,
   updateSettings,
   saveBackgroundImage,
   removeBackgroundImage,
