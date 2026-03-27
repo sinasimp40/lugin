@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vendo API Tester</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a1a; color: #00ffcc; font-family: 'Courier New', monospace; padding: 20px; }
+h1 { text-align: center; margin-bottom: 20px; color: #00ffcc; text-shadow: 0 0 10px #00ffcc; }
+.container { max-width: 900px; margin: 0 auto; }
+.section { background: #111; border: 1px solid #00ffcc33; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+.section h2 { color: #ff6600; margin-bottom: 12px; font-size: 14px; }
+.quick-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.quick-btns button { background: #1a1a2e; border: 1px solid #00ffcc55; color: #00ffcc; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 12px; }
+.quick-btns button:hover { background: #00ffcc22; }
+.quick-btns button.active { background: #00ffcc33; border-color: #00ffcc; }
+.row { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
+.row label { width: 80px; font-size: 12px; color: #888; flex-shrink: 0; }
+.row input, .row select { flex: 1; background: #0a0a1a; border: 1px solid #333; color: #fff; padding: 8px; border-radius: 4px; font-family: inherit; font-size: 13px; }
+.row select { max-width: 100px; }
+textarea { width: 100%; background: #0a0a1a; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 4px; font-family: inherit; font-size: 12px; min-height: 80px; resize: vertical; }
+#sendBtn { background: #00ffcc; color: #000; border: none; padding: 10px 30px; border-radius: 4px; cursor: pointer; font-family: inherit; font-weight: bold; font-size: 14px; margin-top: 8px; }
+#sendBtn:hover { background: #00ddaa; }
+#sendBtn:disabled { opacity: 0.5; }
+.response { margin-top: 12px; }
+.response .status { font-size: 14px; margin-bottom: 8px; }
+.response .status.ok { color: #00ff88; }
+.response .status.err { color: #ff4444; }
+#responseBody { width: 100%; background: #050510; border: 1px solid #222; color: #ccc; padding: 10px; border-radius: 4px; font-family: inherit; font-size: 12px; min-height: 200px; white-space: pre-wrap; word-break: break-all; }
+.info { color: #666; font-size: 11px; margin-top: 4px; }
+.params { margin-top: 8px; }
+.params .row { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>VENDO API TESTER</h1>
+  <div class="section">
+    <h2>QUICK ENDPOINTS (click to load)</h2>
+    <div class="quick-btns">
+      <button onclick="loadPreset('logout')">POST /pisonet/logout</button>
+      <button onclick="loadPreset('done')">POST /pisonet/done</button>
+      <button onclick="loadPreset('avail')">POST /pisonet/avail</button>
+      <button onclick="loadPreset('extend')">POST /pisonet/extend</button>
+      <button onclick="loadPreset('register')">POST /pisonet/register</button>
+      <button onclick="loadPreset('member')">GET /pisonet/member</button>
+      <button onclick="loadPreset('checkCoin')">GET /checkCoin</button>
+      <button onclick="loadPreset('status')">GET /status</button>
+      <button onclick="loadPreset('root')">GET /</button>
+      <button onclick="loadPreset('config')">GET /config</button>
+      <button onclick="loadPreset('topUp')">POST /topUp</button>
+      <button onclick="loadPreset('cancelTopUp')">POST /cancelTopUp</button>
+      <button onclick="loadPreset('convertVoucher')">POST /convertVoucher</button>
+      <button onclick="loadPreset('useVoucher')">POST /useVoucher</button>
+      <button onclick="loadPreset('pauseVoucher')">POST /pauseVoucher</button>
+      <button onclick="loadPreset('unpauseVoucher')">POST /unpauseVoucher</button>
+      <button onclick="loadPreset('removeUser')">POST /removeUser</button>
+      <button onclick="loadPreset('deleteUser')">POST /deleteUser</button>
+      <button onclick="loadPreset('stopTime')">POST /pisonet/stopTime</button>
+      <button onclick="loadPreset('disconnect')">POST /pisonet/disconnect</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>REQUEST</h2>
+    <div class="row">
+      <label>Method</label>
+      <select id="method">
+        <option value="GET">GET</option>
+        <option value="POST" selected>POST</option>
+      </select>
+      <label>Endpoint</label>
+      <input id="endpoint" placeholder="/pisonet/logout" value="/pisonet/logout">
+    </div>
+    <div class="params" id="paramsArea">
+      <div class="row">
+        <label>macAddress</label>
+        <input id="p_mac" placeholder="AA:BB:CC:DD:EE:FF">
+      </div>
+      <div class="row">
+        <label>ip</label>
+        <input id="p_ip" placeholder="10.0.0.x">
+      </div>
+      <div class="row">
+        <label>username</label>
+        <input id="p_user" placeholder="voucher code or mem-xxx">
+      </div>
+    </div>
+    <p class="info">Or edit raw JSON body below (overrides fields above if not empty):</p>
+    <textarea id="rawBody" placeholder='{"macAddress":"...","ip":"...","username":"..."}'></textarea>
+    <br>
+    <button id="sendBtn" onclick="sendRequest()">SEND REQUEST</button>
+  </div>
+
+  <div class="section">
+    <h2>RESPONSE</h2>
+    <div class="response">
+      <div class="status" id="statusLine">Waiting...</div>
+      <div id="responseBody"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>LOG (all requests)</h2>
+    <div id="logArea" style="max-height: 300px; overflow-y: auto; font-size: 11px; color: #888;"></div>
+  </div>
+</div>
+
+<script>
+const presets = {
+  logout:    { method: 'POST', endpoint: '/pisonet/logout', body: { macAddress: '', ip: '', username: '' } },
+  done:      { method: 'POST', endpoint: '/pisonet/done', body: { macAddress: '', ip: '' } },
+  avail:     { method: 'POST', endpoint: '/pisonet/avail', body: { macAddress: '', ip: '' } },
+  extend:    { method: 'POST', endpoint: '/pisonet/extend', body: { macAddress: '', ip: '', username: '' } },
+  register:  { method: 'POST', endpoint: '/pisonet/register', body: { macAddress: '', ip: '', username: '', password: '' } },
+  member:    { method: 'GET', endpoint: '/pisonet/member?username=mem-test' },
+  checkCoin: { method: 'GET', endpoint: '/checkCoin?voucher=test' },
+  status:    { method: 'GET', endpoint: '/status' },
+  root:      { method: 'GET', endpoint: '/' },
+  config:    { method: 'GET', endpoint: '/config' },
+  topUp:     { method: 'POST', endpoint: '/topUp', body: { macAddress: '', ip: '', username: '' } },
+  cancelTopUp: { method: 'POST', endpoint: '/cancelTopUp', body: { macAddress: '', ip: '' } },
+  convertVoucher: { method: 'POST', endpoint: '/convertVoucher', body: { macAddress: '', ip: '', username: '' } },
+  useVoucher: { method: 'POST', endpoint: '/useVoucher', body: { macAddress: '', ip: '', username: '' } },
+  pauseVoucher: { method: 'POST', endpoint: '/pauseVoucher', body: { macAddress: '', ip: '', username: '' } },
+  unpauseVoucher: { method: 'POST', endpoint: '/unpauseVoucher', body: { macAddress: '', ip: '', username: '' } },
+  removeUser: { method: 'POST', endpoint: '/removeUser', body: { macAddress: '', ip: '', username: '' } },
+  deleteUser: { method: 'POST', endpoint: '/deleteUser', body: { macAddress: '', ip: '', username: '' } },
+  stopTime:  { method: 'POST', endpoint: '/pisonet/stopTime', body: { macAddress: '', ip: '', username: '' } },
+  disconnect: { method: 'POST', endpoint: '/pisonet/disconnect', body: { macAddress: '', ip: '', username: '' } },
+};
+
+function loadPreset(name) {
+  const p = presets[name];
+  if (!p) return;
+  document.getElementById('method').value = p.method;
+  document.getElementById('endpoint').value = p.endpoint;
+  const mac = document.getElementById('p_mac').value;
+  const ip = document.getElementById('p_ip').value;
+  const user = document.getElementById('p_user').value;
+  if (p.body) {
+    const b = { ...p.body };
+    if (b.macAddress !== undefined && mac) b.macAddress = mac;
+    if (b.ip !== undefined && ip) b.ip = ip;
+    if (b.username !== undefined && user) b.username = user;
+    document.getElementById('rawBody').value = JSON.stringify(b, null, 2);
+  } else {
+    document.getElementById('rawBody').value = '';
+  }
+  document.querySelectorAll('.quick-btns button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+async function sendRequest() {
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  btn.textContent = 'SENDING...';
+
+  const method = document.getElementById('method').value;
+  const endpoint = document.getElementById('endpoint').value;
+  const rawBody = document.getElementById('rawBody').value.trim();
+
+  let body = null;
+  if (method !== 'GET') {
+    if (rawBody) {
+      try { body = JSON.parse(rawBody); }
+      catch (e) { body = rawBody; }
+    } else {
+      body = {};
+      const mac = document.getElementById('p_mac').value;
+      const ip = document.getElementById('p_ip').value;
+      const user = document.getElementById('p_user').value;
+      if (mac) body.macAddress = mac;
+      if (ip) body.ip = ip;
+      if (user) body.username = user;
+    }
+  }
+
+  const statusEl = document.getElementById('statusLine');
+  const bodyEl = document.getElementById('responseBody');
+  const logEl = document.getElementById('logArea');
+  const ts = new Date().toLocaleTimeString();
+
+  try {
+    const resp = await fetch('/api/vendo/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ method, endpoint, body })
+    });
+    const data = await resp.json();
+
+    statusEl.textContent = `HTTP ${data.status}${data.error ? ' - ERROR: ' + data.error : ''}`;
+    statusEl.className = 'status ' + (data.status >= 200 && data.status < 300 ? 'ok' : 'err');
+
+    let formatted = data.body || data.error || 'No response body';
+    try {
+      const parsed = JSON.parse(formatted);
+      formatted = JSON.stringify(parsed, null, 2);
+    } catch (_) {}
+    bodyEl.textContent = formatted;
+
+    logEl.innerHTML = `<div style="border-bottom:1px solid #222;padding:4px 0;"><span style="color:#555">[${ts}]</span> <span style="color:#ff6600">${method}</span> <span style="color:#00ffcc">${endpoint}</span> → <span style="${data.status >= 200 && data.status < 300 ? 'color:#00ff88' : 'color:#ff4444'}">HTTP ${data.status}</span><br><span style="color:#666">${(formatted||'').substring(0,200)}</span></div>` + logEl.innerHTML;
+
+  } catch (err) {
+    statusEl.textContent = 'FETCH ERROR: ' + err.message;
+    statusEl.className = 'status err';
+    bodyEl.textContent = err.stack || err.message;
+    logEl.innerHTML = `<div style="border-bottom:1px solid #222;padding:4px 0;"><span style="color:#555">[${ts}]</span> <span style="color:#ff4444">ERROR: ${err.message}</span></div>` + logEl.innerHTML;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'SEND REQUEST';
+}
+</script>
+</body>
+</html>

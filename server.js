@@ -459,6 +459,27 @@ app.post('/api/pisonet/register', async (req, res) => {
   }
 });
 
+app.post('/api/vendo/test', async (req, res) => {
+  const { method, endpoint, body } = req.body;
+  try {
+    const url = `http://${VENDO_IP}${endpoint}`;
+    console.log(`[VendoTest] ${method} ${url}`, body ? JSON.stringify(body) : '');
+    const opts = {
+      method: method || 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(8000),
+    };
+    if (body && method !== 'GET') opts.body = JSON.stringify(body);
+    const resp = await fetch(url, opts);
+    const text = await resp.text();
+    console.log(`[VendoTest] response ${resp.status}:`, text.substring(0, 2000));
+    res.json({ status: resp.status, headers: Object.fromEntries(resp.headers), body: text });
+  } catch (err) {
+    console.log('[VendoTest] error:', err.message);
+    res.json({ status: 0, error: err.message });
+  }
+});
+
 app.post('/api/pisonet/logout', async (req, res) => {
   const { ip, mac, username } = req.body;
   try {
