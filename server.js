@@ -478,9 +478,14 @@ app.get('/api/vendo/check-coin', async (req, res) => {
 });
 
 app.get('/api/vendo/topup', async (req, res) => {
-  const { mac } = req.query;
+  const { voucher, ip, mac, extendTime } = req.query;
   try {
-    const url = `http://${VENDO_IP}/topUp?macAddress=${encodeURIComponent(mac || '')}`;
+    const params = new URLSearchParams();
+    params.set('voucher', voucher || '');
+    params.set('ipAddress', ip || '');
+    params.set('mac', mac || '');
+    params.set('extendTime', extendTime || '0');
+    const url = `http://${VENDO_IP}/topUp?${params.toString()}`;
     console.log('[Vendo] topUp:', url);
     const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const text = await resp.text();
@@ -504,10 +509,27 @@ app.get('/api/vendo/use-voucher', async (req, res) => {
     console.log('[Vendo] useVoucher response:', resp.status, text);
     let data;
     try { data = JSON.parse(text); } catch (_) { data = text; }
-    res.json({ success: resp.ok, data });
+    res.json({ success: true, data });
   } catch (err) {
     console.log('[Vendo] useVoucher error:', err.message);
     res.json({ success: false, error: 'Cannot reach vendo: ' + err.message });
+  }
+});
+
+app.get('/api/vendo/cancel-topup', async (req, res) => {
+  const { voucher, mac } = req.query;
+  try {
+    const url = `http://${VENDO_IP}/cancelTopUp?voucher=${encodeURIComponent(voucher || '')}&mac=${encodeURIComponent(mac || '')}`;
+    console.log('[Vendo] cancelTopUp:', url);
+    const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const text = await resp.text();
+    console.log('[Vendo] cancelTopUp response:', resp.status, text);
+    let data;
+    try { data = JSON.parse(text); } catch (_) { data = text; }
+    res.json({ success: true, data });
+  } catch (err) {
+    console.log('[Vendo] cancelTopUp error:', err.message);
+    res.json({ success: false, error: err.message });
   }
 });
 
