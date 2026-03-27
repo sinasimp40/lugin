@@ -63,6 +63,17 @@ User physically inserts coins at the kiosk. The kiosk generates & activates a vo
 The app background-polls `/api/hotspot/login-data` every 3s on the login screen.
 When `isLogin: true` is detected → auto-shows the session (auto-connect).
 
+### Logout Flow
+1. Calls MikroTik `logoutLink` to terminate hotspot session
+2. Calls `POST /pisonet/done` to signal vendo the session is ending
+3. Waits 5 seconds before re-polling (prevents re-detecting stale session)
+
+### Member Registration
+1. Pre-check: `POST /api/pisonet/check-member` queries vendo `/pisonet/member?username=X`
+2. If exists → show error, switch to Login tab, pre-fill username
+3. If not → `POST /api/pisonet/register` with username, password, ip, mac
+4. Duplicate detection also checks register response for "exist"/"already"/"duplicate"/"registered" keywords
+
 ### Common Polling (Both Modes)
 - `status == "true"` → coin received → update UI
 - `errorCode == "coin.is.reading"` → show "Reading..."

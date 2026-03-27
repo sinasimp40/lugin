@@ -382,6 +382,31 @@ app.post('/api/hotspot/check-user', async (req, res) => {
   }
 });
 
+app.post('/api/pisonet/check-member', async (req, res) => {
+  const { username } = req.body;
+  if (!username) return res.json({ exists: false, error: 'Username required' });
+  try {
+    const url = `http://${VENDO_IP}/pisonet/member?username=${encodeURIComponent(username)}`;
+    console.log('[Pisonet] check-member:', url);
+    const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const text = await resp.text();
+    console.log('[Pisonet] check-member response:', resp.status, text);
+    let data;
+    try { data = JSON.parse(text); } catch (_) { data = text; }
+    if (resp.ok && data && typeof data === 'object') {
+      const hasUser = data.username || data.name || data.member;
+      res.json({ exists: !!hasUser, data });
+    } else if (resp.status === 404) {
+      res.json({ exists: false });
+    } else {
+      res.json({ exists: false, checkFailed: true, raw: text });
+    }
+  } catch (err) {
+    console.log('[Pisonet] check-member error:', err.message);
+    res.json({ exists: false, checkFailed: true, error: 'Cannot reach vendo: ' + err.message });
+  }
+});
+
 app.post('/api/pisonet/register', async (req, res) => {
   const { username, password, ip, mac } = req.body;
   if (!username) return res.json({ success: false, error: 'Username required' });
@@ -396,11 +421,13 @@ app.post('/api/pisonet/register', async (req, res) => {
       signal: AbortSignal.timeout(5000),
     });
     const text = await resp.text();
-    console.log('[Pisonet] register response:', resp.status, text);
+    console.log('[Pisonet] register response:', resp.status, text.substring(0, 500));
     let data;
     try { data = JSON.parse(text); } catch (_) { data = text; }
     if (!resp.ok) {
-      const errMsg = (typeof data === 'object' && data !== null) ? (data.message || data.error || data.errorCode || JSON.stringify(data)) : (text || 'Registration failed');
+      const fullText = (typeof data === 'object' && data !== null) ? JSON.stringify(data) : text;
+      const errMsg = (typeof data === 'object' && data !== null) ? (data.message || data.error || data.errorCode || data.status || JSON.stringify(data)) : (text || 'Registration failed');
+      console.log('[Pisonet] register FAILED - full data:', fullText);
       res.json({ success: false, error: errMsg, data });
     } else {
       res.json({ success: true, data });

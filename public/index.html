@@ -958,7 +958,10 @@
 
     async function doLogout() {
       const link = sessionData?.logoutLink;
+      const ip = sessionData?.ip || loginData?.ip || '';
+      const mac = sessionData?.mac || loginData?.mac || '';
       if (link) await fetch('/api/hotspot/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logoutLink: link }) }).catch(() => {});
+      if (ip || mac) await fetch('/api/pisonet/done', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ip, mac }) }).catch(() => {});
       showLoggedOut();
     }
 
@@ -967,6 +970,7 @@
       if (statusInterval) clearInterval(statusInterval);
       countdownInterval = null; statusInterval = null;
       disconnectSessionWs();
+      stopLoginPolling();
       document.getElementById('session-panel').classList.remove('active');
       document.getElementById('login-panel').classList.remove('hidden');
       document.getElementById('password').value = '';
@@ -977,7 +981,7 @@
       notifyElectron('logged-out');
       connectSettingsWs();
       if (appSettings.autoShutdownSeconds > 0) updateShutdownConfig(appSettings.autoShutdownSeconds);
-      setTimeout(() => init(), 500);
+      setTimeout(() => init(), 5000);
     }
 
     let coinSlotBusy = false;
@@ -1406,6 +1410,21 @@
 
       const fullUsername = 'mem-' + username.toLowerCase();
 
+      const checkResp = await fetch('/api/pisonet/check-member', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: fullUsername }),
+      }).then(r => r.json()).catch(() => ({ exists: false, checkFailed: true }));
+
+      if (checkResp.exists) {
+        btn.disabled = false;
+        document.getElementById('reg-text').classList.remove('hidden');
+        document.getElementById('reg-spinner').classList.add('hidden');
+        showRegError('Username "' + fullUsername + '" already exists. Use Login instead.');
+        document.getElementById('tab-login').click();
+        document.getElementById('username').value = fullUsername;
+        return;
+      }
+
       const regResp = await fetch('/api/pisonet/register', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: fullUsername, password, ip: clientIp, mac: clientMac }),
@@ -1418,13 +1437,18 @@
       if (!regResp.success) {
         const rawErr = regResp.error || '';
         const errLower = rawErr.toLowerCase();
-        if (errLower.includes('exist') || errLower.includes('already') || errLower.includes('duplicate') || errLower.includes('registered')) {
-          showRegError('Member already registered. Use Login instead.');
+        const rawData = JSON.stringify(regResp.data || '').toLowerCase();
+        if (errLower.includes('exist') || errLower.includes('already') || errLower.includes('duplicate') || errLower.includes('registered')
+            || rawData.includes('exist') || rawData.includes('already') || rawData.includes('duplicate') || rawData.includes('registered')) {
+          showRegError('Username "' + fullUsername + '" already exists. Use Login instead.');
+          document.getElementById('tab-login').click();
+          document.getElementById('username').value = fullUsername;
         } else if (errLower.includes('cannot reach')) {
           showRegError('Cannot reach vendo. Check if it is powered on.');
         } else {
           showRegError(rawErr || 'Registration failed');
         }
+        console.log('[Register] Failed:', JSON.stringify(regResp));
         return;
       }
 
