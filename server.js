@@ -461,67 +461,23 @@ app.post('/api/pisonet/register', async (req, res) => {
 
 app.post('/api/pisonet/logout', async (req, res) => {
   const { ip, mac, username } = req.body;
-  const isMember = username && username.startsWith('mem-');
-
-  if (isMember) {
-    try {
-      const url = `http://${VENDO_IP}/pisonet/logout`;
-      const body = { macAddress: mac || '', ip: ip || '', username: username || '' };
-      console.log('[Pisonet] member logout:', url, JSON.stringify(body));
-      const resp = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(5000),
-      });
-      const text = await resp.text();
-      console.log('[Pisonet] member logout response:', resp.status, text);
-      try { res.json({ success: true, data: JSON.parse(text) }); }
-      catch (_) { res.json({ success: true, data: text }); }
-    } catch (err) {
-      console.log('[Pisonet] member logout error:', err.message);
-      res.json({ success: false, error: err.message });
-    }
-  } else {
-    try {
-      const cleanMac = (mac || '').replace(/:/g, '');
-      console.log('[Pisonet] voucher logout - username:', username, 'ip:', ip, 'mac:', mac, 'cleanMac:', cleanMac);
-
-      const logoutBody = { macAddress: mac || '', ip: ip || '', username: username || '' };
-      try {
-        const logoutUrl = `http://${VENDO_IP}/pisonet/logout`;
-        const logoutResp = await fetch(logoutUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(logoutBody),
-          signal: AbortSignal.timeout(5000),
-        });
-        const logoutText = await logoutResp.text();
-        console.log('[Pisonet] voucher /pisonet/logout response:', logoutResp.status, logoutText);
-      } catch (err) {
-        console.log('[Pisonet] voucher /pisonet/logout error:', err.message);
-      }
-
-      const doneBody = { macAddress: mac || '', ip: ip || '' };
-      try {
-        const doneUrl = `http://${VENDO_IP}/pisonet/done`;
-        const doneResp = await fetch(doneUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(doneBody),
-          signal: AbortSignal.timeout(5000),
-        });
-        const doneText = await doneResp.text();
-        console.log('[Pisonet] voucher /pisonet/done response:', doneResp.status, doneText);
-      } catch (err) {
-        console.log('[Pisonet] voucher /pisonet/done error:', err.message);
-      }
-
-      res.json({ success: true });
-    } catch (err) {
-      console.log('[Pisonet] voucher logout error:', err.message);
-      res.json({ success: false, error: err.message });
-    }
+  try {
+    const url = `http://${VENDO_IP}/pisonet/logout`;
+    const body = { macAddress: mac || '', ip: ip || '', username: username || '' };
+    console.log('[Pisonet] logout:', url, JSON.stringify(body));
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(5000),
+    });
+    const text = await resp.text();
+    console.log('[Pisonet] logout response:', resp.status, text);
+    try { res.json({ success: true, data: JSON.parse(text) }); }
+    catch (_) { res.json({ success: true, data: text }); }
+  } catch (err) {
+    console.log('[Pisonet] logout error:', err.message);
+    res.json({ success: false, error: err.message });
   }
 });
 
