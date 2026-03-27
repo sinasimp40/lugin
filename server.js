@@ -382,30 +382,80 @@ app.post('/api/hotspot/check-user', async (req, res) => {
   }
 });
 
-app.post('/api/vendo/topup', async (req, res) => {
-  const { voucher, ip, mac, type } = req.body;
+app.post('/api/pisonet/register', async (req, res) => {
+  const { username, password, ip, mac } = req.body;
+  if (!username) return res.json({ success: false, error: 'Username required' });
   try {
-    const cfg = settings.getSettings();
-    const interfaceName = cfg.hotspotInterface || 'bridge-pisonet-app';
-    const extendTime = type === 'E' ? '1' : '0';
-    const url = `http://${VENDO_IP}/topUp?voucher=${encodeURIComponent(voucher || '')}&ipAddress=${encodeURIComponent(ip || '')}&mac=${encodeURIComponent(mac || '')}&extendTime=${extendTime}&interfaceName=${encodeURIComponent(interfaceName)}`;
-    console.log('[Vendo] topUp:', url);
-    const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const url = `http://${VENDO_IP}/pisonet/register`;
+    const body = { macAddress: mac || '', ip: ip || '', username, password: password || username };
+    console.log('[Pisonet] register:', url, JSON.stringify(body));
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(5000),
+    });
     const text = await resp.text();
-    console.log('[Vendo] topUp response:', text);
+    console.log('[Pisonet] register response:', resp.status, text);
     try {
       const data = JSON.parse(text);
-      const vendoOk = data.status === 'true' || data.status === true || data.status === 'success';
-      if (vendoOk) {
-        res.json({ success: true, data });
-      } else {
-        res.json({ success: false, error: data.errorCode || data.message || 'Vendo rejected request', data });
-      }
+      res.json({ success: resp.ok, data });
     } catch (_) {
-      res.json({ success: true, data: text });
+      res.json({ success: resp.ok, data: text });
     }
   } catch (err) {
-    res.json({ success: false, error: `Cannot reach vendo: ${err.message}` });
+    console.log('[Pisonet] register error:', err.message);
+    res.json({ success: false, error: 'Cannot reach vendo: ' + err.message });
+  }
+});
+
+app.post('/api/pisonet/avail', async (req, res) => {
+  const { ip, mac } = req.body;
+  try {
+    const url = `http://${VENDO_IP}/pisonet/avail`;
+    const body = { macAddress: mac || '', ip: ip || '' };
+    console.log('[Pisonet] avail:', url, JSON.stringify(body));
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(5000),
+    });
+    const text = await resp.text();
+    console.log('[Pisonet] avail response:', resp.status, text);
+    try {
+      res.json({ success: resp.ok, data: JSON.parse(text) });
+    } catch (_) {
+      res.json({ success: resp.ok, data: text });
+    }
+  } catch (err) {
+    console.log('[Pisonet] avail error:', err.message);
+    res.json({ success: false, error: 'Cannot reach vendo: ' + err.message });
+  }
+});
+
+app.post('/api/pisonet/done', async (req, res) => {
+  const { ip, mac } = req.body;
+  try {
+    const url = `http://${VENDO_IP}/pisonet/done`;
+    const body = { macAddress: mac || '', ip: ip || '' };
+    console.log('[Pisonet] done:', url, JSON.stringify(body));
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(5000),
+    });
+    const text = await resp.text();
+    console.log('[Pisonet] done response:', resp.status, text);
+    try {
+      res.json({ success: resp.ok, data: JSON.parse(text) });
+    } catch (_) {
+      res.json({ success: resp.ok, data: text });
+    }
+  } catch (err) {
+    console.log('[Pisonet] done error:', err.message);
+    res.json({ success: false, error: 'Cannot reach vendo: ' + err.message });
   }
 });
 
@@ -425,32 +475,6 @@ app.get('/api/vendo/check-coin', async (req, res) => {
   }
 });
 
-app.post('/api/vendo/use-voucher', async (req, res) => {
-  const { voucher } = req.body;
-  try {
-    const url = `http://${VENDO_IP}/useVoucher?voucher=${encodeURIComponent(voucher || '')}`;
-    console.log('[Vendo] useVoucher:', url);
-    const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
-    const text = await resp.text();
-    console.log('[Vendo] useVoucher response:', text);
-    res.json({ success: true, data: text });
-  } catch (err) {
-    res.json({ success: false, error: err.message });
-  }
-});
-
-app.post('/api/vendo/cancel', async (req, res) => {
-  const { voucher } = req.body;
-  try {
-    const url = `http://${VENDO_IP}/cancelTopUp?voucher=${encodeURIComponent(voucher || '')}`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
-    const text = await resp.text();
-    res.json({ success: true, data: text });
-  } catch (err) {
-    res.json({ success: false, error: err.message });
-  }
-});
-
 app.get('/api/vendo/rates', async (req, res) => {
   try {
     const resp = await fetch(`http://${VENDO_IP}/getRates`, { signal: AbortSignal.timeout(5000) });
@@ -461,104 +485,6 @@ app.get('/api/vendo/rates', async (req, res) => {
       res.json({ success: true, data: text });
     }
   } catch (err) {
-    res.json({ success: false, error: err.message });
-  }
-});
-
-let juanfiAdminToken = null;
-let juanfiTokenExpiry = 0;
-
-async function getJuanfiToken() {
-  const cfg = settings.getSettings();
-  if (!cfg.juanfiAdminPass) throw new Error('JuanFi admin password not configured. Set it in Admin Panel.');
-  if (juanfiAdminToken && Date.now() < juanfiTokenExpiry) return juanfiAdminToken;
-
-  const loginUrl = `http://${VENDO_IP}/admin/api/login`;
-  console.log('[JuanFi] Logging in to admin:', loginUrl);
-  const resp = await fetch(loginUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: cfg.juanfiAdminUser || 'admin', password: cfg.juanfiAdminPass }),
-    signal: AbortSignal.timeout(5000),
-  });
-  const data = await resp.json();
-  if (!resp.ok || !data.token) throw new Error('JuanFi admin login failed: ' + (data.message || data.error || resp.status));
-  juanfiAdminToken = data.token;
-  juanfiTokenExpiry = Date.now() + 3500000;
-  console.log('[JuanFi] Admin login OK, token acquired');
-  return juanfiAdminToken;
-}
-
-const pisonetProofTokens = new Map();
-function issuePisonetProof(username, totalCoins) {
-  const token = crypto.randomBytes(16).toString('hex');
-  pisonetProofTokens.set(token, { username, totalCoins, issued: Date.now() });
-  for (const [k, v] of pisonetProofTokens) {
-    if (Date.now() - v.issued > 120000) pisonetProofTokens.delete(k);
-  }
-  return token;
-}
-
-app.post('/api/pisonet/confirm-payment', async (req, res) => {
-  const { voucher, username } = req.body;
-  if (!voucher || !username) return res.json({ success: false, error: 'Missing params' });
-  try {
-    const url = `http://${VENDO_IP}/checkCoin?voucher=${encodeURIComponent(voucher)}`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
-    const data = JSON.parse(await resp.text());
-    const coins = parseInt(data.totalCoinReceived) || 0;
-    if (coins <= 0) return res.json({ success: false, error: 'No coins detected' });
-    const totalTime = parseInt(data.totalTime) || 0;
-    const minutes = Math.floor(totalTime / 60000);
-    const token = issuePisonetProof(username, coins);
-    console.log('[Pisonet] Payment confirmed: user=%s coins=%d minutes=%d', username, coins, minutes);
-    res.json({ success: true, paymentProof: token, coins, minutes });
-  } catch (err) {
-    res.json({ success: false, error: 'Cannot verify payment: ' + err.message });
-  }
-});
-
-app.post('/api/pisonet/add-time', async (req, res) => {
-  const { username, mac, minutes, paymentProof } = req.body;
-  if (!username) return res.json({ success: false, error: 'Username required' });
-  if (!paymentProof) return res.json({ success: false, error: 'Payment proof required' });
-  const proof = pisonetProofTokens.get(paymentProof);
-  if (!proof || proof.username !== username || Date.now() - proof.issued > 120000) {
-    return res.json({ success: false, error: 'Invalid or expired payment proof' });
-  }
-  pisonetProofTokens.delete(paymentProof);
-  try {
-    const cfg = settings.getSettings();
-    const token = await getJuanfiToken();
-    const addTimeUrl = `http://${VENDO_IP}/admin/api/pisonet/unit/addTime`;
-    const body = {
-      username: username,
-      mac: mac || '',
-      minutes: minutes || 0,
-      unit: cfg.pisonetUnitName || 'PC 1',
-    };
-    console.log('[JuanFi] addTime:', addTimeUrl, JSON.stringify(body));
-    const resp = await fetch(addTimeUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(5000),
-    });
-    const text = await resp.text();
-    console.log('[JuanFi] addTime response:', resp.status, text);
-    try {
-      const data = JSON.parse(text);
-      if (resp.ok) {
-        res.json({ success: true, data });
-      } else {
-        if (resp.status === 401) { juanfiAdminToken = null; juanfiTokenExpiry = 0; }
-        res.json({ success: false, error: data.message || data.error || 'addTime failed', data });
-      }
-    } catch (_) {
-      res.json({ success: resp.ok, data: text });
-    }
-  } catch (err) {
-    console.log('[JuanFi] addTime error:', err.message);
     res.json({ success: false, error: err.message });
   }
 });

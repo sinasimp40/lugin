@@ -14,31 +14,53 @@ A lightweight Electron desktop app for pisonet member login. Connects to a Mikro
 
 ## Architecture
 - **main.js** — Electron main process; single instance lock, manages login window (fullscreen, frameless, skipTaskbar) and session window (260x80, bottom-right); blocks Alt+Tab/Alt+F4/Win keys in login view only; auto-logout on quit; IPC for shutdown
-- **server.js** — Express server + WebSocket server; proxies requests to `pisonet.app` hotspot (avoids CORS), handles CHAP hashing, proxies vendo API calls, JuanFi pisonet admin API integration, broadcasts session status via WebSocket; admin API endpoints
-- **src/settings-store.js** — JSON file settings storage in `./data/`; scrypt password hashing; manages computer name, auto-shutdown timer, background image metadata, JuanFi pisonet config
+- **server.js** — Express server + WebSocket server; proxies requests to `pisonet.app` hotspot (avoids CORS), handles CHAP hashing, JuanFi pisonet API proxy (register/avail/done), broadcasts session status via WebSocket; admin API endpoints
+- **src/settings-store.js** — JSON file settings storage in `./data/`; scrypt password hashing; manages computer name, auto-shutdown timer, background image metadata, pisonet unit name
 - **public/index.html** — Login UI + session view + insert coin modal + admin modal (single page); scramble text computer name, auto-shutdown countdown, secret "zxc1" admin trigger
 - **public/session.html** — Compact session view (used by Electron's 260x80 session window)
 - **public/css/style.css** — Shared styles
 - **preload.js** — Electron preload script; exposes `electronAPI.setSessionState()` and `electronAPI.triggerShutdown()` for IPC
 
-## Member Registration & Time Addition (JuanFi Pisonet Admin API)
-- Login card has Login/Register tabs
-- Register tab: username + password fields
-- Registration flow:
-  1. `POST /api/hotspot/check-user` — Pre-check if username exists (login probe); blocks if hotspot unreachable
-  2. User inserts coins via JuanFi vendo (`/topUp` with `interfaceName=bridge-pisonet-app` → `/checkCoin` polling)
-  3. When Done clicked: `POST /api/pisonet/confirm-payment` verifies coins via vendo checkCoin, issues signed payment proof token
-  4. `POST /api/pisonet/add-time` sends to JuanFi admin API at `http://10.0.0.5:8989/admin/api/pisonet/unit/addTime` with Bearer auth
-  5. JuanFi creates the hotspot user on the correct pisonet server (bridge-pisonet-app)
-  6. `/cancelTopUp` stops the vendo coin slot
-- Payment proof tokens: short-lived (2min), tied to username, prevents unauthorized add-time calls
-- JuanFi admin auth: server logs into `http://10.0.0.5:8989/admin/api/login` to get Bearer token, caches for ~1hr
+## JuanFi Pisonet API (at 10.0.0.5:8989)
+These are the actual pisonet endpoints provided by the JuanFi developer (NOT the voucher-based flow):
+
+- **`POST /pisonet/register`** — Register a new pisonet member
+  - Body: `{ macAddress, ip, username, password }`
+  - Creates hotspot user on correct pisonet server (bridge-pisonet-app)
+  - Username convention: `mem-{username}` (e.g. `mem-raprap`)
+
+- **`POST /pisonet/avail`** — Start coin insertion for a pisonet unit
+  - Body: `{ macAddress, ip }`
+  - Opens the coin slot for the client identified by IP/MAC
+
+- **`POST /pisonet/done`** — Done inserting coins (finalize payment)
+  - Body: `{ macAddress, ip }`
+  - Tells vendo that coin insertion is complete
+
+- **`GET /checkCoin?voucher=X`** — Poll coin status during insertion (1s interval)
+  - Returns: `{ status, totalCoinReceived, totalTime, remainingTime, errorCode }`
+
+## Registration Flow
+1. User enters username + password on Register tab
+2. Username gets `mem-` prefix automatically (e.g. `raprap` → `mem-raprap`)
+3. `POST /pisonet/register` sends `{ macAddress, ip, username, password }` to vendo
+4. Vendo creates the hotspot user on MikroTik (correct pisonet server)
+5. Insert Coin modal opens → `POST /pisonet/avail` starts coin slot
+6. `/checkCoin` polls for coin status every 1s
+7. User clicks Done → `POST /pisonet/done` finalizes payment
+8. Username/password pre-filled in login form for immediate login
+
+## Insert Coin Flow (Existing Users)
+1. User clicks Insert Coin on login screen or session panel
+2. `POST /pisonet/avail` sends `{ macAddress, ip }` to start coin slot
+3. `/checkCoin` polls for coin status every 1s
+4. User clicks Done → `POST /pisonet/done` finalizes payment
+5. Time is added to existing session
 
 ## Admin Panel
 - Triggered by typing "zxc1" on the login screen (no visible button)
 - First-time: register admin password; subsequently: login with password
-- Settings: computer name, auto-shutdown timer (minutes), background image upload/remove, change password, stop app
-- JuanFi Pisonet settings: hotspot interface name, JuanFi admin username/password, pisonet unit name
+- Settings: computer name, auto-shutdown timer (minutes), background image upload/remove, pisonet unit name, change password, stop app
 - Background images: PNG/JPEG/GIF, max 10MB, saved to `data/uploads/background.*`
 - GIF warning shown for memory concerns on low-end devices
 - Settings broadcast to all WebSocket clients in real-time
@@ -55,9 +77,12 @@ A lightweight Electron desktop app for pisonet member login. Connects to a Mikro
 - `POST /api/admin/stop-app` — Stop the application (requires token)
 - Token: in-memory, 1hr expiry, sent via `x-admin-token` header
 
-## Pisonet API
-- `POST /api/pisonet/confirm-payment` — Verify coins via vendo, issue payment proof token
-- `POST /api/pisonet/add-time` — Call JuanFi admin API to add time (requires payment proof)
+## Pisonet Proxy API (our server → vendo)
+- `POST /api/pisonet/register` — Proxy to `/pisonet/register`
+- `POST /api/pisonet/avail` — Proxy to `/pisonet/avail`
+- `POST /api/pisonet/done` — Proxy to `/pisonet/done`
+- `GET /api/vendo/check-coin` — Proxy to `/checkCoin`
+- `GET /api/vendo/rates` — Proxy to `/getRates`
 
 ## Electron Hardening
 - Single instance lock — prevents duplicate app instances
@@ -68,9 +93,8 @@ A lightweight Electron desktop app for pisonet member login. Connects to a Mikro
 - Keys unblocked and kiosk disabled when user is logged in (session view)
 - Auto-shutdown: timer counts down in login view, triggers OS shutdown via IPC
 - **Windows Kiosk Scripts** (in app resources folder after install):
-  - `kiosk-setup.bat` — Apply registry tweaks to disable Task Manager, Windows key, Lock Workstation, etc. for current user. Run once, then log out/in.
-  - `kiosk-disable.bat` — Reverse all kiosk registry tweaks. Run to restore normal Windows behavior.
-  - Note: Ctrl+Alt+Del cannot be blocked by any app — only Windows Group Policy or registry can limit what appears on that screen
+  - `kiosk-setup.bat` — Apply registry tweaks to disable Task Manager, Windows key, Lock Workstation, etc.
+  - `kiosk-disable.bat` — Reverse all kiosk registry tweaks.
 
 ## Fonts
 - Orbitron + Share Tech Mono bundled locally in `public/fonts/` (offline-ready, no Google Fonts dependency)
@@ -88,23 +112,15 @@ A lightweight Electron desktop app for pisonet member login. Connects to a Mikro
 - `alogin.html` → `{ isLogin, logoutLink, sessionTimeLeft, uptime, username, mac, ip }`
 - `status.html` → `{ isLogin, logoutLink, sessionTimeLeft, uptime, username, mac, ip, units }`
 
-## JuanFi Vendo API (NodeMCU at 10.0.0.5:8989)
-- `GET /topUp?voucher=X&ipAddress=Y&mac=Z&extendTime=0|1&interfaceName=bridge-pisonet-app` — Start coin insertion
-- `GET /checkCoin?voucher=X` — Poll coin status (every 1s); returns `status:"true"` with coin data or errorCode
-- `GET /cancelTopUp?voucher=X` — Cancel/stop coin insertion
-- `GET /getRates` — Get rate table
-- Response format: `{ status: "true"|"false", voucher, errorCode, totalCoinReceived, totalTime, remainingTime }`
-- Error codes: `coins.wait.expired`, `coin.not.inserted`, `coinslot.cancelled`, `coinslot.busy`, `coin.slot.banned`, `coin.slot.notavailable`, `no.internet.detected`, `coin.is.reading`
-
-## JuanFi Admin API (at 10.0.0.5:8989)
-- `POST /admin/api/login` — Login with username/password, returns Bearer token
-- `POST /admin/api/pisonet/unit/addTime` — Add time to pisonet unit (requires Bearer token)
-
-## Admin Panel Settings
-- Hotspot Interface — default `bridge-pisonet-app` (passed to vendo topUp)
-- JuanFi Admin Username/Password — for pisonet admin API auth
-- Pisonet Unit Name — e.g. `PC 1`
-- Computer Name, Auto Shutdown Timer, Background Image
+## JuanFi checkCoin Error Codes
+- `coins.wait.expired` — Coin wait timeout
+- `coin.not.inserted` — Waiting for coins (not an error)
+- `coinslot.cancelled` — Coin slot cancelled
+- `coinslot.busy` — Coin slot busy
+- `coin.slot.banned` — Device banned
+- `coin.slot.notavailable` — Coin slot not available
+- `no.internet.detected` — No internet on vendo
+- `coin.is.reading` — Reading coin
 
 ## Legacy Code (unused)
 - `renderer/` — Old Electron renderer files, replaced by `public/` + `preload.js`
@@ -128,5 +144,5 @@ npm run build        # Produces installer in dist/
 ## Requirements
 - Device must be connected to the MikroTik hotspot WiFi network
 - Hotspot DNS name must be `pisonet.app`
-- JuanFi vendo NodeMCU must be reachable at `10.0.0.5:8989` for Insert Coin
+- JuanFi vendo NodeMCU must be reachable at `10.0.0.5:8989`
 - Vendo IP (`10.0.0.5`) must be in MikroTik Walled Garden (accessible before login)

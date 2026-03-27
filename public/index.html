@@ -675,18 +675,6 @@
         <div class="admin-section">
           <h3>&#9670; JuanFi Pisonet</h3>
           <div class="form-group">
-            <label>// Hotspot Interface (e.g. bridge-pisonet-app)</label>
-            <input type="text" id="admin-hotspot-interface" placeholder="bridge-pisonet-app" />
-          </div>
-          <div class="form-group">
-            <label>// JuanFi Admin Username</label>
-            <input type="text" id="admin-juanfi-user" placeholder="admin" />
-          </div>
-          <div class="form-group">
-            <label>// JuanFi Admin Password</label>
-            <input type="password" id="admin-juanfi-pass" placeholder="vendo admin password" />
-          </div>
-          <div class="form-group">
             <label>// Pisonet Unit Name (e.g. PC 1)</label>
             <input type="text" id="admin-pisonet-unit" placeholder="PC 1" />
           </div>
@@ -982,39 +970,42 @@
       modal.classList.add('active');
       document.getElementById('coin-total').textContent = '0';
       document.getElementById('coin-time').textContent = '0m 0s';
-      document.getElementById('coin-timer').textContent = '30s';
+      document.getElementById('coin-timer').textContent = '--';
       document.getElementById('coin-voucher-display').innerHTML = '';
       const clientIp = loginData?.ip || sessionData?.ip || '';
       const clientMac = loginData?.mac || sessionData?.mac || '';
       const username = sessionData?.username || document.getElementById('username').value.trim() || '';
-      const isExtend = sessionData ? true : false;
-      const topUpResp = await fetch('/api/vendo/topup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ voucher: username, ip: clientIp, mac: clientMac, type: isExtend ? 'E' : 'N' }), signal: coinAbortController.signal }).then(r => r.json()).catch(err => ({ success: false, error: err.name === 'AbortError' ? 'Cancelled' : err.message, aborted: err.name === 'AbortError' }));
+      document.getElementById('coin-voucher-display').innerHTML = 'User: <span>' + username + '</span>';
+
+      const availResp = await fetch('/api/pisonet/avail', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip: clientIp, mac: clientMac }),
+        signal: coinAbortController.signal,
+      }).then(r => r.json()).catch(err => ({ success: false, error: err.name === 'AbortError' ? 'Cancelled' : err.message, aborted: err.name === 'AbortError' }));
+
       if (myRequestId !== coinRequestId) return;
-      if (topUpResp.aborted) return;
-      if (!topUpResp.success) {
+      if (availResp.aborted) return;
+      if (!availResp.success) {
         closeCoinModal();
-        showError('Insert Coin: ' + (topUpResp.error || 'Vendo unreachable'));
+        showError('Insert Coin: ' + (availResp.error || 'Vendo unreachable'));
         return;
       }
-      activeVoucher = topUpResp.data.voucher || username;
-      document.getElementById('coin-voucher-display').innerHTML = 'Voucher: <span>' + activeVoucher + '</span>';
+      activeVoucher = username;
       if (coinCheckInterval) clearInterval(coinCheckInterval);
       coinCheckInterval = setInterval(checkCoin, 1000);
     }
 
     async function checkCoin() {
       const resp = await fetch('/api/vendo/check-coin?voucher=' + encodeURIComponent(activeVoucher)).then(r => r.json()).catch(() => null);
-      if (!resp || !resp.success) { closeCoinModal(); showError('Insert Coin: Lost connection'); return; }
+      if (!resp || !resp.success) return;
       const data = resp.data;
       if (data.status === 'success' || data.status === 'true' || data.status === true) {
         document.getElementById('coin-total').textContent = parseInt(data.totalCoinReceived) || 0;
         if (data.totalTime) document.getElementById('coin-time').textContent = formatUptime(Math.floor((parseInt(data.totalTime) || 0) / 1000));
-        document.getElementById('coin-timer').textContent = Math.ceil((parseInt(data.remainingTime) || 0) / 1000) + 's';
+        if (data.remainingTime) document.getElementById('coin-timer').textContent = Math.ceil((parseInt(data.remainingTime) || 0) / 1000) + 's';
       } else if (data.errorCode === 'coin.slot.timeout' || data.errorCode === 'coins.wait.expired') {
         (parseInt(document.getElementById('coin-total').textContent) || 0) > 0 ? donePaying() : (closeCoinModal(), showError('Insert Coin: Timeout'));
       } else if (data.errorCode === 'coin.slot.readingCoin' || data.errorCode === 'coin.is.reading' || data.errorCode === 'coin.not.inserted') {
-        if (data.errorCode === 'coin.not.inserted') { /* waiting for coins, do nothing */ }
-        else document.getElementById('coin-timer').textContent = '...';
       } else if (data.errorCode === 'coinslot.cancelled') {
         (parseInt(document.getElementById('coin-total').textContent) || 0) > 0 ? donePaying() : closeCoinModal();
       } else if (data.errorCode) { closeCoinModal(); showError('Insert Coin: ' + data.errorCode); }
@@ -1022,46 +1013,18 @@
 
     function closeCoinModal() { if (coinAbortController) { coinAbortController.abort(); coinAbortController = null; } if (coinCheckInterval) clearInterval(coinCheckInterval); coinCheckInterval = null; activeVoucher = ''; coinSlotBusy = false; document.getElementById('coin-modal').classList.remove('active'); }
     async function cancelCoin() {
-      const v = activeVoucher;
+      const clientIp = loginData?.ip || sessionData?.ip || '';
+      const clientMac = loginData?.mac || sessionData?.mac || '';
       closeCoinModal();
-      if (v) await fetch('/api/vendo/cancel', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ voucher: v }) }).catch(() => {});
+      await fetch('/api/pisonet/done', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: clientIp, mac: clientMac }) }).catch(() => {});
     }
     async function donePaying() {
-      const v = activeVoucher;
-      const username = document.getElementById('username').value.trim() || (sessionData ? sessionData.username : '');
-      const mac = loginData?.mac || sessionData?.mac || '';
-      const isNewUser = !sessionData;
-
-      if (!username || !v) { closeCoinModal(); init(); return; }
-
-      showError('Confirming payment...');
-      const confirmResp = await fetch('/api/pisonet/confirm-payment', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voucher: v, username }),
-      }).then(r => r.json()).catch(err => ({ success: false, error: err.message }));
-
+      const clientIp = loginData?.ip || sessionData?.ip || '';
+      const clientMac = loginData?.mac || sessionData?.mac || '';
       closeCoinModal();
-
-      if (!confirmResp.success) {
-        showError('Payment error: ' + (confirmResp.error || 'Unknown'));
-        return;
-      }
-
-      if (v) {
-        await fetch('/api/vendo/cancel', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ voucher: v }) }).catch(() => {});
-      }
-
-      showError(isNewUser ? 'Registering account...' : 'Adding time...');
-      const addResp = await fetch('/api/pisonet/add-time', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, mac, minutes: confirmResp.minutes || 0, paymentProof: confirmResp.paymentProof }),
-      }).then(r => r.json()).catch(err => ({ success: false, error: err.message }));
-
-      if (!addResp.success) {
-        showError('Failed: ' + (addResp.error || 'Unknown error'));
-        return;
-      }
-      showError(isNewUser ? 'Account created! Logging in...' : 'Time added!');
+      showError('Finalizing payment...');
+      await fetch('/api/pisonet/done', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: clientIp, mac: clientMac }) }).catch(() => {});
+      showError('Payment complete!');
       init();
     }
 
@@ -1138,9 +1101,6 @@
         document.getElementById('admin-computer-name').value = resp.settings.computerName || '';
         document.getElementById('admin-shutdown-time').value = resp.settings.autoShutdownSeconds > 0 ? Math.round(resp.settings.autoShutdownSeconds / 60) : 0;
         updateBgPreview(resp.settings.backgroundImage);
-        document.getElementById('admin-hotspot-interface').value = resp.settings.hotspotInterface || 'bridge-pisonet-app';
-        document.getElementById('admin-juanfi-user').value = resp.settings.juanfiAdminUser || 'admin';
-        document.getElementById('admin-juanfi-pass').value = resp.settings.juanfiAdminPass || '';
         document.getElementById('admin-pisonet-unit').value = resp.settings.pisonetUnitName || 'PC 1';
       }
     }
@@ -1166,12 +1126,7 @@
     }
 
     async function savePisonetSettings() {
-      const body = {
-        hotspotInterface: document.getElementById('admin-hotspot-interface').value.trim(),
-        juanfiAdminUser: document.getElementById('admin-juanfi-user').value.trim(),
-        juanfiAdminPass: document.getElementById('admin-juanfi-pass').value,
-        pisonetUnitName: document.getElementById('admin-pisonet-unit').value.trim(),
-      };
+      const body = { pisonetUnitName: document.getElementById('admin-pisonet-unit').value.trim() };
       const resp = await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ success: false }));
       if (resp.success) showAdminMsg('admin-panel-msg', 'Pisonet settings saved', 'success');
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
@@ -1248,30 +1203,38 @@
       document.getElementById('reg-text').classList.add('hidden');
       document.getElementById('reg-spinner').classList.remove('hidden');
 
-      const checkResp = await fetch('/api/hotspot/check-user', {
+      const clientIp = loginData?.ip || '';
+      const clientMac = loginData?.mac || '';
+      const fullUsername = 'mem-' + username.toLowerCase();
+
+      const regResp = await fetch('/api/pisonet/register', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username }),
-      }).then(r => r.json()).catch(() => ({ exists: false, checkFailed: true, error: 'Cannot connect to server' }));
+        body: JSON.stringify({ username: fullUsername, password, ip: clientIp, mac: clientMac }),
+      }).then(r => r.json()).catch(() => ({ success: false, error: 'Cannot connect to vendo' }));
 
       btn.disabled = false;
       document.getElementById('reg-text').classList.remove('hidden');
       document.getElementById('reg-spinner').classList.add('hidden');
 
-      if (checkResp.exists) {
-        showRegError('Username already taken. Choose a different one.');
-        return;
-      }
-      if (checkResp.checkFailed) {
-        showRegError('Cannot verify username — hotspot offline. Try again later.');
+      if (!regResp.success) {
+        const rawErr = regResp.error || '';
+        const errLower = rawErr.toLowerCase();
+        if (errLower.includes('exist') || errLower.includes('already') || errLower.includes('duplicate')) {
+          showRegError('Username already taken. Choose a different one.');
+        } else if (errLower.includes('cannot reach')) {
+          showRegError('Cannot reach vendo. Check if it is powered on.');
+        } else {
+          showRegError(rawErr || 'Registration failed');
+        }
         return;
       }
 
-      document.getElementById('username').value = username;
+      document.getElementById('username').value = fullUsername;
       document.getElementById('password').value = password;
 
-      showRegSuccess('Opening Insert Coin...');
+      showRegSuccess('Registered! Opening Insert Coin...');
       setTimeout(() => {
-        openInsertCoinForNewUser(username);
+        openInsertCoinForNewUser(fullUsername);
       }, 500);
     }
 
@@ -1284,35 +1247,29 @@
       modal.classList.add('active');
       document.getElementById('coin-total').textContent = '0';
       document.getElementById('coin-time').textContent = '0m 0s';
-      document.getElementById('coin-timer').textContent = '30s';
-      document.getElementById('coin-voucher-display').innerHTML = '';
+      document.getElementById('coin-timer').textContent = '--';
+      document.getElementById('coin-voucher-display').innerHTML = 'User: <span>' + username + '</span>';
 
       const clientIp = loginData?.ip || '';
       const clientMac = loginData?.mac || '';
 
-      const topUpResp = await fetch('/api/vendo/topup', {
+      const availResp = await fetch('/api/pisonet/avail', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voucher: username, ip: clientIp, mac: clientMac, type: 'N' }),
+        body: JSON.stringify({ ip: clientIp, mac: clientMac }),
         signal: coinAbortController.signal,
       }).then(r => r.json()).catch(err => ({ success: false, error: err.name === 'AbortError' ? 'Cancelled' : err.message, aborted: err.name === 'AbortError' }));
       if (myRequestId !== coinRequestId) return;
-      if (topUpResp.aborted) return;
+      if (availResp.aborted) return;
 
-      if (!topUpResp.success) {
+      if (!availResp.success) {
         closeCoinModal();
-        const rawErr = topUpResp.error || '';
+        const rawErr = availResp.error || '';
         const errLower = rawErr.toLowerCase();
         let friendlyMsg;
-        if (errLower.includes('exist') || errLower.includes('already') || errLower.includes('duplicate')) {
-          friendlyMsg = 'Username already taken. Choose a different one.';
-        } else if (errLower.includes('busy')) {
+        if (errLower.includes('busy')) {
           friendlyMsg = 'Vendo is busy. Please try again shortly.';
         } else if (errLower.includes('banned')) {
           friendlyMsg = 'This device has been temporarily blocked.';
-        } else if (errLower.includes('notavailable') || errLower.includes('not.available')) {
-          friendlyMsg = 'Coin slot not available right now.';
-        } else if (errLower.includes('no.internet')) {
-          friendlyMsg = 'No internet detected on vendo.';
         } else if (!rawErr || errLower.includes('cannot reach')) {
           friendlyMsg = 'Cannot reach vendo. Check if it is powered on.';
         } else {
@@ -1322,8 +1279,7 @@
         return;
       }
 
-      activeVoucher = topUpResp.data.voucher || username;
-      document.getElementById('coin-voucher-display').innerHTML = 'Voucher: <span>' + activeVoucher + '</span>';
+      activeVoucher = username;
       if (coinCheckInterval) clearInterval(coinCheckInterval);
       coinCheckInterval = setInterval(checkCoin, 1000);
     }
