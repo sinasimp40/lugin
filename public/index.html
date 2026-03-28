@@ -620,40 +620,41 @@
 
     .admin-modal {
       display: none; position: fixed; inset: 0;
-      background: var(--dark-surface); z-index: 200;
+      background: rgba(0,0,0,0.75); z-index: 200;
+      align-items: center; justify-content: center;
     }
-    .admin-modal.active { display: block; }
+    .admin-modal.active { display: flex; }
     .admin-box {
-      width: 100%; height: 100%;
-      overflow-y: auto; padding: 20px 28px 40px;
+      width: 90%; max-width: 860px; max-height: 85vh;
+      overflow-y: auto; padding: 20px 28px 30px;
       position: relative;
       background: var(--dark-bg);
+      border: 1px solid var(--dark-border);
+      border-radius: 6px;
+      box-shadow: 0 0 40px rgba(255,140,0,0.15), 0 8px 32px rgba(0,0,0,0.6);
     }
     .admin-box::before {
-      content: ''; position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 201;
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; z-index: 201; border-radius: 6px 6px 0 0;
       background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--neon-magenta), transparent);
     }
-    #admin-auth-view {
-      max-width: 400px; margin: 15vh auto 0;
+    .admin-box.auth-mode {
+      max-width: 380px; max-height: none;
     }
     .admin-box h2 {
       font-family: 'Orbitron', monospace;
-      font-size: 20px; font-weight: 700; color: var(--neon-cyan);
-      letter-spacing: 3px; text-align: center; margin-bottom: 24px;
+      font-size: 18px; font-weight: 700; color: var(--neon-cyan);
+      letter-spacing: 3px; text-align: center; margin-bottom: 20px;
       text-shadow: 0 0 10px rgba(255,140,0,0.4);
-      padding-top: 12px;
+      padding-top: 8px;
     }
     .admin-box .form-group label { color: var(--neon-cyan); }
     .admin-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
       width: 100%;
-    }
-    @media (min-width: 1200px) {
-      .admin-grid { grid-template-columns: 1fr 1fr 1fr; }
     }
     @media (max-width: 700px) {
       .admin-grid { grid-template-columns: 1fr; }
-      .admin-box { padding: 12px 14px 30px; }
+      .admin-box { width: 95%; padding: 12px 14px 24px; }
     }
     .admin-grid .admin-section.full-width { grid-column: 1 / -1; }
     .admin-section {
@@ -866,9 +867,9 @@
             <div class="bg-preview" id="admin-bg-preview">[ no background ]</div>
             <div class="file-input-wrap">
               <button class="btn-admin" style="width:100%">Choose Image</button>
-              <input type="file" accept="image/png,image/jpeg,image/gif" onchange="uploadBackground(this)" />
+              <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange="uploadBackground(this)" />
             </div>
-            <div class="file-size-hint">PNG, JPEG, GIF (max 10MB)</div>
+            <div class="file-size-hint">PNG, JPEG, GIF, WebP (max 50MB)</div>
             <div class="gif-warning" id="gif-warning">&#9888; GIF animations may use more memory</div>
             <button class="btn-admin danger" style="margin-top:8px;width:100%" onclick="removeBackground()">Remove Background</button>
           </div>
@@ -1552,6 +1553,7 @@
       const modal = document.getElementById('admin-modal');
       document.getElementById('admin-auth-view').style.display = 'block';
       document.getElementById('admin-panel-view').style.display = 'none';
+      document.getElementById('admin-box').classList.add('auth-mode');
       document.getElementById('admin-auth-msg').className = 'admin-msg';
       document.getElementById('admin-pw-input').value = '';
       document.getElementById('admin-pw-confirm').value = '';
@@ -1603,6 +1605,7 @@
     async function showAdminPanel() {
       document.getElementById('admin-auth-view').style.display = 'none';
       document.getElementById('admin-panel-view').style.display = 'block';
+      document.getElementById('admin-box').classList.remove('auth-mode');
       const resp = await fetch('/api/admin/settings', { headers: { 'x-admin-token': adminToken } }).then(r => r.json()).catch(() => ({}));
       if (resp.settings) {
         document.getElementById('admin-computer-name').value = resp.settings.computerName || '';
@@ -1636,12 +1639,13 @@
     async function uploadBackground(input) {
       const file = input.files[0];
       if (!file) return;
-      if (file.size > 10 * 1024 * 1024) { showAdminMsg('admin-panel-msg', 'File too large (max 10MB)', 'error'); return; }
-      const allowed = ['image/png', 'image/jpeg', 'image/gif'];
-      if (!allowed.includes(file.type)) { showAdminMsg('admin-panel-msg', 'Only PNG, JPEG, GIF', 'error'); return; }
+      if (file.size > 50 * 1024 * 1024) { showAdminMsg('admin-panel-msg', 'File too large (max 50MB)', 'error'); return; }
+      const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+      if (!allowed.includes(file.type)) { showAdminMsg('admin-panel-msg', 'Only PNG, JPEG, GIF, WebP', 'error'); return; }
       document.getElementById('gif-warning').style.display = file.type === 'image/gif' ? 'block' : 'none';
+      showAdminMsg('admin-panel-msg', 'Uploading...', 'success');
       const buffer = await file.arrayBuffer();
-      const resp = await fetch('/api/admin/background', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'x-admin-token': adminToken, 'x-filename': file.name, 'x-mime-type': file.type }, body: buffer }).then(r => r.json()).catch(() => ({ success: false }));
+      const resp = await fetch('/api/admin/background', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'x-admin-token': adminToken, 'x-filename': file.name, 'x-mime-type': file.type }, body: buffer }).then(r => r.json()).catch(e => ({ success: false, error: 'Upload failed: ' + e.message }));
       if (resp.success) { showAdminMsg('admin-panel-msg', 'Uploaded', 'success'); updateBgPreview(resp.background); applyBackground(resp.background); }
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
       input.value = '';
@@ -1956,7 +1960,7 @@
     async function uploadAdImage(id, input) {
       const file = input.files[0];
       if (!file) return;
-      if (file.size > 10 * 1024 * 1024) { showAdminMsg('admin-panel-msg', 'File too large (max 10MB)', 'error'); return; }
+      if (file.size > 50 * 1024 * 1024) { showAdminMsg('admin-panel-msg', 'File too large (max 50MB)', 'error'); return; }
       const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
       if (!allowed.includes(file.type)) { showAdminMsg('admin-panel-msg', 'Only PNG, JPEG, GIF, WebP', 'error'); return; }
       const buffer = await file.arrayBuffer();

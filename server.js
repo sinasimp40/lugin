@@ -742,21 +742,21 @@ app.post('/api/admin/background', verifyToken, (req, res) => {
   }
   const filename = req.headers['x-filename'] || 'background.png';
   const mime = req.headers['x-mime-type'] || 'image/png';
-  const allowed = ['image/png', 'image/jpeg', 'image/gif'];
-  if (!allowed.includes(mime)) return res.status(400).json({ success: false, error: 'Only PNG, JPEG, GIF allowed' });
+  const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+  if (!allowed.includes(mime)) return res.status(400).json({ success: false, error: 'Only PNG, JPEG, GIF, WebP allowed' });
 
   const chunks = [];
   let totalSize = 0;
   req.on('data', (chunk) => {
     totalSize += chunk.length;
-    if (totalSize > 10 * 1024 * 1024) {
+    if (totalSize > 50 * 1024 * 1024) {
       req.destroy();
       return;
     }
     chunks.push(chunk);
   });
   req.on('end', () => {
-    if (totalSize > 10 * 1024 * 1024) return res.status(400).json({ success: false, error: 'File too large (max 10MB)' });
+    if (totalSize > 50 * 1024 * 1024) return res.status(400).json({ success: false, error: 'File too large (max 50MB)' });
     const buffer = Buffer.concat(chunks);
     const meta = settings.saveBackgroundImage(buffer, filename, mime);
     broadcastSettings();
@@ -816,11 +816,11 @@ app.post('/api/admin/ads/:id/image', verifyToken, (req, res) => {
   let totalSize = 0;
   req.on('data', (chunk) => {
     totalSize += chunk.length;
-    if (totalSize > 10 * 1024 * 1024) { req.destroy(); return; }
+    if (totalSize > 50 * 1024 * 1024) { req.destroy(); return; }
     chunks.push(chunk);
   });
   req.on('end', () => {
-    if (totalSize > 10 * 1024 * 1024) return res.status(400).json({ success: false, error: 'File too large (max 10MB)' });
+    if (totalSize > 50 * 1024 * 1024) return res.status(400).json({ success: false, error: 'File too large (max 50MB)' });
     const buffer = Buffer.concat(chunks);
     const imageInfo = settings.saveAdImage(adId, buffer, filename, mime);
     const ad = settings.updateAd(adId, { image: imageInfo });
