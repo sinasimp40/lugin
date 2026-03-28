@@ -14,9 +14,9 @@ A lightweight Electron desktop app for pisonet member login. Connects to a Mikro
 
 ## Architecture
 - **main.js** — Electron main process; single instance lock, manages login window (fullscreen, frameless, skipTaskbar) and session window (260x80, bottom-right, always-on-top with screen-saver priority, focusable:false, 2s re-assert interval); blocks Alt+Tab/Alt+F4/Win keys in login view only; auto-logout on quit; IPC for shutdown
-- **server.js** — Express server + WebSocket server; proxies requests to `pisonet.app` hotspot (avoids CORS), handles CHAP hashing, JuanFi pisonet API proxy (register/avail/done), broadcasts session status via WebSocket; admin API endpoints
-- **src/settings-store.js** — JSON file settings storage in `./data/`; scrypt password hashing; manages computer name, auto-shutdown timer, background image metadata, pisonet unit name
-- **public/index.html** — Login UI + session view + insert coin modal + admin modal (single page); scramble text computer name, auto-shutdown countdown with horizontal progress bar, secret "zxc1" admin trigger; black & orange theme; login auto-prepends `mem-` prefix; registration validates no special chars/spaces
+- **server.js** — Express server + WebSocket server; proxies requests to `pisonet.app` hotspot (avoids CORS), handles CHAP hashing, JuanFi pisonet API proxy (register/avail/done), broadcasts session status via WebSocket; admin API endpoints; ad management CRUD + image upload endpoints
+- **src/settings-store.js** — JSON file settings storage in `./data/`; scrypt password hashing; manages computer name, auto-shutdown timer, background image metadata, pisonet unit name, advertisements (slides with images + rich HTML content)
+- **public/index.html** — Login UI + session view + insert coin modal + admin modal (single page); scramble text computer name, auto-shutdown countdown with horizontal progress bar, secret "zxc1" admin trigger; black & orange theme; login auto-prepends `mem-` prefix; registration validates no special chars/spaces; ad carousel slider between login form and shutdown timer
 - **public/session.html** — Compact session view (used by Electron's 260x80 session window)
 - **public/css/style.css** — Shared styles
 - **preload.js** — Electron preload script; exposes `electronAPI.setSessionState()` and `electronAPI.triggerShutdown()` for IPC

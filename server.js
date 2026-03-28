@@ -764,6 +764,66 @@ app.delete('/api/admin/background', verifyToken, (req, res) => {
   res.json({ success: true });
 });
 
+app.get('/api/admin/ads', verifyToken, (req, res) => {
+  res.json({ success: true, ads: settings.getAds() });
+});
+
+app.post('/api/admin/ads', verifyToken, (req, res) => {
+  const { content } = req.body;
+  const ad = settings.addAd(content || '', null);
+  broadcastSettings();
+  res.json({ success: true, ad });
+});
+
+app.put('/api/admin/ads/:id', verifyToken, (req, res) => {
+  const { content } = req.body;
+  const ad = settings.updateAd(req.params.id, { content });
+  if (!ad) return res.status(404).json({ success: false, error: 'Ad not found' });
+  broadcastSettings();
+  res.json({ success: true, ad });
+});
+
+app.delete('/api/admin/ads/:id', verifyToken, (req, res) => {
+  const ok = settings.removeAd(req.params.id);
+  if (!ok) return res.status(404).json({ success: false, error: 'Ad not found' });
+  broadcastSettings();
+  res.json({ success: true });
+});
+
+app.post('/api/admin/ads/reorder', verifyToken, (req, res) => {
+  const { orderedIds } = req.body;
+  if (!Array.isArray(orderedIds)) return res.status(400).json({ success: false, error: 'orderedIds required' });
+  const ads = settings.reorderAds(orderedIds);
+  broadcastSettings();
+  res.json({ success: true, ads });
+});
+
+app.post('/api/admin/ads/:id/image', verifyToken, (req, res) => {
+  const adId = req.params.id;
+  if (!settings.adExists(adId)) return res.status(404).json({ success: false, error: 'Ad not found' });
+  const filename = req.headers['x-filename'] || 'ad.png';
+  const mime = req.headers['x-mime-type'] || 'image/png';
+  const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+  if (!allowed.includes(mime)) return res.status(400).json({ success: false, error: 'Only PNG, JPEG, GIF, WebP allowed' });
+
+  const chunks = [];
+  let totalSize = 0;
+  req.on('data', (chunk) => {
+    totalSize += chunk.length;
+    if (totalSize > 10 * 1024 * 1024) { req.destroy(); return; }
+    chunks.push(chunk);
+  });
+  req.on('end', () => {
+    if (totalSize > 10 * 1024 * 1024) return res.status(400).json({ success: false, error: 'File too large (max 10MB)' });
+    const buffer = Buffer.concat(chunks);
+    const imageInfo = settings.saveAdImage(adId, buffer, filename, mime);
+    const ad = settings.updateAd(adId, { image: imageInfo });
+    if (!ad) return res.status(404).json({ success: false, error: 'Ad not found' });
+    broadcastSettings();
+    res.json({ success: true, ad });
+  });
+});
+
 app.post('/api/admin/stop-app', verifyToken, (req, res) => {
   res.json({ success: true });
   setTimeout(() => {

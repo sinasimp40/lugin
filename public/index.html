@@ -366,6 +366,131 @@
       transition: color 0.3s;
     }
 
+    .ad-carousel {
+      width: 360px; max-width: 90vw; margin-top: 16px;
+      position: relative; overflow: hidden;
+      border-radius: 4px;
+      border: 1px solid var(--dark-border);
+      background: rgba(18,18,30,0.7);
+      backdrop-filter: blur(10px);
+    }
+    .ad-carousel.empty { display: none; }
+    .ad-carousel::before {
+      content: ''; position: absolute; top: -1px; left: 20px; right: 20px; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+      z-index: 2;
+    }
+    .ad-slides {
+      display: flex; transition: transform 0.5s ease-in-out;
+      width: 100%;
+    }
+    .ad-slide {
+      min-width: 100%; position: relative;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 120px; overflow: hidden;
+    }
+    .ad-slide-bg {
+      position: absolute; inset: 0;
+      background-size: cover; background-position: center;
+    }
+    .ad-slide-bg::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.1));
+    }
+    .ad-slide-content {
+      position: relative; z-index: 1; padding: 16px 20px;
+      width: 100%; text-align: center;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px; color: var(--text);
+      line-height: 1.5;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+      word-wrap: break-word;
+    }
+    .ad-slide-content b, .ad-slide-content strong { color: var(--neon-cyan); }
+    .ad-slide-content i, .ad-slide-content em { color: var(--neon-yellow); }
+    .ad-dots {
+      display: flex; justify-content: center; gap: 6px;
+      padding: 8px 0;
+      background: rgba(10,10,10,0.6);
+    }
+    .ad-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(255,140,0,0.25); cursor: pointer;
+      transition: all 0.3s;
+    }
+    .ad-dot.active {
+      background: var(--neon-cyan);
+      box-shadow: 0 0 6px rgba(255,140,0,0.6);
+    }
+
+    .admin-ads-list { margin: 8px 0; }
+    .admin-ad-item {
+      background: var(--dark-bg); border: 1px solid var(--dark-border);
+      border-radius: 3px; padding: 10px; margin-bottom: 8px;
+      position: relative;
+    }
+    .admin-ad-item:hover { border-color: rgba(255,140,0,0.3); }
+    .admin-ad-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 8px;
+    }
+    .admin-ad-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px; color: var(--text-muted);
+      letter-spacing: 1px; text-transform: uppercase;
+    }
+    .admin-ad-actions { display: flex; gap: 4px; }
+    .admin-ad-actions button {
+      padding: 3px 8px; font-size: 10px;
+      font-family: 'Share Tech Mono', monospace;
+      border: 1px solid var(--dark-border); border-radius: 2px;
+      cursor: pointer; background: transparent; color: var(--text-muted);
+      transition: all 0.2s;
+    }
+    .admin-ad-actions button:hover { color: var(--neon-cyan); border-color: var(--neon-cyan); }
+    .admin-ad-actions button.del:hover { color: var(--neon-magenta); border-color: var(--neon-magenta); }
+    .admin-ad-img-preview {
+      width: 100%; height: 60px; border-radius: 2px;
+      background: var(--dark-surface); border: 1px dashed var(--dark-border);
+      margin-bottom: 6px; background-size: cover; background-position: center;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--text-muted);
+      cursor: pointer; position: relative; overflow: hidden;
+    }
+    .admin-ad-img-preview input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    }
+    .ad-editor-toolbar {
+      display: flex; gap: 2px; margin-bottom: 4px; flex-wrap: wrap;
+    }
+    .ad-editor-toolbar button {
+      padding: 3px 7px;
+      font-size: 11px; border: 1px solid var(--dark-border);
+      border-radius: 2px; cursor: pointer;
+      background: var(--dark-surface); color: var(--text-muted);
+      font-family: inherit; transition: all 0.2s; line-height: 1;
+    }
+    .ad-editor-toolbar button:hover { color: var(--neon-cyan); border-color: rgba(255,140,0,0.3); }
+    .ad-editor-toolbar select {
+      padding: 2px 4px; font-size: 10px;
+      background: var(--dark-surface); color: var(--text-muted);
+      border: 1px solid var(--dark-border); border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace; cursor: pointer;
+    }
+    .ad-editor-toolbar input[type="color"] {
+      width: 22px; height: 22px; border: 1px solid var(--dark-border);
+      border-radius: 2px; cursor: pointer; background: none; padding: 0;
+    }
+    .ad-content-editor {
+      width: 100%; min-height: 50px; max-height: 120px;
+      padding: 8px; overflow-y: auto;
+      background: rgba(10,10,18,0.8); border: 1px solid var(--dark-border);
+      border-radius: 2px; color: var(--text);
+      font-family: 'Share Tech Mono', monospace; font-size: 12px;
+      outline: none; line-height: 1.4;
+    }
+    .ad-content-editor:focus { border-color: var(--neon-cyan); }
+
     .session-panel { display: none; position: fixed; right: 10px; bottom: 10px; width: 260px; height: 80px; z-index: 99; }
     .session-panel.active { display: block; }
     .session-compact {
@@ -606,6 +731,11 @@
 
     <div id="hotspot-status" class="hotspot-status" style="color:var(--text-muted)">[ connecting to hotspot... ]</div>
 
+    <div id="ad-carousel" class="ad-carousel empty">
+      <div class="ad-slides" id="ad-slides"></div>
+      <div class="ad-dots" id="ad-dots"></div>
+    </div>
+
     <div id="shutdown-area" class="shutdown-panel hidden">
       <div class="shutdown-header">&#9888; System Auto Shutdown &#9888;</div>
       <div class="shutdown-time-display" id="shutdown-timer">--:--</div>
@@ -697,6 +827,12 @@
 
 
         <div class="admin-section">
+          <h3>&#9670; Advertisements</h3>
+          <div class="admin-ads-list" id="admin-ads-list"></div>
+          <button class="btn-admin" style="width:100%" onclick="addNewAd()">+ Add Slide</button>
+        </div>
+
+        <div class="admin-section">
           <h3>&#9670; JuanFi Pisonet</h3>
           <div class="form-group">
             <label>// Pisonet Unit Name (e.g. PC 1)</label>
@@ -759,7 +895,7 @@
         step++;
         let result = '';
         for (let i = 0; i < len; i++) {
-          if (finalText[i] === '\n') { result += '\n'; continue; }
+          if (finalText[i] === '\n' || finalText[i] === ' ') { result += finalText[i]; continue; }
           if (i < (step / steps) * len) result += finalText[i];
           else result += chars[Math.floor(Math.random() * chars.length)];
         }
@@ -780,6 +916,7 @@
         nameEl.setAttribute('data-text', '');
       }
       applyBackground(s.backgroundImage);
+      renderAdCarousel(s.ads || []);
       updateShutdownConfig(s.autoShutdownSeconds || 0);
     }
 
@@ -1427,6 +1564,7 @@
         document.getElementById('admin-shutdown-time').value = resp.settings.autoShutdownSeconds > 0 ? Math.round(resp.settings.autoShutdownSeconds / 60) : 0;
         updateBgPreview(resp.settings.backgroundImage);
         document.getElementById('admin-pisonet-unit').value = resp.settings.pisonetUnitName || 'PC 1';
+        renderAdminAds(resp.settings.ads || []);
       }
     }
 
@@ -1488,6 +1626,213 @@
 
     async function stopApp() {
       await fetch('/api/admin/stop-app', { method: 'POST', headers: { 'x-admin-token': adminToken } }).catch(() => {});
+    }
+
+    let adSlideIndex = 0;
+    let adSlideInterval = null;
+    let currentAds = [];
+
+    function renderAdCarousel(ads) {
+      currentAds = ads;
+      const carousel = document.getElementById('ad-carousel');
+      const slidesEl = document.getElementById('ad-slides');
+      const dotsEl = document.getElementById('ad-dots');
+      if (!ads || ads.length === 0) {
+        carousel.classList.add('empty');
+        slidesEl.innerHTML = '';
+        dotsEl.innerHTML = '';
+        if (adSlideInterval) { clearInterval(adSlideInterval); adSlideInterval = null; }
+        return;
+      }
+      carousel.classList.remove('empty');
+      slidesEl.innerHTML = ads.map(ad => {
+        const bgStyle = ad.image && ad.image.filename ? 'background-image:url(/uploads/' + ad.image.filename + '?t=' + Date.now() + ')' : '';
+        const content = ad.content || '';
+        return '<div class="ad-slide">' +
+          (bgStyle ? '<div class="ad-slide-bg" style="' + bgStyle + '"></div>' : '') +
+          '<div class="ad-slide-content">' + content + '</div>' +
+          '</div>';
+      }).join('');
+      dotsEl.innerHTML = ads.map((_, i) =>
+        '<div class="ad-dot' + (i === 0 ? ' active' : '') + '" onclick="goToAdSlide(' + i + ')"></div>'
+      ).join('');
+      adSlideIndex = 0;
+      slidesEl.style.transform = 'translateX(0)';
+      if (adSlideInterval) clearInterval(adSlideInterval);
+      if (ads.length > 1) {
+        adSlideInterval = setInterval(() => {
+          adSlideIndex = (adSlideIndex + 1) % ads.length;
+          updateAdSlide();
+        }, 5000);
+      }
+    }
+
+    function goToAdSlide(idx) {
+      adSlideIndex = idx;
+      updateAdSlide();
+      if (adSlideInterval) clearInterval(adSlideInterval);
+      if (currentAds.length > 1) {
+        adSlideInterval = setInterval(() => {
+          adSlideIndex = (adSlideIndex + 1) % currentAds.length;
+          updateAdSlide();
+        }, 5000);
+      }
+    }
+
+    function updateAdSlide() {
+      const slidesEl = document.getElementById('ad-slides');
+      slidesEl.style.transform = 'translateX(-' + (adSlideIndex * 100) + '%)';
+      document.querySelectorAll('.ad-dot').forEach((d, i) => d.classList.toggle('active', i === adSlideIndex));
+    }
+
+    let adminAdsData = [];
+
+    function renderAdminAds(ads) {
+      adminAdsData = ads;
+      const list = document.getElementById('admin-ads-list');
+      if (!ads || ads.length === 0) {
+        list.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-family:\'Share Tech Mono\',monospace;font-size:11px;padding:12px">[ no advertisements yet ]</div>';
+        return;
+      }
+      list.innerHTML = ads.map((ad, i) => {
+        const imgBg = ad.image && ad.image.filename ? 'background-image:url(/uploads/' + ad.image.filename + '?t=' + Date.now() + ')' : '';
+        const imgLabel = imgBg ? '' : '[ click to add image ]';
+        return '<div class="admin-ad-item" data-id="' + ad.id + '">' +
+          '<div class="admin-ad-header">' +
+            '<span class="admin-ad-label">Slide ' + (i + 1) + '</span>' +
+            '<div class="admin-ad-actions">' +
+              (i > 0 ? '<button onclick="moveAd(\'' + ad.id + '\',-1)">&#9650;</button>' : '') +
+              (i < ads.length - 1 ? '<button onclick="moveAd(\'' + ad.id + '\',1)">&#9660;</button>' : '') +
+              '<button class="del" onclick="deleteAd(\'' + ad.id + '\')">&#10005;</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="admin-ad-img-preview" style="' + imgBg + '">' +
+            imgLabel +
+            '<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange="uploadAdImage(\'' + ad.id + '\',this)" />' +
+          '</div>' +
+          '<div class="ad-editor-toolbar">' +
+            '<button onclick="adCmd(\'' + ad.id + '\',\'bold\')" title="Bold"><b>B</b></button>' +
+            '<button onclick="adCmd(\'' + ad.id + '\',\'italic\')" title="Italic"><i>I</i></button>' +
+            '<button onclick="adCmd(\'' + ad.id + '\',\'underline\')" title="Underline"><u>U</u></button>' +
+            '<select onchange="adFontSize(\'' + ad.id + '\',this.value);this.selectedIndex=0">' +
+              '<option value="">Size</option>' +
+              '<option value="1">Small</option>' +
+              '<option value="3">Normal</option>' +
+              '<option value="5">Large</option>' +
+              '<option value="7">Huge</option>' +
+            '</select>' +
+            '<input type="color" value="#ff8c00" onchange="adFontColor(\'' + ad.id + '\',this.value)" title="Text Color" />' +
+            '<button onclick="adCmd(\'' + ad.id + '\',\'justifyLeft\')" title="Left">&#8676;</button>' +
+            '<button onclick="adCmd(\'' + ad.id + '\',\'justifyCenter\')" title="Center">&#8596;</button>' +
+            '<button onclick="adCmd(\'' + ad.id + '\',\'justifyRight\')" title="Right">&#8677;</button>' +
+          '</div>' +
+          '<div class="ad-content-editor" contenteditable="true" id="ad-editor-' + ad.id + '" ' +
+            'onblur="saveAdContent(\'' + ad.id + '\')">' + (ad.content || '') + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function adCmd(id, cmd) {
+      const editor = document.getElementById('ad-editor-' + id);
+      editor.focus();
+      document.execCommand(cmd, false, null);
+    }
+
+    function adFontSize(id, size) {
+      if (!size) return;
+      const editor = document.getElementById('ad-editor-' + id);
+      editor.focus();
+      document.execCommand('fontSize', false, size);
+    }
+
+    function adFontColor(id, color) {
+      const editor = document.getElementById('ad-editor-' + id);
+      editor.focus();
+      document.execCommand('foreColor', false, color);
+    }
+
+    async function saveAdContent(id) {
+      const editor = document.getElementById('ad-editor-' + id);
+      if (!editor) return;
+      const content = editor.innerHTML;
+      await fetch('/api/admin/ads/' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+        body: JSON.stringify({ content })
+      }).then(r => r.json()).catch(() => ({}));
+      refreshAdsPreview();
+    }
+
+    async function addNewAd() {
+      const resp = await fetch('/api/admin/ads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+        body: JSON.stringify({ content: '' })
+      }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) {
+        showAdminMsg('admin-panel-msg', 'Slide added', 'success');
+        refreshAdminAds();
+      } else {
+        showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+      }
+    }
+
+    async function deleteAd(id) {
+      const resp = await fetch('/api/admin/ads/' + id, {
+        method: 'DELETE',
+        headers: { 'x-admin-token': adminToken }
+      }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) {
+        showAdminMsg('admin-panel-msg', 'Slide removed', 'success');
+        refreshAdminAds();
+      }
+    }
+
+    async function moveAd(id, dir) {
+      const idx = adminAdsData.findIndex(a => a.id === id);
+      if (idx === -1) return;
+      const newIdx = idx + dir;
+      if (newIdx < 0 || newIdx >= adminAdsData.length) return;
+      const ids = adminAdsData.map(a => a.id);
+      [ids[idx], ids[newIdx]] = [ids[newIdx], ids[idx]];
+      await fetch('/api/admin/ads/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+        body: JSON.stringify({ orderedIds: ids })
+      }).then(r => r.json()).catch(() => ({}));
+      refreshAdminAds();
+    }
+
+    async function uploadAdImage(id, input) {
+      const file = input.files[0];
+      if (!file) return;
+      if (file.size > 10 * 1024 * 1024) { showAdminMsg('admin-panel-msg', 'File too large (max 10MB)', 'error'); return; }
+      const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+      if (!allowed.includes(file.type)) { showAdminMsg('admin-panel-msg', 'Only PNG, JPEG, GIF, WebP', 'error'); return; }
+      const buffer = await file.arrayBuffer();
+      const resp = await fetch('/api/admin/ads/' + id + '/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream', 'x-admin-token': adminToken, 'x-filename': file.name, 'x-mime-type': file.type },
+        body: buffer
+      }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) {
+        showAdminMsg('admin-panel-msg', 'Image uploaded', 'success');
+        refreshAdminAds();
+      } else {
+        showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+      }
+      input.value = '';
+    }
+
+    async function refreshAdminAds() {
+      const resp = await fetch('/api/admin/ads', { headers: { 'x-admin-token': adminToken } }).then(r => r.json()).catch(() => ({}));
+      if (resp.ads) renderAdminAds(resp.ads);
+      refreshAdsPreview();
+    }
+
+    async function refreshAdsPreview() {
+      const resp = await fetch('/api/admin/status').then(r => r.json()).catch(() => ({}));
+      if (resp.settings && resp.settings.ads) renderAdCarousel(resp.settings.ads);
     }
 
     function switchTab(tab) {

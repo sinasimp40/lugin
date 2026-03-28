@@ -82,6 +82,7 @@ function getSettings() {
     autoShutdownSeconds: s.autoShutdownSeconds !== undefined ? s.autoShutdownSeconds : 180,
     backgroundImage: s.backgroundImage || null,
     pisonetUnitName: s.pisonetUnitName || 'PC 1',
+    ads: s.ads || [],
   };
 }
 
@@ -91,6 +92,7 @@ function getPublicSettings() {
     computerName: s.computerName,
     autoShutdownSeconds: s.autoShutdownSeconds,
     backgroundImage: s.backgroundImage,
+    ads: s.ads || [],
   };
 }
 
@@ -147,6 +149,123 @@ function getUploadsDir() {
   return uploadsDir;
 }
 
+function sanitizeAdHtml(html) {
+  if (!html) return '';
+  const allowedTags = ['b', 'i', 'u', 'strong', 'em', 'br', 'font', 'span', 'div', 'p'];
+  const allowedAttrs = { font: ['color', 'size'], span: ['style'], div: ['style'], p: ['style'] };
+  const safeStyleProps = ['color', 'font-size', 'text-align', 'font-weight', 'font-style', 'text-decoration'];
+
+  html = html.replace(/<script[\s\S]*?<\/script>/gi, '');
+  html = html.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '');
+  html = html.replace(/on\w+\s*=\s*[^\s>]*/gi, '');
+  html = html.replace(/javascript\s*:/gi, 'blocked:');
+  html = html.replace(/data\s*:/gi, 'blocked:');
+  html = html.replace(/vbscript\s*:/gi, 'blocked:');
+
+  html = html.replace(/<\/?(\w+)([^>]*)>/g, (match, tag, attrs) => {
+    const t = tag.toLowerCase();
+    if (!allowedTags.includes(t)) return '';
+    if (match.startsWith('</')) return '</' + t + '>';
+    const tagAllowed = allowedAttrs[t] || [];
+    let safeAttrs = '';
+    if (tagAllowed.length > 0) {
+      const attrRegex = /(\w+)\s*=\s*["']([^"']*)["']/g;
+      let m;
+      while ((m = attrRegex.exec(attrs)) !== null) {
+        const aName = m[1].toLowerCase();
+        const aVal = m[2];
+        if (!tagAllowed.includes(aName)) continue;
+        if (aName === 'style') {
+          const safeParts = aVal.split(';').filter(p => {
+            const prop = p.split(':')[0]?.trim().toLowerCase();
+            return prop && safeStyleProps.includes(prop);
+          });
+          if (safeParts.length > 0) safeAttrs += ' style="' + safeParts.join(';') + '"';
+        } else {
+          if (!/[<>"']/.test(aVal)) safeAttrs += ' ' + aName + '="' + aVal + '"';
+        }
+      }
+    }
+    return '<' + t + safeAttrs + '>';
+  });
+  return html;
+}
+
+function getAds() {
+  const s = load();
+  return s.ads || [];
+}
+
+function addAd(content, imageInfo) {
+  const s = load();
+  if (!s.ads) s.ads = [];
+  const id = crypto.randomBytes(8).toString('hex');
+  const ad = { id, content: sanitizeAdHtml(content), image: imageInfo || null, order: s.ads.length };
+  s.ads.push(ad);
+  save(s);
+  return ad;
+}
+
+function updateAd(id, updates) {
+  const s = load();
+  if (!s.ads) return null;
+  const ad = s.ads.find(a => a.id === id);
+  if (!ad) return null;
+  if (updates.content !== undefined) ad.content = sanitizeAdHtml(updates.content);
+  if (updates.image !== undefined) ad.image = updates.image;
+  save(s);
+  return ad;
+}
+
+function adExists(id) {
+  const s = load();
+  return s.ads && s.ads.some(a => a.id === id);
+}
+
+function removeAd(id) {
+  const s = load();
+  if (!s.ads) return false;
+  const idx = s.ads.findIndex(a => a.id === id);
+  if (idx === -1) return false;
+  const ad = s.ads[idx];
+  if (ad.image && ad.image.filename) {
+    const filepath = path.join(uploadsDir, ad.image.filename);
+    try { fs.unlinkSync(filepath); } catch (e) {}
+  }
+  s.ads.splice(idx, 1);
+  s.ads.forEach((a, i) => a.order = i);
+  save(s);
+  return true;
+}
+
+function reorderAds(orderedIds) {
+  const s = load();
+  if (!s.ads) return [];
+  const map = {};
+  s.ads.forEach(a => map[a.id] = a);
+  const reordered = [];
+  orderedIds.forEach((id, i) => {
+    if (map[id]) { map[id].order = i; reordered.push(map[id]); delete map[id]; }
+  });
+  Object.values(map).forEach(a => { a.order = reordered.length; reordered.push(a); });
+  s.ads = reordered;
+  save(s);
+  return s.ads;
+}
+
+function saveAdImage(adId, fileBuffer, originalName, mimeType) {
+  ensureDirs();
+  const ext = path.extname(originalName).toLowerCase() || '.png';
+  const filename = 'ad_' + adId + ext;
+  const filepath = path.join(uploadsDir, filename);
+  const existing = fs.readdirSync(uploadsDir).filter(f => f.startsWith('ad_' + adId));
+  for (const f of existing) {
+    try { fs.unlinkSync(path.join(uploadsDir, f)); } catch (e) {}
+  }
+  fs.writeFileSync(filepath, fileBuffer);
+  return { filename, mimeType, size: fileBuffer.length };
+}
+
 module.exports = {
   setDataDir,
   isAdminRegistered,
@@ -160,4 +279,11 @@ module.exports = {
   removeBackgroundImage,
   getBackgroundImagePath,
   getUploadsDir,
+  getAds,
+  addAd,
+  updateAd,
+  removeAd,
+  reorderAds,
+  saveAdImage,
+  adExists,
 };
