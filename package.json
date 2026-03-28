@@ -11,12 +11,10 @@
   "build": {
     "appId": "com.denfi.autoshutdown",
     "productName": "Denfi Auto Shutdown",
-    "icon": "build/icon.ico",
     "asar": false,
     "win": {
       "target": "nsis",
       "requestedExecutionLevel": "asInvoker",
-      "icon": "build/icon.ico",
       "executableName": "denfi-auto-shutdown"
     },
     "nsis": {
