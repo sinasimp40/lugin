@@ -986,49 +986,66 @@
       const canvas = document.getElementById('flame-particles');
       const ctx = canvas.getContext('2d');
       flameParticles = [];
+      let resizeTimer;
 
       function resize() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
       }
       resize();
-      window.addEventListener('resize', resize);
+      window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 100); });
 
-      function spawnParticle() {
-        const edge = Math.random();
+      function spawnEmber() {
+        const x = Math.random() * canvas.width;
+        const y = canvas.height + 10;
+        return {
+          x, y,
+          vx: (Math.random() - 0.5) * 1.2,
+          vy: -(1.0 + Math.random() * 2.5),
+          life: 150 + Math.random() * 200,
+          maxLife: 0,
+          size: 2 + Math.random() * 4,
+          hue: 10 + Math.random() * 35,
+          wobble: Math.random() * Math.PI * 2,
+          wobbleSpeed: 0.02 + Math.random() * 0.04,
+          wobbleAmp: 0.5 + Math.random() * 1.5,
+          type: 'ember'
+        };
+      }
+
+      function spawnSpark() {
+        const side = Math.random();
         let x, y, vx, vy;
-        if (edge < 0.5) {
-          x = Math.random() * canvas.width;
-          y = canvas.height + 4;
-          vx = (Math.random() - 0.5) * 0.6;
-          vy = -(0.4 + Math.random() * 1.2);
-        } else if (edge < 0.7) {
-          x = -4;
-          y = canvas.height * (0.3 + Math.random() * 0.7);
-          vx = 0.3 + Math.random() * 0.8;
-          vy = -(0.2 + Math.random() * 0.6);
-        } else if (edge < 0.9) {
-          x = canvas.width + 4;
-          y = canvas.height * (0.3 + Math.random() * 0.7);
-          vx = -(0.3 + Math.random() * 0.8);
-          vy = -(0.2 + Math.random() * 0.6);
+        if (side < 0.33) {
+          x = -5; y = canvas.height * (0.4 + Math.random() * 0.6);
+          vx = 0.5 + Math.random() * 1.5; vy = -(0.5 + Math.random() * 1.0);
+        } else if (side < 0.66) {
+          x = canvas.width + 5; y = canvas.height * (0.4 + Math.random() * 0.6);
+          vx = -(0.5 + Math.random() * 1.5); vy = -(0.5 + Math.random() * 1.0);
         } else {
-          x = Math.random() * canvas.width;
-          y = canvas.height * (0.5 + Math.random() * 0.5);
-          vx = (Math.random() - 0.5) * 0.4;
-          vy = -(0.5 + Math.random() * 1.0);
+          x = Math.random() * canvas.width; y = canvas.height * (0.6 + Math.random() * 0.4);
+          vx = (Math.random() - 0.5) * 2; vy = -(1.5 + Math.random() * 2.0);
         }
-        const life = 120 + Math.random() * 180;
-        const size = 1.5 + Math.random() * 3;
-        const hue = Math.random() < 0.7 ? (15 + Math.random() * 25) : (35 + Math.random() * 15);
-        return { x, y, vx, vy, life, maxLife: life, size, hue, wobble: Math.random() * Math.PI * 2 };
+        return {
+          x, y, vx, vy,
+          life: 80 + Math.random() * 120,
+          maxLife: 0,
+          size: 1 + Math.random() * 2.5,
+          hue: 30 + Math.random() * 20,
+          wobble: Math.random() * Math.PI * 2,
+          wobbleSpeed: 0.05 + Math.random() * 0.05,
+          wobbleAmp: 0.3 + Math.random() * 0.8,
+          type: 'spark'
+        };
       }
 
       function animate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        if (flameParticles.length < 60) {
-          for (let i = 0; i < 2; i++) flameParticles.push(spawnParticle());
+        while (flameParticles.length < 100) {
+          const p = Math.random() < 0.7 ? spawnEmber() : spawnSpark();
+          p.maxLife = p.life;
+          flameParticles.push(p);
         }
 
         for (let i = flameParticles.length - 1; i >= 0; i--) {
@@ -1036,29 +1053,34 @@
           p.life--;
           if (p.life <= 0) { flameParticles.splice(i, 1); continue; }
 
-          p.wobble += 0.03;
-          p.x += p.vx + Math.sin(p.wobble) * 0.3;
+          p.wobble += p.wobbleSpeed;
+          p.x += p.vx + Math.sin(p.wobble) * p.wobbleAmp;
           p.y += p.vy;
-          p.vy *= 0.998;
+          p.vy *= 0.997;
+          p.vx *= 0.999;
 
           const progress = 1 - (p.life / p.maxLife);
-          const alpha = progress < 0.1 ? progress * 10 : progress > 0.7 ? (1 - progress) / 0.3 : 1;
-          const finalAlpha = alpha * 0.5;
-          const currentSize = p.size * (1 - progress * 0.4);
-          const glowSize = currentSize * 3;
+          let alpha;
+          if (progress < 0.08) alpha = progress / 0.08;
+          else if (progress > 0.6) alpha = (1 - progress) / 0.4;
+          else alpha = 1;
 
-          const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowSize);
-          gradient.addColorStop(0, 'hsla(' + p.hue + ', 100%, 70%, ' + (finalAlpha * 0.8) + ')');
-          gradient.addColorStop(0.3, 'hsla(' + p.hue + ', 100%, 55%, ' + (finalAlpha * 0.4) + ')');
-          gradient.addColorStop(1, 'hsla(' + p.hue + ', 100%, 40%, 0)');
-          ctx.fillStyle = gradient;
+          const currentSize = p.size * (1 - progress * 0.3);
+          const glowRadius = currentSize * (p.type === 'ember' ? 5 : 3.5);
+
+          const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius);
+          grd.addColorStop(0, 'hsla(' + p.hue + ', 100%, 85%, ' + (alpha * 0.9) + ')');
+          grd.addColorStop(0.2, 'hsla(' + p.hue + ', 100%, 65%, ' + (alpha * 0.6) + ')');
+          grd.addColorStop(0.5, 'hsla(' + (p.hue + 5) + ', 100%, 50%, ' + (alpha * 0.25) + ')');
+          grd.addColorStop(1, 'hsla(' + (p.hue + 10) + ', 100%, 30%, 0)');
+          ctx.fillStyle = grd;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, glowSize, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, glowRadius, 0, Math.PI * 2);
           ctx.fill();
 
-          ctx.fillStyle = 'hsla(' + p.hue + ', 100%, 80%, ' + finalAlpha + ')';
+          ctx.fillStyle = 'hsla(' + p.hue + ', 100%, 95%, ' + (alpha * 0.95) + ')';
           ctx.beginPath();
-          ctx.arc(p.x, p.y, currentSize, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, currentSize * 0.5, 0, Math.PI * 2);
           ctx.fill();
         }
 
