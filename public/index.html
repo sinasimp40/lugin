@@ -1634,6 +1634,30 @@
       startCoinPolling(username);
     }
 
+    document.addEventListener('keydown', (e) => {
+      if (sessionData) return;
+      const active = document.activeElement;
+      const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+      if (e.altKey || e.metaKey || e.key === 'Meta' || e.key === 'OS') {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+      if (e.ctrlKey && !isInput) {
+        if (!['a','c','v','x'].includes(e.key.toLowerCase())) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      }
+      const blocked = ['F1','F2','F3','F5','F6','F7','F8','F9','F10','F11','F12','Escape'];
+      if (blocked.includes(e.key) && !isInput) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    }, true);
+
     document.getElementById('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
     document.getElementById('reg-password').addEventListener('keydown', (e) => { if (e.key === 'Enter') doRegister(); });
     document.getElementById('admin-pw-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('admin-auth-btn').click(); });

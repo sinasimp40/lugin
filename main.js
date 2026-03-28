@@ -66,11 +66,21 @@ function reclaimFocus() {
 function registerKeyBlocks() {
   const shortcuts = [
     'Alt+Tab', 'Alt+F4', 'Alt+Escape', 'Alt+Space',
+    'Alt+Enter', 'Alt+F1', 'Alt+F2',
     'Super', 'Super+D', 'Super+E', 'Super+R', 'Super+L',
     'Super+Tab', 'Super+X', 'Super+I', 'Super+S', 'Super+A',
+    'Super+M', 'Super+P', 'Super+B', 'Super+T', 'Super+G',
+    'Super+K', 'Super+H', 'Super+Q', 'Super+N', 'Super+V',
+    'Super+C', 'Super+F', 'Super+O', 'Super+U', 'Super+W',
+    'Super+1', 'Super+2', 'Super+3', 'Super+4', 'Super+5',
+    'Super+6', 'Super+7', 'Super+8', 'Super+9', 'Super+0',
+    'Super+Up', 'Super+Down', 'Super+Left', 'Super+Right',
+    'Super+Shift+S',
     'Ctrl+Shift+Escape',
     'Ctrl+Escape',
-    'F11',
+    'Ctrl+Shift+Delete',
+    'Ctrl+Alt+Tab',
+    'F1', 'F2', 'F3', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12',
   ];
   for (const sc of shortcuts) {
     try {
@@ -236,6 +246,10 @@ function showLoginWindow() {
 
   loginWindow.on('blur', () => {
     if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
+      loginWindow.setKiosk(true);
+      loginWindow.setAlwaysOnTop(true, 'screen-saver');
+      loginWindow.moveTop();
+      loginWindow.focus();
       setTimeout(() => {
         if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
           loginWindow.setKiosk(true);
@@ -243,7 +257,7 @@ function showLoginWindow() {
           loginWindow.moveTop();
           loginWindow.focus();
         }
-      }, 100);
+      }, 50);
     }
   });
 
@@ -256,7 +270,7 @@ function showLoginWindow() {
         loginWindow.focus();
       }
     }
-  }, 500);
+  }, 200);
 }
 
 function showSessionWindow() {
