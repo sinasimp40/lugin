@@ -181,8 +181,6 @@ function performLogout() {
 
 function reclaimFocus() {
   if (loginWindow && !loginWindow.isDestroyed()) {
-    loginWindow.setKiosk(true);
-    loginWindow.setAlwaysOnTop(true, 'screen-saver');
     loginWindow.moveTop();
     loginWindow.focus();
   }
@@ -361,22 +359,32 @@ function showLoginWindow() {
 
   loginWindow.webContents.on('context-menu', (e) => e.preventDefault());
 
+  let windowShown = false;
+
   function showWindow() {
-    if (!loginWindow || loginWindow.isDestroyed() || loginWindow.isVisible()) return;
-    loginWindow.setBounds({ x, y, width, height });
-    loginWindow.setKiosk(true);
-    loginWindow.setAlwaysOnTop(true, 'screen-saver');
+    if (windowShown || !loginWindow || loginWindow.isDestroyed()) return;
+    windowShown = true;
     loginWindow.show();
     loginWindow.moveTop();
     loginWindow.focus();
+    console.log('[Electron] Login window shown');
   }
 
   loginWindow.loadURL(APP_URL);
 
-  loginWindow.once('ready-to-show', showWindow);
+  loginWindow.once('ready-to-show', () => {
+    console.log('[Electron] ready-to-show fired');
+    showWindow();
+  });
 
-  loginWindow.webContents.on('did-fail-load', () => {
-    console.log('[Electron] Page failed to load, retrying in 1s...');
+  loginWindow.webContents.once('did-finish-load', () => {
+    console.log('[Electron] did-finish-load fired');
+    showWindow();
+    startFocusGuard();
+  });
+
+  loginWindow.webContents.on('did-fail-load', (_event, errorCode, errorDesc) => {
+    console.log('[Electron] Page failed to load:', errorCode, errorDesc, '- retrying in 1s...');
     setTimeout(() => {
       if (loginWindow && !loginWindow.isDestroyed()) {
         loginWindow.loadURL(APP_URL);
@@ -384,35 +392,30 @@ function showLoginWindow() {
     }, 1000);
   });
 
-  setTimeout(showWindow, 5000);
+  setTimeout(() => {
+    showWindow();
+    startFocusGuard();
+  }, 5000);
 
-  loginWindow.on('blur', () => {
-    if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
-      loginWindow.setKiosk(true);
-      loginWindow.setAlwaysOnTop(true, 'screen-saver');
-      loginWindow.moveTop();
-      loginWindow.focus();
-      setTimeout(() => {
-        if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
-          loginWindow.setKiosk(true);
-          loginWindow.setAlwaysOnTop(true, 'screen-saver');
-          loginWindow.moveTop();
-          loginWindow.focus();
-        }
-      }, 50);
-    }
-  });
+  function startFocusGuard() {
+    if (focusGuardInterval) return;
 
-  focusGuardInterval = setInterval(() => {
-    if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
-      if (!loginWindow.isFocused()) {
-        loginWindow.setKiosk(true);
-        loginWindow.setAlwaysOnTop(true, 'screen-saver');
+    loginWindow.on('blur', () => {
+      if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
         loginWindow.moveTop();
         loginWindow.focus();
       }
-    }
-  }, 150);
+    });
+
+    focusGuardInterval = setInterval(() => {
+      if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
+        if (!loginWindow.isFocused()) {
+          loginWindow.moveTop();
+          loginWindow.focus();
+        }
+      }
+    }, 2000);
+  }
 }
 
 function showSessionWindow() {
