@@ -70,7 +70,7 @@
     }
     .login-panel.hidden { display: none; }
 
-    .glitch-container { text-align: center; margin-bottom: 32px; min-height: 60px; position: relative; }
+    .glitch-container { text-align: center; margin-bottom: 32px; min-height: 50px; position: relative; }
     .glitch-text {
       font-family: 'Orbitron', monospace;
       font-size: 36px; font-weight: 900;
@@ -78,6 +78,9 @@
       text-transform: uppercase;
       letter-spacing: 6px;
       position: relative;
+      display: inline-block;
+      white-space: pre-line;
+      line-height: 1.3;
       text-shadow:
         0 0 10px rgba(255,140,0,0.8),
         0 0 20px rgba(255,140,0,0.5),
@@ -87,35 +90,37 @@
     .glitch-text::before, .glitch-text::after {
       content: attr(data-text);
       position: absolute; top: 0; left: 0; right: 0;
+      white-space: pre-line;
       overflow: hidden;
     }
     .glitch-text::before {
-      animation: glitch-1 2.5s infinite linear alternate-reverse;
-      clip-path: inset(0 0 80% 0);
+      animation: glitch-1 3s infinite linear alternate-reverse;
       color: var(--neon-magenta);
       text-shadow: -2px 0 var(--neon-magenta);
+      clip-path: inset(0 0 85% 0);
     }
     .glitch-text::after {
-      animation: glitch-2 2.5s infinite linear alternate-reverse;
-      clip-path: inset(80% 0 0 0);
+      animation: glitch-2 3s infinite linear alternate-reverse;
       color: var(--neon-cyan);
       text-shadow: 2px 0 var(--neon-cyan);
+      clip-path: inset(85% 0 0 0);
     }
     @keyframes glitch-1 {
-      0% { clip-path: inset(20% 0 60% 0); transform: translate(-2px, 1px); }
-      20% { clip-path: inset(50% 0 20% 0); transform: translate(1px, -1px); }
-      40% { clip-path: inset(10% 0 70% 0); transform: translate(-1px, 2px); }
-      60% { clip-path: inset(40% 0 30% 0); transform: translate(2px, 0); }
-      80% { clip-path: inset(70% 0 10% 0); transform: translate(-1px, -1px); }
-      100% { clip-path: inset(30% 0 50% 0); transform: translate(1px, 1px); }
+      0%, 85% { clip-path: inset(0 0 100% 0); transform: none; }
+      86% { clip-path: inset(20% 0 60% 0); transform: translate(-3px, 0); }
+      88% { clip-path: inset(50% 0 30% 0); transform: translate(2px, 0); }
+      90% { clip-path: inset(10% 0 70% 0); transform: translate(-2px, 0); }
+      92% { clip-path: inset(40% 0 40% 0); transform: translate(3px, 0); }
+      94% { clip-path: inset(60% 0 20% 0); transform: translate(-1px, 0); }
+      96%, 100% { clip-path: inset(0 0 100% 0); transform: none; }
     }
     @keyframes glitch-2 {
-      0% { clip-path: inset(60% 0 20% 0); transform: translate(2px, -1px); }
-      20% { clip-path: inset(30% 0 50% 0); transform: translate(-1px, 1px); }
-      40% { clip-path: inset(80% 0 5% 0); transform: translate(1px, -2px); }
-      60% { clip-path: inset(15% 0 60% 0); transform: translate(-2px, 0); }
-      80% { clip-path: inset(45% 0 30% 0); transform: translate(1px, 1px); }
-      100% { clip-path: inset(70% 0 15% 0); transform: translate(-1px, -1px); }
+      0%, 88% { clip-path: inset(100% 0 0 0); transform: none; }
+      89% { clip-path: inset(60% 0 20% 0); transform: translate(3px, 0); }
+      91% { clip-path: inset(30% 0 50% 0); transform: translate(-2px, 0); }
+      93% { clip-path: inset(70% 0 10% 0); transform: translate(2px, 0); }
+      95% { clip-path: inset(15% 0 65% 0); transform: translate(-3px, 0); }
+      97%, 100% { clip-path: inset(100% 0 0 0); transform: none; }
     }
 
     .cyber-line {
@@ -754,6 +759,7 @@
         step++;
         let result = '';
         for (let i = 0; i < len; i++) {
+          if (finalText[i] === '\n') { result += '\n'; continue; }
           if (i < (step / steps) * len) result += finalText[i];
           else result += chars[Math.floor(Math.random() * chars.length)];
         }
