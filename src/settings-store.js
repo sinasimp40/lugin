@@ -83,6 +83,7 @@ function getSettings() {
     backgroundImage: s.backgroundImage || null,
     pisonetUnitName: s.pisonetUnitName || 'PC 1',
     ads: s.ads || [],
+    adSlideSeconds: s.adSlideSeconds !== undefined ? s.adSlideSeconds : 5,
   };
 }
 
@@ -93,6 +94,7 @@ function getPublicSettings() {
     autoShutdownSeconds: s.autoShutdownSeconds,
     backgroundImage: s.backgroundImage,
     ads: s.ads || [],
+    adSlideSeconds: s.adSlideSeconds !== undefined ? s.adSlideSeconds : 5,
   };
 }
 
@@ -102,6 +104,7 @@ function updateSettings(updates) {
   if (updates.autoShutdownSeconds !== undefined) s.autoShutdownSeconds = parseInt(updates.autoShutdownSeconds) || 0;
   if (updates.backgroundImage !== undefined) s.backgroundImage = updates.backgroundImage;
   if (updates.pisonetUnitName !== undefined) s.pisonetUnitName = updates.pisonetUnitName;
+  if (updates.adSlideSeconds !== undefined) s.adSlideSeconds = Math.max(1, Math.min(60, parseInt(updates.adSlideSeconds) || 5));
   save(s);
   return getSettings();
 }
