@@ -255,16 +255,11 @@
     function connectWs() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
       ws = new WebSocket(`${proto}//${location.host}/ws/session`);
-      let wsLogoutGrace = 0;
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === 'status' && msg.data) {
             if (msg.data.isLogin) {
-              if (wsLogoutGrace > 0) {
-                console.log('[Session WS] Recovered after', wsLogoutGrace, 'grace checks (coin insert / time extend)');
-              }
-              wsLogoutGrace = 0;
               document.getElementById('username').textContent = msg.data.username || 'User';
               timeLeft = parseInt(msg.data.sessionTimeLeft) || 0;
               if (msg.data.logoutLink) logoutLink = msg.data.logoutLink;
@@ -272,9 +267,6 @@
               if (msg.data.ip) sessionIp = msg.data.ip;
               if (msg.data.mac) sessionMac = msg.data.mac;
               updateTimer();
-            } else {
-              wsLogoutGrace++;
-              console.log('[Session WS] isLogin=false, grace count:', wsLogoutGrace, '(waiting to confirm)');
             }
           } else if (msg.type === 'logged-out') {
             if (window.electronAPI && window.electronAPI.setSessionState) {

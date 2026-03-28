@@ -1169,27 +1169,17 @@
     function connectSessionWs() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
       sessionWs = new WebSocket(`${proto}//${location.host}/ws/session`);
-      let wsLogoutGrace = 0;
       sessionWs.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === 'status' && msg.data) {
             if (msg.data.isLogin) {
-              if (wsLogoutGrace > 0) {
-                console.log('[WS] Session recovered after', wsLogoutGrace, 'grace checks (coin insert / time extend)');
-              }
-              wsLogoutGrace = 0;
               localTimeLeft = parseInt(msg.data.sessionTimeLeft) || 0;
               updateTimerDisplay();
               if (msg.data.username) document.getElementById('session-username').textContent = msg.data.username;
               if (msg.data.logoutLink && sessionData) sessionData.logoutLink = msg.data.logoutLink;
             } else if (sessionData) {
-              wsLogoutGrace++;
-              console.log('[WS] isLogin=false, grace count:', wsLogoutGrace, '(waiting to confirm)');
-              if (wsLogoutGrace >= 2) {
-                wsLogoutGrace = 0;
-                showLoggedOut();
-              }
+              showLoggedOut();
             }
           } else if (msg.type === 'logged-out' && sessionData) {
             showLoggedOut();

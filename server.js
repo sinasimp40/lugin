@@ -893,9 +893,6 @@ function broadcast(msg) {
   if (wsClients.size === 0) stopWsPolling();
 }
 
-let logoutGraceCount = 0;
-const LOGOUT_GRACE_POLLS = 3;
-
 async function pollHotspotForWs() {
   try {
     const resp = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(5000) });
@@ -906,28 +903,16 @@ async function pollHotspotForWs() {
     const prevTime = lastSessionData?.sessionTimeLeft;
     const newTime = parseInt(data.sessionTimeLeft) || 0;
 
+    lastSessionData = data;
+
     if (prevTime !== undefined && newTime > parseInt(prevTime)) {
-      console.log('[WS] Time increased:', prevTime, '->', newTime, '(coin inserted / time extended)');
+      console.log('[WS] Time increased:', prevTime, '->', newTime);
     }
 
+    broadcast({ type: 'status', data });
+
     if (wasLoggedIn && !data.isLogin) {
-      logoutGraceCount++;
-      console.log('[WS] Session dropped - grace poll', logoutGraceCount, '/', LOGOUT_GRACE_POLLS, '(waiting to confirm real logout)');
-      if (logoutGraceCount < LOGOUT_GRACE_POLLS) {
-        return;
-      }
-      console.log('[WS] Logout confirmed after', LOGOUT_GRACE_POLLS, 'consecutive polls');
-      lastSessionData = data;
-      logoutGraceCount = 0;
-      broadcast({ type: 'status', data });
       broadcast({ type: 'logged-out' });
-    } else {
-      if (logoutGraceCount > 0 && data.isLogin) {
-        console.log('[WS] Session recovered after', logoutGraceCount, 'grace polls - user came back (coin insert / time extend)');
-      }
-      logoutGraceCount = 0;
-      lastSessionData = data;
-      broadcast({ type: 'status', data });
     }
   } catch (err) {
     broadcast({ type: 'error', error: err.message });
