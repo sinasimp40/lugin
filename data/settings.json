@@ -2,9 +2,5 @@
   "adminPasswordHash": "445b86d130e68d3b4eac3d6a5461c4e0179d3cf16cfc35b50a778292484ca5ca52668378bdd377e42857b278a85a56a832e4cb9c1a5b591a338317be08c01deb",
   "adminSalt": "5cc084b73b6c582470f89bde2a75b176",
   "ads": [],
-  "backgroundImage": {
-    "filename": "background.jpg",
-    "mimeType": "image/jpeg",
-    "size": 11238495
-  }
+  "backgroundImage": null
 }
