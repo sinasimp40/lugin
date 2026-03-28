@@ -82,8 +82,6 @@ function getSettings() {
     autoShutdownSeconds: s.autoShutdownSeconds !== undefined ? s.autoShutdownSeconds : 180,
     backgroundImage: s.backgroundImage || null,
     pisonetUnitName: s.pisonetUnitName || 'PC 1',
-    hotspotDns: s.hotspotDns || 'pisonet.app',
-    vendoIp: s.vendoIp || '10.0.0.5:8989',
     ads: s.ads || [],
     adSlideSeconds: s.adSlideSeconds !== undefined ? s.adSlideSeconds : 5,
   };
@@ -106,8 +104,6 @@ function updateSettings(updates) {
   if (updates.autoShutdownSeconds !== undefined) s.autoShutdownSeconds = parseInt(updates.autoShutdownSeconds) || 0;
   if (updates.backgroundImage !== undefined) s.backgroundImage = updates.backgroundImage;
   if (updates.pisonetUnitName !== undefined) s.pisonetUnitName = updates.pisonetUnitName;
-  if (updates.hotspotDns !== undefined) s.hotspotDns = String(updates.hotspotDns).trim();
-  if (updates.vendoIp !== undefined) s.vendoIp = String(updates.vendoIp).trim();
   if (updates.adSlideSeconds !== undefined) s.adSlideSeconds = Math.max(1, Math.min(60, parseInt(updates.adSlideSeconds) || 5));
   save(s);
   return getSettings();

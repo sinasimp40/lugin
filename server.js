@@ -9,14 +9,8 @@ const settings = require('./src/settings-store');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-function getHotspotDns() {
-  const s = settings.getSettings();
-  return s.hotspotDns || 'pisonet.app';
-}
-function getVendoIp() {
-  const s = settings.getSettings();
-  return s.vendoIp || '10.0.0.5:8989';
-}
+const HOTSPOT_DNS = 'pisonet.app';
+const VENDO_IP = '10.0.0.5:8989';
 
 const adminTokens = new Map();
 const loginAttempts = new Map();
@@ -182,7 +176,7 @@ function manualExtract(str) {
 }
 
 async function fetchLoginData() {
-  const resp = await fetch(`http://${getHotspotDns()}/login`, {
+  const resp = await fetch(`http://${HOTSPOT_DNS}/login`, {
     signal: AbortSignal.timeout(5000),
     headers: { 'Cache-Control': 'no-cache' },
   });
@@ -197,7 +191,7 @@ app.get('/api/hotspot/login-data', async (req, res) => {
     console.log('[Login Data] CHAP:', chapAvailable, 'loginLink:', data.loginLink, 'error:', data.error);
     res.json({ success: true, data });
   } catch (err) {
-    res.json({ success: false, error: `Cannot reach ${getHotspotDns()}: ${err.message}` });
+    res.json({ success: false, error: `Cannot reach ${HOTSPOT_DNS}: ${err.message}` });
   }
 });
 
@@ -222,7 +216,7 @@ app.post('/api/hotspot/login', async (req, res) => {
       console.log('[Login] Using PAP (plaintext)');
     }
 
-    const loginLink = freshData.loginLink || `http://${getHotspotDns()}/login`;
+    const loginLink = freshData.loginLink || `http://${HOTSPOT_DNS}/login`;
     const postData = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(loginPassword)}&dst=&popup=true`;
 
     const loginResp = await fetch(loginLink, {
@@ -293,7 +287,7 @@ async function tryChapLogin(username, password) {
     const combined = Buffer.concat([chapIdBuf, passwordBuf, challengeBuf]);
     const chapPassword = crypto.createHash('md5').update(combined).digest('hex');
 
-    const link = freshData.loginLink || `http://${getHotspotDns()}/login`;
+    const link = freshData.loginLink || `http://${HOTSPOT_DNS}/login`;
     const postData = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(chapPassword)}&dst=&popup=true`;
     const resp = await fetch(link, {
       method: 'POST',
@@ -313,7 +307,7 @@ async function tryChapLogin(username, password) {
 
 app.get('/api/hotspot/status', async (req, res) => {
   try {
-    const resp = await fetch(`http://${getHotspotDns()}/status`, { signal: AbortSignal.timeout(5000) });
+    const resp = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(5000) });
     const buffer = Buffer.from(await resp.arrayBuffer());
     const data = parseHotspotResponse(buffer);
     res.json({ success: true, data });
@@ -327,7 +321,7 @@ app.post('/api/hotspot/logout', async (req, res) => {
   try {
     if (!logoutLink) {
       try {
-        const statusResp = await fetch(`http://${getHotspotDns()}/status`, { signal: AbortSignal.timeout(5000) });
+        const statusResp = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(5000) });
         const buffer = Buffer.from(await statusResp.arrayBuffer());
         const statusData = parseHotspotResponse(buffer);
         logoutLink = statusData.logoutLink;
@@ -335,7 +329,7 @@ app.post('/api/hotspot/logout', async (req, res) => {
       } catch (_) {}
     }
     if (!logoutLink) {
-      logoutLink = `http://${getHotspotDns()}/logout`;
+      logoutLink = `http://${HOTSPOT_DNS}/logout`;
     }
 
     const eraseUrl = logoutLink + (logoutLink.includes('?') ? '&' : '?') + 'erase-cookie=on';
@@ -351,7 +345,7 @@ app.post('/api/hotspot/logout', async (req, res) => {
 
     console.log('[Logout] Step 3 - Verify status');
     try {
-      const verifyResp = await fetch(`http://${getHotspotDns()}/status`, { signal: AbortSignal.timeout(3000) });
+      const verifyResp = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(3000) });
       const verifyBuf = Buffer.from(await verifyResp.arrayBuffer());
       const verifyData = parseHotspotResponse(verifyBuf);
       console.log('[Logout] Verify - isLogin:', verifyData.isLogin, 'username:', verifyData.username);
@@ -371,7 +365,7 @@ app.post('/api/hotspot/check-user', async (req, res) => {
 
   try {
     const freshData = await fetchLoginData();
-    const loginLink = freshData.loginLink || `http://${getHotspotDns()}/login`;
+    const loginLink = freshData.loginLink || `http://${HOTSPOT_DNS}/login`;
 
     let loginPassword = username;
     const chapAvailable = freshData.chapIdHex && freshData.chapIdHex.length > 0 && freshData.chapChallengeHex && freshData.chapChallengeHex.length > 0;
@@ -419,7 +413,7 @@ app.post('/api/pisonet/check-member', async (req, res) => {
   const { username } = req.body;
   if (!username) return res.json({ exists: false, error: 'Username required' });
   try {
-    const url = `http://${getVendoIp()}/pisonet/member?username=${encodeURIComponent(username)}`;
+    const url = `http://${VENDO_IP}/pisonet/member?username=${encodeURIComponent(username)}`;
     console.log('[Pisonet] check-member:', url);
     const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const text = await resp.text();
@@ -444,7 +438,7 @@ app.post('/api/pisonet/register', async (req, res) => {
   const { username, password, ip, mac } = req.body;
   if (!username) return res.json({ success: false, error: 'Username required' });
   try {
-    const url = `http://${getVendoIp()}/pisonet/register`;
+    const url = `http://${VENDO_IP}/pisonet/register`;
     const body = { macAddress: mac || '', ip: ip || '', username, password: password || username };
     console.log('[Pisonet] register:', url, JSON.stringify({ macAddress: body.macAddress, ip: body.ip, username: body.username }));
     const resp = await fetch(url, {
@@ -501,7 +495,7 @@ app.post('/api/pisonet/register', async (req, res) => {
 app.post('/api/vendo/test', async (req, res) => {
   const { method, endpoint, body } = req.body;
   try {
-    const url = `http://${getVendoIp()}${endpoint}`;
+    const url = `http://${VENDO_IP}${endpoint}`;
     console.log(`[VendoTest] ${method} ${url}`, body ? JSON.stringify(body) : '');
     const opts = {
       method: method || 'GET',
@@ -522,7 +516,7 @@ app.post('/api/vendo/test', async (req, res) => {
 app.post('/api/pisonet/logout', async (req, res) => {
   const { ip, mac, username } = req.body;
   try {
-    const url = `http://${getVendoIp()}/pisonet/logout`;
+    const url = `http://${VENDO_IP}/pisonet/logout`;
     const body = { macAddress: mac || '', ip: ip || '', username: username || '' };
     console.log('[Pisonet] logout:', url, JSON.stringify(body));
     const resp = await fetch(url, {
@@ -544,7 +538,7 @@ app.post('/api/pisonet/logout', async (req, res) => {
 app.post('/api/pisonet/avail', async (req, res) => {
   const { ip, mac } = req.body;
   try {
-    const url = `http://${getVendoIp()}/pisonet/avail`;
+    const url = `http://${VENDO_IP}/pisonet/avail`;
     const body = { macAddress: mac || '', ip: ip || '' };
     console.log('[Pisonet] avail:', url, JSON.stringify(body));
     const resp = await fetch(url, {
@@ -569,7 +563,7 @@ app.post('/api/pisonet/avail', async (req, res) => {
 app.post('/api/pisonet/done', async (req, res) => {
   const { ip, mac } = req.body;
   try {
-    const url = `http://${getVendoIp()}/pisonet/done`;
+    const url = `http://${VENDO_IP}/pisonet/done`;
     const body = { macAddress: mac || '', ip: ip || '' };
     console.log('[Pisonet] done:', url, JSON.stringify(body));
     const resp = await fetch(url, {
@@ -594,7 +588,7 @@ app.post('/api/pisonet/done', async (req, res) => {
 app.get('/api/vendo/check-coin', async (req, res) => {
   const { voucher } = req.query;
   try {
-    const url = `http://${getVendoIp()}/checkCoin?voucher=${encodeURIComponent(voucher || '')}`;
+    const url = `http://${VENDO_IP}/checkCoin?voucher=${encodeURIComponent(voucher || '')}`;
     const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
     const text = await resp.text();
     try {
@@ -615,7 +609,7 @@ app.get('/api/vendo/topup', async (req, res) => {
     params.set('ipAddress', ip || '');
     params.set('mac', mac || '');
     params.set('extendTime', extendTime || '0');
-    const url = `http://${getVendoIp()}/topUp?${params.toString()}`;
+    const url = `http://${VENDO_IP}/topUp?${params.toString()}`;
     console.log('[Vendo] topUp:', url);
     const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const text = await resp.text();
@@ -632,7 +626,7 @@ app.get('/api/vendo/topup', async (req, res) => {
 app.get('/api/vendo/use-voucher', async (req, res) => {
   const { voucher } = req.query;
   try {
-    const url = `http://${getVendoIp()}/useVoucher?voucher=${encodeURIComponent(voucher || '')}`;
+    const url = `http://${VENDO_IP}/useVoucher?voucher=${encodeURIComponent(voucher || '')}`;
     console.log('[Vendo] useVoucher:', url);
     const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const text = await resp.text();
@@ -649,7 +643,7 @@ app.get('/api/vendo/use-voucher', async (req, res) => {
 app.get('/api/vendo/cancel-topup', async (req, res) => {
   const { voucher, mac } = req.query;
   try {
-    const url = `http://${getVendoIp()}/cancelTopUp?voucher=${encodeURIComponent(voucher || '')}&mac=${encodeURIComponent(mac || '')}`;
+    const url = `http://${VENDO_IP}/cancelTopUp?voucher=${encodeURIComponent(voucher || '')}&mac=${encodeURIComponent(mac || '')}`;
     console.log('[Vendo] cancelTopUp:', url);
     const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const text = await resp.text();
@@ -665,7 +659,7 @@ app.get('/api/vendo/cancel-topup', async (req, res) => {
 
 app.get('/api/vendo/rates', async (req, res) => {
   try {
-    const resp = await fetch(`http://${getVendoIp()}/getRates`, { signal: AbortSignal.timeout(5000) });
+    const resp = await fetch(`http://${VENDO_IP}/getRates`, { signal: AbortSignal.timeout(5000) });
     const text = await resp.text();
     try {
       res.json({ success: true, data: JSON.parse(text) });
@@ -899,7 +893,7 @@ function broadcast(msg) {
 
 async function pollHotspotForWs() {
   try {
-    const resp = await fetch(`http://${getHotspotDns()}/status`, { signal: AbortSignal.timeout(5000) });
+    const resp = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(5000) });
     const buffer = Buffer.from(await resp.arrayBuffer());
     const data = parseHotspotResponse(buffer);
 
