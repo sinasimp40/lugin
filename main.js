@@ -325,7 +325,7 @@ function showLoginWindow() {
   loginWindow = new BrowserWindow({
     x, y, width, height,
     title: 'Pisonet App',
-    show: false,
+    show: true,
     frame: false,
     resizable: false,
     movable: false,
@@ -347,6 +347,11 @@ function showLoginWindow() {
 
   Menu.setApplicationMenu(null);
 
+  loginWindow.setKiosk(true);
+  loginWindow.setAlwaysOnTop(true, 'screen-saver');
+  loginWindow.moveTop();
+  loginWindow.focus();
+
   loginWindow.webContents.on('before-input-event', (event, input) => {
     if (input.alt || input.meta || input.key === 'Meta' || input.key === 'OS') {
       event.preventDefault();
@@ -361,20 +366,7 @@ function showLoginWindow() {
 
   loginWindow.webContents.on('context-menu', (e) => e.preventDefault());
 
-  function showWindow() {
-    if (loginWindow && !loginWindow.isDestroyed() && !loginWindow.isVisible()) {
-      loginWindow.setBounds({ x, y, width, height });
-      loginWindow.setKiosk(true);
-      loginWindow.setAlwaysOnTop(true, 'screen-saver');
-      loginWindow.show();
-      loginWindow.moveTop();
-      loginWindow.focus();
-    }
-  }
-
   loginWindow.loadURL(APP_URL);
-
-  loginWindow.once('ready-to-show', showWindow);
 
   loginWindow.webContents.on('did-fail-load', () => {
     console.log('[Electron] Page failed to load, retrying in 1s...');
@@ -384,8 +376,6 @@ function showLoginWindow() {
       }
     }, 1000);
   });
-
-  setTimeout(showWindow, 8000);
 
   loginWindow.on('blur', () => {
     if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
