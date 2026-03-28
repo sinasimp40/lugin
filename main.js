@@ -121,7 +121,11 @@ function startKeyboardHook() {
 
 function stopKeyboardHook() {
   if (kioskHookProcess) {
+    const pid = kioskHookProcess.pid;
     try { kioskHookProcess.kill(); } catch (_) {}
+    if (pid && process.platform === 'win32') {
+      try { exec(`taskkill /PID ${pid} /T /F`, () => {}); } catch (_) {}
+    }
     kioskHookProcess = null;
     cleanupHookScript();
     console.log('[Kiosk] Keyboard hook stopped');
