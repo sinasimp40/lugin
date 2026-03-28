@@ -1231,8 +1231,8 @@
       if (!coinClientIp || !coinClientMac) {
         try {
           const loginResp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => null);
-          if (loginResp && loginResp.ip) coinClientIp = loginResp.ip;
-          if (loginResp && loginResp.mac) coinClientMac = loginResp.mac;
+          if (loginResp && loginResp.data && loginResp.data.ip) coinClientIp = loginResp.data.ip;
+          if (loginResp && loginResp.data && loginResp.data.mac) coinClientMac = loginResp.data.mac;
         } catch (_) {}
       }
 
@@ -1582,17 +1582,21 @@
       console.log('[Register] verify after register:', JSON.stringify(verifyResp));
 
       if (!verifyResp.exists) {
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        const retryVerify = await fetch('/api/hotspot/check-user', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: fullUsername }),
-        }).then(r => r.json()).catch(() => ({ exists: false }));
-        console.log('[Register] verify retry:', JSON.stringify(retryVerify));
+        if (verifyResp.checkFailed) {
+          console.log('[Register] Hotspot unreachable for verify — skipping, registration confirmed success');
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          const retryVerify = await fetch('/api/hotspot/check-user', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: fullUsername }),
+          }).then(r => r.json()).catch(() => ({ exists: false, checkFailed: true }));
+          console.log('[Register] verify retry:', JSON.stringify(retryVerify));
 
-        if (!retryVerify.exists) {
-          resetRegBtn();
-          showRegError('Registration sent but user was not created. Please try again.');
-          return;
+          if (!retryVerify.exists && !retryVerify.checkFailed) {
+            resetRegBtn();
+            showRegError('Registration sent but user was not created. Please try again.');
+            return;
+          }
         }
       }
 
@@ -1624,8 +1628,8 @@
       if (!coinClientIp || !coinClientMac) {
         try {
           const loginResp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => null);
-          if (loginResp && loginResp.ip) coinClientIp = loginResp.ip;
-          if (loginResp && loginResp.mac) coinClientMac = loginResp.mac;
+          if (loginResp && loginResp.data && loginResp.data.ip) coinClientIp = loginResp.data.ip;
+          if (loginResp && loginResp.data && loginResp.data.mac) coinClientMac = loginResp.data.mac;
         } catch (_) {}
       }
 
