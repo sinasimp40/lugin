@@ -1,7 +1,0 @@
-Pisonet App running at http://0.0.0.0:5000
-[WS] Client connected, total: [33m1[39m
-[WS] Starting server-side polling
-[WS] Client connected, total: [33m2[39m
-[WS] Client disconnected, total: [33m1[39m
-[WS] Client disconnected, total: [33m0[39m
-[WS] Stopped server-side polling
