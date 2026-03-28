@@ -975,11 +975,10 @@
       const bgLayer = document.getElementById('bg-layer');
       if (bgInfo && bgInfo.filename) {
         bgLayer.style.backgroundImage = 'url(/uploads/' + bgInfo.filename + '?t=' + Date.now() + ')';
-        startFlameParticles();
       } else {
         bgLayer.style.backgroundImage = '';
-        stopFlameParticles();
       }
+      startFlameParticles();
     }
 
     function startFlameParticles() {
@@ -1293,7 +1292,15 @@
       document.getElementById('login-text').classList.remove('hidden');
       document.getElementById('login-spinner').classList.add('hidden');
       if (resp.success && resp.data) showSession(resp.data);
-      else { showError(resp.error || 'Authentication failed'); await init(); }
+      else {
+        const errMsg = resp.error || '';
+        if (errMsg.toLowerCase().includes('user.invalid') || errMsg.toLowerCase().includes('user invalid')) {
+          showError('User already logged in. Please logout first.');
+        } else {
+          showError(errMsg || 'Authentication failed');
+        }
+        await init();
+      }
     }
 
     function showSession(data) {
@@ -2234,6 +2241,8 @@
           showRegError('ID "' + fullUsername + '" already exists. Use Login instead.');
           document.getElementById('tab-login').click();
           document.getElementById('username').value = username;
+        } else if (errLower.includes('user.invalid') || errLower.includes('user invalid')) {
+          showRegError('User already logged in. Please logout first.');
         } else if (errLower.includes('cannot reach')) {
           showRegError('Cannot reach vendo. Check if it is powered on.');
         } else {
