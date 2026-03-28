@@ -288,9 +288,34 @@ app.whenReady().then(() => {
 
   const path = require('path');
   const settings = require('./src/settings-store');
-  const userDataDir = path.join(app.getPath('userData'), 'pisonet-data');
-  settings.setDataDir(userDataDir);
-  console.log('[Electron] Data dir:', userDataDir);
+  const fs = require('fs');
+  const portableDataDir = path.join(path.dirname(app.getPath('exe')), 'denfi-data');
+  let usePortable = false;
+  try {
+    if (!fs.existsSync(portableDataDir)) {
+      fs.mkdirSync(portableDataDir, { recursive: true });
+    }
+    const stat = fs.statSync(portableDataDir);
+    if (stat.isDirectory()) {
+      const testFile = path.join(portableDataDir, '.write-test');
+      fs.writeFileSync(testFile, 'ok');
+      fs.unlinkSync(testFile);
+      usePortable = true;
+    }
+  } catch (e) {
+    console.log('[Electron] Portable dir not usable:', e.message);
+    usePortable = false;
+  }
+  const dataDir = usePortable ? portableDataDir : path.join(app.getPath('userData'), 'pisonet-data');
+  try {
+    settings.setDataDir(dataDir);
+  } catch (e) {
+    console.log('[Electron] Failed to set data dir:', dataDir, e.message);
+    const fallback = path.join(app.getPath('userData'), 'pisonet-data');
+    settings.setDataDir(fallback);
+    console.log('[Electron] Fell back to:', fallback);
+  }
+  console.log('[Electron] Data dir:', dataDir, usePortable ? '(portable)' : '(appdata)');
 
   function waitForServer(retries) {
     const http = require('http');
