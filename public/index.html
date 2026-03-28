@@ -843,7 +843,7 @@
             </div>
           </div>
           <div class="admin-ads-list" id="admin-ads-list"></div>
-          <button class="btn-admin" style="width:100%" onclick="addNewAd()">+ Add Slide</button>
+          <button class="btn-admin" style="width:100%" id="btn-add-slide">+ Add Slide</button>
         </div>
 
         <div class="admin-section">
@@ -1650,11 +1650,16 @@
     let adSlideMs = 5000;
 
     function renderAdCarousel(ads) {
-      currentAds = ads;
       const carousel = document.getElementById('ad-carousel');
       const slidesEl = document.getElementById('ad-slides');
       const dotsEl = document.getElementById('ad-dots');
-      if (!ads || ads.length === 0) {
+      const visibleAds = (ads || []).filter(ad => {
+        const hasImage = ad.image && ad.image.filename;
+        const hasContent = ad.content && ad.content.replace(/<[^>]*>/g, '').trim().length > 0;
+        return hasImage || hasContent;
+      });
+      currentAds = visibleAds;
+      if (visibleAds.length === 0) {
         carousel.classList.add('empty');
         slidesEl.innerHTML = '';
         dotsEl.innerHTML = '';
@@ -1662,7 +1667,7 @@
         return;
       }
       carousel.classList.remove('empty');
-      slidesEl.innerHTML = ads.map(ad => {
+      slidesEl.innerHTML = visibleAds.map(ad => {
         const bgStyle = ad.image && ad.image.filename ? 'background-image:url(/uploads/' + ad.image.filename + '?t=' + Date.now() + ')' : '';
         const content = ad.content || '';
         return '<div class="ad-slide">' +
@@ -1670,9 +1675,9 @@
           '<div class="ad-slide-content">' + content + '</div>' +
           '</div>';
       }).join('');
-      if (ads.length > 1) {
+      if (visibleAds.length > 1) {
         dotsEl.style.display = '';
-        dotsEl.innerHTML = ads.map((_, i) =>
+        dotsEl.innerHTML = visibleAds.map((_, i) =>
           '<div class="ad-dot' + (i === 0 ? ' active' : '') + '" onclick="goToAdSlide(' + i + ')"></div>'
         ).join('');
       } else {
@@ -1723,35 +1728,49 @@
           '<div class="admin-ad-header">' +
             '<span class="admin-ad-label">Slide ' + (i + 1) + '</span>' +
             '<div class="admin-ad-actions">' +
-              (i > 0 ? '<button onclick="moveAd(\'' + ad.id + '\',-1)">&#9650;</button>' : '') +
-              (i < ads.length - 1 ? '<button onclick="moveAd(\'' + ad.id + '\',1)">&#9660;</button>' : '') +
-              '<button class="del" onclick="deleteAd(\'' + ad.id + '\')">&#10005;</button>' +
+              (i > 0 ? '<button data-action="move-up" data-adid="' + ad.id + '">&#9650;</button>' : '') +
+              (i < ads.length - 1 ? '<button data-action="move-down" data-adid="' + ad.id + '">&#9660;</button>' : '') +
+              '<button class="del" data-action="delete" data-adid="' + ad.id + '">&#10005;</button>' +
             '</div>' +
           '</div>' +
           '<div class="admin-ad-img-preview" style="' + imgBg + '">' +
             imgLabel +
-            '<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange="uploadAdImage(\'' + ad.id + '\',this)" />' +
+            '<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" data-action="upload-img" data-adid="' + ad.id + '" />' +
           '</div>' +
           '<div class="ad-editor-toolbar">' +
-            '<button onclick="adCmd(\'' + ad.id + '\',\'bold\')" title="Bold"><b>B</b></button>' +
-            '<button onclick="adCmd(\'' + ad.id + '\',\'italic\')" title="Italic"><i>I</i></button>' +
-            '<button onclick="adCmd(\'' + ad.id + '\',\'underline\')" title="Underline"><u>U</u></button>' +
-            '<select onchange="adFontSize(\'' + ad.id + '\',this.value);this.selectedIndex=0">' +
+            '<button data-action="cmd" data-adid="' + ad.id + '" data-cmd="bold" title="Bold"><b>B</b></button>' +
+            '<button data-action="cmd" data-adid="' + ad.id + '" data-cmd="italic" title="Italic"><i>I</i></button>' +
+            '<button data-action="cmd" data-adid="' + ad.id + '" data-cmd="underline" title="Underline"><u>U</u></button>' +
+            '<select data-action="font-size" data-adid="' + ad.id + '">' +
               '<option value="">Size</option>' +
               '<option value="1">Small</option>' +
               '<option value="3">Normal</option>' +
               '<option value="5">Large</option>' +
               '<option value="7">Huge</option>' +
             '</select>' +
-            '<input type="color" value="#ff8c00" onchange="adFontColor(\'' + ad.id + '\',this.value)" title="Text Color" />' +
-            '<button onclick="adCmd(\'' + ad.id + '\',\'justifyLeft\')" title="Left">&#8676;</button>' +
-            '<button onclick="adCmd(\'' + ad.id + '\',\'justifyCenter\')" title="Center">&#8596;</button>' +
-            '<button onclick="adCmd(\'' + ad.id + '\',\'justifyRight\')" title="Right">&#8677;</button>' +
+            '<input type="color" value="#ff8c00" data-action="font-color" data-adid="' + ad.id + '" title="Text Color" />' +
+            '<button data-action="cmd" data-adid="' + ad.id + '" data-cmd="justifyLeft" title="Left">&#8676;</button>' +
+            '<button data-action="cmd" data-adid="' + ad.id + '" data-cmd="justifyCenter" title="Center">&#8596;</button>' +
+            '<button data-action="cmd" data-adid="' + ad.id + '" data-cmd="justifyRight" title="Right">&#8677;</button>' +
           '</div>' +
-          '<div class="ad-content-editor" contenteditable="true" id="ad-editor-' + ad.id + '" ' +
-            'onblur="saveAdContent(\'' + ad.id + '\')">' + (ad.content || '') + '</div>' +
+          '<div class="ad-content-editor" contenteditable="true" id="ad-editor-' + ad.id + '" data-adid="' + ad.id + '">' + (ad.content || '') + '</div>' +
         '</div>';
       }).join('');
+
+      list.querySelectorAll('[data-action]').forEach(el => {
+        const action = el.dataset.action;
+        const adid = el.dataset.adid;
+        if (action === 'delete') el.addEventListener('click', () => deleteAd(adid));
+        else if (action === 'move-up') el.addEventListener('click', () => moveAd(adid, -1));
+        else if (action === 'move-down') el.addEventListener('click', () => moveAd(adid, 1));
+        else if (action === 'cmd') el.addEventListener('click', () => adCmd(adid, el.dataset.cmd));
+        else if (action === 'font-size') el.addEventListener('change', function() { adFontSize(adid, this.value); this.selectedIndex = 0; });
+        else if (action === 'font-color') el.addEventListener('change', function() { adFontColor(adid, this.value); });
+        else if (action === 'upload-img') el.addEventListener('change', function() { uploadAdImage(adid, this); });
+      });
+      list.querySelectorAll('.ad-content-editor').forEach(el => {
+        el.addEventListener('blur', () => saveAdContent(el.dataset.adid));
+      });
     }
 
     function adCmd(id, cmd) {
@@ -1786,43 +1805,60 @@
     }
 
     async function addNewAd() {
-      const resp = await fetch('/api/admin/ads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
-        body: JSON.stringify({ content: '' })
-      }).then(r => r.json()).catch(() => ({ success: false }));
-      if (resp.success) {
-        showAdminMsg('admin-panel-msg', 'Slide added', 'success');
-        refreshAdminAds();
-      } else {
-        showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+      if (!adminToken) { showAdminMsg('admin-panel-msg', 'Not authenticated', 'error'); return; }
+      try {
+        const r = await fetch('/api/admin/ads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+          body: JSON.stringify({ content: '' })
+        });
+        const resp = await r.json();
+        if (resp.success) {
+          showAdminMsg('admin-panel-msg', 'Slide added', 'success');
+          await refreshAdminAds();
+        } else {
+          showAdminMsg('admin-panel-msg', resp.error || 'Failed to add slide', 'error');
+        }
+      } catch (e) {
+        showAdminMsg('admin-panel-msg', 'Network error', 'error');
       }
     }
 
     async function deleteAd(id) {
-      const resp = await fetch('/api/admin/ads/' + id, {
-        method: 'DELETE',
-        headers: { 'x-admin-token': adminToken }
-      }).then(r => r.json()).catch(() => ({ success: false }));
-      if (resp.success) {
-        showAdminMsg('admin-panel-msg', 'Slide removed', 'success');
-        refreshAdminAds();
+      if (!adminToken) { showAdminMsg('admin-panel-msg', 'Not authenticated', 'error'); return; }
+      try {
+        const r = await fetch('/api/admin/ads/' + id, {
+          method: 'DELETE',
+          headers: { 'x-admin-token': adminToken }
+        });
+        const resp = await r.json();
+        if (resp.success) {
+          showAdminMsg('admin-panel-msg', 'Slide removed', 'success');
+          await refreshAdminAds();
+        } else {
+          showAdminMsg('admin-panel-msg', resp.error || 'Failed to delete', 'error');
+        }
+      } catch (e) {
+        showAdminMsg('admin-panel-msg', 'Network error', 'error');
       }
     }
 
     async function moveAd(id, dir) {
+      if (!adminToken) return;
       const idx = adminAdsData.findIndex(a => a.id === id);
       if (idx === -1) return;
       const newIdx = idx + dir;
       if (newIdx < 0 || newIdx >= adminAdsData.length) return;
       const ids = adminAdsData.map(a => a.id);
       [ids[idx], ids[newIdx]] = [ids[newIdx], ids[idx]];
-      await fetch('/api/admin/ads/reorder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
-        body: JSON.stringify({ orderedIds: ids })
-      }).then(r => r.json()).catch(() => ({}));
-      refreshAdminAds();
+      try {
+        await fetch('/api/admin/ads/reorder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+          body: JSON.stringify({ orderedIds: ids })
+        });
+        await refreshAdminAds();
+      } catch (e) {}
     }
 
     async function uploadAdImage(id, input) {
@@ -2111,6 +2147,8 @@
       settingsWs.onerror = () => { if (settingsWs) settingsWs.close(); };
     }
     function disconnectSettingsWs() { if (settingsWs) { settingsWs.onclose = null; settingsWs.close(); settingsWs = null; } }
+
+    document.getElementById('btn-add-slide').addEventListener('click', addNewAd);
 
     loadSettings();
     connectSettingsWs();
