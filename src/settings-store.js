@@ -154,16 +154,25 @@ function getUploadsDir() {
 
 function sanitizeAdHtml(html) {
   if (!html) return '';
-  const allowedTags = ['b', 'i', 'u', 'strong', 'em', 'br', 'font', 'span', 'div', 'p'];
-  const allowedAttrs = { font: ['color', 'size'], span: ['style'], div: ['style'], p: ['style'] };
-  const safeStyleProps = ['color', 'font-size', 'text-align', 'font-weight', 'font-style', 'text-decoration'];
+  const allowedTags = ['b', 'i', 'u', 's', 'strike', 'del', 'strong', 'em', 'br', 'font', 'span', 'div', 'p', 'a', 'img', 'ul', 'ol', 'li', 'hr', 'blockquote', 'sub', 'sup', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'code'];
+  const allowedAttrs = { font: ['color', 'size', 'face'], span: ['style'], div: ['style'], p: ['style'], a: ['href', 'target'], img: ['src', 'alt', 'width', 'height', 'style'], h1: ['style'], h2: ['style'], h3: ['style'], h4: ['style'], h5: ['style'], h6: ['style'], blockquote: ['style'], li: ['style'], ul: ['style'], ol: ['style'] };
+  const safeStyleProps = ['color', 'font-size', 'text-align', 'font-weight', 'font-style', 'text-decoration', 'background-color', 'font-family', 'line-height', 'margin', 'padding', 'max-width', 'width', 'height', 'border', 'display'];
+
+  function decodeEntities(str) {
+    return str.replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+              .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+              .replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')
+              .replace(/&quot;/gi, '"').replace(/&apos;/gi, "'");
+  }
+  function isSafeUrl(url) {
+    const decoded = decodeEntities(url).replace(/[\x00-\x1f\x7f]/g, '').trim().toLowerCase();
+    if (/^(javascript|data|vbscript)\s*:/i.test(decoded)) return false;
+    return true;
+  }
 
   html = html.replace(/<script[\s\S]*?<\/script>/gi, '');
   html = html.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '');
   html = html.replace(/on\w+\s*=\s*[^\s>]*/gi, '');
-  html = html.replace(/javascript\s*:/gi, 'blocked:');
-  html = html.replace(/data\s*:/gi, 'blocked:');
-  html = html.replace(/vbscript\s*:/gi, 'blocked:');
 
   html = html.replace(/<\/?(\w+)([^>]*)>/g, (match, tag, attrs) => {
     const t = tag.toLowerCase();
@@ -178,6 +187,7 @@ function sanitizeAdHtml(html) {
         const aName = m[1].toLowerCase();
         const aVal = m[2];
         if (!tagAllowed.includes(aName)) continue;
+        if ((aName === 'href' || aName === 'src') && !isSafeUrl(aVal)) continue;
         if (aName === 'style') {
           const safeParts = aVal.split(';').filter(p => {
             const prop = p.split(':')[0]?.trim().toLowerCase();
@@ -187,6 +197,9 @@ function sanitizeAdHtml(html) {
         } else {
           if (!/[<>"']/.test(aVal)) safeAttrs += ' ' + aName + '="' + aVal + '"';
         }
+      }
+      if (t === 'a' && safeAttrs.includes('target=')) {
+        safeAttrs += ' rel="noopener noreferrer"';
       }
     }
     return '<' + t + safeAttrs + '>';
