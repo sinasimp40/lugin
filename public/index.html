@@ -300,6 +300,10 @@
       transition: color 0.3s, text-shadow 0.3s;
       margin-bottom: 10px;
     }
+    .shutdown-time-display.caution {
+      color: #ff8c00;
+      text-shadow: 0 0 15px rgba(255,140,0,0.6), 0 0 30px rgba(255,140,0,0.3);
+    }
     .shutdown-time-display.warning {
       color: var(--neon-yellow);
       text-shadow: 0 0 15px rgba(255,215,0,0.6), 0 0 30px rgba(255,215,0,0.3);
@@ -323,6 +327,10 @@
       background: var(--neon-magenta);
       box-shadow: 0 0 8px rgba(255,69,0,0.6), 0 0 16px rgba(255,69,0,0.3);
       transition: width 1s linear, background 0.3s, box-shadow 0.3s;
+    }
+    .shutdown-bar-fill.caution {
+      background: #ff8c00;
+      box-shadow: 0 0 8px rgba(255,140,0,0.6), 0 0 16px rgba(255,140,0,0.3);
     }
     .shutdown-bar-fill.warning {
       background: var(--neon-yellow);
@@ -1108,9 +1116,9 @@
       lastTickedShutdown = n;
       try {
         let audio;
-        if (n <= 3) audio = shutdownFinalAudio;
-        else if (n <= 10) audio = shutdownUrgentAudio;
-        else if (n <= 20) audio = shutdownWarnAudio;
+        if (n <= 5) audio = shutdownFinalAudio;
+        else if (n <= 15) audio = shutdownUrgentAudio;
+        else if (n <= 30) audio = shutdownWarnAudio;
         else audio = shutdownTickAudio;
         audio.currentTime = 0;
         audio.play().catch(() => {});
@@ -1138,9 +1146,12 @@
       } else if (shutdownLeft <= 120) {
         el.classList.add('warning');
         bar.classList.add('warning');
+      } else if (shutdownLeft <= 180) {
+        el.classList.add('caution');
+        bar.classList.add('caution');
       }
 
-      if (shutdownLeft <= 30 && shutdownLeft > 0) {
+      if (shutdownLeft <= 60 && shutdownLeft > 0) {
         playShutdownTick(shutdownLeft);
       }
 
