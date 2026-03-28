@@ -361,35 +361,19 @@ function showLoginWindow() {
 
   loginWindow.webContents.on('context-menu', (e) => e.preventDefault());
 
-  function enforceFullscreen() {
-    if (!loginWindow || loginWindow.isDestroyed()) return;
+  function showWindow() {
+    if (!loginWindow || loginWindow.isDestroyed() || loginWindow.isVisible()) return;
     loginWindow.setBounds({ x, y, width, height });
-    loginWindow.setFullScreen(true);
     loginWindow.setKiosk(true);
     loginWindow.setAlwaysOnTop(true, 'screen-saver');
+    loginWindow.show();
     loginWindow.moveTop();
     loginWindow.focus();
   }
 
   loginWindow.loadURL(APP_URL);
 
-  loginWindow.webContents.on('did-finish-load', () => {
-    if (loginWindow && !loginWindow.isDestroyed()) {
-      enforceFullscreen();
-      if (!loginWindow.isVisible()) {
-        loginWindow.show();
-      }
-      enforceFullscreen();
-    }
-  });
-
-  loginWindow.once('ready-to-show', () => {
-    if (loginWindow && !loginWindow.isDestroyed() && !loginWindow.isVisible()) {
-      enforceFullscreen();
-      loginWindow.show();
-      enforceFullscreen();
-    }
-  });
+  loginWindow.once('ready-to-show', showWindow);
 
   loginWindow.webContents.on('did-fail-load', () => {
     console.log('[Electron] Page failed to load, retrying in 1s...');
@@ -400,13 +384,7 @@ function showLoginWindow() {
     }, 1000);
   });
 
-  setTimeout(() => {
-    if (loginWindow && !loginWindow.isDestroyed() && !loginWindow.isVisible()) {
-      enforceFullscreen();
-      loginWindow.show();
-      enforceFullscreen();
-    }
-  }, 5000);
+  setTimeout(showWindow, 5000);
 
   loginWindow.on('blur', () => {
     if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
