@@ -6,15 +6,21 @@
   "scripts": {
     "start": "node server.js",
     "electron": "electron .",
-    "build": "electron-builder --win --x64"
+    "prebuild": "node -e \"const fs=require('fs'),p=require('path');const bd=p.join(__dirname,'build');if(!fs.existsSync(bd))fs.mkdirSync(bd);['icon.ico','icon.png'].forEach(f=>{const src=p.join(__dirname,'public',f),dst=p.join(bd,f);if(fs.existsSync(src)&&!fs.existsSync(dst))fs.copyFileSync(src,dst);const rootDst=p.join(__dirname,f);if(fs.existsSync(src)&&!fs.existsSync(rootDst))fs.copyFileSync(src,rootDst)});console.log('Icons ready:',fs.readdirSync(bd))\"",
+    "build": "npm run prebuild && electron-builder --win --x64"
   },
   "build": {
     "appId": "com.denfi.autoshutdown",
     "productName": "Denfi Auto Shutdown",
+    "icon": "icon.ico",
+    "directories": {
+      "buildResources": "build"
+    },
     "asar": false,
     "win": {
       "target": "nsis",
       "requestedExecutionLevel": "asInvoker",
+      "icon": "icon.ico",
       "executableName": "denfi-auto-shutdown"
     },
     "nsis": {
@@ -22,7 +28,9 @@
       "deleteAppDataOnUninstall": true,
       "artifactName": "Denfi Auto Shutdown Setup.${ext}",
       "shortcutName": "Denfi Auto Shutdown",
-      "uninstallDisplayName": "Denfi Auto Shutdown"
+      "uninstallDisplayName": "Denfi Auto Shutdown",
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico"
     },
     "files": [
       "main.js",
@@ -31,6 +39,8 @@
       "src/**/*",
       "public/**/*",
       "build/**/*",
+      "icon.ico",
+      "icon.png",
       "kiosk-setup.bat",
       "kiosk-disable.bat",
       "node_modules/**/*",

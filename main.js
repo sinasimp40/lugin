@@ -335,7 +335,7 @@ function showLoginWindow() {
     kiosk: true,
     enableLargerThanScreen: true,
     backgroundColor: '#0a0a0a',
-    icon: require('path').join(__dirname, 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
+    icon: require('path').join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
