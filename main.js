@@ -11,27 +11,6 @@ function enableKioskLockdown() {
   if (process.platform !== 'win32') return;
   console.log('[Kiosk] Enabling lockdown...');
 
-  exec('reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v DisableTaskMgr /t REG_DWORD /d 1 /f', (e) => {
-    if (e) console.log('[Kiosk] DisableTaskMgr failed:', e.message);
-    else console.log('[Kiosk] Task Manager disabled');
-  });
-  exec('reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer" /v NoWinKeys /t REG_DWORD /d 1 /f', (e) => {
-    if (e) console.log('[Kiosk] NoWinKeys failed:', e.message);
-    else console.log('[Kiosk] Windows keys disabled');
-  });
-  exec('reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v DisableLockWorkstation /t REG_DWORD /d 1 /f', (e) => {
-    if (e) console.log('[Kiosk] DisableLockWorkstation failed:', e.message);
-    else console.log('[Kiosk] Lock workstation disabled');
-  });
-  exec('reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v DisableChangePassword /t REG_DWORD /d 1 /f', (e) => {
-    if (e) console.log('[Kiosk] DisableChangePassword failed:', e.message);
-    else console.log('[Kiosk] Change password disabled');
-  });
-  exec('reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer" /v NoLogoff /t REG_DWORD /d 1 /f', (e) => {
-    if (e) console.log('[Kiosk] NoLogoff failed:', e.message);
-    else console.log('[Kiosk] Sign out disabled');
-  });
-
   startKeyboardHook();
 }
 
@@ -39,12 +18,7 @@ function disableKioskLockdown() {
   if (process.platform !== 'win32') return;
   console.log('[Kiosk] Disabling lockdown...');
 
-  exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v DisableTaskMgr /f', () => {});
-  exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer" /v NoWinKeys /f', () => {});
-  exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v DisableLockWorkstation /f', () => {});
-  exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v DisableChangePassword /f', () => {});
-  exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer" /v NoLogoff /f', () => {});
-
+  stopCADDismiss();
   stopKeyboardHook();
 }
 
