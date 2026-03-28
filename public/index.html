@@ -997,46 +997,34 @@
 
       function spawn() {
         const x = Math.random() * canvas.width;
-        const y = canvas.height + 2 + Math.random() * 20;
-        const r = Math.random();
-        return {
-          x, y,
-          vx: (Math.random() - 0.5) * 0.8,
-          vy: -(0.6 + Math.random() * 1.4),
-          life: 180 + Math.random() * 220,
-          maxLife: 0,
-          size: r < 0.6 ? (0.8 + Math.random() * 1.2) : (1.5 + Math.random() * 1.5),
-          wobble: Math.random() * Math.PI * 2,
-          wobbleSpeed: 0.015 + Math.random() * 0.025,
-          bright: r < 0.15
-        };
-      }
-
-      function flameColor(progress, alpha, inner) {
-        if (progress < 0.15) {
-          if (inner) return 'rgba(255,255,220,' + alpha + ')';
-          return 'rgba(255,200,50,' + (alpha * 0.6) + ')';
-        } else if (progress < 0.4) {
-          const t = (progress - 0.15) / 0.25;
-          const r = 255;
-          const g = Math.round(200 - t * 120);
-          const b = Math.round(50 - t * 40);
-          if (inner) return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
-          return 'rgba(' + r + ',' + Math.round(g * 0.7) + ',' + Math.round(b * 0.5) + ',' + (alpha * 0.5) + ')';
+        const y = canvas.height + 5 + Math.random() * 30;
+        const speed = 0.3 + Math.random() * 0.7;
+        const size = 1 + Math.random() * 2;
+        const orange = Math.random();
+        let r, g, b;
+        if (orange < 0.5) {
+          r = 255; g = Math.round(100 + Math.random() * 80); b = 0;
+        } else if (orange < 0.8) {
+          r = 255; g = Math.round(180 + Math.random() * 60); b = 0;
         } else {
-          const t = (progress - 0.4) / 0.6;
-          const r = Math.round(255 - t * 80);
-          const g = Math.round(80 - t * 60);
-          const b = Math.round(10 + t * 5);
-          if (inner) return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
-          return 'rgba(' + Math.round(r * 0.6) + ',' + Math.round(g * 0.4) + ',0,' + (alpha * 0.35) + ')';
+          r = 255; g = Math.round(200 + Math.random() * 55); b = Math.round(50 + Math.random() * 80);
         }
+        return {
+          x, y, vy: -speed, size,
+          r, g, b,
+          life: 300 + Math.random() * 400,
+          maxLife: 0,
+          drift: (Math.random() - 0.5) * 0.15,
+          wobble: Math.random() * Math.PI * 2,
+          wobbleAmp: 0.2 + Math.random() * 0.5,
+          wobbleSpeed: 0.01 + Math.random() * 0.02
+        };
       }
 
       function animate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        const toSpawn = Math.min(2, 80 - flameParticles.length);
+        const toSpawn = Math.min(2, 60 - flameParticles.length);
         for (let s = 0; s < toSpawn; s++) {
           const p = spawn();
           p.maxLife = p.life;
@@ -1049,31 +1037,27 @@
           if (p.life <= 0) { flameParticles.splice(i, 1); continue; }
 
           p.wobble += p.wobbleSpeed;
-          p.x += p.vx + Math.sin(p.wobble) * 0.4;
+          p.x += p.drift + Math.sin(p.wobble) * p.wobbleAmp;
           p.y += p.vy;
-          p.vy *= 0.999;
 
           const progress = 1 - (p.life / p.maxLife);
           let alpha;
           if (progress < 0.05) alpha = progress / 0.05;
-          else if (progress > 0.5) alpha = (1 - progress) / 0.5;
-          else alpha = 1;
+          else if (progress > 0.6) alpha = (1 - progress) / 0.4;
+          else alpha = 0.8;
 
-          const sz = p.size * (1 - progress * 0.5);
-          const glowR = sz * 2.5;
-
+          const glowR = p.size * 3;
           const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowR);
-          grd.addColorStop(0, flameColor(progress, alpha * 0.7, false));
-          grd.addColorStop(0.5, flameColor(progress, alpha * 0.15, false));
-          grd.addColorStop(1, 'rgba(100,20,0,0)');
+          grd.addColorStop(0, 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + (alpha * 0.4) + ')');
+          grd.addColorStop(1, 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',0)');
           ctx.fillStyle = grd;
           ctx.beginPath();
           ctx.arc(p.x, p.y, glowR, 0, Math.PI * 2);
           ctx.fill();
 
-          ctx.fillStyle = flameColor(progress, alpha * (p.bright ? 1 : 0.85), true);
+          ctx.fillStyle = 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + alpha + ')';
           ctx.beginPath();
-          ctx.arc(p.x, p.y, sz * 0.4, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, p.size * 0.5, 0, Math.PI * 2);
           ctx.fill();
         }
 
