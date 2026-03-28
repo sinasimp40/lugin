@@ -1,7 +1,76 @@
 const { app, BrowserWindow, Menu, ipcMain, globalShortcut } = require('electron');
+const { exec, spawn } = require('child_process');
+const path = require('path');
 
 const PORT = 5000;
 const APP_URL = `http://127.0.0.1:${PORT}`;
+
+let kioskHookProcess = null;
+
+function enableKioskLockdown() {
+  if (process.platform !== 'win32') return;
+  console.log('[Kiosk] Enabling lockdown...');
+
+  exec('reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v DisableTaskMgr /t REG_DWORD /d 1 /f', (e) => {
+    if (e) console.log('[Kiosk] DisableTaskMgr failed:', e.message);
+    else console.log('[Kiosk] Task Manager disabled');
+  });
+  exec('reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer" /v NoWinKeys /t REG_DWORD /d 1 /f', (e) => {
+    if (e) console.log('[Kiosk] NoWinKeys failed:', e.message);
+    else console.log('[Kiosk] Windows keys disabled');
+  });
+  exec('reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v DisableLockWorkstation /t REG_DWORD /d 1 /f', (e) => {
+    if (e) console.log('[Kiosk] DisableLockWorkstation failed:', e.message);
+    else console.log('[Kiosk] Lock workstation disabled');
+  });
+
+  startKeyboardHook();
+}
+
+function disableKioskLockdown() {
+  if (process.platform !== 'win32') return;
+  console.log('[Kiosk] Disabling lockdown...');
+
+  exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v DisableTaskMgr /f', () => {});
+  exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer" /v NoWinKeys /f', () => {});
+  exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v DisableLockWorkstation /f', () => {});
+
+  stopKeyboardHook();
+}
+
+function startKeyboardHook() {
+  if (kioskHookProcess) return;
+  const scriptPath = path.join(__dirname, 'kiosk-hook.ps1');
+  try {
+    kioskHookProcess = spawn('powershell.exe', [
+      '-ExecutionPolicy', 'Bypass',
+      '-WindowStyle', 'Hidden',
+      '-File', scriptPath
+    ], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+
+    kioskHookProcess.stdout.on('data', (data) => {
+      console.log('[Kiosk Hook]', data.toString().trim());
+    });
+    kioskHookProcess.stderr.on('data', (data) => {
+      console.log('[Kiosk Hook Error]', data.toString().trim());
+    });
+    kioskHookProcess.on('exit', (code) => {
+      console.log('[Kiosk Hook] exited with code', code);
+      kioskHookProcess = null;
+    });
+    console.log('[Kiosk] Keyboard hook started');
+  } catch (e) {
+    console.log('[Kiosk] Failed to start keyboard hook:', e.message);
+  }
+}
+
+function stopKeyboardHook() {
+  if (kioskHookProcess) {
+    try { kioskHookProcess.kill(); } catch (_) {}
+    kioskHookProcess = null;
+    console.log('[Kiosk] Keyboard hook stopped');
+  }
+}
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -104,6 +173,7 @@ app.on('before-quit', (event) => {
     event.preventDefault();
     console.log('[Electron] App closing, performing logout...');
     unregisterKeyBlocks();
+    disableKioskLockdown();
     if (focusGuardInterval) {
       clearInterval(focusGuardInterval);
       focusGuardInterval = null;
@@ -194,6 +264,7 @@ function showLoginWindow() {
 
   currentState = 'logged-out';
   registerKeyBlocks();
+  enableKioskLockdown();
 
   loginWindow = new BrowserWindow({
     x, y, width, height,
@@ -357,6 +428,7 @@ function handleStateChange(state) {
     if (currentState === 'logged-in' && sessionWindow && !sessionWindow.isDestroyed()) return;
     currentState = 'logged-in';
     unregisterKeyBlocks();
+    disableKioskLockdown();
     if (focusGuardInterval) {
       clearInterval(focusGuardInterval);
       focusGuardInterval = null;
@@ -380,6 +452,7 @@ function handleStateChange(state) {
     if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) return;
     currentState = 'logged-out';
     stopPolling();
+    enableKioskLockdown();
 
     if (loginWindow && !loginWindow.isDestroyed()) {
       loginWindow.destroy();
