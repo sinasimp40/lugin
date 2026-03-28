@@ -290,32 +290,24 @@
       } catch (e) {}
     }
 
-    let sessionVoiceSynth = window.speechSynthesis;
-    let sessionVoiceObj = null;
-    function getSessionVoice() {
-      if (sessionVoiceObj) return sessionVoiceObj;
-      const voices = sessionVoiceSynth.getVoices();
-      sessionVoiceObj = voices.find(v => /male/i.test(v.name) && /en/i.test(v.lang))
-        || voices.find(v => /david|james|mark|daniel/i.test(v.name))
-        || voices.find(v => /en/i.test(v.lang))
-        || voices[0] || null;
-      return sessionVoiceObj;
-    }
-    if (sessionVoiceSynth) {
-      sessionVoiceSynth.onvoiceschanged = () => { sessionVoiceObj = null; getSessionVoice(); };
-    }
-    let lastSpokenSession = -1;
-    function speakSessionNumber(n) {
-      if (!sessionVoiceSynth || n === lastSpokenSession) return;
-      lastSpokenSession = n;
-      sessionVoiceSynth.cancel();
-      const utter = new SpeechSynthesisUtterance(String(n));
-      utter.rate = 1.1;
-      utter.pitch = 0.8;
-      utter.volume = 1;
-      const v = getSessionVoice();
-      if (v) utter.voice = v;
-      sessionVoiceSynth.speak(utter);
+    const sessionTickAudio = new Audio('sounds/tick.wav');
+    const sessionWarnAudio = new Audio('sounds/warn-tick.wav');
+    const sessionUrgentAudio = new Audio('sounds/urgent-tick.wav');
+    const sessionFinalAudio = new Audio('sounds/final-beep.wav');
+    [sessionTickAudio, sessionWarnAudio, sessionUrgentAudio, sessionFinalAudio].forEach(a => { a.volume = 0.8; });
+    let lastTickedSession = -1;
+    function playSessionTick(n) {
+      if (n === lastTickedSession) return;
+      lastTickedSession = n;
+      try {
+        let audio;
+        if (n <= 3) audio = sessionFinalAudio;
+        else if (n <= 10) audio = sessionUrgentAudio;
+        else if (n <= 20) audio = sessionWarnAudio;
+        else audio = sessionTickAudio;
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+      } catch (e) {}
     }
 
     function updateTimer() {
@@ -333,7 +325,7 @@
       if (timeLeft <= 60) {
         el.classList.add('critical');
         box.classList.add('danger-border');
-        if (timeLeft > 0) speakSessionNumber(timeLeft);
+        if (timeLeft > 0) playSessionTick(timeLeft);
       } else if (timeLeft <= 300) {
         el.classList.add('danger');
         box.classList.add('danger-border');

@@ -1097,32 +1097,24 @@
       }, 1000);
     }
 
-    let shutdownVoiceSynth = window.speechSynthesis;
-    let shutdownVoiceObj = null;
-    function getShutdownVoice() {
-      if (shutdownVoiceObj) return shutdownVoiceObj;
-      const voices = shutdownVoiceSynth.getVoices();
-      shutdownVoiceObj = voices.find(v => /male/i.test(v.name) && /en/i.test(v.lang))
-        || voices.find(v => /david|james|mark|daniel/i.test(v.name))
-        || voices.find(v => /en/i.test(v.lang))
-        || voices[0] || null;
-      return shutdownVoiceObj;
-    }
-    if (shutdownVoiceSynth) {
-      shutdownVoiceSynth.onvoiceschanged = () => { shutdownVoiceObj = null; getShutdownVoice(); };
-    }
-    let lastSpokenShutdown = -1;
-    function speakNumber(n) {
-      if (!shutdownVoiceSynth || n === lastSpokenShutdown) return;
-      lastSpokenShutdown = n;
-      shutdownVoiceSynth.cancel();
-      const utter = new SpeechSynthesisUtterance(String(n));
-      utter.rate = 1.1;
-      utter.pitch = 0.8;
-      utter.volume = 1;
-      const v = getShutdownVoice();
-      if (v) utter.voice = v;
-      shutdownVoiceSynth.speak(utter);
+    const shutdownTickAudio = new Audio('sounds/tick.wav');
+    const shutdownWarnAudio = new Audio('sounds/warn-tick.wav');
+    const shutdownUrgentAudio = new Audio('sounds/urgent-tick.wav');
+    const shutdownFinalAudio = new Audio('sounds/final-beep.wav');
+    [shutdownTickAudio, shutdownWarnAudio, shutdownUrgentAudio, shutdownFinalAudio].forEach(a => { a.volume = 0.8; });
+    let lastTickedShutdown = -1;
+    function playShutdownTick(n) {
+      if (n === lastTickedShutdown) return;
+      lastTickedShutdown = n;
+      try {
+        let audio;
+        if (n <= 3) audio = shutdownFinalAudio;
+        else if (n <= 10) audio = shutdownUrgentAudio;
+        else if (n <= 20) audio = shutdownWarnAudio;
+        else audio = shutdownTickAudio;
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+      } catch (e) {}
     }
 
     function updateShutdownDisplay() {
@@ -1149,7 +1141,7 @@
       }
 
       if (shutdownLeft <= 30 && shutdownLeft > 0) {
-        speakNumber(shutdownLeft);
+        playShutdownTick(shutdownLeft);
       }
 
       const pct = shutdownTotal > 0 ? (shutdownLeft / shutdownTotal) * 100 : 0;

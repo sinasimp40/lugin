@@ -2,6 +2,8 @@ const { app, BrowserWindow, Menu, ipcMain, globalShortcut } = require('electron'
 const { exec, spawn } = require('child_process');
 const path = require('path');
 
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
 const PORT = 5000;
 const APP_URL = `http://127.0.0.1:${PORT}`;
 
@@ -374,6 +376,7 @@ function showLoginWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       devTools: false,
+      autoplayPolicy: 'no-user-gesture-required',
       preload: require('path').join(__dirname, 'preload.js'),
     },
   });
@@ -484,6 +487,7 @@ function showSessionWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      autoplayPolicy: 'no-user-gesture-required',
       preload: require('path').join(__dirname, 'preload.js'),
     },
   });
