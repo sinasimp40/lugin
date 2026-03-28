@@ -1037,7 +1037,8 @@
       function animate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        while (flameParticles.length < 80) {
+        const toSpawn = Math.min(2, 80 - flameParticles.length);
+        for (let s = 0; s < toSpawn; s++) {
           const p = spawn();
           p.maxLife = p.life;
           flameParticles.push(p);

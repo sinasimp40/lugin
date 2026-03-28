@@ -336,6 +336,7 @@ function showLoginWindow() {
     alwaysOnTop: true,
     kiosk: true,
     enableLargerThanScreen: true,
+    backgroundColor: '#0a0a0a',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -384,7 +385,7 @@ function showLoginWindow() {
     }, 1000);
   });
 
-  setTimeout(showWindow, 5000);
+  setTimeout(showWindow, 8000);
 
   loginWindow.on('blur', () => {
     if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {

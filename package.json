@@ -16,6 +16,10 @@
       "target": "nsis",
       "requestedExecutionLevel": "asInvoker"
     },
+    "nsis": {
+      "oneClick": true,
+      "deleteAppDataOnUninstall": true
+    },
     "files": [
       "main.js",
       "preload.js",
