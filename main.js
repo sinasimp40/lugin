@@ -319,8 +319,13 @@ ipcMain.on('trigger-shutdown', () => {
   });
 });
 
+let transitionTimer = null;
+
 function handleStateChange(state) {
+  if (transitionTimer) { clearTimeout(transitionTimer); transitionTimer = null; }
+
   if (state === 'logged-in') {
+    if (currentState === 'logged-in' && sessionWindow && !sessionWindow.isDestroyed()) return;
     currentState = 'logged-in';
     unregisterKeyBlocks();
     if (focusGuardInterval) {
@@ -328,22 +333,34 @@ function handleStateChange(state) {
       focusGuardInterval = null;
     }
 
-    if (sessionWindow && !sessionWindow.isDestroyed()) return;
+    if (sessionWindow && !sessionWindow.isDestroyed()) {
+      sessionWindow.destroy();
+      sessionWindow = null;
+    }
     showSessionWindow();
-    setTimeout(() => {
-      if (loginWindow && !loginWindow.isDestroyed()) {
+
+    transitionTimer = setTimeout(() => {
+      transitionTimer = null;
+      if (currentState === 'logged-in' && loginWindow && !loginWindow.isDestroyed()) {
         loginWindow.destroy();
         loginWindow = null;
       }
     }, 500);
     startPolling();
   } else if (state === 'logged-out') {
+    if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) return;
     currentState = 'logged-out';
     stopPolling();
-    if (loginWindow && !loginWindow.isDestroyed()) return;
+
+    if (loginWindow && !loginWindow.isDestroyed()) {
+      loginWindow.destroy();
+      loginWindow = null;
+    }
     showLoginWindow();
-    setTimeout(() => {
-      if (sessionWindow && !sessionWindow.isDestroyed()) {
+
+    transitionTimer = setTimeout(() => {
+      transitionTimer = null;
+      if (currentState === 'logged-out' && sessionWindow && !sessionWindow.isDestroyed()) {
         sessionWindow.destroy();
         sessionWindow = null;
       }

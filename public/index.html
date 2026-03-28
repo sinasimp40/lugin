@@ -852,6 +852,8 @@
     }
 
     let loginPollTimer = null;
+    let logoutPending = false;
+    let logoutPendingTimer = null;
 
     async function init() {
       const resp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => ({ success: false }));
@@ -863,7 +865,20 @@
         return;
       }
       loginData = resp.data;
-      if (loginData.isLogin) { stopLoginPolling(); showSession(loginData); return; }
+      if (loginData.isLogin) {
+        if (logoutPending) {
+          console.log('[init] logoutPending active, ignoring stale session for:', loginData.username);
+          statusEl.textContent = '[ logging out... ]';
+          statusEl.className = 'hotspot-status online';
+          startLoginPolling();
+          return;
+        }
+        stopLoginPolling();
+        showSession(loginData);
+        return;
+      }
+      logoutPending = false;
+      if (logoutPendingTimer) { clearTimeout(logoutPendingTimer); logoutPendingTimer = null; }
       statusEl.textContent = '[ hotspot connected ]';
       statusEl.className = 'hotspot-status online';
       if (loginData.error && loginData.error !== '') showError(loginData.error);
@@ -877,10 +892,20 @@
         try {
           const resp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => null);
           if (resp && resp.success && resp.data && resp.data.isLogin) {
+            if (logoutPending) {
+              console.log('[poll] logoutPending active, ignoring stale session for:', resp.data.username);
+              return;
+            }
             stopLoginPolling();
             loginData = resp.data;
             showSession(loginData);
             showError('Session detected — auto-connected!');
+          } else if (resp && resp.success && resp.data && !resp.data.isLogin) {
+            if (logoutPending) {
+              logoutPending = false;
+              if (logoutPendingTimer) { clearTimeout(logoutPendingTimer); logoutPendingTimer = null; }
+              console.log('[poll] logoutPending cleared - session confirmed gone');
+            }
           }
         } catch (_) {}
       }, 3000);
@@ -901,6 +926,8 @@
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value;
       if (!username || !password) { showError('Enter username and password'); return; }
+      logoutPending = false;
+      if (logoutPendingTimer) { clearTimeout(logoutPendingTimer); logoutPendingTimer = null; }
       const btn = document.getElementById('login-btn');
       btn.disabled = true;
       document.getElementById('login-text').classList.add('hidden');
@@ -920,8 +947,7 @@
         } else {
           console.log('[Login] Different user active:', activeUser, '— logging out first');
           if (statusResp.data.logoutLink) {
-            await fetch('/api/hotspot/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logoutLink: statusResp.data.logoutLink }) }).catch(() => {});
-            await new Promise(r => setTimeout(r, 1000));
+            await mikrotikLogoutDirect(statusResp.data.logoutLink);
           }
         }
       }
@@ -1045,6 +1071,13 @@
       document.getElementById('password').disabled = false;
       document.getElementById('login-btn').disabled = false;
       sessionData = null; loginData = null;
+      logoutPending = true;
+      if (logoutPendingTimer) clearTimeout(logoutPendingTimer);
+      logoutPendingTimer = setTimeout(() => {
+        logoutPending = false;
+        logoutPendingTimer = null;
+        console.log('[showLoggedOut] logoutPending expired after 30s');
+      }, 30000);
       notifyElectron('logged-out');
       connectSettingsWs();
       if (appSettings.autoShutdownSeconds > 0) updateShutdownConfig(appSettings.autoShutdownSeconds);
