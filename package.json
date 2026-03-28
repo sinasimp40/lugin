@@ -1,5 +1,5 @@
 {
-  "name": "pisonet-app",
+  "name": "denfi-auto-shutdown",
   "version": "1.0.0",
   "description": "Pisonet Member Login Portal",
   "main": "main.js",

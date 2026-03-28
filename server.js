@@ -940,7 +940,7 @@ server.on('error', (err) => {
   }
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Pisonet App running at http://0.0.0.0:${PORT}`);
+server.listen(PORT, '127.0.0.1', () => {
+  console.log(`Denfi Auto Shutdown running at http://127.0.0.1:${PORT}`);
   if (typeof process.send === 'function') process.send('server-ready');
 });
