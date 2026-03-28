@@ -448,10 +448,19 @@ app.post('/api/pisonet/register', async (req, res) => {
     if (!resp.ok) {
       const fullText = (typeof data === 'object' && data !== null) ? JSON.stringify(data) : text;
       const errMsg = (typeof data === 'object' && data !== null) ? (data.message || data.error || data.errorCode || data.status || JSON.stringify(data)) : (text || 'Registration failed');
-      console.log('[Pisonet] register FAILED - full data:', fullText);
+      console.log('[Pisonet] register FAILED - HTTP', resp.status, '- full data:', fullText);
       res.json({ success: false, error: errMsg, data });
     } else {
-      res.json({ success: true, data });
+      const fullText = (typeof data === 'object' && data !== null) ? JSON.stringify(data) : text;
+      const dataStr = fullText.toLowerCase();
+      if (dataStr.includes('error') || dataStr.includes('fail') || dataStr.includes('exist') || dataStr.includes('duplicate') || dataStr.includes('already')) {
+        const errMsg = (typeof data === 'object' && data !== null) ? (data.message || data.error || data.errorCode || JSON.stringify(data)) : text;
+        console.log('[Pisonet] register HTTP 200 but response indicates failure:', fullText);
+        res.json({ success: false, error: errMsg || 'Registration failed', data });
+      } else {
+        console.log('[Pisonet] register SUCCESS:', fullText);
+        res.json({ success: true, data });
+      }
     }
   } catch (err) {
     console.log('[Pisonet] register error:', err.message);

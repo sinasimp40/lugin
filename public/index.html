@@ -1515,6 +1515,21 @@
 
       const fullUsername = 'mem-' + username.toLowerCase();
 
+      const resetRegBtn = () => {
+        btn.disabled = false;
+        document.getElementById('reg-text').classList.remove('hidden');
+        document.getElementById('reg-spinner').classList.add('hidden');
+      };
+
+      const statusResp = await fetch('/api/hotspot/status').then(r => r.json()).catch(() => null);
+      if (statusResp && statusResp.success && statusResp.data && statusResp.data.isLogin) {
+        const activeUser = statusResp.data.username || '';
+        console.log('[Register] Already logged in as:', activeUser);
+        resetRegBtn();
+        showRegError('Already logged in as "' + activeUser + '". Logout first before registering.');
+        return;
+      }
+
       const [checkVendo, checkHotspot] = await Promise.all([
         fetch('/api/pisonet/check-member', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1528,10 +1543,8 @@
       console.log('[Register] check-member:', JSON.stringify(checkVendo), 'check-hotspot:', JSON.stringify(checkHotspot));
 
       if (checkVendo.exists || checkHotspot.exists) {
-        btn.disabled = false;
-        document.getElementById('reg-text').classList.remove('hidden');
-        document.getElementById('reg-spinner').classList.add('hidden');
-        showRegError('Username "' + fullUsername + '" already exists. Use Login instead.');
+        resetRegBtn();
+        showRegError('ID "' + fullUsername + '" already exists. Use Login instead.');
         document.getElementById('tab-login').click();
         document.getElementById('username').value = fullUsername;
         return;
@@ -1542,17 +1555,16 @@
         body: JSON.stringify({ username: fullUsername, password, ip: clientIp, mac: clientMac }),
       }).then(r => r.json()).catch(() => ({ success: false, error: 'Cannot connect to vendo' }));
 
-      btn.disabled = false;
-      document.getElementById('reg-text').classList.remove('hidden');
-      document.getElementById('reg-spinner').classList.add('hidden');
+      console.log('[Register] register response:', JSON.stringify(regResp));
 
       if (!regResp.success) {
+        resetRegBtn();
         const rawErr = regResp.error || '';
         const errLower = rawErr.toLowerCase();
         const rawData = JSON.stringify(regResp.data || '').toLowerCase();
         if (errLower.includes('exist') || errLower.includes('already') || errLower.includes('duplicate') || errLower.includes('registered')
             || rawData.includes('exist') || rawData.includes('already') || rawData.includes('duplicate') || rawData.includes('registered')) {
-          showRegError('Username "' + fullUsername + '" already exists. Use Login instead.');
+          showRegError('ID "' + fullUsername + '" already exists. Use Login instead.');
           document.getElementById('tab-login').click();
           document.getElementById('username').value = fullUsername;
         } else if (errLower.includes('cannot reach')) {
@@ -1560,10 +1572,31 @@
         } else {
           showRegError(rawErr || 'Registration failed');
         }
-        console.log('[Register] Failed:', JSON.stringify(regResp));
         return;
       }
 
+      const verifyResp = await fetch('/api/hotspot/check-user', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: fullUsername }),
+      }).then(r => r.json()).catch(() => ({ exists: false }));
+      console.log('[Register] verify after register:', JSON.stringify(verifyResp));
+
+      if (!verifyResp.exists) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        const retryVerify = await fetch('/api/hotspot/check-user', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: fullUsername }),
+        }).then(r => r.json()).catch(() => ({ exists: false }));
+        console.log('[Register] verify retry:', JSON.stringify(retryVerify));
+
+        if (!retryVerify.exists) {
+          resetRegBtn();
+          showRegError('Registration sent but user was not created. Please try again.');
+          return;
+        }
+      }
+
+      resetRegBtn();
       document.getElementById('username').value = fullUsername;
       document.getElementById('password').value = password;
 

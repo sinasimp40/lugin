@@ -34,6 +34,8 @@ public class KioskHook {
         if (nCode >= 0) {
             int vkCode = Marshal.ReadInt32(lParam);
             if (vkCode == 91 || vkCode == 92) return (IntPtr)1;
+            if (vkCode == 162 || vkCode == 163) return (IntPtr)1;
+            if (vkCode == 164 || vkCode == 165) return (IntPtr)1;
             if ((int)wParam == WM_SYSKEYDOWN || (int)wParam == WM_KEYDOWN) {
                 bool alt = (Control.ModifierKeys & Keys.Alt) != 0;
                 if (alt && vkCode == 9) return (IntPtr)1;
