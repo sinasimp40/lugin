@@ -452,15 +452,33 @@ app.post('/api/pisonet/register', async (req, res) => {
       res.json({ success: false, error: errMsg, data });
     } else {
       const fullText = (typeof data === 'object' && data !== null) ? JSON.stringify(data) : text;
-      const dataStr = fullText.toLowerCase();
-      if (dataStr.includes('error') || dataStr.includes('fail') || dataStr.includes('exist') || dataStr.includes('duplicate') || dataStr.includes('already')) {
-        const errMsg = (typeof data === 'object' && data !== null) ? (data.message || data.error || data.errorCode || JSON.stringify(data)) : text;
-        console.log('[Pisonet] register HTTP 200 but response indicates failure:', fullText);
-        res.json({ success: false, error: errMsg || 'Registration failed', data });
-      } else {
-        console.log('[Pisonet] register SUCCESS:', fullText);
-        res.json({ success: true, data });
+
+      if (typeof data === 'object' && data !== null) {
+        if ((data.success === true || data.success === 'true') && !data.errorCode) {
+          console.log('[Pisonet] register SUCCESS (vendo confirmed):', fullText);
+          res.json({ success: true, data });
+          return;
+        }
+
+        const errMsg = data.message || data.error || data.errorCode || '';
+        const errStr = (typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg)).toLowerCase();
+        if (errMsg && errStr !== 'null') {
+          console.log('[Pisonet] register HTTP 200 but vendo indicates failure:', fullText);
+          res.json({ success: false, error: errMsg, data });
+          return;
+        }
+
+        const dataValues = Object.values(data).map(v => (typeof v === 'string' ? v : '')).join(' ').toLowerCase();
+        if (dataValues.includes('exist') || dataValues.includes('already') || dataValues.includes('duplicate') || dataValues.includes('registered') || dataValues.includes('fail')) {
+          const msg = data.message || data.error || data.errorCode || JSON.stringify(data);
+          console.log('[Pisonet] register HTTP 200 but response values indicate failure:', fullText);
+          res.json({ success: false, error: msg || 'Registration failed', data });
+          return;
+        }
       }
+
+      console.log('[Pisonet] register SUCCESS:', fullText);
+      res.json({ success: true, data });
     }
   } catch (err) {
     console.log('[Pisonet] register error:', err.message);

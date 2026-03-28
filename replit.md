@@ -116,8 +116,11 @@ When `isLogin: true` is detected → auto-shows the session (auto-connect).
 - Focus guard: 500ms interval + blur handler aggressively reclaim focus when in login state
 - Keys unblocked and kiosk disabled when user is logged in (session view)
 - Auto-shutdown: timer counts down in login view, triggers OS shutdown via IPC
+- **Keyboard Hook** (PowerShell, embedded in main.js): WH_KEYBOARD_LL hook blocks Win, Ctrl, Alt, Delete keys in login view
+- **Registry keys set at runtime** (HKCU, no admin needed): DisableTaskMgr, NoWinKeys, DisableLockWorkstation, DisableChangePassword, NoLogoff
+- **Note on Ctrl+Alt+Del**: This is a Windows Secure Attention Sequence handled by the kernel. It CANNOT be blocked by any application-level hook or code without admin rights. Run `kiosk-setup.bat` as Administrator to set HKLM keys (DisableCAD) that suppress the security screen entirely.
 - **Windows Kiosk Scripts** (in app resources folder after install):
-  - `kiosk-setup.bat` — Apply registry tweaks to disable Task Manager, Windows key, Lock Workstation, etc.
+  - `kiosk-setup.bat` — Apply registry tweaks (run as Administrator for full effect including DisableCAD)
   - `kiosk-disable.bat` — Reverse all kiosk registry tweaks.
 
 ## Fonts

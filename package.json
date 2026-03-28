@@ -14,7 +14,7 @@
     "asar": false,
     "win": {
       "target": "nsis",
-      "requestedExecutionLevel": "requireAdministrator"
+      "requestedExecutionLevel": "asInvoker"
     },
     "files": [
       "main.js",
