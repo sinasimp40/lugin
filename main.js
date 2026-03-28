@@ -419,11 +419,14 @@ function showSessionWindow() {
   const { screen } = require('electron');
   const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
 
+  const sessionX = sw - SESSION_WIDTH - 10;
+  const sessionY = sh - SESSION_HEIGHT - 10;
+
   sessionWindow = new BrowserWindow({
     width: SESSION_WIDTH,
     height: SESSION_HEIGHT,
-    x: sw - SESSION_WIDTH - 10,
-    y: sh - SESSION_HEIGHT - 10,
+    x: sessionX,
+    y: sessionY,
     title: 'Pisonet Session',
     frame: false,
     resizable: false,
@@ -436,6 +439,7 @@ function showSessionWindow() {
     alwaysOnTop: true,
     transparent: true,
     show: false,
+    focusable: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -443,16 +447,26 @@ function showSessionWindow() {
     },
   });
 
+  sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+
   sessionWindow.once('ready-to-show', () => {
     sessionWindow.setFullScreen(false);
     sessionWindow.setBounds({
       width: SESSION_WIDTH,
       height: SESSION_HEIGHT,
-      x: sw - SESSION_WIDTH - 10,
-      y: sh - SESSION_HEIGHT - 10,
+      x: sessionX,
+      y: sessionY,
     });
-    sessionWindow.show();
+    sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+    sessionWindow.showInactive();
   });
+
+  setInterval(() => {
+    if (sessionWindow && !sessionWindow.isDestroyed()) {
+      sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+      sessionWindow.moveTop();
+    }
+  }, 2000);
 
   sessionWindow.loadURL(`${APP_URL}/session.html`);
 }
