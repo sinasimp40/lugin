@@ -212,11 +212,26 @@ function showLoginWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      devTools: false,
       preload: require('path').join(__dirname, 'preload.js'),
     },
   });
 
   Menu.setApplicationMenu(null);
+
+  loginWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.alt || input.meta || input.key === 'Meta' || input.key === 'OS') {
+      event.preventDefault();
+    }
+    if (input.control && input.shift && input.key === 'I') {
+      event.preventDefault();
+    }
+    if (input.key === 'F12' || input.key === 'F11' || input.key === 'F5') {
+      event.preventDefault();
+    }
+  });
+
+  loginWindow.webContents.on('context-menu', (e) => e.preventDefault());
 
   function showWindow() {
     if (loginWindow && !loginWindow.isDestroyed() && !loginWindow.isVisible()) {
