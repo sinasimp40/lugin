@@ -995,55 +995,29 @@
       resize();
       window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 100); });
 
-      function spawnEmber() {
+      function spawn() {
         const x = Math.random() * canvas.width;
-        const y = canvas.height + 10;
+        const y = canvas.height + 2 + Math.random() * 20;
+        const r = Math.random();
         return {
           x, y,
-          vx: (Math.random() - 0.5) * 1.2,
-          vy: -(1.0 + Math.random() * 2.5),
-          life: 150 + Math.random() * 200,
+          vx: (Math.random() - 0.5) * 0.8,
+          vy: -(0.6 + Math.random() * 1.4),
+          life: 180 + Math.random() * 220,
           maxLife: 0,
-          size: 2 + Math.random() * 4,
-          hue: 10 + Math.random() * 35,
+          size: r < 0.6 ? (0.8 + Math.random() * 1.2) : (1.5 + Math.random() * 1.5),
+          hue: 15 + Math.random() * 30,
           wobble: Math.random() * Math.PI * 2,
-          wobbleSpeed: 0.02 + Math.random() * 0.04,
-          wobbleAmp: 0.5 + Math.random() * 1.5,
-          type: 'ember'
-        };
-      }
-
-      function spawnSpark() {
-        const side = Math.random();
-        let x, y, vx, vy;
-        if (side < 0.33) {
-          x = -5; y = canvas.height * (0.4 + Math.random() * 0.6);
-          vx = 0.5 + Math.random() * 1.5; vy = -(0.5 + Math.random() * 1.0);
-        } else if (side < 0.66) {
-          x = canvas.width + 5; y = canvas.height * (0.4 + Math.random() * 0.6);
-          vx = -(0.5 + Math.random() * 1.5); vy = -(0.5 + Math.random() * 1.0);
-        } else {
-          x = Math.random() * canvas.width; y = canvas.height * (0.6 + Math.random() * 0.4);
-          vx = (Math.random() - 0.5) * 2; vy = -(1.5 + Math.random() * 2.0);
-        }
-        return {
-          x, y, vx, vy,
-          life: 80 + Math.random() * 120,
-          maxLife: 0,
-          size: 1 + Math.random() * 2.5,
-          hue: 30 + Math.random() * 20,
-          wobble: Math.random() * Math.PI * 2,
-          wobbleSpeed: 0.05 + Math.random() * 0.05,
-          wobbleAmp: 0.3 + Math.random() * 0.8,
-          type: 'spark'
+          wobbleSpeed: 0.015 + Math.random() * 0.025,
+          bright: r < 0.15
         };
       }
 
       function animate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        while (flameParticles.length < 100) {
-          const p = Math.random() < 0.7 ? spawnEmber() : spawnSpark();
+        while (flameParticles.length < 80) {
+          const p = spawn();
           p.maxLife = p.life;
           flameParticles.push(p);
         }
@@ -1054,33 +1028,32 @@
           if (p.life <= 0) { flameParticles.splice(i, 1); continue; }
 
           p.wobble += p.wobbleSpeed;
-          p.x += p.vx + Math.sin(p.wobble) * p.wobbleAmp;
+          p.x += p.vx + Math.sin(p.wobble) * 0.4;
           p.y += p.vy;
-          p.vy *= 0.997;
-          p.vx *= 0.999;
+          p.vy *= 0.999;
 
           const progress = 1 - (p.life / p.maxLife);
           let alpha;
-          if (progress < 0.08) alpha = progress / 0.08;
-          else if (progress > 0.6) alpha = (1 - progress) / 0.4;
+          if (progress < 0.05) alpha = progress / 0.05;
+          else if (progress > 0.5) alpha = (1 - progress) / 0.5;
           else alpha = 1;
 
-          const currentSize = p.size * (1 - progress * 0.3);
-          const glowRadius = currentSize * (p.type === 'ember' ? 5 : 3.5);
+          const sz = p.size * (1 - progress * 0.5);
+          const glowR = sz * 2.5;
 
-          const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius);
-          grd.addColorStop(0, 'hsla(' + p.hue + ', 100%, 85%, ' + (alpha * 0.9) + ')');
-          grd.addColorStop(0.2, 'hsla(' + p.hue + ', 100%, 65%, ' + (alpha * 0.6) + ')');
-          grd.addColorStop(0.5, 'hsla(' + (p.hue + 5) + ', 100%, 50%, ' + (alpha * 0.25) + ')');
-          grd.addColorStop(1, 'hsla(' + (p.hue + 10) + ', 100%, 30%, 0)');
+          ctx.globalAlpha = 1;
+          const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowR);
+          grd.addColorStop(0, 'hsla(' + p.hue + ', 100%, ' + (p.bright ? '90' : '75') + '%, ' + (alpha * 0.7) + ')');
+          grd.addColorStop(0.4, 'hsla(' + (p.hue + 5) + ', 100%, 55%, ' + (alpha * 0.2) + ')');
+          grd.addColorStop(1, 'hsla(' + (p.hue + 10) + ', 100%, 40%, 0)');
           ctx.fillStyle = grd;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, glowRadius, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, glowR, 0, Math.PI * 2);
           ctx.fill();
 
-          ctx.fillStyle = 'hsla(' + p.hue + ', 100%, 95%, ' + (alpha * 0.95) + ')';
+          ctx.fillStyle = 'hsla(' + p.hue + ', 100%, ' + (p.bright ? '95' : '85') + '%, ' + alpha + ')';
           ctx.beginPath();
-          ctx.arc(p.x, p.y, currentSize * 0.5, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, sz * 0.4, 0, Math.PI * 2);
           ctx.fill();
         }
 
