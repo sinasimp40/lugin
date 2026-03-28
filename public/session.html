@@ -104,6 +104,9 @@
     let timeLeft = 0;
     let interval = null;
     let logoutLink = '';
+    let sessionUsername = '';
+    let sessionIp = '';
+    let sessionMac = '';
     let ws = null;
     let wsReconnectTimer = null;
 
@@ -118,6 +121,9 @@
               document.getElementById('username').textContent = msg.data.username || 'User';
               timeLeft = parseInt(msg.data.sessionTimeLeft) || 0;
               if (msg.data.logoutLink) logoutLink = msg.data.logoutLink;
+              if (msg.data.username) sessionUsername = msg.data.username;
+              if (msg.data.ip) sessionIp = msg.data.ip;
+              if (msg.data.mac) sessionMac = msg.data.mac;
               updateTimer();
             }
           } else if (msg.type === 'logged-out') {
@@ -139,6 +145,9 @@
           document.getElementById('username').textContent = data.data.username || 'User';
           timeLeft = parseInt(data.data.sessionTimeLeft) || 0;
           if (data.data.logoutLink) logoutLink = data.data.logoutLink;
+          if (data.data.username) sessionUsername = data.data.username;
+          if (data.data.ip) sessionIp = data.data.ip;
+          if (data.data.mac) sessionMac = data.data.mac;
           updateTimer();
         }
       } catch (e) {}
@@ -161,7 +170,28 @@
     async function doLogout() {
       document.getElementById('logout-btn').disabled = true;
       document.getElementById('logout-btn').textContent = '...';
-      try { await fetch('/api/hotspot/logout', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({logoutLink: logoutLink || ''}) }); } catch(e) {}
+      const isMember = sessionUsername && sessionUsername.startsWith('mem-');
+
+      try {
+        await fetch('/api/pisonet/logout', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ ip: sessionIp, mac: sessionMac, username: sessionUsername })
+        });
+      } catch(e) { console.log('[session] pisonet/logout error:', e.message); }
+
+      if (!isMember && logoutLink) {
+        try {
+          const eraseUrl = logoutLink + (logoutLink.includes('?') ? '&' : '?') + 'erase-cookie=on';
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = eraseUrl;
+          document.body.appendChild(iframe);
+          await new Promise(r => setTimeout(r, 3000));
+          try { document.body.removeChild(iframe); } catch(_) {}
+        } catch(e) { console.log('[session] mikrotik iframe logout error:', e.message); }
+      }
+
       try { await fetch('/api/session/trigger', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({action: 'logged-out'}) }); } catch(e) {}
     }
 
