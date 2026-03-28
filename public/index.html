@@ -1006,11 +1006,31 @@
           life: 180 + Math.random() * 220,
           maxLife: 0,
           size: r < 0.6 ? (0.8 + Math.random() * 1.2) : (1.5 + Math.random() * 1.5),
-          hue: 15 + Math.random() * 30,
           wobble: Math.random() * Math.PI * 2,
           wobbleSpeed: 0.015 + Math.random() * 0.025,
           bright: r < 0.15
         };
+      }
+
+      function flameColor(progress, alpha, inner) {
+        if (progress < 0.15) {
+          if (inner) return 'rgba(255,255,220,' + alpha + ')';
+          return 'rgba(255,200,50,' + (alpha * 0.6) + ')';
+        } else if (progress < 0.4) {
+          const t = (progress - 0.15) / 0.25;
+          const r = 255;
+          const g = Math.round(200 - t * 120);
+          const b = Math.round(50 - t * 40);
+          if (inner) return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+          return 'rgba(' + r + ',' + Math.round(g * 0.7) + ',' + Math.round(b * 0.5) + ',' + (alpha * 0.5) + ')';
+        } else {
+          const t = (progress - 0.4) / 0.6;
+          const r = Math.round(255 - t * 80);
+          const g = Math.round(80 - t * 60);
+          const b = Math.round(10 + t * 5);
+          if (inner) return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+          return 'rgba(' + Math.round(r * 0.6) + ',' + Math.round(g * 0.4) + ',0,' + (alpha * 0.35) + ')';
+        }
       }
 
       function animate() {
@@ -1041,17 +1061,16 @@
           const sz = p.size * (1 - progress * 0.5);
           const glowR = sz * 2.5;
 
-          ctx.globalAlpha = 1;
           const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowR);
-          grd.addColorStop(0, 'hsla(' + p.hue + ', 100%, ' + (p.bright ? '90' : '75') + '%, ' + (alpha * 0.7) + ')');
-          grd.addColorStop(0.4, 'hsla(' + (p.hue + 5) + ', 100%, 55%, ' + (alpha * 0.2) + ')');
-          grd.addColorStop(1, 'hsla(' + (p.hue + 10) + ', 100%, 40%, 0)');
+          grd.addColorStop(0, flameColor(progress, alpha * 0.7, false));
+          grd.addColorStop(0.5, flameColor(progress, alpha * 0.15, false));
+          grd.addColorStop(1, 'rgba(100,20,0,0)');
           ctx.fillStyle = grd;
           ctx.beginPath();
           ctx.arc(p.x, p.y, glowR, 0, Math.PI * 2);
           ctx.fill();
 
-          ctx.fillStyle = 'hsla(' + p.hue + ', 100%, ' + (p.bright ? '95' : '85') + '%, ' + alpha + ')';
+          ctx.fillStyle = flameColor(progress, alpha * (p.bright ? 1 : 0.85), true);
           ctx.beginPath();
           ctx.arc(p.x, p.y, sz * 0.4, 0, Math.PI * 2);
           ctx.fill();
