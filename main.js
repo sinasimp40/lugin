@@ -364,6 +364,9 @@ function showLoginWindow() {
   function showWindow() {
     if (windowShown || !loginWindow || loginWindow.isDestroyed()) return;
     windowShown = true;
+    loginWindow.setBounds({ x, y, width, height });
+    loginWindow.setKiosk(true);
+    loginWindow.setAlwaysOnTop(true, 'screen-saver');
     loginWindow.show();
     loginWindow.moveTop();
     loginWindow.focus();
