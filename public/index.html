@@ -923,9 +923,13 @@
     }
 
     async function doLogin() {
-      const username = document.getElementById('username').value.trim();
+      let username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value;
       if (!username || !password) { showError('Enter username and password'); return; }
+      username = username.toLowerCase();
+      if (!username.startsWith('mem-')) {
+        username = 'mem-' + username;
+      }
       logoutPending = false;
       if (logoutPendingTimer) { clearTimeout(logoutPendingTimer); logoutPendingTimer = null; }
       const btn = document.getElementById('login-btn');
@@ -1485,9 +1489,12 @@
       const password = document.getElementById('reg-password').value;
       if (!username) { showRegError('Username required'); return; }
       if (username.length < 3) { showRegError('Username must be at least 3 characters'); return; }
-      if (!/^[a-zA-Z0-9._-]+$/.test(username)) { showRegError('Letters, numbers, dots, dashes only'); return; }
+      if (/\s/.test(username)) { showRegError('Username cannot contain spaces'); return; }
+      if (!/^[a-zA-Z0-9._]+$/.test(username)) { showRegError('Username: letters, numbers, dots, underscores only'); return; }
       if (!password) { showRegError('Password required'); return; }
       if (password.length < 3) { showRegError('Password must be at least 3 characters'); return; }
+      if (/\s/.test(password)) { showRegError('Password cannot contain spaces'); return; }
+      if (!/^[a-zA-Z0-9._]+$/.test(password)) { showRegError('Password: letters, numbers, dots, underscores only'); return; }
 
       const btn = document.getElementById('reg-btn');
       btn.disabled = true;
@@ -1546,7 +1553,7 @@
         resetRegBtn();
         showRegError('ID "' + fullUsername + '" already exists. Use Login instead.');
         document.getElementById('tab-login').click();
-        document.getElementById('username').value = fullUsername;
+        document.getElementById('username').value = username;
         return;
       }
 
@@ -1566,7 +1573,7 @@
             || rawData.includes('exist') || rawData.includes('already') || rawData.includes('duplicate') || rawData.includes('registered')) {
           showRegError('ID "' + fullUsername + '" already exists. Use Login instead.');
           document.getElementById('tab-login').click();
-          document.getElementById('username').value = fullUsername;
+          document.getElementById('username').value = username;
         } else if (errLower.includes('cannot reach')) {
           showRegError('Cannot reach vendo. Check if it is powered on.');
         } else {
@@ -1578,7 +1585,7 @@
       console.log('[Register] Registration confirmed success — skipping hotspot verify, opening Insert Coin');
 
       resetRegBtn();
-      document.getElementById('username').value = fullUsername;
+      document.getElementById('username').value = username;
       document.getElementById('password').value = password;
 
       showRegSuccess('Registered! Opening Insert Coin...');
