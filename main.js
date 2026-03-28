@@ -121,10 +121,16 @@ function startKeyboardHook() {
 
 function stopKeyboardHook() {
   if (kioskHookProcess) {
-    try { kioskHookProcess.kill(); } catch (_) {}
+    const pid = kioskHookProcess.pid;
+    try { kioskHookProcess.kill('SIGKILL'); } catch (_) {}
     kioskHookProcess = null;
     cleanupHookScript();
-    console.log('[Kiosk] Keyboard hook stopped');
+    if (process.platform === 'win32' && pid) {
+      try {
+        require('child_process').execSync(`taskkill /F /PID ${pid} /T`, { stdio: 'ignore' });
+      } catch (_) {}
+    }
+    console.log('[Kiosk] Keyboard hook stopped (pid:', pid, ')');
   }
 }
 
@@ -138,6 +144,34 @@ process.on('uncaughtException', (err) => {
 });
 process.on('unhandledRejection', (err) => {
   console.error('[Electron] Unhandled rejection:', err?.message || err);
+});
+
+process.on('exit', () => {
+  try { stopKeyboardHook(); } catch (e) {}
+  try { cleanupHookScript(); } catch (e) {}
+});
+
+process.on('admin-stop-app', () => {
+  console.log('[Electron] Admin stop-app received, cleaning up...');
+  try { stopKeyboardHook(); } catch (e) {}
+  try { cleanupHookScript(); } catch (e) {}
+  try { unregisterKeyBlocks(); } catch (e) {}
+  if (focusGuardInterval) {
+    clearInterval(focusGuardInterval);
+    focusGuardInterval = null;
+  }
+  if (process.platform === 'win32') {
+    try {
+      const { execSync } = require('child_process');
+      execSync('taskkill /F /IM powershell.exe /FI "WINDOWTITLE eq pisonet*"', { stdio: 'ignore' });
+    } catch (e) {}
+  }
+  try {
+    if (sessionWindow && !sessionWindow.isDestroyed()) sessionWindow.destroy();
+    if (loginWindow && !loginWindow.isDestroyed()) loginWindow.destroy();
+  } catch (e) {}
+  console.log('[Electron] Cleanup done, exiting.');
+  app.exit(0);
 });
 
 let loginWindow;

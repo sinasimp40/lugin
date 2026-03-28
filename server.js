@@ -833,8 +833,10 @@ app.post('/api/admin/ads/:id/image', verifyToken, (req, res) => {
 app.post('/api/admin/stop-app', verifyToken, (req, res) => {
   res.json({ success: true });
   setTimeout(() => {
-    if (typeof process.send === 'function') process.send('admin-stop');
-    process.exit(0);
+    process.emit('admin-stop-app');
+    setTimeout(() => {
+      process.exit(0);
+    }, 2000);
   }, 500);
 });
 
