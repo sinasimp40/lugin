@@ -172,6 +172,57 @@ let sessionWindow;
 let isQuitting = false;
 let currentState = 'logged-out';
 let focusGuardInterval = null;
+let cadDismissInterval = null;
+let cadDismissProcess = null;
+
+function startCADDismiss() {
+  if (cadDismissProcess) return;
+  if (process.platform !== 'win32') return;
+
+  console.log('[Kiosk] Starting Ctrl+Alt+Del auto-dismiss');
+  cadDismissProcess = spawn('powershell.exe', [
+    '-ExecutionPolicy', 'Bypass',
+    '-WindowStyle', 'Hidden',
+    '-Command',
+    `Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class EscSender {
+    [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+    public static void PressEscape() {
+        keybd_event(0x1B, 0, 0, UIntPtr.Zero);
+        keybd_event(0x1B, 0, 2, UIntPtr.Zero);
+    }
+}
+"@;
+for ($$i = 0; $$i -lt 30; $$i++) {
+    [EscSender]::PressEscape();
+    Start-Sleep -Milliseconds 100;
+}
+`.replace(/\$\$/g, '$')
+  ], { stdio: 'ignore', windowsHide: true });
+
+  cadDismissProcess.on('exit', () => {
+    cadDismissProcess = null;
+    console.log('[Kiosk] CAD dismiss finished');
+    if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
+      loginWindow.setKiosk(true);
+      loginWindow.setAlwaysOnTop(true, 'screen-saver');
+      loginWindow.moveTop();
+      loginWindow.focus();
+    }
+  });
+  cadDismissProcess.on('error', () => { cadDismissProcess = null; });
+}
+
+function stopCADDismiss() {
+  if (cadDismissProcess) {
+    try { cadDismissProcess.kill(); } catch (_) {}
+    cadDismissProcess = null;
+  }
+}
 
 const SESSION_WIDTH = 260;
 const SESSION_HEIGHT = 80;
@@ -415,6 +466,7 @@ function showLoginWindow() {
 
   loginWindow.on('blur', () => {
     if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
+      startCADDismiss();
       loginWindow.setKiosk(true);
       loginWindow.setAlwaysOnTop(true, 'screen-saver');
       loginWindow.moveTop();
@@ -433,13 +485,14 @@ function showLoginWindow() {
   focusGuardInterval = setInterval(() => {
     if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
       if (!loginWindow.isFocused()) {
+        startCADDismiss();
         loginWindow.setKiosk(true);
         loginWindow.setAlwaysOnTop(true, 'screen-saver');
         loginWindow.moveTop();
         loginWindow.focus();
       }
     }
-  }, 200);
+  }, 150);
 }
 
 function showSessionWindow() {
