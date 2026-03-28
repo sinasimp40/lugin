@@ -1,7 +1,7 @@
 {
   "name": "denfi-auto-shutdown",
   "version": "1.0.0",
-  "description": "Pisonet Member Login Portal",
+  "description": "Denfi Auto Shutdown - Pisonet Member Login Portal",
   "main": "main.js",
   "scripts": {
     "start": "node server.js",
@@ -20,7 +20,10 @@
     },
     "nsis": {
       "oneClick": true,
-      "deleteAppDataOnUninstall": true
+      "deleteAppDataOnUninstall": true,
+      "artifactName": "Denfi Auto Shutdown Setup.${ext}",
+      "shortcutName": "Denfi Auto Shutdown",
+      "uninstallDisplayName": "Denfi Auto Shutdown"
     },
     "files": [
       "main.js",
@@ -42,11 +45,12 @@
     ]
   },
   "keywords": [
-    "pisonet",
+    "denfi",
+    "auto-shutdown",
     "hotspot",
     "mikrotik"
   ],
-  "author": "Admin",
+  "author": "Denfi",
   "license": "MIT",
   "dependencies": {
     "express": "^5.2.1",
