@@ -549,38 +549,11 @@ app.post('/api/pisonet/avail', async (req, res) => {
     });
     const text = await resp.text();
     console.log('[Pisonet] avail response:', resp.status, text);
-
-    if (!resp.ok) {
-      const errMsg = text || 'Vendo returned error';
-      res.json({ success: false, error: errMsg });
-      return;
+    try {
+      res.json({ success: true, data: JSON.parse(text) });
+    } catch (_) {
+      res.json({ success: true, data: text });
     }
-
-    let data;
-    try { data = JSON.parse(text); } catch (_) { data = text; }
-
-    if (typeof data === 'object' && data !== null) {
-      const statusStr = (data.status || '').toString().toLowerCase();
-      const errorStr = (data.error || data.errorCode || '').toString().toLowerCase();
-      const dataStr = JSON.stringify(data).toLowerCase();
-
-      if (statusStr === 'busy' || errorStr === 'busy' || errorStr.includes('coinslot.busy') || dataStr.includes('"busy"')) {
-        console.log('[Pisonet] avail: coinslot busy');
-        res.json({ success: false, error: 'Coinslot busy' });
-        return;
-      }
-      if (statusStr === 'banned' || errorStr.includes('banned') || errorStr.includes('blocked')) {
-        res.json({ success: false, error: 'Device banned' });
-        return;
-      }
-      if (data.success === false) {
-        const errMsg = data.error || data.message || data.errorCode || 'Vendo unavailable';
-        res.json({ success: false, error: typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg) });
-        return;
-      }
-    }
-
-    res.json({ success: true, data });
   } catch (err) {
     console.log('[Pisonet] avail error:', err.message);
     res.json({ success: false, error: 'Cannot reach vendo: ' + err.message });

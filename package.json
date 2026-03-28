@@ -24,9 +24,7 @@
       "executableName": "denfi-auto-shutdown"
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "perMachine": true,
+      "oneClick": true,
       "deleteAppDataOnUninstall": true,
       "artifactName": "Denfi Auto Shutdown Setup.${ext}",
       "shortcutName": "Denfi Auto Shutdown",

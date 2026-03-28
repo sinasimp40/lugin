@@ -391,27 +391,13 @@
     }
     .ad-slides-wrap { overflow: hidden; }
     .ad-slides {
-      position: relative;
+      display: flex; transition: transform 0.5s ease-in-out;
       width: 100%;
-      min-height: 120px;
-      overflow: hidden;
     }
     .ad-slide {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      min-width: 100%; position: relative;
       display: flex; align-items: center; justify-content: center;
       min-height: 120px; overflow: hidden;
-      opacity: 0; pointer-events: none;
-      transform: translateX(100%);
-      transition: transform 0.5s ease-in-out, opacity 0.5s ease-in-out;
-    }
-    .ad-slide.active {
-      position: relative;
-      opacity: 1; pointer-events: auto;
-      transform: translateX(0);
-    }
-    .ad-slide.exit-left {
-      opacity: 0;
-      transform: translateX(-100%);
     }
     .ad-slide-bg {
       position: absolute; inset: 0;
@@ -1233,12 +1219,6 @@
           startLoginPolling();
           return;
         }
-        const coinModalOpen = document.getElementById('coin-modal').classList.contains('active');
-        if (coinModalOpen) {
-          console.log('[init] coin modal is open, skipping auto-session for:', loginData.username);
-          startLoginPolling();
-          return;
-        }
         stopLoginPolling();
         showSession(loginData);
         return;
@@ -1256,8 +1236,6 @@
       loginPollTimer = setInterval(async () => {
         if (sessionData) { stopLoginPolling(); return; }
         try {
-          const coinModalOpen = document.getElementById('coin-modal').classList.contains('active');
-          if (coinModalOpen) return;
           const resp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => null);
           if (resp && resp.success && resp.data && resp.data.isLogin) {
             if (logoutPending) {
@@ -1318,17 +1296,8 @@
           return;
         } else {
           console.log('[Login] Different user active:', activeUser, '— logging out first');
-          await fetch('/api/hotspot/logout', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ logoutLink: statusResp.data.logoutLink }),
-          }).catch(() => {});
-          for (let i = 0; i < 5; i++) {
-            await new Promise(r => setTimeout(r, 800));
-            const check = await fetch('/api/hotspot/status').then(r => r.json()).catch(() => null);
-            if (!check || !check.success || !check.data || !check.data.isLogin) {
-              console.log('[Login] Previous user logged out confirmed after', i + 1, 'checks');
-              break;
-            }
+          if (statusResp.data.logoutLink) {
+            await mikrotikLogoutDirect(statusResp.data.logoutLink);
           }
         }
       }
@@ -1342,13 +1311,11 @@
       document.getElementById('login-spinner').classList.add('hidden');
       if (resp.success && resp.data) showSession(resp.data);
       else {
-        const errMsg = (resp.error || '').toLowerCase();
-        if (errMsg.includes('already logged in') || errMsg.includes('session limit') || errMsg.includes('has reached')) {
+        const errMsg = resp.error || '';
+        if (errMsg.toLowerCase().includes('user.invalid') || errMsg.toLowerCase().includes('user invalid')) {
           showError('User already logged in. Please logout first.');
-        } else if (errMsg.includes('user.invalid') || errMsg.includes('user invalid') || errMsg.includes('invalid user')) {
-          showError('Invalid username or password.');
         } else {
-          showError(resp.error || 'Authentication failed');
+          showError(errMsg || 'Authentication failed');
         }
         await init();
       }
@@ -1885,11 +1852,7 @@
         dotsEl.innerHTML = '';
       }
       adSlideIndex = 0;
-      const allSlides = slidesEl.querySelectorAll('.ad-slide');
-      allSlides.forEach((s, i) => {
-        s.classList.remove('active', 'exit-left');
-        if (i === 0) s.classList.add('active');
-      });
+      slidesEl.style.transform = 'translateX(0)';
       startAdAutoSlide();
     }
 
@@ -1912,23 +1875,7 @@
 
     function updateAdSlide() {
       const slidesEl = document.getElementById('ad-slides');
-      const slides = slidesEl.querySelectorAll('.ad-slide');
-      slides.forEach((s, i) => {
-        if (i === adSlideIndex) {
-          s.classList.remove('exit-left');
-          s.style.transform = '';
-          void s.offsetWidth;
-          s.classList.add('active');
-        } else if (s.classList.contains('active')) {
-          s.classList.remove('active');
-          s.classList.add('exit-left');
-          setTimeout(() => {
-            s.classList.remove('exit-left');
-          }, 550);
-        } else {
-          s.classList.remove('active', 'exit-left');
-        }
-      });
+      slidesEl.style.transform = 'translateX(-' + (adSlideIndex * 100) + '%)';
       document.querySelectorAll('.ad-dot').forEach((d, i) => d.classList.toggle('active', i === adSlideIndex));
     }
 
@@ -2322,13 +2269,14 @@
         return;
       }
 
-      console.log('[Register] Registration confirmed success — opening Insert Coin');
+      console.log('[Register] Registration confirmed success — skipping hotspot verify, opening Insert Coin');
 
       resetRegBtn();
       document.getElementById('username').value = username;
       document.getElementById('password').value = password;
 
       showRegSuccess('Registered! Opening Insert Coin...');
+      coinSlotBusy = false;
       setTimeout(() => {
         openInsertCoinForNewUser(fullUsername);
       }, 500);
