@@ -288,9 +288,9 @@ app.whenReady().then(() => {
 
   const path = require('path');
   const settings = require('./src/settings-store');
-  const userDataDir = path.join(app.getPath('userData'), 'pisonet-data');
-  settings.setDataDir(userDataDir);
-  console.log('[Electron] Data dir:', userDataDir);
+  const portableDataDir = path.join(path.dirname(app.getPath('exe')), 'data');
+  settings.setDataDir(portableDataDir);
+  console.log('[Electron] Data dir (portable):', portableDataDir);
 
   function waitForServer(retries) {
     const http = require('http');
