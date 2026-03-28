@@ -1,10 +1,14 @@
 @echo off
 echo ============================================
 echo   PISONET KIOSK MODE SETUP
+echo   RUN AS ADMINISTRATOR!
 echo ============================================
 echo.
 echo This applies kiosk restrictions for the
 echo CURRENT Windows user account.
+echo.
+echo NOTE: Must be run as Administrator for full
+echo effect (right-click - Run as administrator)
 echo.
 
 echo [1/7] Disabling Task Manager...

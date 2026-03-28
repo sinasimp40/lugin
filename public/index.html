@@ -1500,8 +1500,8 @@
       if (!clientIp || !clientMac) {
         try {
           const loginResp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => null);
-          if (loginResp && loginResp.ip) clientIp = loginResp.ip;
-          if (loginResp && loginResp.mac) clientMac = loginResp.mac;
+          if (loginResp && loginResp.data && loginResp.data.ip) clientIp = loginResp.data.ip;
+          if (loginResp && loginResp.data && loginResp.data.mac) clientMac = loginResp.data.mac;
         } catch (_) {}
       }
 
@@ -1575,36 +1575,14 @@
         return;
       }
 
-      const verifyResp = await fetch('/api/hotspot/check-user', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: fullUsername }),
-      }).then(r => r.json()).catch(() => ({ exists: false }));
-      console.log('[Register] verify after register:', JSON.stringify(verifyResp));
-
-      if (!verifyResp.exists) {
-        if (verifyResp.checkFailed) {
-          console.log('[Register] Hotspot unreachable for verify — skipping, registration confirmed success');
-        } else {
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          const retryVerify = await fetch('/api/hotspot/check-user', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: fullUsername }),
-          }).then(r => r.json()).catch(() => ({ exists: false, checkFailed: true }));
-          console.log('[Register] verify retry:', JSON.stringify(retryVerify));
-
-          if (!retryVerify.exists && !retryVerify.checkFailed) {
-            resetRegBtn();
-            showRegError('Registration sent but user was not created. Please try again.');
-            return;
-          }
-        }
-      }
+      console.log('[Register] Registration confirmed success — skipping hotspot verify, opening Insert Coin');
 
       resetRegBtn();
       document.getElementById('username').value = fullUsername;
       document.getElementById('password').value = password;
 
       showRegSuccess('Registered! Opening Insert Coin...');
+      coinSlotBusy = false;
       setTimeout(() => {
         openInsertCoinForNewUser(fullUsername);
       }, 500);

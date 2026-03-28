@@ -13,7 +13,8 @@
     "productName": "Pisonet App",
     "asar": false,
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "requestedExecutionLevel": "requireAdministrator"
     },
     "files": [
       "main.js",
