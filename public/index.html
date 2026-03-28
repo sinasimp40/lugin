@@ -1097,6 +1097,34 @@
       }, 1000);
     }
 
+    let shutdownVoiceSynth = window.speechSynthesis;
+    let shutdownVoiceObj = null;
+    function getShutdownVoice() {
+      if (shutdownVoiceObj) return shutdownVoiceObj;
+      const voices = shutdownVoiceSynth.getVoices();
+      shutdownVoiceObj = voices.find(v => /male/i.test(v.name) && /en/i.test(v.lang))
+        || voices.find(v => /david|james|mark|daniel/i.test(v.name))
+        || voices.find(v => /en/i.test(v.lang))
+        || voices[0] || null;
+      return shutdownVoiceObj;
+    }
+    if (shutdownVoiceSynth) {
+      shutdownVoiceSynth.onvoiceschanged = () => { shutdownVoiceObj = null; getShutdownVoice(); };
+    }
+    let lastSpokenShutdown = -1;
+    function speakNumber(n) {
+      if (!shutdownVoiceSynth || n === lastSpokenShutdown) return;
+      lastSpokenShutdown = n;
+      shutdownVoiceSynth.cancel();
+      const utter = new SpeechSynthesisUtterance(String(n));
+      utter.rate = 1.1;
+      utter.pitch = 0.8;
+      utter.volume = 1;
+      const v = getShutdownVoice();
+      if (v) utter.voice = v;
+      shutdownVoiceSynth.speak(utter);
+    }
+
     function updateShutdownDisplay() {
       const el = document.getElementById('shutdown-timer');
       const bar = document.getElementById('shutdown-bar');
@@ -1118,6 +1146,10 @@
       } else if (shutdownLeft <= 120) {
         el.classList.add('warning');
         bar.classList.add('warning');
+      }
+
+      if (shutdownLeft <= 30 && shutdownLeft > 0) {
+        speakNumber(shutdownLeft);
       }
 
       const pct = shutdownTotal > 0 ? (shutdownLeft / shutdownTotal) * 100 : 0;

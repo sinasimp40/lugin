@@ -104,12 +104,32 @@
     color: #ffd700;
     text-shadow: 0 0 10px rgba(255,215,0,0.6), 0 0 25px rgba(255,215,0,0.2);
   }
+  .timer.critical {
+    color: #ff2200;
+    text-shadow: 0 0 12px rgba(255,34,0,0.7), 0 0 30px rgba(255,34,0,0.4);
+    animation: timer-pulse 0.8s ease-in-out infinite;
+  }
   .timer.danger {
     color: #ff4500;
     text-shadow: 0 0 10px rgba(255,69,0,0.6), 0 0 25px rgba(255,69,0,0.3);
     animation: timer-pulse 1s ease-in-out infinite;
   }
   @keyframes timer-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+  .box.danger-border { border-color: rgba(255,34,0,0.4); }
+  .box.danger-border .corner::before,
+  .box.danger-border .corner::after {
+    background: #ff2200;
+    box-shadow: 0 0 6px rgba(255,34,0,0.8);
+  }
+  .box.danger-border .glow-border {
+    background: conic-gradient(from var(--angle, 0deg), transparent 0%, rgba(255,34,0,0.5) 10%, transparent 20%, transparent 45%, rgba(255,0,0,0.4) 55%, transparent 65%, transparent 90%, rgba(255,50,0,0.4) 100%);
+  }
+  .box.danger-border .user { color: rgba(255,34,0,0.5); }
+  .box.danger-border .logout-btn {
+    border-color: rgba(255,34,0,0.4);
+    color: #ff2200;
+  }
 
   .bottom {
     display: flex; align-items: center; justify-content: space-between;
@@ -270,8 +290,37 @@
       } catch (e) {}
     }
 
+    let sessionVoiceSynth = window.speechSynthesis;
+    let sessionVoiceObj = null;
+    function getSessionVoice() {
+      if (sessionVoiceObj) return sessionVoiceObj;
+      const voices = sessionVoiceSynth.getVoices();
+      sessionVoiceObj = voices.find(v => /male/i.test(v.name) && /en/i.test(v.lang))
+        || voices.find(v => /david|james|mark|daniel/i.test(v.name))
+        || voices.find(v => /en/i.test(v.lang))
+        || voices[0] || null;
+      return sessionVoiceObj;
+    }
+    if (sessionVoiceSynth) {
+      sessionVoiceSynth.onvoiceschanged = () => { sessionVoiceObj = null; getSessionVoice(); };
+    }
+    let lastSpokenSession = -1;
+    function speakSessionNumber(n) {
+      if (!sessionVoiceSynth || n === lastSpokenSession) return;
+      lastSpokenSession = n;
+      sessionVoiceSynth.cancel();
+      const utter = new SpeechSynthesisUtterance(String(n));
+      utter.rate = 1.1;
+      utter.pitch = 0.8;
+      utter.volume = 1;
+      const v = getSessionVoice();
+      if (v) utter.voice = v;
+      sessionVoiceSynth.speak(utter);
+    }
+
     function updateTimer() {
       const el = document.getElementById('timer');
+      const box = document.querySelector('.box');
       const d = Math.floor(timeLeft / 86400);
       const h = Math.floor((timeLeft % 86400) / 3600);
       const m = Math.floor((timeLeft % 3600) / 60);
@@ -280,8 +329,15 @@
         ? d + 'd ' + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0')
         : String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
       el.className = 'timer';
-      if (timeLeft <= 60) el.classList.add('danger');
-      else if (timeLeft <= 300) el.classList.add('warning');
+      box.classList.remove('danger-border');
+      if (timeLeft <= 60) {
+        el.classList.add('critical');
+        box.classList.add('danger-border');
+        if (timeLeft > 0) speakSessionNumber(timeLeft);
+      } else if (timeLeft <= 300) {
+        el.classList.add('danger');
+        box.classList.add('danger-border');
+      }
     }
 
     async function doLogout() {
