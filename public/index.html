@@ -1233,6 +1233,12 @@
           startLoginPolling();
           return;
         }
+        const coinModalOpen = document.getElementById('coin-modal').classList.contains('active');
+        if (coinModalOpen) {
+          console.log('[init] coin modal is open, skipping auto-session for:', loginData.username);
+          startLoginPolling();
+          return;
+        }
         stopLoginPolling();
         showSession(loginData);
         return;
@@ -1250,6 +1256,8 @@
       loginPollTimer = setInterval(async () => {
         if (sessionData) { stopLoginPolling(); return; }
         try {
+          const coinModalOpen = document.getElementById('coin-modal').classList.contains('active');
+          if (coinModalOpen) return;
           const resp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => null);
           if (resp && resp.success && resp.data && resp.data.isLogin) {
             if (logoutPending) {
@@ -2314,19 +2322,11 @@
         return;
       }
 
-      console.log('[Register] Registration confirmed success — checking if auto-logged in');
+      console.log('[Register] Registration confirmed success — opening Insert Coin');
 
       resetRegBtn();
       document.getElementById('username').value = username;
       document.getElementById('password').value = password;
-
-      const postRegStatus = await fetch('/api/hotspot/status').then(r => r.json()).catch(() => null);
-      if (postRegStatus && postRegStatus.success && postRegStatus.data && postRegStatus.data.isLogin) {
-        const activeUser = (postRegStatus.data.username || '').toLowerCase();
-        console.log('[Register] Already logged in as:', activeUser, 'after registration');
-        showRegError('Already signed in as "' + (postRegStatus.data.username || activeUser) + '". Please logout first.');
-        return;
-      }
 
       showRegSuccess('Registered! Opening Insert Coin...');
       setTimeout(() => {

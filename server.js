@@ -560,18 +560,22 @@ app.post('/api/pisonet/avail', async (req, res) => {
     try { data = JSON.parse(text); } catch (_) { data = text; }
 
     if (typeof data === 'object' && data !== null) {
+      const statusStr = (data.status || '').toString().toLowerCase();
+      const errorStr = (data.error || data.errorCode || '').toString().toLowerCase();
       const dataStr = JSON.stringify(data).toLowerCase();
-      if (dataStr.includes('busy') || data.status === 'busy' || data.error === 'busy') {
+
+      if (statusStr === 'busy' || errorStr === 'busy' || errorStr.includes('coinslot.busy') || dataStr.includes('"busy"')) {
         console.log('[Pisonet] avail: coinslot busy');
         res.json({ success: false, error: 'Coinslot busy' });
         return;
       }
-      if (data.success === false || data.error) {
-        res.json({ success: false, error: data.error || data.message || 'Vendo unavailable' });
+      if (statusStr === 'banned' || errorStr.includes('banned') || errorStr.includes('blocked')) {
+        res.json({ success: false, error: 'Device banned' });
         return;
       }
-      if (dataStr.includes('banned') || dataStr.includes('blocked')) {
-        res.json({ success: false, error: 'Device banned' });
+      if (data.success === false) {
+        const errMsg = data.error || data.message || data.errorCode || 'Vendo unavailable';
+        res.json({ success: false, error: typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg) });
         return;
       }
     }
