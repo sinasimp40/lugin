@@ -1310,8 +1310,17 @@
           return;
         } else {
           console.log('[Login] Different user active:', activeUser, '— logging out first');
-          if (statusResp.data.logoutLink) {
-            await mikrotikLogoutDirect(statusResp.data.logoutLink);
+          await fetch('/api/hotspot/logout', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ logoutLink: statusResp.data.logoutLink }),
+          }).catch(() => {});
+          for (let i = 0; i < 5; i++) {
+            await new Promise(r => setTimeout(r, 800));
+            const check = await fetch('/api/hotspot/status').then(r => r.json()).catch(() => null);
+            if (!check || !check.success || !check.data || !check.data.isLogin) {
+              console.log('[Login] Previous user logged out confirmed after', i + 1, 'checks');
+              break;
+            }
           }
         }
       }
@@ -1325,11 +1334,13 @@
       document.getElementById('login-spinner').classList.add('hidden');
       if (resp.success && resp.data) showSession(resp.data);
       else {
-        const errMsg = resp.error || '';
-        if (errMsg.toLowerCase().includes('user.invalid') || errMsg.toLowerCase().includes('user invalid')) {
+        const errMsg = (resp.error || '').toLowerCase();
+        if (errMsg.includes('already logged in') || errMsg.includes('session limit') || errMsg.includes('has reached')) {
           showError('User already logged in. Please logout first.');
+        } else if (errMsg.includes('user.invalid') || errMsg.includes('user invalid') || errMsg.includes('invalid user')) {
+          showError('Invalid username or password.');
         } else {
-          showError(errMsg || 'Authentication failed');
+          showError(resp.error || 'Authentication failed');
         }
         await init();
       }
@@ -2303,14 +2314,21 @@
         return;
       }
 
-      console.log('[Register] Registration confirmed success — skipping hotspot verify, opening Insert Coin');
+      console.log('[Register] Registration confirmed success — checking if auto-logged in');
 
       resetRegBtn();
       document.getElementById('username').value = username;
       document.getElementById('password').value = password;
 
+      const postRegStatus = await fetch('/api/hotspot/status').then(r => r.json()).catch(() => null);
+      if (postRegStatus && postRegStatus.success && postRegStatus.data && postRegStatus.data.isLogin) {
+        const activeUser = (postRegStatus.data.username || '').toLowerCase();
+        console.log('[Register] Already logged in as:', activeUser, 'after registration');
+        showRegError('Already signed in as "' + (postRegStatus.data.username || activeUser) + '". Please logout first.');
+        return;
+      }
+
       showRegSuccess('Registered! Opening Insert Coin...');
-      coinSlotBusy = false;
       setTimeout(() => {
         openInsertCoinForNewUser(fullUsername);
       }, 500);

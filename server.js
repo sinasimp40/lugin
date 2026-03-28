@@ -549,11 +549,34 @@ app.post('/api/pisonet/avail', async (req, res) => {
     });
     const text = await resp.text();
     console.log('[Pisonet] avail response:', resp.status, text);
-    try {
-      res.json({ success: true, data: JSON.parse(text) });
-    } catch (_) {
-      res.json({ success: true, data: text });
+
+    if (!resp.ok) {
+      const errMsg = text || 'Vendo returned error';
+      res.json({ success: false, error: errMsg });
+      return;
     }
+
+    let data;
+    try { data = JSON.parse(text); } catch (_) { data = text; }
+
+    if (typeof data === 'object' && data !== null) {
+      const dataStr = JSON.stringify(data).toLowerCase();
+      if (dataStr.includes('busy') || data.status === 'busy' || data.error === 'busy') {
+        console.log('[Pisonet] avail: coinslot busy');
+        res.json({ success: false, error: 'Coinslot busy' });
+        return;
+      }
+      if (data.success === false || data.error) {
+        res.json({ success: false, error: data.error || data.message || 'Vendo unavailable' });
+        return;
+      }
+      if (dataStr.includes('banned') || dataStr.includes('blocked')) {
+        res.json({ success: false, error: 'Device banned' });
+        return;
+      }
+    }
+
+    res.json({ success: true, data });
   } catch (err) {
     console.log('[Pisonet] avail error:', err.message);
     res.json({ success: false, error: 'Cannot reach vendo: ' + err.message });
