@@ -9,12 +9,14 @@
     "build": "electron-builder --win --x64"
   },
   "build": {
-    "appId": "com.pisonet.app",
-    "productName": "Pisonet App",
+    "appId": "com.denfi.autoshutdown",
+    "productName": "Denfi Auto Shutdown",
+    "icon": "build/icon.ico",
     "asar": false,
     "win": {
       "target": "nsis",
-      "requestedExecutionLevel": "asInvoker"
+      "requestedExecutionLevel": "asInvoker",
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": true,
@@ -26,6 +28,7 @@
       "server.js",
       "src/**/*",
       "public/**/*",
+      "build/**/*",
       "kiosk-setup.bat",
       "kiosk-disable.bat",
       "node_modules/**/*",

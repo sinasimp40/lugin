@@ -130,7 +130,7 @@ function stopKeyboardHook() {
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
-  app.quit();
+  app.exit(0);
 }
 
 process.on('uncaughtException', (err) => {
@@ -297,7 +297,7 @@ app.whenReady().then(() => {
   } catch (err) {
     console.error('[Electron] Failed to start server:', err);
     const { dialog } = require('electron');
-    dialog.showErrorBox('Pisonet App Error', 'Server failed to start:\n' + err.message);
+    dialog.showErrorBox('Denfi Auto Shutdown', 'Server failed to start:\n' + err.message);
     app.quit();
     return;
   }
@@ -307,7 +307,7 @@ app.whenReady().then(() => {
   }).catch((err) => {
     console.error('[Electron] Server startup failed:', err.message);
     const { dialog } = require('electron');
-    dialog.showErrorBox('Pisonet App Error', 'Server did not respond.\nPort 5000 may be in use by another program.\n\nClose any other Pisonet instances and try again.');
+    dialog.showErrorBox('Denfi Auto Shutdown', 'Server did not respond.\nPort 5000 may be in use by another program.\n\nClose any other instances and try again.');
     app.quit();
   });
 });
@@ -322,7 +322,7 @@ function showLoginWindow() {
 
   loginWindow = new BrowserWindow({
     x, y, width, height,
-    title: 'Pisonet App',
+    title: 'Denfi Auto Shutdown',
     show: false,
     frame: false,
     resizable: false,
@@ -335,6 +335,7 @@ function showLoginWindow() {
     kiosk: true,
     enableLargerThanScreen: true,
     backgroundColor: '#0a0a0a',
+    icon: require('path').join(__dirname, 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -433,7 +434,7 @@ function showSessionWindow() {
     height: SESSION_HEIGHT,
     x: sessionX,
     y: sessionY,
-    title: 'Pisonet Session',
+    title: 'Denfi Auto Shutdown Session',
     frame: false,
     resizable: false,
     maximizable: false,
@@ -485,7 +486,7 @@ ipcMain.on('session-state', (event, state) => {
 ipcMain.on('trigger-shutdown', () => {
   console.log('[Electron] Shutdown triggered from renderer');
   const { exec } = require('child_process');
-  exec('shutdown /s /t 10 /f', (err) => {
+  exec('shutdown /s /t 0 /f', (err) => {
     if (err) {
       console.log('[Electron] Shutdown command failed (non-Windows?):', err.message);
       exec('shutdown -h now', (err2) => {

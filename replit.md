@@ -1,6 +1,6 @@
-# Pisonet App
+# Denfi Auto Shutdown (Pisonet App)
 
-A lightweight Electron desktop app for pisonet member login. Connects to a MikroTik RB4011 hotspot portal at `pisonet.app` which returns JSON responses, and provides a custom login UI with session countdown timer and JuanFi-compatible Insert Coin functionality. Includes an admin panel for kiosk configuration.
+A lightweight Electron desktop app for pisonet member login. Connects to a MikroTik RB4011 hotspot portal at `pisonet.app` which returns JSON responses, and provides a custom login UI with session countdown timer and JuanFi-compatible Insert Coin functionality. Includes an admin panel for kiosk configuration. Branded as "Denfi Auto Shutdown" with custom logo icon.
 
 ## How It Works
 - On load, fetches `http://pisonet.app/login` to get CHAP challenge data
@@ -13,7 +13,8 @@ A lightweight Electron desktop app for pisonet member login. Connects to a Mikro
 - Auto-logout on app close/kill/uninstall
 
 ## Architecture
-- **main.js** — Electron main process; single instance lock, manages login window (fullscreen, frameless, skipTaskbar) and session window (260x80, bottom-right, always-on-top with screen-saver priority, focusable:false, 2s re-assert interval); blocks Alt+Tab/Alt+F4/Win keys in login view only; auto-logout on quit; IPC for shutdown
+- **main.js** — Electron main process; single instance lock (app.exit on duplicate), manages login window (fullscreen kiosk, frameless, skipTaskbar, dark bg #0a0a0a) and session window (260x80, bottom-right, always-on-top with screen-saver priority, focusable:false, 2s re-assert interval); blocks Alt+Tab/Alt+F4/Win keys in login view only; auto-logout on quit; IPC for instant shutdown (/t 0); focus guard starts after page loads (2s interval) to prevent renderer freeze
+- **build/icon.ico, build/icon.png** — App icon (Denfi logo) used for .exe, installer, and window icon
 - **server.js** — Express server + WebSocket server; proxies requests to `pisonet.app` hotspot (avoids CORS), handles CHAP hashing, JuanFi pisonet API proxy (register/avail/done), broadcasts session status via WebSocket; admin API endpoints; ad management CRUD + image upload endpoints; no-cache headers on HTML
 - **src/settings-store.js** — JSON file settings storage in `./data/`; scrypt password hashing; manages computer name, auto-shutdown timer, background image metadata, advertisements (slides with images + rich HTML content); HTML sanitizer allows formatting, links, images, lists, blockquotes, headings
 - **public/index.html** — Login UI + session view + insert coin modal + admin panel (centered modal 860px max-width, 85vh scrollable, 2-col grid; auth popup 380px); scramble text computer name, auto-shutdown countdown with horizontal progress bar, secret "zxc1" admin trigger; black & orange theme; login auto-prepends `mem-` prefix; registration validates no special chars/spaces; ad carousel slider between login form and shutdown timer with configurable interval (1-60s), dot navigation; full MyBB-style rich text editor (bold/italic/underline/strikethrough/font size/font family/colors/alignment/lists/links/images/subscript/superscript/undo/redo/clear formatting)
@@ -109,13 +110,13 @@ When `isLogin: true` is detected → auto-shows the session (auto-connect).
 - `GET /api/vendo/rates` — Proxy to `/getRates`
 
 ## Electron Hardening
-- Single instance lock — prevents duplicate app instances
+- Single instance lock — `requestSingleInstanceLock()` + `app.exit(0)` prevents duplicate app instances immediately
 - `skipTaskbar: true` — hidden from taskbar
 - `kiosk: true` — Electron's built-in kiosk mode for login window
 - `globalShortcut` blocks Alt+Tab, Alt+F4, Win/Super keys, Ctrl+Shift+Esc, F11 in login view
-- Focus guard: 500ms interval + blur handler aggressively reclaim focus when in login state
+- Focus guard: 2s interval (starts after page loads) + blur handler reclaim focus when in login state; kiosk mode set ONCE at show to prevent renderer freeze
 - Keys unblocked and kiosk disabled when user is logged in (session view)
-- Auto-shutdown: timer counts down in login view, triggers OS shutdown via IPC
+- Auto-shutdown: timer counts down in login view, triggers instant OS shutdown via IPC (`shutdown /s /t 0 /f`, no Windows popup)
 - **Keyboard Hook** (PowerShell, embedded in main.js): WH_KEYBOARD_LL hook blocks Win, Ctrl, Alt, Delete keys in login view
 - **Registry keys set at runtime** (HKCU, no admin needed): DisableTaskMgr, NoWinKeys, DisableLockWorkstation, DisableChangePassword, NoLogoff
 - **Note on Ctrl+Alt+Del**: This is a Windows Secure Attention Sequence handled by the kernel. It CANNOT be blocked by any application-level hook or code without admin rights. Run `kiosk-setup.bat` as Administrator to set HKLM keys (DisableCAD) that suppress the security screen entirely.
