@@ -497,14 +497,6 @@ function showSessionWindow() {
 
   sessionWindow.setAlwaysOnTop(true, 'screen-saver');
 
-  sessionWindow.on('minimize', (event) => {
-    event.preventDefault();
-    if (sessionWindow && !sessionWindow.isDestroyed()) {
-      sessionWindow.showInactive();
-      sessionWindow.setAlwaysOnTop(true, 'screen-saver');
-    }
-  });
-
   sessionWindow.on('will-move', (event, newBounds) => {
     event.preventDefault();
     const { width: dw, height: dh } = require('electron').screen.getPrimaryDisplay().workAreaSize;
@@ -539,15 +531,9 @@ function showSessionWindow() {
 
   setInterval(() => {
     if (sessionWindow && !sessionWindow.isDestroyed()) {
-      if (sessionWindow.isMinimized()) {
-        sessionWindow.showInactive();
-      }
-      if (!sessionWindow.isVisible()) {
-        sessionWindow.showInactive();
-      }
       sessionWindow.setAlwaysOnTop(true, 'screen-saver');
     }
-  }, 2000);
+  }, 3000);
 
   sessionWindow.loadURL(`${APP_URL}/session.html`);
 }
