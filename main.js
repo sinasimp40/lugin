@@ -182,8 +182,8 @@ let isQuitting = false;
 let currentState = 'logged-out';
 let focusGuardInterval = null;
 
-const SESSION_WIDTH = 260;
-const SESSION_HEIGHT = 80;
+const SESSION_WIDTH = 163;
+const SESSION_HEIGHT = 50;
 
 function performLogout() {
   return new Promise((resolve) => {
