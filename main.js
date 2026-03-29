@@ -286,28 +286,6 @@ app.on('second-instance', () => {
 app.whenReady().then(() => {
   process.env.PORT = String(PORT);
 
-  if (process.platform === 'win32') {
-    try {
-      const exePath = app.getPath('exe');
-      app.setLoginItemSettings({
-        openAtLogin: true,
-        path: exePath,
-        args: ['--autostart'],
-      });
-      console.log('[Electron] Auto-start registered:', exePath);
-    } catch (e) {
-      console.log('[Electron] Auto-start registration failed:', e.message);
-    }
-
-    try {
-      const os = require('os');
-      os.setPriority(0, os.constants.priority.PRIORITY_HIGH);
-      console.log('[Electron] Process priority set to HIGH');
-    } catch (e) {
-      console.log('[Electron] Could not set high priority:', e.message);
-    }
-  }
-
   const path = require('path');
   const settings = require('./src/settings-store');
   const portableDataDir = path.join(path.dirname(app.getPath('exe')), 'data');
