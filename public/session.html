@@ -26,92 +26,93 @@
   .strip {
     width: 100%; height: 100%;
     display: flex; align-items: center;
-    padding: 0 14px;
+    padding: 0 8px;
     background: linear-gradient(180deg, #0d0d0d 0%, #080808 100%);
-    border-radius: 4px;
+    border-radius: 3px;
     border: 1px solid rgba(255,140,0,0.12);
     border-bottom: 2px solid #ff8c00;
     -webkit-app-region: drag; cursor: move;
     position: relative; overflow: hidden;
+    transition: border-color 0.3s;
   }
 
   .neon-line {
     position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, transparent 0%, #ff8c00 15%, #ffb347 50%, #ff8c00 85%, transparent 100%);
-    box-shadow: 0 0 8px rgba(255,140,0,0.6), 0 0 20px rgba(255,140,0,0.3);
+    background: linear-gradient(90deg, transparent 0%, #ff8c00 20%, #ffb347 50%, #ff8c00 80%, transparent 100%);
+    box-shadow: 0 0 6px rgba(255,140,0,0.5), 0 0 15px rgba(255,140,0,0.25);
     z-index: 2;
   }
 
   .neon-glow {
-    position: absolute; bottom: 0; left: 10%; right: 10%; height: 12px;
-    background: radial-gradient(ellipse at bottom, rgba(255,140,0,0.15), transparent 70%);
+    position: absolute; bottom: 0; left: 10%; right: 10%; height: 10px;
+    background: radial-gradient(ellipse at bottom, rgba(255,140,0,0.12), transparent 70%);
     pointer-events: none; z-index: 1;
   }
 
   .sweep {
     position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,140,0,0.02), rgba(255,140,0,0.04), rgba(255,140,0,0.02), transparent);
-    animation: sweep 4s ease-in-out infinite;
+    background: linear-gradient(90deg, transparent, rgba(255,140,0,0.02), rgba(255,140,0,0.05), rgba(255,140,0,0.02), transparent);
+    animation: sweep 3s ease-in-out infinite;
     pointer-events: none; z-index: 1;
   }
   @keyframes sweep { 0% { left: -40%; } 100% { left: 140%; } }
 
   .scanline {
     position: absolute; inset: 0; pointer-events: none; z-index: 1;
-    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,140,0,0.01) 2px, rgba(255,140,0,0.01) 4px);
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,140,0,0.012) 2px, rgba(255,140,0,0.012) 4px);
   }
 
   .left-section {
-    display: flex; flex-direction: column; gap: 2px;
+    display: flex; flex-direction: column; gap: 1px;
     flex: 1; min-width: 0;
     position: relative; z-index: 3;
   }
 
   .timer {
     font-family: 'Orbitron', monospace;
-    font-size: 22px; font-weight: 700;
+    font-size: 14px; font-weight: 700;
     color: #ff8c00;
-    letter-spacing: 2px; line-height: 1;
-    text-shadow: 0 0 10px rgba(255,140,0,0.4), 0 0 25px rgba(255,140,0,0.15);
+    letter-spacing: 1px; line-height: 1;
+    text-shadow: 0 0 8px rgba(255,140,0,0.4), 0 0 20px rgba(255,140,0,0.15);
     white-space: nowrap;
   }
   .timer.critical {
     color: #ff2200;
-    text-shadow: 0 0 12px rgba(255,34,0,0.7), 0 0 30px rgba(255,34,0,0.4);
+    text-shadow: 0 0 10px rgba(255,34,0,0.7), 0 0 25px rgba(255,34,0,0.4);
     animation: critical-flash 0.5s ease-in-out infinite;
   }
   @keyframes critical-flash {
-    0%, 100% { opacity: 1; text-shadow: 0 0 12px rgba(255,34,0,0.7), 0 0 30px rgba(255,34,0,0.4); }
-    50% { opacity: 0.3; text-shadow: 0 0 20px rgba(255,34,0,1), 0 0 40px rgba(255,0,0,0.6); }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
   }
 
   .user-row {
-    display: flex; align-items: center; gap: 5px;
+    display: flex; align-items: center; gap: 4px;
   }
 
   .status-dot {
-    width: 5px; height: 5px; border-radius: 50%;
+    width: 4px; height: 4px; border-radius: 50%;
     background: #22cc44;
-    box-shadow: 0 0 4px rgba(34,204,68,0.6), 0 0 8px rgba(34,204,68,0.3);
+    box-shadow: 0 0 3px rgba(34,204,68,0.6), 0 0 6px rgba(34,204,68,0.3);
     flex-shrink: 0;
     animation: dot-pulse 2s ease-in-out infinite;
   }
   @keyframes dot-pulse {
-    0%, 100% { opacity: 1; box-shadow: 0 0 4px rgba(34,204,68,0.6), 0 0 8px rgba(34,204,68,0.3); }
-    50% { opacity: 0.6; box-shadow: 0 0 2px rgba(34,204,68,0.3); }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
   }
 
   .user {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 10px; color: rgba(255,140,0,0.7);
+    font-size: 8px; color: rgba(255,140,0,0.7);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    max-width: 150px; letter-spacing: 1px;
+    max-width: 80px; letter-spacing: 0.5px;
     text-shadow: 0 0 4px rgba(255,140,0,0.2);
   }
 
   .right-section {
     flex-shrink: 0;
-    margin-left: 12px;
+    margin-left: 6px;
     position: relative; z-index: 3;
   }
 
@@ -119,61 +120,64 @@
     -webkit-app-region: no-drag;
     background: transparent;
     border: 1px solid rgba(255,140,0,0.3);
-    color: #ff8c00; padding: 5px 14px;
+    color: #ff8c00; padding: 3px 8px;
     border-radius: 2px; cursor: pointer;
     font-family: 'Share Tech Mono', monospace;
-    font-size: 10px; font-weight: 600;
-    letter-spacing: 2px; text-transform: uppercase;
+    font-size: 7px; font-weight: 600;
+    letter-spacing: 1.5px; text-transform: uppercase;
     transition: all 0.3s;
     position: relative; overflow: hidden;
   }
   .logout-btn::before {
     content: ''; position: absolute; inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,140,0,0.08), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255,140,0,0.1), transparent);
     transform: translateX(-100%);
     transition: transform 0.4s;
   }
   .logout-btn:hover {
-    background: rgba(255,140,0,0.1);
+    background: rgba(255,140,0,0.12);
     border-color: rgba(255,140,0,0.6);
-    box-shadow: 0 0 10px rgba(255,140,0,0.2), inset 0 0 10px rgba(255,140,0,0.05);
+    box-shadow: 0 0 8px rgba(255,140,0,0.2);
   }
   .logout-btn:hover::before { transform: translateX(100%); }
 
-  .strip.danger-mode .neon-line {
-    background: linear-gradient(90deg, transparent 0%, #ff2200 15%, #ff4400 50%, #ff2200 85%, transparent 100%);
-    box-shadow: 0 0 8px rgba(255,34,0,0.6), 0 0 20px rgba(255,34,0,0.3);
-    animation: neon-danger-pulse 0.8s ease-in-out infinite;
+  .strip.danger-mode {
+    border-color: rgba(255,34,0,0.25);
+    border-bottom-color: #ff2200;
+    animation: strip-danger 1s ease-in-out infinite;
   }
-  @keyframes neon-danger-pulse {
+  @keyframes strip-danger {
+    0%, 100% { box-shadow: inset 0 0 6px rgba(255,34,0,0.03); }
+    50% { box-shadow: inset 0 0 15px rgba(255,34,0,0.1), 0 0 10px rgba(255,34,0,0.25); }
+  }
+  .strip.danger-mode .neon-line {
+    background: linear-gradient(90deg, transparent 0%, #ff2200 20%, #ff4400 50%, #ff2200 80%, transparent 100%);
+    box-shadow: 0 0 8px rgba(255,34,0,0.6), 0 0 20px rgba(255,34,0,0.3);
+    animation: neon-danger 0.8s ease-in-out infinite;
+  }
+  @keyframes neon-danger {
     0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(255,34,0,0.6), 0 0 20px rgba(255,34,0,0.3); }
-    50% { opacity: 0.5; box-shadow: 0 0 15px rgba(255,34,0,0.9), 0 0 35px rgba(255,0,0,0.5); }
+    50% { opacity: 0.4; box-shadow: 0 0 15px rgba(255,34,0,0.9), 0 0 30px rgba(255,0,0,0.5); }
   }
   .strip.danger-mode .neon-glow {
     background: radial-gradient(ellipse at bottom, rgba(255,34,0,0.2), transparent 70%);
   }
-  .strip.danger-mode {
-    border-color: rgba(255,34,0,0.2);
-    border-bottom-color: #ff2200;
-    animation: strip-danger-flash 1s ease-in-out infinite;
-  }
-  @keyframes strip-danger-flash {
-    0%, 100% { box-shadow: inset 0 0 8px rgba(255,34,0,0.03); }
-    50% { box-shadow: inset 0 0 20px rgba(255,34,0,0.08), 0 0 12px rgba(255,34,0,0.2); }
-  }
   .strip.danger-mode .status-dot {
     background: #ff2200;
-    box-shadow: 0 0 4px rgba(255,34,0,0.6), 0 0 8px rgba(255,34,0,0.3);
+    box-shadow: 0 0 4px rgba(255,34,0,0.6);
     animation: dot-danger 0.5s ease-in-out infinite;
   }
   @keyframes dot-danger {
     0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
+    50% { opacity: 0.2; }
   }
-  .strip.danger-mode .user { color: rgba(255,34,0,0.6); }
+  .strip.danger-mode .user { color: rgba(255,34,0,0.7); }
   .strip.danger-mode .logout-btn {
     border-color: rgba(255,34,0,0.4);
     color: #ff2200;
+  }
+  .strip.danger-mode .sweep {
+    background: linear-gradient(90deg, transparent, rgba(255,34,0,0.03), rgba(255,34,0,0.06), rgba(255,34,0,0.03), transparent);
   }
 </style>
 </head>
