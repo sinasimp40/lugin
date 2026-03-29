@@ -84,6 +84,7 @@ function getSettings() {
     pisonetUnitName: s.pisonetUnitName || 'PC 1',
     ads: s.ads || [],
     adSlideSeconds: s.adSlideSeconds !== undefined ? s.adSlideSeconds : 5,
+    fullscreenBypass: s.fullscreenBypass || ['valorant.exe', 'league of legends.exe', 'leagueclient.exe'],
   };
 }
 
@@ -95,6 +96,7 @@ function getPublicSettings() {
     backgroundImage: s.backgroundImage,
     ads: s.ads || [],
     adSlideSeconds: s.adSlideSeconds !== undefined ? s.adSlideSeconds : 5,
+    fullscreenBypass: s.fullscreenBypass,
   };
 }
 
@@ -105,6 +107,13 @@ function updateSettings(updates) {
   if (updates.backgroundImage !== undefined) s.backgroundImage = updates.backgroundImage;
   if (updates.pisonetUnitName !== undefined) s.pisonetUnitName = updates.pisonetUnitName;
   if (updates.adSlideSeconds !== undefined) s.adSlideSeconds = Math.max(1, Math.min(60, parseInt(updates.adSlideSeconds) || 5));
+  if (updates.fullscreenBypass !== undefined) {
+    if (Array.isArray(updates.fullscreenBypass)) {
+      s.fullscreenBypass = updates.fullscreenBypass
+        .map(g => g.trim().toLowerCase())
+        .filter(g => g.length > 0 && g.endsWith('.exe'));
+    }
+  }
   save(s);
   return getSettings();
 }

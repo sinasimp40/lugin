@@ -522,16 +522,33 @@ function showSessionWindow() {
     }, 300);
   });
 
-  const FULLSCREEN_GAMES = [
-    'valorant.exe',
-    'league of legends.exe', 'leagueclient.exe',
-  ];
-
+  let fullscreenBypassList = [];
   let sessionHiddenForGame = false;
+
+  function refreshBypassList() {
+    const http = require('http');
+    http.get(`${APP_URL}/api/admin/settings-public`, (res) => {
+      let body = '';
+      res.on('data', c => body += c);
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(body);
+          if (data.fullscreenBypass) fullscreenBypassList = data.fullscreenBypass;
+        } catch (e) {}
+      });
+    }).on('error', () => {});
+  }
+
+  refreshBypassList();
+  setInterval(refreshBypassList, 10000);
 
   function checkForegroundAndManage() {
     if (!sessionWindow || sessionWindow.isDestroyed()) return;
-    if (process.platform !== 'win32') {
+    if (process.platform !== 'win32' || fullscreenBypassList.length === 0) {
+      if (sessionHiddenForGame) {
+        sessionHiddenForGame = false;
+        sessionWindow.showInactive();
+      }
       sessionWindow.setAlwaysOnTop(true, 'screen-saver');
       return;
     }
@@ -546,7 +563,7 @@ function showSessionWindow() {
         return;
       }
       const procName = (stdout || '').trim().toLowerCase() + '.exe';
-      const isFullscreenGame = FULLSCREEN_GAMES.some(g => procName.includes(g));
+      const isFullscreenGame = fullscreenBypassList.some(g => procName.includes(g));
       if (isFullscreenGame) {
         if (!sessionHiddenForGame) {
           sessionHiddenForGame = true;

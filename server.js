@@ -694,6 +694,11 @@ app.get('/api/admin/status', (req, res) => {
   res.json({ registered: settings.isAdminRegistered(), settings: s });
 });
 
+app.get('/api/admin/settings-public', (req, res) => {
+  const s = settings.getPublicSettings();
+  res.json(s);
+});
+
 app.post('/api/admin/register', (req, res) => {
   if (settings.isAdminRegistered()) return res.json({ success: false, error: 'Already registered' });
   const { password } = req.body;
