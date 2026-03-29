@@ -23,86 +23,57 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; }
 
-  .box {
+  .strip {
     width: 100%; height: 100%;
-    padding: 8px 14px;
-    display: flex; flex-direction: column; justify-content: center; gap: 4px;
-    background: linear-gradient(135deg, #0a0a0a 0%, #111 50%, #0a0a0a 100%);
+    display: flex; align-items: center;
+    padding: 0 14px;
+    background: linear-gradient(180deg, #0d0d0d 0%, #080808 100%);
     border-radius: 4px;
-    border: 1px solid rgba(255,140,0,0.15);
+    border: 1px solid rgba(255,140,0,0.12);
+    border-bottom: 2px solid #ff8c00;
     -webkit-app-region: drag; cursor: move;
     position: relative; overflow: hidden;
   }
 
-  .glow-border {
-    position: absolute; inset: -1px; border-radius: 5px; pointer-events: none; z-index: 0;
-    background: conic-gradient(from var(--angle, 0deg), transparent 0%, rgba(255,140,0,0.4) 10%, transparent 20%, transparent 45%, rgba(255,69,0,0.3) 55%, transparent 65%, transparent 90%, rgba(255,200,0,0.3) 100%);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: exclude; -webkit-mask-composite: xor;
-    padding: 1px;
-    animation: border-spin 4s linear infinite;
-  }
-  @property --angle {
-    syntax: '<angle>';
-    initial-value: 0deg;
-    inherits: false;
-  }
-  @keyframes border-spin {
-    to { --angle: 360deg; }
+  .neon-line {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent 0%, #ff8c00 15%, #ffb347 50%, #ff8c00 85%, transparent 100%);
+    box-shadow: 0 0 8px rgba(255,140,0,0.6), 0 0 20px rgba(255,140,0,0.3);
+    z-index: 2;
   }
 
-  .corner { position: absolute; width: 8px; height: 8px; pointer-events: none; z-index: 2; }
-  .corner::before, .corner::after {
-    content: ''; position: absolute; background: #ff8c00;
-    box-shadow: 0 0 4px rgba(255,140,0,0.6);
-  }
-  .corner-tl { top: 2px; left: 2px; }
-  .corner-tl::before { top: 0; left: 0; width: 8px; height: 1px; }
-  .corner-tl::after { top: 0; left: 0; width: 1px; height: 8px; }
-  .corner-tr { top: 2px; right: 2px; }
-  .corner-tr::before { top: 0; right: 0; width: 8px; height: 1px; }
-  .corner-tr::after { top: 0; right: 0; width: 1px; height: 8px; }
-  .corner-bl { bottom: 2px; left: 2px; }
-  .corner-bl::before { bottom: 0; left: 0; width: 8px; height: 1px; }
-  .corner-bl::after { bottom: 0; left: 0; width: 1px; height: 8px; }
-  .corner-br { bottom: 2px; right: 2px; }
-  .corner-br::before { bottom: 0; right: 0; width: 8px; height: 1px; }
-  .corner-br::after { bottom: 0; right: 0; width: 1px; height: 8px; }
-
-  .scanline {
-    position: absolute; inset: 0; pointer-events: none; z-index: 1;
-    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,140,0,0.015) 2px, rgba(255,140,0,0.015) 4px);
+  .neon-glow {
+    position: absolute; bottom: 0; left: 10%; right: 10%; height: 12px;
+    background: radial-gradient(ellipse at bottom, rgba(255,140,0,0.15), transparent 70%);
+    pointer-events: none; z-index: 1;
   }
 
   .sweep {
-    position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,140,0,0.03), rgba(255,140,0,0.06), rgba(255,140,0,0.03), transparent);
-    animation: sweep 3s ease-in-out infinite;
+    position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,140,0,0.02), rgba(255,140,0,0.04), rgba(255,140,0,0.02), transparent);
+    animation: sweep 4s ease-in-out infinite;
     pointer-events: none; z-index: 1;
   }
-  @keyframes sweep { 0% { left: -60%; } 100% { left: 160%; } }
+  @keyframes sweep { 0% { left: -40%; } 100% { left: 140%; } }
 
-  .top-line {
-    position: absolute; top: 0; height: 1px; pointer-events: none; z-index: 2;
-    background: linear-gradient(90deg, transparent, rgba(255,140,0,0.5), transparent);
-    animation: line-move 2.5s ease-in-out infinite alternate;
+  .scanline {
+    position: absolute; inset: 0; pointer-events: none; z-index: 1;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,140,0,0.01) 2px, rgba(255,140,0,0.01) 4px);
   }
-  @keyframes line-move {
-    0% { left: 5%; right: 60%; }
-    100% { left: 60%; right: 5%; }
+
+  .left-section {
+    display: flex; flex-direction: column; gap: 2px;
+    flex: 1; min-width: 0;
+    position: relative; z-index: 3;
   }
 
   .timer {
     font-family: 'Orbitron', monospace;
-    font-size: 20px; font-weight: 700;
-    color: #ff8c00; text-align: center;
-    letter-spacing: 3px; line-height: 1;
-    text-shadow: 0 0 10px rgba(255,140,0,0.5), 0 0 25px rgba(255,140,0,0.2);
-    position: relative; z-index: 3;
-  }
-  .timer.warning {
-    color: #ffd700;
-    text-shadow: 0 0 10px rgba(255,215,0,0.6), 0 0 25px rgba(255,215,0,0.2);
+    font-size: 22px; font-weight: 700;
+    color: #ff8c00;
+    letter-spacing: 2px; line-height: 1;
+    text-shadow: 0 0 10px rgba(255,140,0,0.4), 0 0 25px rgba(255,140,0,0.15);
+    white-space: nowrap;
   }
   .timer.critical {
     color: #ff2200;
@@ -113,137 +84,118 @@
     0%, 100% { opacity: 1; text-shadow: 0 0 12px rgba(255,34,0,0.7), 0 0 30px rgba(255,34,0,0.4); }
     50% { opacity: 0.3; text-shadow: 0 0 20px rgba(255,34,0,1), 0 0 40px rgba(255,0,0,0.6); }
   }
-  .box.danger-border {
-    animation: box-warning-flash 1s ease-in-out infinite;
-  }
-  @keyframes box-warning-flash {
-    0%, 100% { box-shadow: 0 0 8px rgba(255,34,0,0.3), inset 0 0 8px rgba(255,34,0,0.05); }
-    50% { box-shadow: 0 0 20px rgba(255,34,0,0.7), 0 0 40px rgba(255,0,0,0.3), inset 0 0 15px rgba(255,34,0,0.15); }
+
+  .user-row {
+    display: flex; align-items: center; gap: 5px;
   }
 
-  .box.danger-border { border-color: rgba(255,34,0,0.4); }
-  .box.danger-border .corner::before,
-  .box.danger-border .corner::after {
-    background: #ff2200;
-    box-shadow: 0 0 6px rgba(255,34,0,0.8);
+  .status-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: #22cc44;
+    box-shadow: 0 0 4px rgba(34,204,68,0.6), 0 0 8px rgba(34,204,68,0.3);
+    flex-shrink: 0;
+    animation: dot-pulse 2s ease-in-out infinite;
   }
-  .box.danger-border .glow-border {
-    background: conic-gradient(from var(--angle, 0deg), transparent 0%, rgba(255,34,0,0.5) 10%, transparent 20%, transparent 45%, rgba(255,0,0,0.4) 55%, transparent 65%, transparent 90%, rgba(255,50,0,0.4) 100%);
-  }
-  .box.danger-border .user { color: rgba(255,34,0,0.5); }
-  .box.danger-border .logout-btn {
-    border-color: rgba(255,34,0,0.4);
-    color: #ff2200;
+  @keyframes dot-pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 4px rgba(34,204,68,0.6), 0 0 8px rgba(34,204,68,0.3); }
+    50% { opacity: 0.6; box-shadow: 0 0 2px rgba(34,204,68,0.3); }
   }
 
-  .bottom {
-    display: flex; align-items: center; justify-content: space-between;
-    position: relative; z-index: 3;
-  }
   .user {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 10px; color: rgba(255,140,0,0.75);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;
-    letter-spacing: 1px;
-    text-shadow: 0 0 6px rgba(255,140,0,0.3);
+    font-size: 10px; color: rgba(255,140,0,0.7);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 150px; letter-spacing: 1px;
+    text-shadow: 0 0 4px rgba(255,140,0,0.2);
   }
+
+  .right-section {
+    flex-shrink: 0;
+    margin-left: 12px;
+    position: relative; z-index: 3;
+  }
+
   .logout-btn {
     -webkit-app-region: no-drag;
-    background: rgba(255,140,0,0.06);
-    border: 1px solid rgba(255,140,0,0.25);
-    color: #ff8c00; padding: 3px 12px;
+    background: transparent;
+    border: 1px solid rgba(255,140,0,0.3);
+    color: #ff8c00; padding: 5px 14px;
     border-radius: 2px; cursor: pointer;
     font-family: 'Share Tech Mono', monospace;
-    font-size: 9px; font-weight: 600;
+    font-size: 10px; font-weight: 600;
     letter-spacing: 2px; text-transform: uppercase;
     transition: all 0.3s;
     position: relative; overflow: hidden;
   }
   .logout-btn::before {
     content: ''; position: absolute; inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,140,0,0.1), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255,140,0,0.08), transparent);
     transform: translateX(-100%);
     transition: transform 0.4s;
   }
   .logout-btn:hover {
-    background: rgba(255,140,0,0.15);
-    border-color: rgba(255,140,0,0.5);
-    box-shadow: 0 0 12px rgba(255,140,0,0.2), inset 0 0 12px rgba(255,140,0,0.05);
+    background: rgba(255,140,0,0.1);
+    border-color: rgba(255,140,0,0.6);
+    box-shadow: 0 0 10px rgba(255,140,0,0.2), inset 0 0 10px rgba(255,140,0,0.05);
   }
   .logout-btn:hover::before { transform: translateX(100%); }
 
-  canvas#particles {
-    position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  .strip.danger-mode .neon-line {
+    background: linear-gradient(90deg, transparent 0%, #ff2200 15%, #ff4400 50%, #ff2200 85%, transparent 100%);
+    box-shadow: 0 0 8px rgba(255,34,0,0.6), 0 0 20px rgba(255,34,0,0.3);
+    animation: neon-danger-pulse 0.8s ease-in-out infinite;
+  }
+  @keyframes neon-danger-pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(255,34,0,0.6), 0 0 20px rgba(255,34,0,0.3); }
+    50% { opacity: 0.5; box-shadow: 0 0 15px rgba(255,34,0,0.9), 0 0 35px rgba(255,0,0,0.5); }
+  }
+  .strip.danger-mode .neon-glow {
+    background: radial-gradient(ellipse at bottom, rgba(255,34,0,0.2), transparent 70%);
+  }
+  .strip.danger-mode {
+    border-color: rgba(255,34,0,0.2);
+    border-bottom-color: #ff2200;
+    animation: strip-danger-flash 1s ease-in-out infinite;
+  }
+  @keyframes strip-danger-flash {
+    0%, 100% { box-shadow: inset 0 0 8px rgba(255,34,0,0.03); }
+    50% { box-shadow: inset 0 0 20px rgba(255,34,0,0.08), 0 0 12px rgba(255,34,0,0.2); }
+  }
+  .strip.danger-mode .status-dot {
+    background: #ff2200;
+    box-shadow: 0 0 4px rgba(255,34,0,0.6), 0 0 8px rgba(255,34,0,0.3);
+    animation: dot-danger 0.5s ease-in-out infinite;
+  }
+  @keyframes dot-danger {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .strip.danger-mode .user { color: rgba(255,34,0,0.6); }
+  .strip.danger-mode .logout-btn {
+    border-color: rgba(255,34,0,0.4);
+    color: #ff2200;
   }
 </style>
 </head>
 <body>
-  <div class="box">
-    <div class="glow-border"></div>
+  <div class="strip" id="strip">
     <div class="scanline"></div>
     <div class="sweep"></div>
-    <div class="top-line"></div>
-    <canvas id="particles"></canvas>
-    <div class="corner corner-tl"></div>
-    <div class="corner corner-tr"></div>
-    <div class="corner corner-bl"></div>
-    <div class="corner corner-br"></div>
-    <div class="timer" id="timer">--:--:--</div>
-    <div class="bottom">
-      <div class="user" id="username">User</div>
-      <button class="logout-btn" id="logout-btn">Logout</button>
+    <div class="neon-line"></div>
+    <div class="neon-glow"></div>
+    <div class="left-section">
+      <div class="timer" id="timer">--:--:--</div>
+      <div class="user-row">
+        <div class="status-dot" id="status-dot"></div>
+        <div class="user" id="username">User</div>
+      </div>
+    </div>
+    <div class="right-section">
+      <button class="logout-btn" id="logout-btn">LOGOUT</button>
     </div>
   </div>
 
   <script>
-    (function() {
-      const canvas = document.getElementById('particles');
-      const ctx = canvas.getContext('2d');
-      const dots = [];
-      function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
-      resize();
-      window.addEventListener('resize', resize);
-
-      function spawnDot() {
-        return {
-          x: Math.random() * canvas.width,
-          y: canvas.height + 2,
-          vy: -(0.15 + Math.random() * 0.25),
-          vx: (Math.random() - 0.5) * 0.1,
-          size: 0.5 + Math.random() * 1,
-          life: 120 + Math.random() * 100,
-          maxLife: 0,
-          r: 255,
-          g: Math.round(120 + Math.random() * 80),
-          b: 0
-        };
-      }
-
-      function animateDots() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if (dots.length < 15) {
-          const d = spawnDot();
-          d.maxLife = d.life;
-          dots.push(d);
-        }
-        for (let i = dots.length - 1; i >= 0; i--) {
-          const d = dots[i];
-          d.life--;
-          if (d.life <= 0) { dots.splice(i, 1); continue; }
-          d.x += d.vx;
-          d.y += d.vy;
-          const progress = 1 - (d.life / d.maxLife);
-          let alpha = progress < 0.1 ? progress / 0.1 : (progress > 0.5 ? (1 - progress) / 0.5 : 0.6);
-          ctx.fillStyle = 'rgba(' + d.r + ',' + d.g + ',' + d.b + ',' + alpha + ')';
-          ctx.beginPath();
-          ctx.arc(d.x, d.y, d.size * 0.4, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        requestAnimationFrame(animateDots);
-      }
-      animateDots();
-    })();
-
     let timeLeft = 0;
     let interval = null;
     let logoutLink = '';
@@ -318,7 +270,7 @@
 
     function updateTimer() {
       const el = document.getElementById('timer');
-      const box = document.querySelector('.box');
+      const strip = document.getElementById('strip');
       const d = Math.floor(timeLeft / 86400);
       const h = Math.floor((timeLeft % 86400) / 3600);
       const m = Math.floor((timeLeft % 3600) / 60);
@@ -327,10 +279,10 @@
         ? d + 'd ' + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0')
         : String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
       el.className = 'timer';
-      box.classList.remove('danger-border');
+      strip.classList.remove('danger-mode');
       if (timeLeft <= 60) {
         el.classList.add('critical');
-        box.classList.add('danger-border');
+        strip.classList.add('danger-mode');
         if (timeLeft > 0) playSessionTick(timeLeft);
       }
     }
