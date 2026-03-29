@@ -531,6 +531,7 @@ function showSessionWindow() {
 
   const FULLSCREEN_GAMES = [
     'valorant.exe',
+    'league of legends.exe', 'leagueclient.exe',
   ];
 
   let sessionHiddenForGame = false;
