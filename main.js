@@ -469,8 +469,8 @@ function showSessionWindow() {
   sessionWindow = new BrowserWindow({
     width: SESSION_WIDTH,
     height: SESSION_HEIGHT,
-    x: sessionX,
-    y: sessionY,
+    x: -9999,
+    y: -9999,
     title: 'Denfi Auto Shutdown Session',
     frame: false,
     resizable: false,
@@ -480,7 +480,7 @@ function showSessionWindow() {
     fullscreen: false,
     fullscreenable: false,
     skipTaskbar: true,
-    alwaysOnTop: true,
+    alwaysOnTop: false,
     transparent: true,
     hasShadow: false,
     show: false,
@@ -495,9 +495,10 @@ function showSessionWindow() {
     },
   });
 
-  sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+  let sessionReady = false;
 
   sessionWindow.on('will-move', (event, newBounds) => {
+    if (!sessionReady) return;
     event.preventDefault();
     const { width: dw, height: dh } = require('electron').screen.getPrimaryDisplay().workAreaSize;
     const clampedX = Math.max(0, Math.min(newBounds.x, dw - SESSION_WIDTH));
@@ -506,27 +507,19 @@ function showSessionWindow() {
   });
 
   sessionWindow.webContents.on('did-finish-load', () => {
-    sessionWindow.setFullScreen(false);
-    sessionWindow.setOpacity(0);
-    sessionWindow.setBounds({
-      width: SESSION_WIDTH,
-      height: SESSION_HEIGHT,
-      x: sessionX,
-      y: sessionY,
-    });
-    sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+    if (!sessionWindow || sessionWindow.isDestroyed()) return;
     sessionWindow.showInactive();
     setTimeout(() => {
-      if (sessionWindow && !sessionWindow.isDestroyed()) {
-        sessionWindow.setBounds({
-          width: SESSION_WIDTH,
-          height: SESSION_HEIGHT,
-          x: sessionX,
-          y: sessionY,
-        });
-        sessionWindow.setOpacity(1);
-      }
-    }, 150);
+      if (!sessionWindow || sessionWindow.isDestroyed()) return;
+      sessionWindow.setBounds({
+        width: SESSION_WIDTH,
+        height: SESSION_HEIGHT,
+        x: sessionX,
+        y: sessionY,
+      });
+      sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+      sessionReady = true;
+    }, 300);
   });
 
   const FULLSCREEN_GAMES = [
