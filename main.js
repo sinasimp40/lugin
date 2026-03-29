@@ -529,11 +529,56 @@ function showSessionWindow() {
     }, 150);
   });
 
-  setInterval(() => {
-    if (sessionWindow && !sessionWindow.isDestroyed()) {
+  const FULLSCREEN_GAMES = [
+    'valorant.exe', 'riotclientux.exe',
+    'fortnite.exe', 'fortniteclient-win64-shipping.exe',
+    'pubg.exe', 'tslgame.exe',
+    'overwatch.exe',
+    'r5apex.exe',
+    'cs2.exe', 'csgo.exe',
+    'cod.exe', 'moderwarfare.exe',
+    'genshinimpact.exe', 'yuanshen.exe',
+  ];
+
+  let sessionHiddenForGame = false;
+
+  function checkForegroundAndManage() {
+    if (!sessionWindow || sessionWindow.isDestroyed()) return;
+    if (process.platform !== 'win32') {
       sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+      return;
     }
-  }, 3000);
+    exec('powershell -NoProfile -Command "[System.Diagnostics.Process]::GetProcessById((Add-Type -MemberDefinition \'[DllImport(\\\"user32.dll\\\")] public static extern IntPtr GetForegroundWindow(); [DllImport(\\\"user32.dll\\\")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);\' -Name W -Namespace W -PassThru)::GetWindowThreadProcessId([W.W]::GetForegroundWindow(), [ref]($p = 0)) | Out-Null; $p).ProcessName"', { timeout: 3000, windowsHide: true }, (err, stdout) => {
+      if (!sessionWindow || sessionWindow.isDestroyed()) return;
+      if (err) {
+        if (sessionHiddenForGame) {
+          sessionHiddenForGame = false;
+          sessionWindow.showInactive();
+          sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+        }
+        return;
+      }
+      const procName = (stdout || '').trim().toLowerCase() + '.exe';
+      const isFullscreenGame = FULLSCREEN_GAMES.some(g => procName.includes(g));
+      if (isFullscreenGame) {
+        if (!sessionHiddenForGame) {
+          sessionHiddenForGame = true;
+          sessionWindow.setAlwaysOnTop(false);
+          sessionWindow.hide();
+          console.log('[Session] Hidden for fullscreen game:', procName);
+        }
+      } else {
+        if (sessionHiddenForGame) {
+          sessionHiddenForGame = false;
+          sessionWindow.showInactive();
+          console.log('[Session] Restored after game exit');
+        }
+        sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+      }
+    });
+  }
+
+  setInterval(checkForegroundAndManage, 2000);
 
   sessionWindow.loadURL(`${APP_URL}/session.html`);
 }
