@@ -26,27 +26,37 @@
   .strip {
     width: 100%; height: 100%;
     display: flex; align-items: center;
-    padding: 0 8px;
+    padding: 0 12px;
     background: linear-gradient(180deg, #0d0d0d 0%, #080808 100%);
     border-radius: 3px;
     border: 1px solid rgba(255,140,0,0.12);
-    border-bottom: 2px solid #ff8c00;
+    border-left: 2px solid #ff8c00;
+    border-right: 2px solid #ff8c00;
     -webkit-app-region: drag; cursor: move;
     position: relative; overflow: hidden;
     transition: border-color 0.3s;
   }
 
-  .neon-line {
-    position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, transparent 0%, #ff8c00 20%, #ffb347 50%, #ff8c00 80%, transparent 100%);
+  .neon-line-left, .neon-line-right {
+    position: absolute; top: 0; bottom: 0; width: 2px;
+    background: linear-gradient(180deg, transparent 0%, #ff8c00 20%, #ffb347 50%, #ff8c00 80%, transparent 100%);
     box-shadow: 0 0 6px rgba(255,140,0,0.5), 0 0 15px rgba(255,140,0,0.25);
     z-index: 2;
   }
+  .neon-line-left { left: 0; }
+  .neon-line-right { right: 0; }
 
-  .neon-glow {
-    position: absolute; bottom: 0; left: 10%; right: 10%; height: 10px;
-    background: radial-gradient(ellipse at bottom, rgba(255,140,0,0.12), transparent 70%);
+  .neon-glow-left, .neon-glow-right {
+    position: absolute; top: 10%; bottom: 10%; width: 10px;
     pointer-events: none; z-index: 1;
+  }
+  .neon-glow-left {
+    left: 0;
+    background: radial-gradient(ellipse at left, rgba(255,140,0,0.12), transparent 70%);
+  }
+  .neon-glow-right {
+    right: 0;
+    background: radial-gradient(ellipse at right, rgba(255,140,0,0.12), transparent 70%);
   }
 
   .sweep {
@@ -148,15 +158,17 @@
 
   .strip.danger-mode {
     border-color: rgba(255,34,0,0.25);
-    border-bottom-color: #ff2200;
+    border-left-color: #ff2200;
+    border-right-color: #ff2200;
     animation: strip-danger 1s ease-in-out infinite;
   }
   @keyframes strip-danger {
     0%, 100% { box-shadow: inset 0 0 6px rgba(255,34,0,0.03); }
     50% { box-shadow: inset 0 0 15px rgba(255,34,0,0.1), 0 0 10px rgba(255,34,0,0.25); }
   }
-  .strip.danger-mode .neon-line {
-    background: linear-gradient(90deg, transparent 0%, #ff2200 20%, #ff4400 50%, #ff2200 80%, transparent 100%);
+  .strip.danger-mode .neon-line-left,
+  .strip.danger-mode .neon-line-right {
+    background: linear-gradient(180deg, transparent 0%, #ff2200 20%, #ff4400 50%, #ff2200 80%, transparent 100%);
     box-shadow: 0 0 8px rgba(255,34,0,0.6), 0 0 20px rgba(255,34,0,0.3);
     animation: neon-danger 0.8s ease-in-out infinite;
   }
@@ -164,8 +176,11 @@
     0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(255,34,0,0.6), 0 0 20px rgba(255,34,0,0.3); }
     50% { opacity: 0.4; box-shadow: 0 0 15px rgba(255,34,0,0.9), 0 0 30px rgba(255,0,0,0.5); }
   }
-  .strip.danger-mode .neon-glow {
-    background: radial-gradient(ellipse at bottom, rgba(255,34,0,0.2), transparent 70%);
+  .strip.danger-mode .neon-glow-left {
+    background: radial-gradient(ellipse at left, rgba(255,34,0,0.2), transparent 70%);
+  }
+  .strip.danger-mode .neon-glow-right {
+    background: radial-gradient(ellipse at right, rgba(255,34,0,0.2), transparent 70%);
   }
   .strip.danger-mode .status-dot {
     background: #ff2200;
@@ -191,8 +206,10 @@
     <canvas id="bg-anim"></canvas>
     <div class="scanline"></div>
     <div class="sweep"></div>
-    <div class="neon-line"></div>
-    <div class="neon-glow"></div>
+    <div class="neon-line-left"></div>
+    <div class="neon-line-right"></div>
+    <div class="neon-glow-left"></div>
+    <div class="neon-glow-right"></div>
     <div class="left-section">
       <div class="timer" id="timer">--:--:--</div>
       <div class="user-row">
