@@ -751,7 +751,7 @@
 </head>
 <body>
   <div id="bg-layer"></div>
-  <canvas id="flame-particles" style="position:fixed;inset:0;z-index:1;pointer-events:none;"></canvas>
+  <canvas id="dust-particles" style="position:fixed;inset:0;z-index:1;pointer-events:none;"></canvas>
   <div class="scanlines"></div>
   <div class="grid-bg"></div>
   <div class="drag-region"></div>
@@ -1007,9 +1007,6 @@
       updateShutdownConfig(s.autoShutdownSeconds || 0);
     }
 
-    let flameAnimId = null;
-    let flameParticles = [];
-
     function applyBackground(bgInfo) {
       const bgLayer = document.getElementById('bg-layer');
       if (bgInfo && bgInfo.filename) {
@@ -1019,74 +1016,101 @@
       }
     }
 
-    function startFlameParticles() {
-      if (flameAnimId) return;
-      const canvas = document.getElementById('flame-particles');
+    (function initDustParticles() {
+      const canvas = document.getElementById('dust-particles');
       const ctx = canvas.getContext('2d');
-      flameParticles = [];
-      let resizeTimer;
+      const dustParticles = [];
+      const MAX_DUST = 120;
 
       function resize() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
       }
       resize();
+      let resizeTimer;
       window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 100); });
 
-      function spawn() {
-        const x = Math.random() * canvas.width;
-        const y = canvas.height + 5 + Math.random() * 30;
-        const speed = 0.3 + Math.random() * 0.7;
-        const size = 1 + Math.random() * 2;
-        const orange = Math.random();
+      function spawnDust() {
+        const edge = Math.random();
+        let x, y;
+        if (edge < 0.25) { x = -5; y = Math.random() * canvas.height; }
+        else if (edge < 0.5) { x = canvas.width + 5; y = Math.random() * canvas.height; }
+        else if (edge < 0.75) { x = Math.random() * canvas.width; y = -5; }
+        else { x = Math.random() * canvas.width; y = canvas.height + 5; }
+
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 0.1 + Math.random() * 0.4;
+        const size = 0.5 + Math.random() * 2;
+        const tone = Math.random();
         let r, g, b;
-        if (orange < 0.5) {
-          r = 255; g = Math.round(100 + Math.random() * 80); b = 0;
-        } else if (orange < 0.8) {
-          r = 255; g = Math.round(180 + Math.random() * 60); b = 0;
+        if (tone < 0.4) {
+          r = 255; g = Math.round(120 + Math.random() * 60); b = Math.round(20 + Math.random() * 30);
+        } else if (tone < 0.7) {
+          r = Math.round(200 + Math.random() * 55); g = Math.round(160 + Math.random() * 60); b = Math.round(80 + Math.random() * 60);
         } else {
-          r = 255; g = Math.round(200 + Math.random() * 55); b = Math.round(50 + Math.random() * 80);
+          r = Math.round(180 + Math.random() * 75); g = Math.round(170 + Math.random() * 70); b = Math.round(140 + Math.random() * 80);
         }
+
         return {
-          x, y, vy: -speed, size,
-          r, g, b,
-          life: 300 + Math.random() * 400,
+          x, y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size, r, g, b,
+          life: 600 + Math.random() * 800,
           maxLife: 0,
-          drift: (Math.random() - 0.5) * 0.15,
-          wobble: Math.random() * Math.PI * 2,
-          wobbleAmp: 0.2 + Math.random() * 0.5,
-          wobbleSpeed: 0.01 + Math.random() * 0.02
+          wobbleX: Math.random() * Math.PI * 2,
+          wobbleY: Math.random() * Math.PI * 2,
+          wobbleSpeedX: 0.003 + Math.random() * 0.008,
+          wobbleSpeedY: 0.003 + Math.random() * 0.008,
+          wobbleAmpX: 0.1 + Math.random() * 0.3,
+          wobbleAmpY: 0.1 + Math.random() * 0.3,
+          twinkleSpeed: 0.01 + Math.random() * 0.03,
+          twinklePhase: Math.random() * Math.PI * 2
         };
+      }
+
+      for (let i = 0; i < MAX_DUST; i++) {
+        const p = spawnDust();
+        p.x = Math.random() * canvas.width;
+        p.y = Math.random() * canvas.height;
+        p.maxLife = p.life;
+        p.life = Math.random() * p.maxLife;
+        dustParticles.push(p);
       }
 
       function animate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        const toSpawn = Math.min(2, 60 - flameParticles.length);
-        for (let s = 0; s < toSpawn; s++) {
-          const p = spawn();
+        while (dustParticles.length < MAX_DUST) {
+          const p = spawnDust();
           p.maxLife = p.life;
-          flameParticles.push(p);
+          dustParticles.push(p);
         }
 
-        for (let i = flameParticles.length - 1; i >= 0; i--) {
-          const p = flameParticles[i];
+        for (let i = dustParticles.length - 1; i >= 0; i--) {
+          const p = dustParticles[i];
           p.life--;
-          if (p.life <= 0) { flameParticles.splice(i, 1); continue; }
+          if (p.life <= 0) { dustParticles.splice(i, 1); continue; }
 
-          p.wobble += p.wobbleSpeed;
-          p.x += p.drift + Math.sin(p.wobble) * p.wobbleAmp;
-          p.y += p.vy;
+          p.wobbleX += p.wobbleSpeedX;
+          p.wobbleY += p.wobbleSpeedY;
+          p.twinklePhase += p.twinkleSpeed;
+          p.x += p.vx + Math.sin(p.wobbleX) * p.wobbleAmpX;
+          p.y += p.vy + Math.cos(p.wobbleY) * p.wobbleAmpY;
 
           const progress = 1 - (p.life / p.maxLife);
-          let alpha;
-          if (progress < 0.05) alpha = progress / 0.05;
-          else if (progress > 0.6) alpha = (1 - progress) / 0.4;
-          else alpha = 0.8;
+          let fadeAlpha;
+          if (progress < 0.1) fadeAlpha = progress / 0.1;
+          else if (progress > 0.7) fadeAlpha = (1 - progress) / 0.3;
+          else fadeAlpha = 1;
 
-          const glowR = p.size * 3;
+          const twinkle = 0.3 + 0.7 * ((Math.sin(p.twinklePhase) + 1) / 2);
+          const alpha = fadeAlpha * twinkle * 0.45;
+
+          const glowR = p.size * 4;
           const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowR);
-          grd.addColorStop(0, 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + (alpha * 0.4) + ')');
+          grd.addColorStop(0, 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + (alpha * 0.3) + ')');
+          grd.addColorStop(0.5, 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + (alpha * 0.1) + ')');
           grd.addColorStop(1, 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',0)');
           ctx.fillStyle = grd;
           ctx.beginPath();
@@ -1095,22 +1119,14 @@
 
           ctx.fillStyle = 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + alpha + ')';
           ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size * 0.5, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, p.size * 0.6, 0, Math.PI * 2);
           ctx.fill();
         }
 
-        flameAnimId = requestAnimationFrame(animate);
+        requestAnimationFrame(animate);
       }
       animate();
-    }
-
-    function stopFlameParticles() {
-      if (flameAnimId) { cancelAnimationFrame(flameAnimId); flameAnimId = null; }
-      flameParticles = [];
-      const canvas = document.getElementById('flame-particles');
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
+    })();
 
     function updateShutdownConfig(totalSeconds) {
       const area = document.getElementById('shutdown-area');
