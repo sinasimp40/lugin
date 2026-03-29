@@ -2153,22 +2153,27 @@
     }
 
     async function uploadAdImage(id, input) {
+      if (!input.files || !input.files.length) { input.value = ''; return; }
       const file = input.files[0];
-      if (!file) return;
-      if (file.size > 50 * 1024 * 1024) { showAdminMsg('admin-panel-msg', 'File too large (max 50MB)', 'error'); return; }
+      if (!file) { input.value = ''; return; }
+      if (file.size > 50 * 1024 * 1024) { showAdminMsg('admin-panel-msg', 'File too large (max 50MB)', 'error'); input.value = ''; return; }
       const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
-      if (!allowed.includes(file.type)) { showAdminMsg('admin-panel-msg', 'Only PNG, JPEG, GIF, WebP', 'error'); return; }
-      const buffer = await file.arrayBuffer();
-      const resp = await fetch('/api/admin/ads/' + id + '/image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/octet-stream', 'x-admin-token': adminToken, 'x-filename': file.name, 'x-mime-type': file.type },
-        body: buffer
-      }).then(r => r.json()).catch(() => ({ success: false }));
-      if (resp.success) {
-        showAdminMsg('admin-panel-msg', 'Image uploaded', 'success');
-        refreshAdminAds();
-      } else {
-        showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+      if (!allowed.includes(file.type)) { showAdminMsg('admin-panel-msg', 'Only PNG, JPEG, GIF, WebP', 'error'); input.value = ''; return; }
+      try {
+        const buffer = await file.arrayBuffer();
+        const resp = await fetch('/api/admin/ads/' + id + '/image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/octet-stream', 'x-admin-token': adminToken, 'x-filename': file.name, 'x-mime-type': file.type },
+          body: buffer
+        }).then(r => r.json()).catch(() => ({ success: false }));
+        if (resp.success) {
+          showAdminMsg('admin-panel-msg', 'Image uploaded', 'success');
+          refreshAdminAds();
+        } else {
+          showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+        }
+      } catch (e) {
+        showAdminMsg('admin-panel-msg', 'Upload error', 'error');
       }
       input.value = '';
     }

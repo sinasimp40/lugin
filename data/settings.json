@@ -17,5 +17,11 @@
     "filename": "background.png",
     "mimeType": "image/png",
     "size": 70
-  }
+  },
+  "fullscreenBypass": [
+    "valorant.exe",
+    "league of legends.exe",
+    "leagueclient.exe",
+    "qweqwe.exe"
+  ]
 }
