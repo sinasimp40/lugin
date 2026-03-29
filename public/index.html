@@ -396,7 +396,7 @@
     }
     .ad-slide {
       width: 100%; position: absolute; top: 0; left: 0;
-      display: flex; align-items: center; justify-content: center;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
       min-height: 120px; overflow: hidden;
       opacity: 0; pointer-events: none;
       transform: translateX(100%);
@@ -418,13 +418,15 @@
       from { transform: translateX(0); opacity: 1; }
       to { transform: translateX(-100%); opacity: 0; }
     }
-    .ad-slide-bg {
-      position: absolute; inset: 0;
-      background-size: cover; background-position: center;
-    }
-    .ad-slide-bg::after {
-      content: ''; position: absolute; inset: 0;
-      background: linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.1));
+    .ad-slide-img {
+      display: block;
+      max-width: 100%;
+      max-height: 280px;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      margin: 0 auto;
+      border-radius: 4px;
     }
     .ad-slide-content {
       position: relative; z-index: 1; padding: 16px 20px;
@@ -1854,11 +1856,12 @@
       }
       carousel.classList.remove('empty');
       slidesEl.innerHTML = visibleAds.map(ad => {
-        const bgStyle = ad.image && ad.image.filename ? 'background-image:url(/uploads/' + ad.image.filename + '?t=' + Date.now() + ')' : '';
+        const imgSrc = ad.image && ad.image.filename ? '/uploads/' + ad.image.filename + '?t=' + Date.now() : '';
         const content = ad.content || '';
+        const hasText = content.replace(/<[^>]*>/g, '').trim().length > 0;
         return '<div class="ad-slide">' +
-          (bgStyle ? '<div class="ad-slide-bg" style="' + bgStyle + '"></div>' : '') +
-          '<div class="ad-slide-content">' + content + '</div>' +
+          (imgSrc ? '<img class="ad-slide-img" src="' + imgSrc + '" alt="Ad">' : '') +
+          (hasText ? '<div class="ad-slide-content">' + content + '</div>' : '') +
           '</div>';
       }).join('');
       if (visibleAds.length > 1) {
