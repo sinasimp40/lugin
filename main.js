@@ -505,8 +505,9 @@ function showSessionWindow() {
     sessionWindow.setBounds({ x: clampedX, y: clampedY, width: SESSION_WIDTH, height: SESSION_HEIGHT });
   });
 
-  sessionWindow.once('ready-to-show', () => {
+  sessionWindow.webContents.on('did-finish-load', () => {
     sessionWindow.setFullScreen(false);
+    sessionWindow.setOpacity(0);
     sessionWindow.setBounds({
       width: SESSION_WIDTH,
       height: SESSION_HEIGHT,
@@ -515,6 +516,17 @@ function showSessionWindow() {
     });
     sessionWindow.setAlwaysOnTop(true, 'screen-saver');
     sessionWindow.showInactive();
+    setTimeout(() => {
+      if (sessionWindow && !sessionWindow.isDestroyed()) {
+        sessionWindow.setBounds({
+          width: SESSION_WIDTH,
+          height: SESSION_HEIGHT,
+          x: sessionX,
+          y: sessionY,
+        });
+        sessionWindow.setOpacity(1);
+      }
+    }, 150);
   });
 
   setInterval(() => {
