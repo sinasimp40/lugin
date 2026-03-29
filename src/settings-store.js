@@ -81,6 +81,7 @@ function getSettings() {
     computerName: s.computerName !== undefined ? s.computerName : 'COMPUTER SHOP',
     autoShutdownSeconds: s.autoShutdownSeconds !== undefined ? s.autoShutdownSeconds : 180,
     backgroundImage: s.backgroundImage || null,
+    loginImage: s.loginImage || null,
     pisonetUnitName: s.pisonetUnitName || 'PC 1',
     ads: s.ads || [],
     adSlideSeconds: s.adSlideSeconds !== undefined ? s.adSlideSeconds : 5,
@@ -94,6 +95,7 @@ function getPublicSettings() {
     computerName: s.computerName,
     autoShutdownSeconds: s.autoShutdownSeconds,
     backgroundImage: s.backgroundImage,
+    loginImage: s.loginImage,
     ads: s.ads || [],
     adSlideSeconds: s.adSlideSeconds !== undefined ? s.adSlideSeconds : 5,
     fullscreenBypass: s.fullscreenBypass,
@@ -155,6 +157,33 @@ function getBackgroundImagePath() {
   const filepath = path.join(uploadsDir, s.backgroundImage.filename);
   if (!fs.existsSync(filepath)) return null;
   return filepath;
+}
+
+function saveLoginImage(fileBuffer, originalName, mimeType) {
+  ensureDirs();
+  const ext = path.extname(originalName).toLowerCase() || '.png';
+  const filename = 'loginimage' + ext;
+  const filepath = path.join(uploadsDir, filename);
+  const existingFiles = fs.readdirSync(uploadsDir).filter(f => f.startsWith('loginimage'));
+  for (const f of existingFiles) {
+    try { fs.unlinkSync(path.join(uploadsDir, f)); } catch (e) {}
+  }
+  fs.writeFileSync(filepath, fileBuffer);
+  const s = load();
+  s.loginImage = { filename, mimeType, size: fileBuffer.length };
+  save(s);
+  return s.loginImage;
+}
+
+function removeLoginImage() {
+  ensureDirs();
+  const existingFiles = fs.readdirSync(uploadsDir).filter(f => f.startsWith('loginimage'));
+  for (const f of existingFiles) {
+    try { fs.unlinkSync(path.join(uploadsDir, f)); } catch (e) {}
+  }
+  const s = load();
+  s.loginImage = null;
+  save(s);
 }
 
 function getUploadsDir() {
@@ -303,6 +332,8 @@ module.exports = {
   saveBackgroundImage,
   removeBackgroundImage,
   getBackgroundImagePath,
+  saveLoginImage,
+  removeLoginImage,
   getUploadsDir,
   getAds,
   addAd,

@@ -68,13 +68,86 @@
       position: relative; z-index: 2;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       width: 100%; height: 100vh;
+      padding: 20px;
+      overflow-y: auto;
     }
     .login-panel.hidden { display: none; }
 
-    .glitch-container { text-align: center; margin-bottom: 32px; min-height: 50px; position: relative; }
+    .login-split {
+      display: flex;
+      width: 820px;
+      max-width: 95vw;
+      min-height: 480px;
+      background: rgba(12,12,20,0.75);
+      border: 1px solid var(--dark-border);
+      border-radius: 6px;
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 0 40px rgba(0,0,0,0.6), 0 0 80px rgba(255,140,0,0.05);
+      position: relative;
+    }
+    .login-split::before {
+      content: ''; position: absolute; top: -1px; left: 20px; right: 20px; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+      z-index: 1;
+    }
+    .login-split::after {
+      content: ''; position: absolute; bottom: -1px; left: 40px; right: 40px; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--neon-magenta), transparent);
+    }
+
+    .login-left {
+      flex: 1;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 36px 32px;
+      min-width: 0;
+    }
+
+    .login-right {
+      width: 360px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,140,0,0.03);
+      border-left: 1px solid var(--dark-border);
+      position: relative;
+      overflow: hidden;
+    }
+    .login-right::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at center, rgba(255,140,0,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .login-right-img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      position: relative; z-index: 1;
+    }
+    .login-right-placeholder {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px; color: var(--text-muted);
+      letter-spacing: 1px;
+      text-align: center;
+      padding: 20px;
+    }
+    .login-right-placeholder-icon {
+      width: 48px; height: 48px;
+      border: 2px dashed rgba(255,140,0,0.2);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; color: rgba(255,140,0,0.3);
+    }
+
+    @media (max-width: 700px) {
+      .login-split { flex-direction: column; width: 100%; max-width: 420px; }
+      .login-right { width: 100%; height: 180px; border-left: none; border-top: 1px solid var(--dark-border); order: -1; }
+      .login-left { padding: 24px 20px; }
+    }
+
+    .glitch-container { text-align: center; margin-bottom: 16px; min-height: 40px; position: relative; }
     .glitch-text {
       font-family: 'Orbitron', monospace;
-      font-size: 36px; font-weight: 900;
+      font-size: 28px; font-weight: 900;
       color: var(--neon-cyan);
       text-transform: uppercase;
       letter-spacing: 6px;
@@ -125,7 +198,7 @@
     }
 
     .cyber-line {
-      width: 200px; height: 2px; margin: 0 auto 30px;
+      width: 200px; height: 2px; margin: 0 auto 20px;
       background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--neon-magenta), transparent);
       box-shadow: 0 0 10px rgba(255,140,0,0.5);
       animation: line-pulse 3s ease-in-out infinite;
@@ -136,22 +209,11 @@
     }
 
     .login-card {
-      width: 360px; max-width: 90vw;
-      background: rgba(18,18,30,0.85);
-      border: 1px solid var(--dark-border);
-      border-radius: 4px;
-      padding: 24px;
+      width: 100%; max-width: 340px;
+      background: transparent;
+      border: none;
+      padding: 0;
       position: relative;
-      backdrop-filter: blur(20px);
-      box-shadow: 0 0 30px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,140,0,0.1);
-    }
-    .login-card::before {
-      content: ''; position: absolute; top: -1px; left: 20px; right: 20px; height: 2px;
-      background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
-    }
-    .login-card::after {
-      content: ''; position: absolute; bottom: -1px; left: 40px; right: 40px; height: 1px;
-      background: linear-gradient(90deg, transparent, var(--neon-magenta), transparent);
     }
 
     .form-group { margin-bottom: 16px; }
@@ -274,12 +336,12 @@
     .error-msg.visible { display: block; }
 
     .shutdown-panel {
-      margin-top: 24px; text-align: center; padding: 20px;
+      margin-top: 20px; text-align: center; padding: 16px;
       background: rgba(15,15,15,0.6);
       border: 1px solid rgba(255,69,0,0.2);
       border-radius: 4px; position: relative;
       backdrop-filter: blur(10px);
-      max-width: 360px; width: 90vw;
+      width: 100%; max-width: 340px;
     }
     .shutdown-panel::before {
       content: ''; position: absolute; top: -1px; left: 30px; right: 30px; height: 1px;
@@ -376,7 +438,7 @@
     }
 
     .ad-carousel {
-      width: 360px; max-width: 90vw; margin-top: 16px;
+      width: 820px; max-width: 95vw; margin-top: 16px;
       position: relative;
       border-radius: 4px;
       border: 1px solid var(--dark-border);
@@ -761,67 +823,78 @@
   <div class="corner-deco corner-br"></div>
 
   <div id="login-panel" class="login-panel">
-    <div class="glitch-container">
-      <div class="glitch-text" id="computer-name-el" data-text=""></div>
+    <div class="login-split">
+      <div class="login-left">
+        <div class="glitch-container">
+          <div class="glitch-text" id="computer-name-el" data-text=""></div>
+        </div>
+        <div class="cyber-line"></div>
+
+        <div class="login-card">
+          <div class="tab-bar">
+            <button class="tab-btn active" onclick="switchTab('login')">Login</button>
+            <button class="tab-btn" onclick="switchTab('register')">Register</button>
+          </div>
+
+          <div id="tab-login" class="tab-content active">
+            <div id="error-msg" class="error-msg"></div>
+            <div class="form-group">
+              <label>// Username</label>
+              <input type="text" id="username" placeholder="enter username" autocomplete="username" />
+            </div>
+            <div class="form-group">
+              <label>// Password</label>
+              <input type="password" id="password" placeholder="enter password" autocomplete="current-password" />
+            </div>
+            <button class="btn-cyber" id="login-btn" onclick="doLogin()">
+              <span id="login-text">Authenticate</span>
+              <span id="login-spinner" class="spinner hidden"></span>
+            </button>
+          </div>
+
+          <div id="tab-register" class="tab-content">
+            <div id="reg-error-msg" class="error-msg"></div>
+            <div id="reg-success-msg" class="success-msg"></div>
+            <div class="form-group">
+              <label>// Choose Username</label>
+              <input type="text" id="reg-username" placeholder="pick your username" autocomplete="off" />
+            </div>
+            <div class="form-group">
+              <label>// Choose Password</label>
+              <input type="password" id="reg-password" placeholder="pick your password" autocomplete="new-password" />
+            </div>
+            <button class="btn-register" id="reg-btn" onclick="doRegister()">
+              <span id="reg-text">Register &amp; Insert Coin</span>
+              <span id="reg-spinner" class="spinner hidden"></span>
+            </button>
+          </div>
+        </div>
+
+        <div id="hotspot-status" class="hotspot-status" style="color:var(--text-muted)">[ connecting to hotspot... ]</div>
+
+        <div id="shutdown-area" class="shutdown-panel hidden">
+          <div class="shutdown-header">&#9888; System Auto Shutdown &#9888;</div>
+          <div class="shutdown-time-display" id="shutdown-timer">--:--</div>
+          <div class="shutdown-bar-track">
+            <div class="shutdown-bar-fill" id="shutdown-bar" style="width:100%"></div>
+          </div>
+          <div class="shutdown-label-bottom">[ time remaining ]</div>
+        </div>
+      </div>
+
+      <div class="login-right" id="login-right">
+        <div class="login-right-placeholder" id="login-right-placeholder">
+          <div class="login-right-placeholder-icon">&#9670;</div>
+          <span>[ upload image in admin panel ]</span>
+        </div>
+      </div>
     </div>
-    <div class="cyber-line"></div>
 
-    <div class="login-card">
-      <div class="tab-bar">
-        <button class="tab-btn active" onclick="switchTab('login')">Login</button>
-        <button class="tab-btn" onclick="switchTab('register')">Register</button>
-      </div>
-
-      <div id="tab-login" class="tab-content active">
-        <div id="error-msg" class="error-msg"></div>
-        <div class="form-group">
-          <label>// Username</label>
-          <input type="text" id="username" placeholder="enter username" autocomplete="username" />
-        </div>
-        <div class="form-group">
-          <label>// Password</label>
-          <input type="password" id="password" placeholder="enter password" autocomplete="current-password" />
-        </div>
-        <button class="btn-cyber" id="login-btn" onclick="doLogin()">
-          <span id="login-text">Authenticate</span>
-          <span id="login-spinner" class="spinner hidden"></span>
-        </button>
-      </div>
-
-      <div id="tab-register" class="tab-content">
-        <div id="reg-error-msg" class="error-msg"></div>
-        <div id="reg-success-msg" class="success-msg"></div>
-        <div class="form-group">
-          <label>// Choose Username</label>
-          <input type="text" id="reg-username" placeholder="pick your username" autocomplete="off" />
-        </div>
-        <div class="form-group">
-          <label>// Choose Password</label>
-          <input type="password" id="reg-password" placeholder="pick your password" autocomplete="new-password" />
-        </div>
-        <button class="btn-register" id="reg-btn" onclick="doRegister()">
-          <span id="reg-text">Register &amp; Insert Coin</span>
-          <span id="reg-spinner" class="spinner hidden"></span>
-        </button>
-      </div>
-    </div>
-
-    <div id="hotspot-status" class="hotspot-status" style="color:var(--text-muted)">[ connecting to hotspot... ]</div>
-
-    <div id="ad-carousel" class="ad-carousel empty">
+    <div id="ad-carousel" class="ad-carousel empty" style="margin-top:16px">
       <div class="ad-slides-wrap">
         <div class="ad-slides" id="ad-slides"></div>
       </div>
       <div class="ad-dots" id="ad-dots"></div>
-    </div>
-
-    <div id="shutdown-area" class="shutdown-panel hidden">
-      <div class="shutdown-header">&#9888; System Auto Shutdown &#9888;</div>
-      <div class="shutdown-time-display" id="shutdown-timer">--:--</div>
-      <div class="shutdown-bar-track">
-        <div class="shutdown-bar-fill" id="shutdown-bar" style="width:100%"></div>
-      </div>
-      <div class="shutdown-label-bottom">[ time remaining ]</div>
     </div>
   </div>
 
@@ -903,6 +976,17 @@
             <div class="file-size-hint">PNG, JPEG, GIF, WebP (max 50MB)</div>
             <div class="gif-warning" id="gif-warning">&#9888; GIF animations may use more memory</div>
             <button class="btn-admin danger" style="margin-top:8px;width:100%" onclick="removeBackground()">Remove Background</button>
+          </div>
+
+          <div class="admin-section">
+            <h3>&#9670; Login Panel Image</h3>
+            <div class="bg-preview" id="admin-login-img-preview">[ no image ]</div>
+            <div class="file-input-wrap">
+              <button class="btn-admin" style="width:100%">Choose Image</button>
+              <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange="uploadLoginImage(this)" />
+            </div>
+            <div class="file-size-hint">PNG, JPEG, GIF, WebP (max 50MB)</div>
+            <button class="btn-admin danger" style="margin-top:8px;width:100%" onclick="removeLoginImage()">Remove Image</button>
           </div>
 
           <div class="admin-section">
@@ -1002,9 +1086,32 @@
         nameEl.setAttribute('data-text', '');
       }
       applyBackground(s.backgroundImage);
+      applyLoginImage(s.loginImage);
       if (s.adSlideSeconds) adSlideMs = s.adSlideSeconds * 1000;
       renderAdCarousel(s.ads || []);
       updateShutdownConfig(s.autoShutdownSeconds || 0);
+    }
+
+    function applyLoginImage(imgInfo) {
+      const rightPanel = document.getElementById('login-right');
+      const placeholder = document.getElementById('login-right-placeholder');
+      const existing = document.getElementById('login-right-img-el');
+      if (imgInfo && imgInfo.filename) {
+        if (existing) {
+          existing.src = '/uploads/' + imgInfo.filename + '?t=' + Date.now();
+        } else {
+          const img = document.createElement('img');
+          img.id = 'login-right-img-el';
+          img.className = 'login-right-img';
+          img.src = '/uploads/' + imgInfo.filename + '?t=' + Date.now();
+          img.alt = 'Login image';
+          rightPanel.appendChild(img);
+        }
+        if (placeholder) placeholder.style.display = 'none';
+      } else {
+        if (existing) existing.remove();
+        if (placeholder) placeholder.style.display = '';
+      }
     }
 
     function applyBackground(bgInfo) {
@@ -1799,6 +1906,7 @@
         document.getElementById('admin-computer-name').value = resp.settings.computerName || '';
         document.getElementById('admin-shutdown-time').value = resp.settings.autoShutdownSeconds > 0 ? Math.round(resp.settings.autoShutdownSeconds / 60) : 0;
         updateBgPreview(resp.settings.backgroundImage);
+        updateLoginImgPreview(resp.settings.loginImage);
         document.getElementById('admin-ad-interval').value = resp.settings.adSlideSeconds || 5;
         renderBypassList(resp.settings.fullscreenBypass || []);
         renderAdminAds(resp.settings.ads || []);
@@ -1843,6 +1951,32 @@
     async function removeBackground() {
       const resp = await fetch('/api/admin/background', { method: 'DELETE', headers: { 'x-admin-token': adminToken } }).then(r => r.json()).catch(() => ({ success: false }));
       if (resp.success) { showAdminMsg('admin-panel-msg', 'Removed', 'success'); updateBgPreview(null); applyBackground(null); }
+      else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+    }
+
+    function updateLoginImgPreview(imgInfo) {
+      const el = document.getElementById('admin-login-img-preview');
+      if (imgInfo && imgInfo.filename) { el.style.backgroundImage = 'url(/uploads/' + imgInfo.filename + '?t=' + Date.now() + ')'; el.textContent = ''; }
+      else { el.style.backgroundImage = ''; el.textContent = '[ no image ]'; }
+    }
+
+    async function uploadLoginImage(input) {
+      const file = input.files[0];
+      if (!file) return;
+      if (file.size > 50 * 1024 * 1024) { showAdminMsg('admin-panel-msg', 'File too large (max 50MB)', 'error'); return; }
+      const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+      if (!allowed.includes(file.type)) { showAdminMsg('admin-panel-msg', 'Only PNG, JPEG, GIF, WebP', 'error'); return; }
+      showAdminMsg('admin-panel-msg', 'Uploading...', 'success');
+      const buffer = await file.arrayBuffer();
+      const resp = await fetch('/api/admin/login-image', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'x-admin-token': adminToken, 'x-filename': file.name, 'x-mime-type': file.type }, body: buffer }).then(r => r.json()).catch(e => ({ success: false, error: 'Upload failed: ' + e.message }));
+      if (resp.success) { showAdminMsg('admin-panel-msg', 'Uploaded', 'success'); updateLoginImgPreview(resp.loginImage); applyLoginImage(resp.loginImage); }
+      else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+      input.value = '';
+    }
+
+    async function removeLoginImage() {
+      const resp = await fetch('/api/admin/login-image', { method: 'DELETE', headers: { 'x-admin-token': adminToken } }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) { showAdminMsg('admin-panel-msg', 'Removed', 'success'); updateLoginImgPreview(null); applyLoginImage(null); }
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
     }
 
