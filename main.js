@@ -494,6 +494,14 @@ function showSessionWindow() {
 
   sessionWindow.setAlwaysOnTop(true, 'screen-saver');
 
+  sessionWindow.on('will-move', (event, newBounds) => {
+    event.preventDefault();
+    const { width: dw, height: dh } = require('electron').screen.getPrimaryDisplay().workAreaSize;
+    const clampedX = Math.max(0, Math.min(newBounds.x, dw - SESSION_WIDTH));
+    const clampedY = Math.max(0, Math.min(newBounds.y, dh - SESSION_HEIGHT));
+    sessionWindow.setBounds({ x: clampedX, y: clampedY, width: SESSION_WIDTH, height: SESSION_HEIGHT });
+  });
+
   sessionWindow.once('ready-to-show', () => {
     sessionWindow.setFullScreen(false);
     sessionWindow.setBounds({

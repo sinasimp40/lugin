@@ -391,13 +391,32 @@
     }
     .ad-slides-wrap { overflow: hidden; }
     .ad-slides {
-      display: flex; transition: transform 0.5s ease-in-out;
+      position: relative;
       width: 100%;
     }
     .ad-slide {
-      min-width: 100%; position: relative;
+      width: 100%; position: absolute; top: 0; left: 0;
       display: flex; align-items: center; justify-content: center;
       min-height: 120px; overflow: hidden;
+      opacity: 0; pointer-events: none;
+      transform: translateX(100%);
+    }
+    .ad-slide.active {
+      position: relative; opacity: 1; pointer-events: auto;
+      transform: translateX(0);
+      animation: slide-in-right 0.5s ease-out;
+    }
+    .ad-slide.exiting {
+      opacity: 1; pointer-events: none;
+      animation: slide-out-left 0.5s ease-in forwards;
+    }
+    @keyframes slide-in-right {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slide-out-left {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(-100%); opacity: 0; }
     }
     .ad-slide-bg {
       position: absolute; inset: 0;
@@ -1852,7 +1871,12 @@
         dotsEl.innerHTML = '';
       }
       adSlideIndex = 0;
-      slidesEl.style.transform = 'translateX(0)';
+      prevAdSlideIndex = 0;
+      const allSlides = slidesEl.querySelectorAll('.ad-slide');
+      allSlides.forEach((s, i) => {
+        if (i === 0) s.classList.add('active');
+        else s.classList.remove('active', 'exiting');
+      });
       startAdAutoSlide();
     }
 
@@ -1873,9 +1897,25 @@
       startAdAutoSlide();
     }
 
+    let prevAdSlideIndex = 0;
     function updateAdSlide() {
-      const slidesEl = document.getElementById('ad-slides');
-      slidesEl.style.transform = 'translateX(-' + (adSlideIndex * 100) + '%)';
+      const slides = document.querySelectorAll('.ad-slide');
+      slides.forEach((s, i) => {
+        if (i === prevAdSlideIndex && i !== adSlideIndex) {
+          s.classList.remove('active');
+          s.classList.add('exiting');
+          s.addEventListener('animationend', function handler() {
+            s.classList.remove('exiting');
+            s.removeEventListener('animationend', handler);
+          }, { once: true });
+        } else if (i === adSlideIndex) {
+          s.classList.remove('exiting');
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active', 'exiting');
+        }
+      });
+      prevAdSlideIndex = adSlideIndex;
       document.querySelectorAll('.ad-dot').forEach((d, i) => d.classList.toggle('active', i === adSlideIndex));
     }
 
