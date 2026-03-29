@@ -497,6 +497,23 @@ function showSessionWindow() {
 
   sessionWindow.setAlwaysOnTop(true, 'screen-saver');
 
+  sessionWindow.on('minimize', (event) => {
+    event.preventDefault();
+    if (sessionWindow && !sessionWindow.isDestroyed()) {
+      sessionWindow.restore();
+      sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+      sessionWindow.moveTop();
+    }
+  });
+
+  sessionWindow.on('hide', () => {
+    if (sessionWindow && !sessionWindow.isDestroyed()) {
+      sessionWindow.showInactive();
+      sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+      sessionWindow.moveTop();
+    }
+  });
+
   sessionWindow.on('will-move', (event, newBounds) => {
     event.preventDefault();
     const { width: dw, height: dh } = require('electron').screen.getPrimaryDisplay().workAreaSize;
@@ -531,10 +548,16 @@ function showSessionWindow() {
 
   setInterval(() => {
     if (sessionWindow && !sessionWindow.isDestroyed()) {
+      if (sessionWindow.isMinimized()) {
+        sessionWindow.restore();
+      }
+      if (!sessionWindow.isVisible()) {
+        sessionWindow.showInactive();
+      }
       sessionWindow.setAlwaysOnTop(true, 'screen-saver');
       sessionWindow.moveTop();
     }
-  }, 2000);
+  }, 500);
 
   sessionWindow.loadURL(`${APP_URL}/session.html`);
 }
