@@ -530,14 +530,7 @@ function showSessionWindow() {
   });
 
   const FULLSCREEN_GAMES = [
-    'valorant.exe', 'riotclientux.exe',
-    'fortnite.exe', 'fortniteclient-win64-shipping.exe',
-    'pubg.exe', 'tslgame.exe',
-    'overwatch.exe',
-    'r5apex.exe',
-    'cs2.exe', 'csgo.exe',
-    'cod.exe', 'moderwarfare.exe',
-    'genshinimpact.exe', 'yuanshen.exe',
+    'valorant.exe',
   ];
 
   let sessionHiddenForGame = false;
