@@ -482,8 +482,11 @@ function showSessionWindow() {
     skipTaskbar: true,
     alwaysOnTop: true,
     transparent: true,
+    hasShadow: false,
     show: false,
     focusable: false,
+    thickFrame: false,
+    useContentSize: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
