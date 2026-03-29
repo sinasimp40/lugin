@@ -500,17 +500,8 @@ function showSessionWindow() {
   sessionWindow.on('minimize', (event) => {
     event.preventDefault();
     if (sessionWindow && !sessionWindow.isDestroyed()) {
-      sessionWindow.restore();
-      sessionWindow.setAlwaysOnTop(true, 'screen-saver');
-      sessionWindow.moveTop();
-    }
-  });
-
-  sessionWindow.on('hide', () => {
-    if (sessionWindow && !sessionWindow.isDestroyed()) {
       sessionWindow.showInactive();
       sessionWindow.setAlwaysOnTop(true, 'screen-saver');
-      sessionWindow.moveTop();
     }
   });
 
@@ -549,15 +540,14 @@ function showSessionWindow() {
   setInterval(() => {
     if (sessionWindow && !sessionWindow.isDestroyed()) {
       if (sessionWindow.isMinimized()) {
-        sessionWindow.restore();
+        sessionWindow.showInactive();
       }
       if (!sessionWindow.isVisible()) {
         sessionWindow.showInactive();
       }
       sessionWindow.setAlwaysOnTop(true, 'screen-saver');
-      sessionWindow.moveTop();
     }
-  }, 500);
+  }, 2000);
 
   sessionWindow.loadURL(`${APP_URL}/session.html`);
 }
