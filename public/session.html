@@ -321,7 +321,12 @@
           if (msg.type === 'status' && msg.data) {
             if (msg.data.isLogin) {
               document.getElementById('username').textContent = msg.data.username || 'User';
-              timeLeft = parseInt(msg.data.sessionTimeLeft) || 0;
+              const newTime = parseInt(msg.data.sessionTimeLeft) || 0;
+              if (timeLeft > 0 && newTime > timeLeft + 2) {
+                coinSuccessAudio.currentTime = 0;
+                coinSuccessAudio.play().catch(() => {});
+              }
+              timeLeft = newTime;
               if (msg.data.logoutLink) logoutLink = msg.data.logoutLink;
               if (msg.data.username) sessionUsername = msg.data.username;
               if (msg.data.ip) sessionIp = msg.data.ip;
@@ -345,7 +350,12 @@
         const data = await resp.json();
         if (data.success && data.data && data.data.isLogin) {
           document.getElementById('username').textContent = data.data.username || 'User';
-          timeLeft = parseInt(data.data.sessionTimeLeft) || 0;
+          const newTime = parseInt(data.data.sessionTimeLeft) || 0;
+          if (timeLeft > 0 && newTime > timeLeft + 2) {
+            coinSuccessAudio.currentTime = 0;
+            coinSuccessAudio.play().catch(() => {});
+          }
+          timeLeft = newTime;
           if (data.data.logoutLink) logoutLink = data.data.logoutLink;
           if (data.data.username) sessionUsername = data.data.username;
           if (data.data.ip) sessionIp = data.data.ip;
@@ -354,6 +364,9 @@
         }
       } catch (e) {}
     }
+
+    const coinSuccessAudio = new Audio('sounds/coin-success.mp3');
+    coinSuccessAudio.volume = 0.9;
 
     const sessionTickAudio = new Audio('sounds/tick.wav');
     const sessionWarnAudio = new Audio('sounds/warn-tick.wav');
