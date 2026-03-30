@@ -552,22 +552,73 @@ function showSessionWindow(onShown) {
   refreshBypassList();
   bypassRefreshInterval = setInterval(refreshBypassList, 10000);
 
+  let forceTopmostScriptPath = null;
+
+  function writeForceTopmostScript() {
+    const fs = require('fs');
+    const os = require('os');
+    const windowTitle = 'Denfi Auto Shutdown Session';
+    const script = `
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class WinTop {
+    [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+    [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    [DllImport("user32.dll")] public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+    public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+    public const uint SWP_NOMOVE = 0x0002;
+    public const uint SWP_NOSIZE = 0x0001;
+    public const uint SWP_SHOWWINDOW = 0x0040;
+    public const uint SWP_NOACTIVATE = 0x0010;
+    public const int SW_SHOWNOACTIVATE = 4;
+}
+"@ -ReferencedAssemblies System.Runtime.InteropServices
+$$h = [WinTop]::FindWindow($$null, "${windowTitle}")
+if ($$h -ne [IntPtr]::Zero) {
+    [WinTop]::ShowWindow($$h, [WinTop]::SW_SHOWNOACTIVATE) | Out-Null
+    [WinTop]::SetWindowPos($$h, [WinTop]::HWND_TOPMOST, 0, 0, 0, 0, [WinTop]::SWP_NOMOVE -bor [WinTop]::SWP_NOSIZE -bor [WinTop]::SWP_SHOWWINDOW -bor [WinTop]::SWP_NOACTIVATE) | Out-Null
+}
+`.replace(/\$\$/g, '$');
+    const scriptFile = path.join(os.tmpdir(), 'denfi_force_topmost.ps1');
+    try {
+      fs.writeFileSync(scriptFile, script, 'utf8');
+      forceTopmostScriptPath = scriptFile;
+      console.log('[Session] Force-topmost script written to:', scriptFile);
+    } catch (e) {
+      console.log('[Session] Failed to write force-topmost script:', e.message);
+    }
+  }
+
+  writeForceTopmostScript();
+
+  function forceSessionTopmost() {
+    if (!sessionWindow || sessionWindow.isDestroyed()) return;
+    if (!forceTopmostScriptPath) return;
+    exec(`powershell -NoProfile -ExecutionPolicy Bypass -File "${forceTopmostScriptPath}"`, { timeout: 5000, windowsHide: true }, (err) => {
+      if (err && !err.killed) console.log('[Session] Force topmost error:', err.message);
+    });
+  }
+
   function checkForegroundAndManage() {
     if (!sessionWindow || sessionWindow.isDestroyed()) return;
     if (process.platform !== 'win32') {
       sessionWindow.setAlwaysOnTop(true, 'screen-saver');
       return;
     }
+
+    sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+
     if (fullscreenBypassList.length === 0) {
       if (sessionHiddenForGame) {
         sessionHiddenForGame = false;
         sessionWindow.showInactive();
       }
-      sessionWindow.setAlwaysOnTop(true, 'screen-saver');
       if (!sessionWindow.isVisible()) {
         sessionWindow.showInactive();
       }
       sessionWindow.moveTop();
+      forceSessionTopmost();
       return;
     }
     exec('powershell -NoProfile -Command "[System.Diagnostics.Process]::GetProcessById((Add-Type -MemberDefinition \'[DllImport(\\\"user32.dll\\\")] public static extern IntPtr GetForegroundWindow(); [DllImport(\\\"user32.dll\\\")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);\' -Name W -Namespace W -PassThru)::GetWindowThreadProcessId([W.W]::GetForegroundWindow(), [ref]($p = 0)) | Out-Null; $p).ProcessName"', { timeout: 3000, windowsHide: true }, (err, stdout) => {
@@ -578,6 +629,7 @@ function showSessionWindow(onShown) {
           sessionWindow.showInactive();
           sessionWindow.setAlwaysOnTop(true, 'screen-saver');
         }
+        forceSessionTopmost();
         return;
       }
       const procName = (stdout || '').trim().toLowerCase() + '.exe';
@@ -600,6 +652,7 @@ function showSessionWindow(onShown) {
           sessionWindow.showInactive();
         }
         sessionWindow.moveTop();
+        forceSessionTopmost();
       }
     });
   }
