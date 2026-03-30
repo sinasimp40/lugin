@@ -2638,8 +2638,12 @@
     }
 
     let tabAnimating = false;
+    let currentTab = 'login';
     function switchTab(tab) {
-      if (tabAnimating) return;
+      if (tabAnimating || tab === currentTab) return;
+      tabAnimating = true;
+      currentTab = tab;
+
       document.querySelectorAll('.tab-btn').forEach((btn, i) => {
         btn.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'register' && i === 1));
       });
@@ -2651,42 +2655,41 @@
       const split = document.querySelector('.login-split');
       const isRegister = (tab === 'register');
 
-      const splitW = split.offsetWidth;
       const rightW = right.offsetWidth;
-      const leftW = splitW - rightW;
+      const leftW = left.offsetWidth;
 
-      tabAnimating = true;
-
+      right.style.willChange = 'transform';
+      left.style.willChange = 'transform';
       right.style.position = 'absolute';
       right.style.top = '0';
       right.style.bottom = '0';
       right.style.width = rightW + 'px';
       right.style.zIndex = '10';
-      right.style.transition = 'none';
-      right.style.boxShadow = '0 0 40px rgba(0,0,0,0.8)';
+      right.style.boxShadow = '0 0 60px rgba(0,0,0,0.9), 0 0 20px rgba(255,140,0,0.08)';
 
       if (isRegister) {
         right.style.right = '0';
         right.style.left = 'auto';
+        right.style.transform = 'translateX(0)';
+        left.style.transform = 'translateX(0)';
         void right.offsetWidth;
-        right.style.transition = 'right 0.45s cubic-bezier(0.4, 0, 0.2, 1), left 0.45s cubic-bezier(0.4, 0, 0.2, 1)';
-        right.style.right = 'auto';
-        right.style.left = '0';
+
+        right.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
+        left.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
+        right.style.transform = 'translateX(-' + leftW + 'px)';
+        left.style.transform = 'translateX(' + rightW + 'px)';
       } else {
         right.style.left = '0';
         right.style.right = 'auto';
+        right.style.transform = 'translateX(0)';
+        left.style.transform = 'translateX(' + rightW + 'px)';
         void right.offsetWidth;
-        right.style.transition = 'left 0.45s cubic-bezier(0.4, 0, 0.2, 1), right 0.45s cubic-bezier(0.4, 0, 0.2, 1)';
-        right.style.left = 'auto';
-        right.style.right = '0';
-      }
 
-      left.style.transition = 'opacity 0.2s ease';
-      left.style.opacity = '0.3';
-      setTimeout(() => {
-        left.style.transition = 'opacity 0.3s ease';
-        left.style.opacity = '1';
-      }, 200);
+        right.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
+        left.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
+        right.style.transform = 'translateX(' + leftW + 'px)';
+        left.style.transform = 'translateX(0)';
+      }
 
       setTimeout(() => {
         right.style.position = '';
@@ -2695,17 +2698,18 @@
         right.style.width = '';
         right.style.zIndex = '';
         right.style.transition = '';
+        right.style.transform = '';
         right.style.left = '';
         right.style.right = '';
         right.style.boxShadow = '';
+        right.style.willChange = '';
+        left.style.transition = '';
+        left.style.transform = '';
+        left.style.willChange = '';
 
-        if (isRegister) {
-          split.style.flexDirection = 'row-reverse';
-        } else {
-          split.style.flexDirection = '';
-        }
+        split.style.flexDirection = isRegister ? 'row-reverse' : '';
         tabAnimating = false;
-      }, 470);
+      }, 520);
     }
 
     function showRegError(msg) {
