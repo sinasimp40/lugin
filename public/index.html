@@ -154,6 +154,135 @@
     .login-split.anim-out {
       opacity: 0;
     }
+
+    .login-split.register-theme {
+      --neon-cyan: #ffd700;
+      --neon-magenta: #ffaa00;
+      --neon-orange: #e6b800;
+      --neon-green: #ffd700;
+      border-color: rgba(255,215,0,0.15);
+    }
+    .login-split.register-theme .login-left {
+      background:
+        radial-gradient(ellipse at 20% 0%, rgba(255,215,0,0.07) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 100%, rgba(255,170,0,0.05) 0%, transparent 50%),
+        linear-gradient(180deg, rgba(15,15,25,0.95) 0%, rgba(8,8,14,0.98) 100%);
+    }
+    .login-split.register-theme .login-left::before {
+      background-image:
+        linear-gradient(rgba(255,215,0,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,215,0,0.03) 1px, transparent 1px);
+    }
+    .login-split.register-theme .login-left::after {
+      background: conic-gradient(from 0deg at 50% 50%,
+        transparent 0deg,
+        rgba(255,215,0,0.015) 60deg,
+        transparent 120deg,
+        rgba(255,170,0,0.01) 180deg,
+        transparent 240deg,
+        rgba(255,215,0,0.015) 300deg,
+        transparent 360deg
+      );
+    }
+    .login-split.register-theme .form-group label {
+      color: #ffd700;
+      text-shadow: 0 0 5px rgba(255,215,0,0.3);
+    }
+    .login-split.register-theme .form-group input:focus {
+      border-color: #ffd700;
+      box-shadow: 0 0 10px rgba(255,215,0,0.2), inset 0 0 10px rgba(255,215,0,0.05);
+    }
+    .login-split.register-theme .tab-btn.active {
+      color: #ffd700;
+      border-bottom-color: #ffd700;
+      background: rgba(255,215,0,0.05);
+      text-shadow: 0 0 8px rgba(255,215,0,0.4);
+    }
+    .login-split.register-theme .tab-btn:hover:not(.active) {
+      background: rgba(255,215,0,0.03);
+    }
+    .login-split.register-theme .btn-register {
+      background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,170,0,0.1));
+      border-color: #ffd700;
+      color: #ffd700;
+      text-shadow: 0 0 10px rgba(255,215,0,0.5);
+    }
+    .login-split.register-theme .btn-register:hover {
+      background: linear-gradient(135deg, rgba(255,215,0,0.25), rgba(255,170,0,0.15));
+      box-shadow: 0 0 20px rgba(255,215,0,0.3), inset 0 0 20px rgba(255,215,0,0.05);
+    }
+    .login-split.register-theme .btn-register::after {
+      background: linear-gradient(45deg, transparent, rgba(255,215,0,0.05), transparent);
+    }
+    .login-split.register-theme .login-right {
+      background: rgba(255,215,0,0.03);
+    }
+    .login-split.register-theme .login-right::before {
+      background: radial-gradient(ellipse at center, rgba(255,215,0,0.06) 0%, transparent 70%);
+    }
+    .login-split.register-theme .glitch-text {
+      color: #ffd700;
+      text-shadow:
+        0 0 10px rgba(255,215,0,0.8),
+        0 0 20px rgba(255,215,0,0.5),
+        0 0 40px rgba(255,215,0,0.3),
+        0 0 80px rgba(255,215,0,0.15);
+    }
+    .login-split.register-theme .glitch-text::before {
+      color: #ffaa00;
+      text-shadow: -2px 0 #ffaa00;
+    }
+    .login-split.register-theme .glitch-text::after {
+      color: #ffd700;
+      text-shadow: 2px 0 #ffd700;
+    }
+    .login-split.register-theme .cyber-line {
+      background: linear-gradient(90deg, transparent, #ffd700, #ffaa00, transparent);
+      box-shadow: 0 0 10px rgba(255,215,0,0.5);
+    }
+    .login-split.register-theme #shutdown-area {
+      border-color: rgba(255,215,0,0.15);
+    }
+    .login-split.register-theme #shutdown-area .shutdown-label {
+      color: #ffd700;
+    }
+    .login-split.register-theme #shutdown-area #shutdown-timer {
+      color: #ffd700;
+      text-shadow: 0 0 15px rgba(255,215,0,0.6), 0 0 30px rgba(255,215,0,0.3);
+    }
+    .login-split.register-theme #shutdown-area .shutdown-bar-fill {
+      background: linear-gradient(90deg, #ffd700, #ffaa00);
+      box-shadow: 0 0 12px rgba(255,215,0,0.5);
+    }
+    .login-split.register-theme .hotspot-status {
+      color: rgba(255,215,0,0.5);
+    }
+    .login-split-wrap.register-theme .login-split-glow::before {
+      background: conic-gradient(
+        from 0deg,
+        transparent 0deg,
+        rgba(255,215,0,0.8) 15deg,
+        rgba(255,170,0,0.9) 30deg,
+        transparent 50deg,
+        transparent 90deg,
+        rgba(255,215,0,0.6) 110deg,
+        transparent 130deg,
+        transparent 180deg,
+        rgba(255,170,0,0.7) 200deg,
+        transparent 220deg,
+        transparent 270deg,
+        rgba(255,215,0,0.5) 290deg,
+        transparent 310deg,
+        transparent 360deg
+      );
+    }
+    .login-split-wrap.register-theme .login-split-pulse {
+      box-shadow:
+        0 0 20px rgba(255,215,0,0.25),
+        0 0 40px rgba(255,215,0,0.12),
+        0 0 80px rgba(255,215,0,0.06);
+    }
+
     .login-split::before {
       content: ''; position: absolute; top: -1px; left: 20px; right: 20px; height: 2px;
       background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
@@ -2657,12 +2786,21 @@
 
       const split = document.querySelector('.login-split');
 
+      const wrap = document.querySelector('.login-split-wrap');
       split.classList.add('anim-out');
 
       setTimeout(() => {
         document.getElementById('tab-login').classList.toggle('active', tab === 'login');
         document.getElementById('tab-register').classList.toggle('active', tab === 'register');
         split.style.flexDirection = (tab === 'register') ? 'row-reverse' : '';
+
+        if (tab === 'register') {
+          split.classList.add('register-theme');
+          wrap.classList.add('register-theme');
+        } else {
+          split.classList.remove('register-theme');
+          wrap.classList.remove('register-theme');
+        }
 
         void split.offsetWidth;
         split.classList.remove('anim-out');
