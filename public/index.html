@@ -146,34 +146,38 @@
     }
 
     .pc-badge {
-      position: absolute !important;
-      top: 10px; right: 10px;
-      z-index: 10;
+      position: fixed;
+      top: 50%;
+      right: 40px;
+      transform: translateY(-50%);
+      z-index: 50;
       display: none;
-      align-items: center; gap: 8px;
-      padding: 6px 14px;
-      background: linear-gradient(135deg, rgba(255,140,0,0.12) 0%, rgba(255,69,0,0.06) 100%);
-      border: 1px solid rgba(255,140,0,0.4);
-      border-radius: 3px;
-      font-family: 'Orbitron', monospace;
-      font-size: 13px; font-weight: 900;
-      color: #ff8c00;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      text-shadow: 0 0 10px rgba(255,140,0,0.5), 0 0 20px rgba(255,140,0,0.2);
-      box-shadow: 0 0 15px rgba(255,140,0,0.1), inset 0 0 10px rgba(255,140,0,0.04);
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      pointer-events: none;
     }
     .pc-badge.active { display: flex !important; }
-    .pc-badge-dot {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: #ff8c00;
-      box-shadow: 0 0 6px rgba(255,140,0,0.7), 0 0 12px rgba(255,140,0,0.3);
-      animation: badge-pulse 2s ease-in-out infinite;
+    .pc-badge-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      color: rgba(255,140,0,0.35);
+      letter-spacing: 3px;
+      text-transform: uppercase;
     }
-    @keyframes badge-pulse {
-      0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(255,140,0,0.7), 0 0 12px rgba(255,140,0,0.3); }
-      50% { opacity: 0.4; box-shadow: 0 0 3px rgba(255,140,0,0.3); }
+    .pc-badge-number {
+      font-family: 'Orbitron', monospace;
+      font-size: 64px;
+      font-weight: 900;
+      color: rgba(255,140,0,0.12);
+      letter-spacing: 6px;
+      line-height: 1;
+      text-shadow: 0 0 30px rgba(255,140,0,0.06);
+    }
+    .pc-badge-line {
+      width: 40px; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,140,0,0.2), transparent);
+      margin-top: 4px;
     }
 
     .login-right {
@@ -895,12 +899,14 @@
   <div class="corner-deco corner-bl"></div>
   <div class="corner-deco corner-br"></div>
 
+  <div id="pc-badge" class="pc-badge">
+    <div class="pc-badge-label">PC</div>
+    <div class="pc-badge-number" id="pc-badge-name"></div>
+    <div class="pc-badge-line"></div>
+  </div>
+
   <div id="login-panel" class="login-panel">
     <div class="login-split">
-      <div id="pc-badge" class="pc-badge">
-        <div class="pc-badge-dot"></div>
-        <span id="pc-badge-name"></span>
-      </div>
       <div class="login-left">
         <div class="glitch-container">
           <div class="glitch-text" id="computer-name-el" data-text=""></div>
@@ -1132,6 +1138,13 @@
     let adminToken = null;
     let secretBuffer = '';
 
+    function showPcBadge(name) {
+      currentPcName = name;
+      const num = name.replace(/^PC\s*/i, '');
+      document.getElementById('pc-badge-name').textContent = num;
+      document.getElementById('pc-badge').classList.add('active');
+    }
+
     async function detectPcName() {
       try {
         const resp = await fetch('/api/hotspot/status').then(r => r.json()).catch(() => null);
@@ -1139,10 +1152,8 @@
           const ip = resp.data.ip;
           const units = resp.data.units;
           if (units && ip && units[ip]) {
-            currentPcName = units[ip];
-            document.getElementById('pc-badge-name').textContent = currentPcName;
-            document.getElementById('pc-badge').classList.add('active');
-            console.log('[PC] Detected:', currentPcName, 'IP:', ip);
+            showPcBadge(units[ip]);
+            console.log('[PC] Detected:', units[ip], 'IP:', ip);
             return;
           }
           if (units) {
@@ -1158,10 +1169,8 @@
           const units = loginResp.data.units;
           const ip = loginResp.data.ip;
           if (ip && units[ip]) {
-            currentPcName = units[ip];
-            document.getElementById('pc-badge-name').textContent = currentPcName;
-            document.getElementById('pc-badge').classList.add('active');
-            console.log('[PC] Detected from login-data:', currentPcName);
+            showPcBadge(units[ip]);
+            console.log('[PC] Detected from login-data:', units[ip]);
           }
         }
       } catch (e) {}
