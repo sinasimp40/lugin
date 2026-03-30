@@ -348,7 +348,7 @@ app.whenReady().then(() => {
   });
 });
 
-function showLoginWindow(afterLogout) {
+function showLoginWindow() {
   const { screen } = require('electron');
   const { x, y, width, height } = screen.getPrimaryDisplay().bounds;
 
@@ -411,8 +411,7 @@ function showLoginWindow(afterLogout) {
     console.log('[Electron] Login window shown');
   }
 
-  const loginUrl = afterLogout ? APP_URL + '?afterLogout=1' : APP_URL;
-  loginWindow.loadURL(loginUrl);
+  loginWindow.loadURL(APP_URL);
 
   loginWindow.once('ready-to-show', () => {
     console.log('[Electron] ready-to-show fired');
@@ -429,7 +428,7 @@ function showLoginWindow(afterLogout) {
     console.log('[Electron] Page failed to load:', errorCode, errorDesc, '- retrying in 1s...');
     setTimeout(() => {
       if (loginWindow && !loginWindow.isDestroyed()) {
-        loginWindow.loadURL(loginUrl);
+        loginWindow.loadURL(APP_URL);
       }
     }, 1000);
   });
@@ -682,7 +681,7 @@ function handleStateChange(state) {
       loginWindow.destroy();
       loginWindow = null;
     }
-    showLoginWindow(true);
+    showLoginWindow();
 
     transitionTimer = setTimeout(() => {
       transitionTimer = null;
