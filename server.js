@@ -807,6 +807,38 @@ app.delete('/api/admin/login-image', verifyToken, (req, res) => {
   res.json({ success: true });
 });
 
+app.post('/api/admin/register-image', verifyToken, (req, res) => {
+  const contentType = req.headers['content-type'] || '';
+  if (!contentType.startsWith('application/octet-stream') && !contentType.startsWith('image/')) {
+    return res.status(400).json({ success: false, error: 'Invalid content type' });
+  }
+  const filename = req.headers['x-filename'] || 'registerimage.png';
+  const mime = req.headers['x-mime-type'] || 'image/png';
+  const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+  if (!allowed.includes(mime)) return res.status(400).json({ success: false, error: 'Only PNG, JPEG, GIF, WebP allowed' });
+
+  const chunks = [];
+  let totalSize = 0;
+  req.on('data', (chunk) => {
+    totalSize += chunk.length;
+    if (totalSize > 50 * 1024 * 1024) { req.destroy(); return; }
+    chunks.push(chunk);
+  });
+  req.on('end', () => {
+    if (totalSize > 50 * 1024 * 1024) return res.status(400).json({ success: false, error: 'File too large (max 50MB)' });
+    const buffer = Buffer.concat(chunks);
+    const meta = settings.saveRegisterImage(buffer, filename, mime);
+    broadcastSettings();
+    res.json({ success: true, registerImage: meta });
+  });
+});
+
+app.delete('/api/admin/register-image', verifyToken, (req, res) => {
+  settings.removeRegisterImage();
+  broadcastSettings();
+  res.json({ success: true });
+});
+
 app.get('/api/admin/ads', verifyToken, (req, res) => {
   res.json({ success: true, ads: settings.getAds() });
 });

@@ -82,6 +82,7 @@ function getSettings() {
     autoShutdownSeconds: s.autoShutdownSeconds !== undefined ? s.autoShutdownSeconds : 180,
     backgroundImage: s.backgroundImage || null,
     loginImage: s.loginImage || null,
+    registerImage: s.registerImage || null,
     pisonetUnitName: s.pisonetUnitName || 'PC 1',
     ads: s.ads || [],
     adSlideSeconds: s.adSlideSeconds !== undefined ? s.adSlideSeconds : 5,
@@ -96,6 +97,7 @@ function getPublicSettings() {
     autoShutdownSeconds: s.autoShutdownSeconds,
     backgroundImage: s.backgroundImage,
     loginImage: s.loginImage,
+    registerImage: s.registerImage,
     ads: s.ads || [],
     adSlideSeconds: s.adSlideSeconds !== undefined ? s.adSlideSeconds : 5,
     fullscreenBypass: s.fullscreenBypass,
@@ -183,6 +185,33 @@ function removeLoginImage() {
   }
   const s = load();
   s.loginImage = null;
+  save(s);
+}
+
+function saveRegisterImage(fileBuffer, originalName, mimeType) {
+  ensureDirs();
+  const ext = path.extname(originalName).toLowerCase() || '.png';
+  const filename = 'registerimage' + ext;
+  const filepath = path.join(uploadsDir, filename);
+  const existingFiles = fs.readdirSync(uploadsDir).filter(f => f.startsWith('registerimage'));
+  for (const f of existingFiles) {
+    try { fs.unlinkSync(path.join(uploadsDir, f)); } catch (e) {}
+  }
+  fs.writeFileSync(filepath, fileBuffer);
+  const s = load();
+  s.registerImage = { filename, mimeType, size: fileBuffer.length };
+  save(s);
+  return s.registerImage;
+}
+
+function removeRegisterImage() {
+  ensureDirs();
+  const existingFiles = fs.readdirSync(uploadsDir).filter(f => f.startsWith('registerimage'));
+  for (const f of existingFiles) {
+    try { fs.unlinkSync(path.join(uploadsDir, f)); } catch (e) {}
+  }
+  const s = load();
+  s.registerImage = null;
   save(s);
 }
 
@@ -334,6 +363,8 @@ module.exports = {
   getBackgroundImagePath,
   saveLoginImage,
   removeLoginImage,
+  saveRegisterImage,
+  removeRegisterImage,
   getUploadsDir,
   getAds,
   addAd,

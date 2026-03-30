@@ -1297,6 +1297,18 @@
           </div>
 
           <div class="admin-section">
+            <h3>&#9670; Register Panel Image</h3>
+            <div class="bg-preview" id="admin-register-img-preview">[ no image ]</div>
+            <div class="file-input-wrap">
+              <button class="btn-admin" style="width:100%">Choose Image</button>
+              <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange="uploadRegisterImage(this)" />
+            </div>
+            <div class="file-size-hint">PNG, JPEG, GIF, WebP (max 50MB)</div>
+            <div class="file-size-hint" style="color:#ffd700">If empty, Login image will be used for both tabs</div>
+            <button class="btn-admin danger" style="margin-top:8px;width:100%" onclick="removeRegisterImage()">Remove Image</button>
+          </div>
+
+          <div class="admin-section">
             <h3>&#9670; Change Admin Password</h3>
             <div class="form-group">
               <label>// Current Password</label>
@@ -1442,6 +1454,7 @@
       }
       applyBackground(s.backgroundImage);
       applyLoginImage(s.loginImage);
+      appSettings.registerImage = s.registerImage || null;
       if (s.adSlideSeconds) adSlideMs = s.adSlideSeconds * 1000;
       renderAdCarousel(s.ads || []);
       updateShutdownConfig(s.autoShutdownSeconds || 0);
@@ -2275,6 +2288,7 @@
         document.getElementById('admin-shutdown-time').value = resp.settings.autoShutdownSeconds > 0 ? Math.round(resp.settings.autoShutdownSeconds / 60) : 0;
         updateBgPreview(resp.settings.backgroundImage);
         updateLoginImgPreview(resp.settings.loginImage);
+        updateRegisterImgPreview(resp.settings.registerImage);
         document.getElementById('admin-ad-interval').value = resp.settings.adSlideSeconds || 5;
         renderBypassList(resp.settings.fullscreenBypass || []);
         renderAdminAds(resp.settings.ads || []);
@@ -2345,6 +2359,32 @@
     async function removeLoginImage() {
       const resp = await fetch('/api/admin/login-image', { method: 'DELETE', headers: { 'x-admin-token': adminToken } }).then(r => r.json()).catch(() => ({ success: false }));
       if (resp.success) { showAdminMsg('admin-panel-msg', 'Removed', 'success'); updateLoginImgPreview(null); applyLoginImage(null); }
+      else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+    }
+
+    function updateRegisterImgPreview(imgInfo) {
+      const el = document.getElementById('admin-register-img-preview');
+      if (imgInfo && imgInfo.filename) { el.style.backgroundImage = 'url(/uploads/' + imgInfo.filename + '?t=' + Date.now() + ')'; el.textContent = ''; }
+      else { el.style.backgroundImage = ''; el.textContent = '[ no image ]'; }
+    }
+
+    async function uploadRegisterImage(input) {
+      const file = input.files[0];
+      if (!file) return;
+      if (file.size > 50 * 1024 * 1024) { showAdminMsg('admin-panel-msg', 'File too large (max 50MB)', 'error'); return; }
+      const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+      if (!allowed.includes(file.type)) { showAdminMsg('admin-panel-msg', 'Only PNG, JPEG, GIF, WebP', 'error'); return; }
+      showAdminMsg('admin-panel-msg', 'Uploading...', 'success');
+      const buffer = await file.arrayBuffer();
+      const resp = await fetch('/api/admin/register-image', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'x-admin-token': adminToken, 'x-filename': file.name, 'x-mime-type': file.type }, body: buffer }).then(r => r.json()).catch(e => ({ success: false, error: 'Upload failed: ' + e.message }));
+      if (resp.success) { showAdminMsg('admin-panel-msg', 'Uploaded', 'success'); updateRegisterImgPreview(resp.registerImage); applySettings(Object.assign({}, appSettings, { registerImage: resp.registerImage })); }
+      else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+      input.value = '';
+    }
+
+    async function removeRegisterImage() {
+      const resp = await fetch('/api/admin/register-image', { method: 'DELETE', headers: { 'x-admin-token': adminToken } }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) { showAdminMsg('admin-panel-msg', 'Removed', 'success'); updateRegisterImgPreview(null); applySettings(Object.assign({}, appSettings, { registerImage: null })); }
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
     }
 
@@ -2797,9 +2837,14 @@
         if (tab === 'register') {
           split.classList.add('register-theme');
           wrap.classList.add('register-theme');
+          const regImg = appSettings.registerImage;
+          if (regImg && regImg.filename) {
+            applyLoginImage(regImg);
+          }
         } else {
           split.classList.remove('register-theme');
           wrap.classList.remove('register-theme');
+          applyLoginImage(appSettings.loginImage);
         }
 
         void split.offsetWidth;
