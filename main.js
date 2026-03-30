@@ -348,7 +348,7 @@ app.whenReady().then(() => {
   });
 });
 
-function showLoginWindow() {
+function showLoginWindow(onReady) {
   const { screen } = require('electron');
   const { x, y, width, height } = screen.getPrimaryDisplay().bounds;
 
@@ -398,6 +398,13 @@ function showLoginWindow() {
   loginWindow.webContents.on('context-menu', (e) => e.preventDefault());
 
   let windowShown = false;
+  let readyCalled = false;
+
+  function fireReady() {
+    if (readyCalled) return;
+    readyCalled = true;
+    if (typeof onReady === 'function') onReady();
+  }
 
   function showWindow() {
     if (windowShown || !loginWindow || loginWindow.isDestroyed()) return;
@@ -409,6 +416,7 @@ function showLoginWindow() {
     loginWindow.moveTop();
     loginWindow.focus();
     console.log('[Electron] Login window shown');
+    fireReady();
   }
 
   loginWindow.loadURL(APP_URL);
@@ -522,7 +530,7 @@ function showSessionWindow(onShown) {
       if (!sessionWindow || sessionWindow.isDestroyed()) return;
       sessionWindow.setOpacity(1);
       if (typeof onShown === 'function') onShown();
-    }, 150);
+    }, 50);
   });
 
   let fullscreenBypassList = [];
@@ -627,14 +635,34 @@ ipcMain.on('trigger-shutdown', () => {
   });
 });
 
-let transitionTimer = null;
+let transitionLock = false;
+let transitionLockTimer = null;
+let pendingState = null;
+
+function unlockTransition() {
+  transitionLock = false;
+  if (transitionLockTimer) { clearTimeout(transitionLockTimer); transitionLockTimer = null; }
+  if (pendingState) {
+    const next = pendingState;
+    pendingState = null;
+    console.log('[Electron] Processing pending state:', next);
+    handleStateChange(next);
+  }
+}
 
 function handleStateChange(state) {
-  if (transitionTimer) { clearTimeout(transitionTimer); transitionTimer = null; }
+  if (transitionLock) {
+    pendingState = state;
+    console.log('[Electron] Transition locked, queued state:', state);
+    return;
+  }
 
   if (state === 'logged-in') {
     if (currentState === 'logged-in' && sessionWindow && !sessionWindow.isDestroyed()) return;
     currentState = 'logged-in';
+    transitionLock = true;
+    if (transitionLockTimer) clearTimeout(transitionLockTimer);
+    transitionLockTimer = setTimeout(() => { unlockTransition(); }, 5000);
     unregisterKeyBlocks();
     disableKioskLockdown();
     if (focusGuardInterval) {
@@ -650,46 +678,53 @@ function handleStateChange(state) {
     const loginToDestroy = loginWindow;
     loginWindow = null;
 
-    if (loginToDestroy && !loginToDestroy.isDestroyed()) {
-      try { loginToDestroy.setKiosk(false); } catch (e) {}
-      try { loginToDestroy.setAlwaysOnTop(false); } catch (e) {}
-      try { loginToDestroy.setOpacity(0); } catch (e) {}
-    }
-
     showSessionWindow(() => {
       if (loginToDestroy && !loginToDestroy.isDestroyed()) {
-        try { loginToDestroy.destroy(); } catch (e) {}
+        try { loginToDestroy.setKiosk(false); } catch (e) {}
+        try { loginToDestroy.setAlwaysOnTop(false); } catch (e) {}
+        try { loginToDestroy.setOpacity(0); } catch (e) {}
+        setTimeout(() => {
+          if (loginToDestroy && !loginToDestroy.isDestroyed()) {
+            try { loginToDestroy.destroy(); } catch (e) {}
+          }
+        }, 50);
       }
+      unlockTransition();
     });
     startPolling();
   } else if (state === 'logged-out') {
     if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) return;
     currentState = 'logged-out';
+    transitionLock = true;
+    if (transitionLockTimer) clearTimeout(transitionLockTimer);
+    transitionLockTimer = setTimeout(() => { unlockTransition(); }, 5000);
     stopPolling();
     enableKioskLockdown();
-
-    if (sessionWindow && !sessionWindow.isDestroyed()) {
-      try { sessionWindow.setOpacity(0); } catch (e) {}
-    }
 
     if (focusGuardInterval) {
       clearInterval(focusGuardInterval);
       focusGuardInterval = null;
     }
 
+    const sessionToDestroy = sessionWindow;
+    sessionWindow = null;
+
     if (loginWindow && !loginWindow.isDestroyed()) {
       loginWindow.destroy();
       loginWindow = null;
     }
-    showLoginWindow();
 
-    transitionTimer = setTimeout(() => {
-      transitionTimer = null;
-      if (currentState === 'logged-out' && sessionWindow && !sessionWindow.isDestroyed()) {
-        sessionWindow.destroy();
-        sessionWindow = null;
+    showLoginWindow(() => {
+      if (sessionToDestroy && !sessionToDestroy.isDestroyed()) {
+        try { sessionToDestroy.setOpacity(0); } catch (e) {}
+        setTimeout(() => {
+          if (sessionToDestroy && !sessionToDestroy.isDestroyed()) {
+            try { sessionToDestroy.destroy(); } catch (e) {}
+          }
+        }, 100);
       }
-    }, 300);
+      unlockTransition();
+    });
   }
 }
 
