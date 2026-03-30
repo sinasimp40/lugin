@@ -148,13 +148,6 @@
       z-index: 1;
       transition: flex-direction 0s;
     }
-    .login-split {
-      transition: opacity 0.25s ease;
-    }
-    .login-split.anim-out {
-      opacity: 0;
-    }
-
     .login-split.register-theme {
       --neon-cyan: #ffd700;
       --neon-magenta: #ffaa00;
@@ -2858,26 +2851,20 @@
       const split = document.querySelector('.login-split');
 
       const wrap = document.querySelector('.login-split-wrap');
-      split.classList.add('anim-out');
 
-      setTimeout(() => {
-        document.getElementById('tab-login').classList.toggle('active', tab === 'login');
-        document.getElementById('tab-register').classList.toggle('active', tab === 'register');
-        split.style.flexDirection = (tab === 'register') ? 'row-reverse' : '';
+      document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+      document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+      split.style.flexDirection = (tab === 'register') ? 'row-reverse' : '';
 
-        if (tab === 'register') {
-          split.classList.add('register-theme');
-          wrap.classList.add('register-theme');
-        } else {
-          split.classList.remove('register-theme');
-          wrap.classList.remove('register-theme');
-        }
-        swapPanelImage(tab);
-
-        void split.offsetWidth;
-        split.classList.remove('anim-out');
-        setTimeout(() => { tabBusy = false; }, 300);
-      }, 260);
+      if (tab === 'register') {
+        split.classList.add('register-theme');
+        wrap.classList.add('register-theme');
+      } else {
+        split.classList.remove('register-theme');
+        wrap.classList.remove('register-theme');
+      }
+      swapPanelImage(tab);
+      tabBusy = false;
     }
 
     function showRegError(msg) {
