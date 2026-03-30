@@ -1,0 +1,44 @@
+directories:
+  output: dist
+  buildResources: build
+appId: com.denfi.autoshutdown
+productName: Denfi Auto Shutdown
+icon: icon.ico
+asar: false
+win:
+  target: nsis
+  requestedExecutionLevel: asInvoker
+  icon: icon.ico
+  executableName: denfi-auto-shutdown
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: true
+  deleteAppDataOnUninstall: true
+  artifactName: Denfi Auto Shutdown Setup.${ext}
+  shortcutName: Denfi Auto Shutdown
+  uninstallDisplayName: Denfi Auto Shutdown
+  installerIcon: icon.ico
+  uninstallerIcon: icon.ico
+files:
+  - filter:
+      - main.js
+      - preload.js
+      - server.js
+      - src/**/*
+      - public/**/*
+      - build/**/*
+      - icon.ico
+      - icon.png
+      - kiosk-setup.bat
+      - kiosk-disable.bat
+      - node_modules/**/*
+      - '!node_modules/.cache'
+      - '!node_modules/electron'
+      - '!node_modules/electron-builder'
+extraResources:
+  - from: kiosk-setup.bat
+    to: kiosk-setup.bat
+  - from: kiosk-disable.bat
+    to: kiosk-disable.bat
+electronVersion: 41.0.4
