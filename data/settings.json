@@ -16,12 +16,12 @@
   "loginImage": {
     "filename": "loginimage.jpg",
     "mimeType": "image/jpeg",
-    "size": 144922
+    "size": 154665
   },
   "computerName": "COMPUTER SHOP",
   "registerImage": {
     "filename": "registerimage.jpg",
     "mimeType": "image/jpeg",
-    "size": 154665
+    "size": 144922
   }
 }
