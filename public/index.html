@@ -1278,27 +1278,32 @@
             <button class="btn-admin danger" style="margin-top:8px;width:100%" onclick="removeBackground()">Remove Background</button>
           </div>
 
-          <div class="admin-section">
-            <h3>&#9670; Login Panel Image</h3>
-            <div class="bg-preview" id="admin-login-img-preview">[ no image ]</div>
-            <div class="file-input-wrap">
-              <button class="btn-admin" style="width:100%">Choose Image</button>
-              <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange="uploadLoginImage(this)" />
+          <div class="admin-section full-width">
+            <h3>&#9670; Panel Images (Login / Register)</h3>
+            <div style="display:flex;gap:16px;margin-bottom:10px">
+              <div style="flex:1">
+                <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#ff8c00;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;text-align:center">Login Image</div>
+                <div class="bg-preview" id="admin-login-img-preview" style="height:120px">[ no image ]</div>
+                <div class="file-input-wrap" style="margin-top:6px">
+                  <button class="btn-admin" style="width:100%;font-size:10px;padding:6px">Upload</button>
+                  <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange="uploadLoginImage(this)" />
+                </div>
+                <button class="btn-admin danger" style="margin-top:4px;width:100%;font-size:10px;padding:4px" onclick="removeLoginImage()">Remove</button>
+              </div>
+              <div style="display:flex;align-items:center">
+                <button class="btn-admin" onclick="swapLoginRegisterImages()" style="padding:8px 10px;font-size:16px" title="Swap images">&#8646;</button>
+              </div>
+              <div style="flex:1">
+                <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#ffd700;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;text-align:center">Register Image</div>
+                <div class="bg-preview" id="admin-register-img-preview" style="height:120px">[ no image ]</div>
+                <div class="file-input-wrap" style="margin-top:6px">
+                  <button class="btn-admin" style="width:100%;font-size:10px;padding:6px">Upload</button>
+                  <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange="uploadRegisterImage(this)" />
+                </div>
+                <button class="btn-admin danger" style="margin-top:4px;width:100%;font-size:10px;padding:4px" onclick="removeRegisterImage()">Remove</button>
+              </div>
             </div>
-            <div class="file-size-hint">PNG, JPEG, GIF, WebP (max 50MB)</div>
-            <button class="btn-admin danger" style="margin-top:8px;width:100%" onclick="removeLoginImage()">Remove Image</button>
-          </div>
-
-          <div class="admin-section">
-            <h3>&#9670; Register Panel Image</h3>
-            <div class="bg-preview" id="admin-register-img-preview">[ no image ]</div>
-            <div class="file-input-wrap">
-              <button class="btn-admin" style="width:100%">Choose Image</button>
-              <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange="uploadRegisterImage(this)" />
-            </div>
-            <div class="file-size-hint">PNG, JPEG, GIF, WebP (max 50MB)</div>
-            <div class="file-size-hint" style="color:#ffd700">If empty, Login image will be used for both tabs</div>
-            <button class="btn-admin danger" style="margin-top:8px;width:100%" onclick="removeRegisterImage()">Remove Image</button>
+            <div class="file-size-hint">PNG, JPEG, GIF, WebP (max 50MB) &bull; <span style="color:#ffd700">If register is empty, login image is used for both</span></div>
           </div>
 
           <div class="admin-section">
@@ -2410,6 +2415,21 @@
       const resp = await fetch('/api/admin/register-image', { method: 'DELETE', headers: { 'x-admin-token': adminToken } }).then(r => r.json()).catch(() => ({ success: false }));
       if (resp.success) { showAdminMsg('admin-panel-msg', 'Removed', 'success'); updateRegisterImgPreview(null); appSettings.registerImage = null; preloadedRegisterSrc = ''; }
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+    }
+
+    async function swapLoginRegisterImages() {
+      const resp = await fetch('/api/admin/swap-panel-images', { method: 'POST', headers: { 'x-admin-token': adminToken } }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) {
+        showAdminMsg('admin-panel-msg', 'Images swapped', 'success');
+        updateLoginImgPreview(resp.loginImage);
+        updateRegisterImgPreview(resp.registerImage);
+        appSettings.loginImage = resp.loginImage;
+        appSettings.registerImage = resp.registerImage;
+        applyLoginImage(resp.loginImage);
+        preloadRegisterImage(resp.registerImage);
+      } else {
+        showAdminMsg('admin-panel-msg', resp.error || 'Nothing to swap', 'error');
+      }
     }
 
     async function changeAdminPassword() {

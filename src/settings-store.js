@@ -215,6 +215,52 @@ function removeRegisterImage() {
   save(s);
 }
 
+function swapPanelImages() {
+  ensureDirs();
+  const s = load();
+  const loginMeta = s.loginImage;
+  const registerMeta = s.registerImage;
+  if (!loginMeta && !registerMeta) return null;
+
+  const loginFiles = fs.readdirSync(uploadsDir).filter(f => f.startsWith('loginimage'));
+  const registerFiles = fs.readdirSync(uploadsDir).filter(f => f.startsWith('registerimage'));
+
+  for (const f of loginFiles) {
+    const src = path.join(uploadsDir, f);
+    const dst = path.join(uploadsDir, '_swap_' + f);
+    fs.renameSync(src, dst);
+  }
+  for (const f of registerFiles) {
+    const src = path.join(uploadsDir, f);
+    const newName = f.replace('registerimage', 'loginimage');
+    fs.renameSync(src, path.join(uploadsDir, newName));
+  }
+  const swapFiles = fs.readdirSync(uploadsDir).filter(f => f.startsWith('_swap_loginimage'));
+  for (const f of swapFiles) {
+    const src = path.join(uploadsDir, f);
+    const newName = f.replace('_swap_loginimage', 'registerimage');
+    fs.renameSync(src, path.join(uploadsDir, newName));
+  }
+
+  if (loginMeta && registerMeta) {
+    const newLoginFilename = registerMeta.filename.replace('registerimage', 'loginimage');
+    const newRegisterFilename = loginMeta.filename.replace('loginimage', 'registerimage');
+    s.loginImage = { filename: newLoginFilename, mimeType: registerMeta.mimeType, size: registerMeta.size };
+    s.registerImage = { filename: newRegisterFilename, mimeType: loginMeta.mimeType, size: loginMeta.size };
+  } else if (loginMeta && !registerMeta) {
+    const newRegisterFilename = loginMeta.filename.replace('loginimage', 'registerimage');
+    s.registerImage = { filename: newRegisterFilename, mimeType: loginMeta.mimeType, size: loginMeta.size };
+    s.loginImage = null;
+  } else if (!loginMeta && registerMeta) {
+    const newLoginFilename = registerMeta.filename.replace('registerimage', 'loginimage');
+    s.loginImage = { filename: newLoginFilename, mimeType: registerMeta.mimeType, size: registerMeta.size };
+    s.registerImage = null;
+  }
+
+  save(s);
+  return { loginImage: s.loginImage, registerImage: s.registerImage };
+}
+
 function getUploadsDir() {
   return uploadsDir;
 }
@@ -365,6 +411,7 @@ module.exports = {
   removeLoginImage,
   saveRegisterImage,
   removeRegisterImage,
+  swapPanelImages,
   getUploadsDir,
   getAds,
   addAd,

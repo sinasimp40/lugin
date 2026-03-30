@@ -839,6 +839,13 @@ app.delete('/api/admin/register-image', verifyToken, (req, res) => {
   res.json({ success: true });
 });
 
+app.post('/api/admin/swap-panel-images', verifyToken, (req, res) => {
+  const result = settings.swapPanelImages();
+  if (!result) return res.json({ success: false, error: 'No images to swap' });
+  broadcastSettings();
+  res.json({ success: true, loginImage: result.loginImage, registerImage: result.registerImage });
+});
+
 app.get('/api/admin/ads', verifyToken, (req, res) => {
   res.json({ success: true, ads: settings.getAds() });
 });
