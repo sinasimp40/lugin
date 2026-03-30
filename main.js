@@ -459,7 +459,7 @@ function showLoginWindow() {
   }
 }
 
-function showSessionWindow() {
+function showSessionWindow(onShown) {
   const { screen } = require('electron');
   const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
 
@@ -469,8 +469,8 @@ function showSessionWindow() {
   sessionWindow = new BrowserWindow({
     width: SESSION_WIDTH,
     height: SESSION_HEIGHT,
-    x: -9999,
-    y: -9999,
+    x: sessionX,
+    y: sessionY,
     title: 'Denfi Auto Shutdown Session',
     frame: false,
     resizable: false,
@@ -506,7 +506,7 @@ function showSessionWindow() {
     sessionWindow.setBounds({ x: clampedX, y: clampedY, width: SESSION_WIDTH, height: SESSION_HEIGHT });
   });
 
-  sessionWindow.webContents.on('did-finish-load', () => {
+  sessionWindow.webContents.once('did-finish-load', () => {
     if (!sessionWindow || sessionWindow.isDestroyed()) return;
     sessionWindow.setBounds({
       width: SESSION_WIDTH,
@@ -517,6 +517,7 @@ function showSessionWindow() {
     sessionWindow.setAlwaysOnTop(true, 'screen-saver');
     sessionReady = true;
     sessionWindow.showInactive();
+    if (typeof onShown === 'function') onShown();
   });
 
   let fullscreenBypassList = [];
@@ -628,15 +629,18 @@ function handleStateChange(state) {
       sessionWindow.destroy();
       sessionWindow = null;
     }
-    showSessionWindow();
-
-    transitionTimer = setTimeout(() => {
-      transitionTimer = null;
-      if (currentState === 'logged-in' && loginWindow && !loginWindow.isDestroyed()) {
-        loginWindow.destroy();
-        loginWindow = null;
+    showSessionWindow(() => {
+      if (currentState !== 'logged-in') return;
+      if (loginWindow && !loginWindow.isDestroyed()) {
+        loginWindow.hide();
+        setTimeout(() => {
+          if (loginWindow && !loginWindow.isDestroyed()) {
+            loginWindow.destroy();
+            loginWindow = null;
+          }
+        }, 50);
       }
-    }, 500);
+    });
     startPolling();
   } else if (state === 'logged-out') {
     if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) return;

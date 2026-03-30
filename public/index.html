@@ -1519,9 +1519,9 @@
 
     function showSession(data) {
       sessionData = data;
-      document.getElementById('login-panel').classList.add('hidden');
       const isElectron = !!(window.electronAPI && window.electronAPI.setSessionState);
       if (!isElectron) {
+        document.getElementById('login-panel').classList.add('hidden');
         document.getElementById('session-panel').classList.add('active');
       }
       document.getElementById('session-username').textContent = data.username || 'User';
