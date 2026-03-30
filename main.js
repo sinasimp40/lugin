@@ -646,16 +646,19 @@ function handleStateChange(state) {
       sessionWindow.destroy();
       sessionWindow = null;
     }
+
+    const loginToDestroy = loginWindow;
+    loginWindow = null;
+
     showSessionWindow(() => {
       if (currentState !== 'logged-in') return;
-      if (loginWindow && !loginWindow.isDestroyed()) {
-        try { loginWindow.setKiosk(false); } catch (e) {}
-        try { loginWindow.setAlwaysOnTop(false); } catch (e) {}
-        try { loginWindow.setOpacity(0); } catch (e) {}
+      if (loginToDestroy && !loginToDestroy.isDestroyed()) {
+        try { loginToDestroy.setKiosk(false); } catch (e) {}
+        try { loginToDestroy.setAlwaysOnTop(false); } catch (e) {}
+        try { loginToDestroy.setOpacity(0); } catch (e) {}
         setTimeout(() => {
-          if (loginWindow && !loginWindow.isDestroyed()) {
-            loginWindow.destroy();
-            loginWindow = null;
+          if (loginToDestroy && !loginToDestroy.isDestroyed()) {
+            loginToDestroy.destroy();
           }
         }, 100);
       }
@@ -669,6 +672,11 @@ function handleStateChange(state) {
 
     if (sessionWindow && !sessionWindow.isDestroyed()) {
       try { sessionWindow.setOpacity(0); } catch (e) {}
+    }
+
+    if (focusGuardInterval) {
+      clearInterval(focusGuardInterval);
+      focusGuardInterval = null;
     }
 
     if (loginWindow && !loginWindow.isDestroyed()) {
