@@ -145,35 +145,63 @@
       z-index: 1;
     }
 
-    .pc-badge-wrapper {
-      position: relative;
-      width: 820px;
-      max-width: 95vw;
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 6px;
-      pointer-events: none;
-    }
     .pc-badge {
       display: none;
       align-items: center;
-      gap: 5px;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+      padding: 8px 20px;
+      border: 1px solid rgba(255,140,0,0.15);
+      border-radius: 4px;
+      background: linear-gradient(135deg, rgba(255,140,0,0.04) 0%, rgba(255,69,0,0.02) 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .pc-badge::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,140,0,0.25), transparent);
     }
     .pc-badge.active { display: flex !important; }
+    .pc-badge-icon {
+      font-size: 14px;
+      color: #ff8c00;
+      opacity: 0.6;
+    }
+    .pc-badge-text {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
     .pc-badge-label {
       font-family: 'Share Tech Mono', monospace;
       font-size: 10px;
-      color: rgba(255,140,0,0.25);
-      letter-spacing: 2px;
+      color: rgba(255,140,0,0.4);
+      letter-spacing: 3px;
       text-transform: uppercase;
     }
     .pc-badge-number {
       font-family: 'Orbitron', monospace;
-      font-size: 13px;
-      font-weight: 700;
-      color: rgba(255,140,0,0.3);
-      letter-spacing: 2px;
+      font-size: 20px;
+      font-weight: 900;
+      color: #ff8c00;
+      letter-spacing: 3px;
       line-height: 1;
+      text-shadow: 0 0 12px rgba(255,140,0,0.4), 0 0 24px rgba(255,140,0,0.15);
+    }
+    .pc-badge-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #ff8c00;
+      box-shadow: 0 0 6px rgba(255,140,0,0.6);
+      animation: pc-dot-pulse 2s ease-in-out infinite;
+    }
+    @keyframes pc-dot-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
     }
 
     .login-right {
@@ -953,6 +981,14 @@
           </div>
           <div class="shutdown-label-bottom">[ time remaining ]</div>
         </div>
+
+        <div id="pc-badge" class="pc-badge">
+          <div class="pc-badge-dot"></div>
+          <div class="pc-badge-text">
+            <span class="pc-badge-label">station</span>
+            <span class="pc-badge-number" id="pc-badge-name"></span>
+          </div>
+        </div>
       </div>
 
       <div class="login-right" id="login-right">
@@ -960,13 +996,6 @@
           <div class="login-right-placeholder-icon">&#9670;</div>
           <span>[ upload image in admin panel ]</span>
         </div>
-      </div>
-    </div>
-
-    <div class="pc-badge-wrapper">
-      <div id="pc-badge" class="pc-badge">
-        <span class="pc-badge-label">PC</span>
-        <span class="pc-badge-number" id="pc-badge-name"></span>
       </div>
     </div>
 
