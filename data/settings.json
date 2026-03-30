@@ -18,5 +18,10 @@
     "mimeType": "image/jpeg",
     "size": 144922
   },
-  "computerName": "COMPUTER SHOP"
+  "computerName": "COMPUTER SHOP",
+  "registerImage": {
+    "filename": "registerimage.jpg",
+    "mimeType": "image/jpeg",
+    "size": 154665
+  }
 }
