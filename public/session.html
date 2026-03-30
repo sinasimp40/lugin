@@ -124,6 +124,16 @@
     max-width: 80px; letter-spacing: 0.5px;
     text-shadow: 0 0 4px rgba(255,140,0,0.2);
   }
+  .pc-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 6px; font-weight: 700;
+    color: rgba(255,140,0,0.5);
+    letter-spacing: 1px;
+    text-shadow: 0 0 4px rgba(255,140,0,0.15);
+    white-space: nowrap;
+    display: none;
+  }
+  .pc-label.active { display: block; }
 
   .right-section {
     flex-shrink: 0;
@@ -214,6 +224,7 @@
       <div class="user-row">
         <div class="status-dot" id="status-dot"></div>
         <div class="user" id="username">User</div>
+        <div class="pc-label" id="pc-label"></div>
       </div>
     </div>
     <div class="right-section">
@@ -340,6 +351,9 @@
               if (msg.data.username) sessionUsername = msg.data.username;
               if (msg.data.ip) sessionIp = msg.data.ip;
               if (msg.data.mac) sessionMac = msg.data.mac;
+              if (msg.data.units && msg.data.ip && msg.data.units[msg.data.ip]) {
+                setPcLabel(msg.data.units[msg.data.ip]);
+              }
               updateTimer();
               checkExpiryLogout();
             }
@@ -352,6 +366,13 @@
       };
       ws.onclose = () => { ws = null; wsReconnectTimer = setTimeout(connectWs, 3000); };
       ws.onerror = () => { if (ws) ws.close(); };
+    }
+
+    function setPcLabel(name) {
+      if (!name) return;
+      const el = document.getElementById('pc-label');
+      el.textContent = '[ ' + name + ' ]';
+      el.classList.add('active');
     }
 
     async function loadStatus() {
@@ -371,6 +392,9 @@
           if (data.data.username) sessionUsername = data.data.username;
           if (data.data.ip) sessionIp = data.data.ip;
           if (data.data.mac) sessionMac = data.data.mac;
+          if (data.data.units && data.data.ip && data.data.units[data.data.ip]) {
+            setPcLabel(data.data.units[data.data.ip]);
+          }
           updateTimer();
           checkExpiryLogout();
         }

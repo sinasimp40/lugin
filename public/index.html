@@ -145,6 +145,37 @@
       z-index: 1;
     }
 
+    .pc-badge {
+      position: absolute;
+      top: 12px; right: 12px;
+      z-index: 5;
+      display: none;
+      align-items: center; gap: 6px;
+      padding: 5px 12px;
+      background: rgba(255,140,0,0.08);
+      border: 1px solid rgba(255,140,0,0.3);
+      border-radius: 3px;
+      font-family: 'Orbitron', monospace;
+      font-size: 11px; font-weight: 700;
+      color: #ff8c00;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-shadow: 0 0 8px rgba(255,140,0,0.4);
+      box-shadow: 0 0 12px rgba(255,140,0,0.08), inset 0 0 8px rgba(255,140,0,0.03);
+    }
+    .pc-badge.active { display: flex; }
+    .pc-badge-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #ff8c00;
+      box-shadow: 0 0 6px rgba(255,140,0,0.6);
+      animation: dot-pulse 2s ease-in-out infinite;
+    }
+    @keyframes dot-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
     .login-right {
       width: 360px;
       display: flex; align-items: center; justify-content: center;
@@ -867,6 +898,10 @@
   <div id="login-panel" class="login-panel">
     <div class="login-split">
       <div class="login-left">
+        <div id="pc-badge" class="pc-badge">
+          <div class="pc-badge-dot"></div>
+          <span id="pc-badge-name"></span>
+        </div>
         <div class="glitch-container">
           <div class="glitch-text" id="computer-name-el" data-text=""></div>
         </div>
@@ -1091,10 +1126,47 @@
       doLogout();
     }
     let activeVoucher = '';
+    let currentPcName = '';
     let sessionWs = null;
     let wsReconnectTimer = null;
     let adminToken = null;
     let secretBuffer = '';
+
+    async function detectPcName() {
+      try {
+        const resp = await fetch('/api/hotspot/status').then(r => r.json()).catch(() => null);
+        if (resp && resp.success && resp.data) {
+          const ip = resp.data.ip;
+          const units = resp.data.units;
+          if (units && ip && units[ip]) {
+            currentPcName = units[ip];
+            document.getElementById('pc-badge-name').textContent = currentPcName;
+            document.getElementById('pc-badge').classList.add('active');
+            console.log('[PC] Detected:', currentPcName, 'IP:', ip);
+            return;
+          }
+          if (units) {
+            console.log('[PC] IP not in units map. IP:', ip, 'Units:', JSON.stringify(units));
+          }
+        }
+      } catch (e) {
+        console.log('[PC] Detection failed:', e.message);
+      }
+      try {
+        const loginResp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => null);
+        if (loginResp && loginResp.success && loginResp.data && loginResp.data.units) {
+          const units = loginResp.data.units;
+          const ip = loginResp.data.ip;
+          if (ip && units[ip]) {
+            currentPcName = units[ip];
+            document.getElementById('pc-badge-name').textContent = currentPcName;
+            document.getElementById('pc-badge').classList.add('active');
+            console.log('[PC] Detected from login-data:', currentPcName);
+          }
+        }
+      } catch (e) {}
+    }
+    detectPcName();
     let shutdownTotal = 0;
     let shutdownLeft = 0;
     let shutdownInterval = null;
