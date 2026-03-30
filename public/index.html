@@ -1458,61 +1458,70 @@
       applyBackground(s.backgroundImage);
       applyLoginImage(s.loginImage);
       appSettings.registerImage = s.registerImage || null;
-      preloadRegisterImage(s.registerImage);
+      applyRegisterImage(s.registerImage);
       if (s.adSlideSeconds) adSlideMs = s.adSlideSeconds * 1000;
       renderAdCarousel(s.ads || []);
       updateShutdownConfig(s.autoShutdownSeconds || 0);
     }
 
-    let preloadedLoginSrc = '';
-    let preloadedRegisterSrc = '';
-
-    function preloadImage(src) {
-      const img = new Image();
-      img.src = src;
-    }
-
     function applyLoginImage(imgInfo) {
       const rightPanel = document.getElementById('login-right');
       const placeholder = document.getElementById('login-right-placeholder');
-      const existing = document.getElementById('login-right-img-el');
+      let loginImg = document.getElementById('login-right-img-login');
       if (imgInfo && imgInfo.filename) {
         const src = '/uploads/' + imgInfo.filename + '?t=' + Date.now();
-        if (existing) {
-          existing.src = src;
+        if (loginImg) {
+          loginImg.src = src;
         } else {
-          const img = document.createElement('img');
-          img.id = 'login-right-img-el';
-          img.className = 'login-right-img';
-          img.src = src;
-          img.alt = 'Login image';
-          rightPanel.appendChild(img);
+          loginImg = document.createElement('img');
+          loginImg.id = 'login-right-img-login';
+          loginImg.className = 'login-right-img';
+          loginImg.src = src;
+          loginImg.alt = 'Login image';
+          rightPanel.appendChild(loginImg);
         }
         if (placeholder) placeholder.style.display = 'none';
-        preloadedLoginSrc = src;
       } else {
-        if (existing) existing.remove();
-        if (placeholder) placeholder.style.display = '';
-        preloadedLoginSrc = '';
+        if (loginImg) loginImg.remove();
+        const regImg = document.getElementById('login-right-img-register');
+        if (!regImg && placeholder) placeholder.style.display = '';
       }
+      showActiveTabImage();
     }
 
-    function preloadRegisterImage(imgInfo) {
+    function applyRegisterImage(imgInfo) {
+      const rightPanel = document.getElementById('login-right');
+      let regImg = document.getElementById('login-right-img-register');
       if (imgInfo && imgInfo.filename) {
-        preloadedRegisterSrc = '/uploads/' + imgInfo.filename + '?t=' + Date.now();
-        preloadImage(preloadedRegisterSrc);
+        const src = '/uploads/' + imgInfo.filename + '?t=' + Date.now();
+        if (regImg) {
+          regImg.src = src;
+        } else {
+          regImg = document.createElement('img');
+          regImg.id = 'login-right-img-register';
+          regImg.className = 'login-right-img';
+          regImg.src = src;
+          regImg.alt = 'Register image';
+          regImg.style.display = 'none';
+          rightPanel.appendChild(regImg);
+        }
       } else {
-        preloadedRegisterSrc = '';
+        if (regImg) regImg.remove();
       }
+      showActiveTabImage();
     }
 
-    function swapPanelImage(tab) {
-      const imgEl = document.getElementById('login-right-img-el');
-      if (!imgEl) return;
-      if (tab === 'register' && preloadedRegisterSrc) {
-        imgEl.src = preloadedRegisterSrc;
-      } else if (preloadedLoginSrc) {
-        imgEl.src = preloadedLoginSrc;
+    function showActiveTabImage() {
+      const loginImg = document.getElementById('login-right-img-login');
+      const regImg = document.getElementById('login-right-img-register');
+      const isReg = (currentTab === 'register');
+      if (loginImg && regImg) {
+        loginImg.style.display = isReg ? 'none' : '';
+        regImg.style.display = isReg ? '' : 'none';
+      } else if (loginImg) {
+        loginImg.style.display = '';
+      } else if (regImg) {
+        regImg.style.display = '';
       }
     }
 
@@ -2411,14 +2420,14 @@
       showAdminMsg('admin-panel-msg', 'Uploading...', 'success');
       const buffer = await file.arrayBuffer();
       const resp = await fetch('/api/admin/register-image', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'x-admin-token': adminToken, 'x-filename': file.name, 'x-mime-type': file.type }, body: buffer }).then(r => r.json()).catch(e => ({ success: false, error: 'Upload failed: ' + e.message }));
-      if (resp.success) { showAdminMsg('admin-panel-msg', 'Uploaded', 'success'); updateRegisterImgPreview(resp.registerImage); appSettings.registerImage = resp.registerImage; preloadRegisterImage(resp.registerImage); }
+      if (resp.success) { showAdminMsg('admin-panel-msg', 'Uploaded', 'success'); updateRegisterImgPreview(resp.registerImage); appSettings.registerImage = resp.registerImage; applyRegisterImage(resp.registerImage); }
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
       input.value = '';
     }
 
     async function removeRegisterImage() {
       const resp = await fetch('/api/admin/register-image', { method: 'DELETE', headers: { 'x-admin-token': adminToken } }).then(r => r.json()).catch(() => ({ success: false }));
-      if (resp.success) { showAdminMsg('admin-panel-msg', 'Removed', 'success'); updateRegisterImgPreview(null); appSettings.registerImage = null; preloadedRegisterSrc = ''; }
+      if (resp.success) { showAdminMsg('admin-panel-msg', 'Removed', 'success'); updateRegisterImgPreview(null); appSettings.registerImage = null; applyRegisterImage(null); }
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
     }
 
@@ -2431,7 +2440,7 @@
         appSettings.loginImage = resp.loginImage;
         appSettings.registerImage = resp.registerImage;
         applyLoginImage(resp.loginImage);
-        preloadRegisterImage(resp.registerImage);
+        applyRegisterImage(resp.registerImage);
       } else {
         showAdminMsg('admin-panel-msg', resp.error || 'Nothing to swap', 'error');
       }
@@ -2888,7 +2897,7 @@
         split.classList.remove('register-theme');
         wrap.classList.remove('register-theme');
       }
-      swapPanelImage(tab);
+      showActiveTabImage();
       tabBusy = false;
     }
 
