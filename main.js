@@ -348,7 +348,7 @@ app.whenReady().then(() => {
   });
 });
 
-function showLoginWindow() {
+function showLoginWindow(afterLogout) {
   const { screen } = require('electron');
   const { x, y, width, height } = screen.getPrimaryDisplay().bounds;
 
@@ -411,7 +411,8 @@ function showLoginWindow() {
     console.log('[Electron] Login window shown');
   }
 
-  loginWindow.loadURL(APP_URL);
+  const loginUrl = afterLogout ? APP_URL + '?afterLogout=1' : APP_URL;
+  loginWindow.loadURL(loginUrl);
 
   loginWindow.once('ready-to-show', () => {
     console.log('[Electron] ready-to-show fired');
@@ -428,7 +429,7 @@ function showLoginWindow() {
     console.log('[Electron] Page failed to load:', errorCode, errorDesc, '- retrying in 1s...');
     setTimeout(() => {
       if (loginWindow && !loginWindow.isDestroyed()) {
-        loginWindow.loadURL(APP_URL);
+        loginWindow.loadURL(loginUrl);
       }
     }, 1000);
   });
@@ -650,17 +651,15 @@ function handleStateChange(state) {
     const loginToDestroy = loginWindow;
     loginWindow = null;
 
+    if (loginToDestroy && !loginToDestroy.isDestroyed()) {
+      try { loginToDestroy.setKiosk(false); } catch (e) {}
+      try { loginToDestroy.setAlwaysOnTop(false); } catch (e) {}
+      try { loginToDestroy.setOpacity(0); } catch (e) {}
+    }
+
     showSessionWindow(() => {
-      if (currentState !== 'logged-in') return;
       if (loginToDestroy && !loginToDestroy.isDestroyed()) {
-        try { loginToDestroy.setKiosk(false); } catch (e) {}
-        try { loginToDestroy.setAlwaysOnTop(false); } catch (e) {}
-        try { loginToDestroy.setOpacity(0); } catch (e) {}
-        setTimeout(() => {
-          if (loginToDestroy && !loginToDestroy.isDestroyed()) {
-            loginToDestroy.destroy();
-          }
-        }, 100);
+        try { loginToDestroy.destroy(); } catch (e) {}
       }
     });
     startPolling();
@@ -683,7 +682,7 @@ function handleStateChange(state) {
       loginWindow.destroy();
       loginWindow = null;
     }
-    showLoginWindow();
+    showLoginWindow(true);
 
     transitionTimer = setTimeout(() => {
       transitionTimer = null;

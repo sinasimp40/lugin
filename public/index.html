@@ -1770,6 +1770,13 @@
     let logoutPending = false;
     let logoutPendingTimer = null;
 
+    const _afterLogout = new URLSearchParams(window.location.search).has('afterLogout');
+    if (_afterLogout) {
+      logoutPending = true;
+      logoutPendingTimer = setTimeout(() => { logoutPending = false; logoutPendingTimer = null; console.log('[init] afterLogout logoutPending expired after 30s'); }, 30000);
+      console.log('[init] afterLogout detected, logoutPending set to true');
+    }
+
     async function init() {
       const resp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => ({ success: false }));
       const statusEl = document.getElementById('hotspot-status');
@@ -1820,6 +1827,9 @@
               logoutPending = false;
               if (logoutPendingTimer) { clearTimeout(logoutPendingTimer); logoutPendingTimer = null; }
               console.log('[poll] logoutPending cleared - session confirmed gone');
+              const statusEl = document.getElementById('hotspot-status');
+              statusEl.textContent = '[ hotspot connected ]';
+              statusEl.className = 'hotspot-status online';
             }
           }
         } catch (_) {}
@@ -1892,11 +1902,8 @@
 
     function showSession(data) {
       sessionData = data;
-      const isElectron = !!(window.electronAPI && window.electronAPI.setSessionState);
-      if (!isElectron) {
-        document.getElementById('login-panel').classList.add('hidden');
-        document.getElementById('session-panel').classList.add('active');
-      }
+      document.getElementById('login-panel').classList.add('hidden');
+      document.getElementById('session-panel').classList.add('active');
       document.getElementById('session-username').textContent = data.username || 'User';
       localTimeLeft = parseInt(data.sessionTimeLeft) || 0;
       autoLogoutTriggered = false;
@@ -2018,7 +2025,11 @@
       }, 30000);
       notifyElectron('logged-out');
       connectSettingsWs();
-      if (appSettings.autoShutdownSeconds > 0) updateShutdownConfig(appSettings.autoShutdownSeconds);
+      if (appSettings.autoShutdownSeconds > 0) {
+        updateShutdownConfig(appSettings.autoShutdownSeconds);
+      } else {
+        loadSettings();
+      }
       setTimeout(() => init(), 5000);
     }
 
