@@ -311,6 +311,14 @@
     let sessionMac = '';
     let ws = null;
     let wsReconnectTimer = null;
+    let autoLogoutTriggered = false;
+
+    function checkExpiryLogout() {
+      if (timeLeft > 0 || autoLogoutTriggered) return;
+      autoLogoutTriggered = true;
+      console.log('[session] Timer expired, triggering auto-logout');
+      doLogout();
+    }
 
     function connectWs() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -327,11 +335,13 @@
                 coinSuccessAudio.play().catch(() => {});
               }
               timeLeft = newTime;
+              if (newTime > 0) autoLogoutTriggered = false;
               if (msg.data.logoutLink) logoutLink = msg.data.logoutLink;
               if (msg.data.username) sessionUsername = msg.data.username;
               if (msg.data.ip) sessionIp = msg.data.ip;
               if (msg.data.mac) sessionMac = msg.data.mac;
               updateTimer();
+              checkExpiryLogout();
             }
           } else if (msg.type === 'logged-out') {
             if (window.electronAPI && window.electronAPI.setSessionState) {
@@ -356,11 +366,13 @@
             coinSuccessAudio.play().catch(() => {});
           }
           timeLeft = newTime;
+          if (newTime > 0) autoLogoutTriggered = false;
           if (data.data.logoutLink) logoutLink = data.data.logoutLink;
           if (data.data.username) sessionUsername = data.data.username;
           if (data.data.ip) sessionIp = data.data.ip;
           if (data.data.mac) sessionMac = data.data.mac;
           updateTimer();
+          checkExpiryLogout();
         }
       } catch (e) {}
     }
@@ -439,7 +451,13 @@
 
     loadStatus();
     connectWs();
-    interval = setInterval(() => { if (timeLeft > 0) { timeLeft--; updateTimer(); } }, 1000);
+    interval = setInterval(() => {
+      if (timeLeft > 0) {
+        timeLeft--;
+        updateTimer();
+        if (timeLeft <= 0) checkExpiryLogout();
+      }
+    }, 1000);
   </script>
 </body>
 </html>

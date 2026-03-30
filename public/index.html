@@ -1082,6 +1082,14 @@
     let statusInterval = null;
     let countdownInterval = null;
     let localTimeLeft = 0;
+    let autoLogoutTriggered = false;
+
+    function checkExpiryLogout() {
+      if (localTimeLeft > 0 || autoLogoutTriggered || !sessionData) return;
+      autoLogoutTriggered = true;
+      console.log('[index] Timer expired, triggering auto-logout');
+      doLogout();
+    }
     let activeVoucher = '';
     let sessionWs = null;
     let wsReconnectTimer = null;
@@ -1371,9 +1379,11 @@
           if (msg.type === 'status' && msg.data) {
             if (msg.data.isLogin) {
               localTimeLeft = parseInt(msg.data.sessionTimeLeft) || 0;
+              if (localTimeLeft > 0) autoLogoutTriggered = false;
               updateTimerDisplay();
               if (msg.data.username) document.getElementById('session-username').textContent = msg.data.username;
               if (msg.data.logoutLink && sessionData) sessionData.logoutLink = msg.data.logoutLink;
+              checkExpiryLogout();
             } else if (sessionData) {
               showLoggedOut();
             }
@@ -1526,9 +1536,16 @@
       }
       document.getElementById('session-username').textContent = data.username || 'User';
       localTimeLeft = parseInt(data.sessionTimeLeft) || 0;
+      autoLogoutTriggered = false;
       updateTimerDisplay();
       if (countdownInterval) clearInterval(countdownInterval);
-      countdownInterval = setInterval(() => { if (localTimeLeft > 0) { localTimeLeft--; updateTimerDisplay(); } }, 1000);
+      countdownInterval = setInterval(() => {
+        if (localTimeLeft > 0) {
+          localTimeLeft--;
+          updateTimerDisplay();
+          if (localTimeLeft <= 0) checkExpiryLogout();
+        }
+      }, 1000);
       if (statusInterval) clearInterval(statusInterval);
       if (shutdownInterval) { clearInterval(shutdownInterval); shutdownInterval = null; }
       document.getElementById('shutdown-area').classList.add('hidden');
@@ -1628,6 +1645,7 @@
       document.getElementById('password').disabled = false;
       document.getElementById('login-btn').disabled = false;
       sessionData = null; loginData = null;
+      autoLogoutTriggered = false;
       logoutPending = true;
       if (logoutPendingTimer) clearTimeout(logoutPendingTimer);
       logoutPendingTimer = setTimeout(() => {
