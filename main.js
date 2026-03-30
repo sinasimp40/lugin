@@ -508,22 +508,26 @@ function showSessionWindow() {
 
   sessionWindow.webContents.on('did-finish-load', () => {
     if (!sessionWindow || sessionWindow.isDestroyed()) return;
+    sessionWindow.setBounds({
+      width: SESSION_WIDTH,
+      height: SESSION_HEIGHT,
+      x: sessionX,
+      y: sessionY,
+    });
+    sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+    sessionReady = true;
     sessionWindow.showInactive();
-    setTimeout(() => {
-      if (!sessionWindow || sessionWindow.isDestroyed()) return;
-      sessionWindow.setBounds({
-        width: SESSION_WIDTH,
-        height: SESSION_HEIGHT,
-        x: sessionX,
-        y: sessionY,
-      });
-      sessionWindow.setAlwaysOnTop(true, 'screen-saver');
-      sessionReady = true;
-    }, 300);
   });
 
   let fullscreenBypassList = [];
   let sessionHiddenForGame = false;
+  let bypassRefreshInterval = null;
+  let foregroundCheckInterval = null;
+
+  sessionWindow.on('closed', () => {
+    if (bypassRefreshInterval) { clearInterval(bypassRefreshInterval); bypassRefreshInterval = null; }
+    if (foregroundCheckInterval) { clearInterval(foregroundCheckInterval); foregroundCheckInterval = null; }
+  });
 
   function refreshBypassList() {
     const http = require('http');
@@ -540,7 +544,7 @@ function showSessionWindow() {
   }
 
   refreshBypassList();
-  setInterval(refreshBypassList, 10000);
+  bypassRefreshInterval = setInterval(refreshBypassList, 10000);
 
   function checkForegroundAndManage() {
     if (!sessionWindow || sessionWindow.isDestroyed()) return;
@@ -582,7 +586,7 @@ function showSessionWindow() {
     });
   }
 
-  setInterval(checkForegroundAndManage, 2000);
+  foregroundCheckInterval = setInterval(checkForegroundAndManage, 2000);
 
   sessionWindow.loadURL(`${APP_URL}/session.html`);
 }
