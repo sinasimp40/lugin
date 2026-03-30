@@ -508,6 +508,7 @@ function showSessionWindow(onShown) {
 
   sessionWindow.webContents.once('did-finish-load', () => {
     if (!sessionWindow || sessionWindow.isDestroyed()) return;
+    sessionWindow.setOpacity(0);
     sessionWindow.setBounds({
       width: SESSION_WIDTH,
       height: SESSION_HEIGHT,
@@ -517,7 +518,11 @@ function showSessionWindow(onShown) {
     sessionWindow.setAlwaysOnTop(true, 'screen-saver');
     sessionReady = true;
     sessionWindow.showInactive();
-    if (typeof onShown === 'function') onShown();
+    setTimeout(() => {
+      if (!sessionWindow || sessionWindow.isDestroyed()) return;
+      sessionWindow.setOpacity(1);
+      if (typeof onShown === 'function') onShown();
+    }, 150);
   });
 
   let fullscreenBypassList = [];
@@ -632,13 +637,15 @@ function handleStateChange(state) {
     showSessionWindow(() => {
       if (currentState !== 'logged-in') return;
       if (loginWindow && !loginWindow.isDestroyed()) {
-        loginWindow.hide();
+        try { loginWindow.setKiosk(false); } catch (e) {}
+        try { loginWindow.setAlwaysOnTop(false); } catch (e) {}
+        try { loginWindow.setOpacity(0); } catch (e) {}
         setTimeout(() => {
           if (loginWindow && !loginWindow.isDestroyed()) {
             loginWindow.destroy();
             loginWindow = null;
           }
-        }, 50);
+        }, 100);
       }
     });
     startPolling();
@@ -647,6 +654,10 @@ function handleStateChange(state) {
     currentState = 'logged-out';
     stopPolling();
     enableKioskLockdown();
+
+    if (sessionWindow && !sessionWindow.isDestroyed()) {
+      try { sessionWindow.setOpacity(0); } catch (e) {}
+    }
 
     if (loginWindow && !loginWindow.isDestroyed()) {
       loginWindow.destroy();
@@ -660,7 +671,7 @@ function handleStateChange(state) {
         sessionWindow.destroy();
         sessionWindow = null;
       }
-    }, 500);
+    }, 300);
   }
 }
 
