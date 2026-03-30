@@ -145,15 +145,19 @@
       z-index: 1;
     }
 
+    .pc-badge-wrapper {
+      position: relative;
+      width: 820px;
+      max-width: 95vw;
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 6px;
+      pointer-events: none;
+    }
     .pc-badge {
-      position: absolute;
-      bottom: 8px;
-      right: 12px;
-      z-index: 50;
       display: none;
       align-items: center;
       gap: 5px;
-      pointer-events: none;
     }
     .pc-badge.active { display: flex !important; }
     .pc-badge-label {
@@ -893,10 +897,6 @@
 
   <div id="login-panel" class="login-panel">
     <div class="login-split">
-      <div id="pc-badge" class="pc-badge">
-        <span class="pc-badge-label">PC</span>
-        <span class="pc-badge-number" id="pc-badge-name"></span>
-      </div>
       <div class="login-left">
         <div class="glitch-container">
           <div class="glitch-text" id="computer-name-el" data-text=""></div>
@@ -960,6 +960,13 @@
           <div class="login-right-placeholder-icon">&#9670;</div>
           <span>[ upload image in admin panel ]</span>
         </div>
+      </div>
+    </div>
+
+    <div class="pc-badge-wrapper">
+      <div id="pc-badge" class="pc-badge">
+        <span class="pc-badge-label">PC</span>
+        <span class="pc-badge-number" id="pc-badge-name"></span>
       </div>
     </div>
 

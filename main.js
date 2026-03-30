@@ -554,12 +554,20 @@ function showSessionWindow(onShown) {
 
   function checkForegroundAndManage() {
     if (!sessionWindow || sessionWindow.isDestroyed()) return;
-    if (process.platform !== 'win32' || fullscreenBypassList.length === 0) {
+    if (process.platform !== 'win32') {
+      sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+      return;
+    }
+    if (fullscreenBypassList.length === 0) {
       if (sessionHiddenForGame) {
         sessionHiddenForGame = false;
         sessionWindow.showInactive();
       }
       sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+      if (!sessionWindow.isVisible()) {
+        sessionWindow.showInactive();
+      }
+      sessionWindow.moveTop();
       return;
     }
     exec('powershell -NoProfile -Command "[System.Diagnostics.Process]::GetProcessById((Add-Type -MemberDefinition \'[DllImport(\\\"user32.dll\\\")] public static extern IntPtr GetForegroundWindow(); [DllImport(\\\"user32.dll\\\")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);\' -Name W -Namespace W -PassThru)::GetWindowThreadProcessId([W.W]::GetForegroundWindow(), [ref]($p = 0)) | Out-Null; $p).ProcessName"', { timeout: 3000, windowsHide: true }, (err, stdout) => {
@@ -588,6 +596,10 @@ function showSessionWindow(onShown) {
           console.log('[Session] Restored after game exit');
         }
         sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+        if (!sessionWindow.isVisible()) {
+          sessionWindow.showInactive();
+        }
+        sessionWindow.moveTop();
       }
     });
   }
