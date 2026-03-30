@@ -146,6 +146,17 @@
       box-shadow: 0 0 40px rgba(0,0,0,0.6);
       position: relative;
       z-index: 1;
+      transition: flex-direction 0s;
+    }
+    .login-split .login-left,
+    .login-split .login-right {
+      transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+                  opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .login-split.anim-out .login-left,
+    .login-split.anim-out .login-right {
+      opacity: 0;
+      transform: scale(0.92);
     }
     .login-split::before {
       content: ''; position: absolute; top: -1px; left: 20px; right: 20px; height: 2px;
@@ -2637,79 +2648,31 @@
       if (resp.settings && resp.settings.ads) renderAdCarousel(resp.settings.ads);
     }
 
-    let tabAnimating = false;
     let currentTab = 'login';
+    let tabBusy = false;
     function switchTab(tab) {
-      if (tabAnimating || tab === currentTab) return;
-      tabAnimating = true;
+      if (tab === currentTab || tabBusy) return;
       currentTab = tab;
+      tabBusy = true;
 
       document.querySelectorAll('.tab-btn').forEach((btn, i) => {
         btn.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'register' && i === 1));
       });
-      document.getElementById('tab-login').classList.toggle('active', tab === 'login');
-      document.getElementById('tab-register').classList.toggle('active', tab === 'register');
 
-      const right = document.querySelector('.login-right');
-      const left = document.querySelector('.login-left');
       const split = document.querySelector('.login-split');
-      const isRegister = (tab === 'register');
 
-      const rightW = right.offsetWidth;
-      const leftW = left.offsetWidth;
-
-      right.style.willChange = 'transform';
-      left.style.willChange = 'transform';
-      right.style.position = 'absolute';
-      right.style.top = '0';
-      right.style.bottom = '0';
-      right.style.width = rightW + 'px';
-      right.style.zIndex = '10';
-      right.style.boxShadow = '0 0 60px rgba(0,0,0,0.9), 0 0 20px rgba(255,140,0,0.08)';
-
-      if (isRegister) {
-        right.style.right = '0';
-        right.style.left = 'auto';
-        right.style.transform = 'translateX(0)';
-        left.style.transform = 'translateX(0)';
-        void right.offsetWidth;
-
-        right.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
-        left.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
-        right.style.transform = 'translateX(-' + leftW + 'px)';
-        left.style.transform = 'translateX(' + rightW + 'px)';
-      } else {
-        right.style.left = '0';
-        right.style.right = 'auto';
-        right.style.transform = 'translateX(0)';
-        left.style.transform = 'translateX(' + rightW + 'px)';
-        void right.offsetWidth;
-
-        right.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
-        left.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
-        right.style.transform = 'translateX(' + leftW + 'px)';
-        left.style.transform = 'translateX(0)';
-      }
+      split.classList.add('anim-out');
 
       setTimeout(() => {
-        right.style.position = '';
-        right.style.top = '';
-        right.style.bottom = '';
-        right.style.width = '';
-        right.style.zIndex = '';
-        right.style.transition = '';
-        right.style.transform = '';
-        right.style.left = '';
-        right.style.right = '';
-        right.style.boxShadow = '';
-        right.style.willChange = '';
-        left.style.transition = '';
-        left.style.transform = '';
-        left.style.willChange = '';
+        document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+        document.getElementById('tab-register').classList.toggle('active', tab === 'register');
 
-        split.style.flexDirection = isRegister ? 'row-reverse' : '';
-        tabAnimating = false;
-      }, 520);
+        split.style.flexDirection = (tab === 'register') ? 'row-reverse' : '';
+
+        void split.offsetWidth;
+        split.classList.remove('anim-out');
+        setTimeout(() => { tabBusy = false; }, 550);
+      }, 280);
     }
 
     function showRegError(msg) {
