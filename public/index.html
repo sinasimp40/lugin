@@ -1771,10 +1771,42 @@
     let logoutPendingTimer = null;
 
     const _afterLogout = new URLSearchParams(window.location.search).has('afterLogout');
-    if (_afterLogout) {
+    let logoutReconcileDeadline = 0;
+
+    function enterLogoutReconcile() {
       logoutPending = true;
-      logoutPendingTimer = setTimeout(() => { logoutPending = false; logoutPendingTimer = null; console.log('[init] afterLogout logoutPending expired after 30s'); }, 30000);
-      console.log('[init] afterLogout detected, logoutPending set to true');
+      logoutReconcileDeadline = Date.now() + 12000;
+      if (logoutPendingTimer) clearTimeout(logoutPendingTimer);
+      logoutPendingTimer = setTimeout(() => {
+        logoutPendingTimer = null;
+        exitLogoutReconcile();
+        console.log('[reconcile] Deadline reached, forcing re-check');
+        init();
+      }, 12000);
+      const statusEl = document.getElementById('hotspot-status');
+      statusEl.textContent = '[ logging out... ]';
+      statusEl.className = 'hotspot-status online';
+      console.log('[reconcile] Entered logout reconciliation');
+    }
+
+    function exitLogoutReconcile() {
+      logoutPending = false;
+      logoutReconcileDeadline = 0;
+      if (logoutPendingTimer) { clearTimeout(logoutPendingTimer); logoutPendingTimer = null; }
+      const statusEl = document.getElementById('hotspot-status');
+      if (statusEl.textContent === '[ logging out... ]') {
+        statusEl.textContent = '[ hotspot connected ]';
+        statusEl.className = 'hotspot-status online';
+      }
+    }
+
+    function isReconcileExpired() {
+      return logoutReconcileDeadline > 0 && Date.now() >= logoutReconcileDeadline;
+    }
+
+    if (_afterLogout) {
+      enterLogoutReconcile();
+      console.log('[init] afterLogout detected, delaying init by 5s');
     }
 
     async function init() {
@@ -1788,19 +1820,22 @@
       }
       loginData = resp.data;
       if (loginData.isLogin) {
-        if (logoutPending) {
+        if (logoutPending && !isReconcileExpired()) {
           console.log('[init] logoutPending active, ignoring stale session for:', loginData.username);
           statusEl.textContent = '[ logging out... ]';
           statusEl.className = 'hotspot-status online';
           startLoginPolling();
           return;
         }
+        if (logoutPending) {
+          console.log('[init] Reconcile expired, accepting session as new login for:', loginData.username);
+          exitLogoutReconcile();
+        }
         stopLoginPolling();
         showSession(loginData);
         return;
       }
-      logoutPending = false;
-      if (logoutPendingTimer) { clearTimeout(logoutPendingTimer); logoutPendingTimer = null; }
+      exitLogoutReconcile();
       statusEl.textContent = '[ hotspot connected ]';
       statusEl.className = 'hotspot-status online';
       if (loginData.error && loginData.error !== '') showError(loginData.error);
@@ -1814,9 +1849,13 @@
         try {
           const resp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => null);
           if (resp && resp.success && resp.data && resp.data.isLogin) {
-            if (logoutPending) {
+            if (logoutPending && !isReconcileExpired()) {
               console.log('[poll] logoutPending active, ignoring stale session for:', resp.data.username);
               return;
+            }
+            if (logoutPending) {
+              console.log('[poll] Reconcile expired, accepting session for:', resp.data.username);
+              exitLogoutReconcile();
             }
             stopLoginPolling();
             loginData = resp.data;
@@ -1824,12 +1863,8 @@
             showError('Session detected — auto-connected!');
           } else if (resp && resp.success && resp.data && !resp.data.isLogin) {
             if (logoutPending) {
-              logoutPending = false;
-              if (logoutPendingTimer) { clearTimeout(logoutPendingTimer); logoutPendingTimer = null; }
+              exitLogoutReconcile();
               console.log('[poll] logoutPending cleared - session confirmed gone');
-              const statusEl = document.getElementById('hotspot-status');
-              statusEl.textContent = '[ hotspot connected ]';
-              statusEl.className = 'hotspot-status online';
             }
           }
         } catch (_) {}
@@ -1855,8 +1890,7 @@
       if (!username.startsWith('mem-')) {
         username = 'mem-' + username;
       }
-      logoutPending = false;
-      if (logoutPendingTimer) { clearTimeout(logoutPendingTimer); logoutPendingTimer = null; }
+      exitLogoutReconcile();
       const btn = document.getElementById('login-btn');
       btn.disabled = true;
       document.getElementById('login-text').classList.add('hidden');
@@ -2016,13 +2050,7 @@
       document.getElementById('login-btn').disabled = false;
       sessionData = null; loginData = null;
       autoLogoutTriggered = false;
-      logoutPending = true;
-      if (logoutPendingTimer) clearTimeout(logoutPendingTimer);
-      logoutPendingTimer = setTimeout(() => {
-        logoutPending = false;
-        logoutPendingTimer = null;
-        console.log('[showLoggedOut] logoutPending expired after 30s');
-      }, 30000);
+      enterLogoutReconcile();
       notifyElectron('logged-out');
       connectSettingsWs();
       if (appSettings.autoShutdownSeconds > 0) {
@@ -3152,7 +3180,11 @@
 
     loadSettings();
     connectSettingsWs();
-    init();
+    if (_afterLogout) {
+      setTimeout(() => init(), 5000);
+    } else {
+      init();
+    }
   </script>
 </body>
 </html>
