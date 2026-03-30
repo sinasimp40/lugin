@@ -1895,6 +1895,12 @@
 
     function showSession(data) {
       sessionData = data;
+
+      if (window.electronAPI && window.electronAPI.setSessionState) {
+        notifyElectron('logged-in');
+        return;
+      }
+
       document.getElementById('login-panel').classList.add('hidden');
       document.getElementById('session-panel').classList.add('active');
       document.getElementById('session-username').textContent = data.username || 'User';
@@ -1915,7 +1921,6 @@
       disconnectSettingsWs();
       disconnectSessionWs();
       connectSessionWs();
-      notifyElectron('logged-in');
     }
 
     function updateTimerDisplay() {
