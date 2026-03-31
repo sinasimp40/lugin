@@ -1983,11 +1983,8 @@
           localTimeLeft--;
           updateTimerDisplay();
           if (localTimeLeft <= 0) checkExpiryLogout();
-        } else {
-          checkExpiryLogout();
         }
       }, 1000);
-      if (localTimeLeft <= 0) setTimeout(() => checkExpiryLogout(), 500);
       if (statusInterval) clearInterval(statusInterval);
       if (shutdownInterval) { clearInterval(shutdownInterval); shutdownInterval = null; }
       document.getElementById('shutdown-area').classList.add('hidden');
