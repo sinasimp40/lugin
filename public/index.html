@@ -1954,13 +1954,8 @@
       if (resp.success && resp.data) showSession(resp.data);
       else {
         const errMsg = resp.error || '';
-        const errLower = errMsg.toLowerCase();
-        if (errLower.includes('disabled') || errLower.includes('not allowed')) {
-          showError('Account is disabled. Contact admin.');
-        } else if (errLower.includes('user.invalid') || errLower.includes('user invalid')) {
+        if (errMsg.toLowerCase().includes('user.invalid') || errMsg.toLowerCase().includes('user invalid')) {
           showError('User already logged in. Please logout first.');
-        } else if (errLower.includes('invalid username') || errLower.includes('invalid password') || errLower.includes('wrong password')) {
-          showError('Invalid username or password.');
         } else {
           showError(errMsg || 'Authentication failed');
         }
