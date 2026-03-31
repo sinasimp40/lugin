@@ -1368,6 +1368,16 @@
           </div>
 
           <div class="admin-section full-width">
+            <h3>&#9670; Fullscreen Game Bypass</h3>
+            <p style="font-size:11px;color:#888;margin-bottom:8px">Games where session strip hides to avoid conflicts. Enter .exe names.</p>
+            <div id="admin-bypass-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="text" id="admin-bypass-input" placeholder="e.g. valorant.exe" style="flex:1" />
+              <button class="btn-admin" onclick="addBypassGame()">Add</button>
+            </div>
+          </div>
+
+          <div class="admin-section full-width">
             <h3>&#9670; Advertisements</h3>
             <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(255,140,0,0.5);margin-bottom:8px;letter-spacing:0.5px">[ ideal image size: 820 x 280 px ]</div>
             <div class="form-group">
@@ -2410,6 +2420,7 @@
         updateLoginImgPreview(resp.settings.loginImage);
         updateRegisterImgPreview(resp.settings.registerImage);
         document.getElementById('admin-ad-interval').value = resp.settings.adSlideSeconds || 5;
+        renderBypassList(resp.settings.fullscreenBypass || []);
         renderAdminAds(resp.settings.ads || []);
       }
     }
@@ -2882,6 +2893,57 @@
         applySettings(resp.settings);
       } else {
         showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+      }
+    }
+
+    let currentBypassList = [];
+
+    function renderBypassList(games) {
+      currentBypassList = games;
+      const el = document.getElementById('admin-bypass-list');
+      if (!games.length) {
+        el.innerHTML = '<div style="color:#666;font-size:11px">No games added</div>';
+        return;
+      }
+      el.innerHTML = games.map(g =>
+        '<div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,140,0,0.05);border:1px solid rgba(255,140,0,0.15);border-radius:4px;padding:6px 10px">' +
+          '<span style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--neon-cyan)">' + g + '</span>' +
+          '<button class="btn-admin danger" style="padding:2px 8px;font-size:10px;min-width:0" onclick="removeBypassGame(\'' + g + '\')">&#10005;</button>' +
+        '</div>'
+      ).join('');
+    }
+
+    async function addBypassGame() {
+      let val = document.getElementById('admin-bypass-input').value.trim().toLowerCase();
+      if (!val) return;
+      if (!val.endsWith('.exe')) val += '.exe';
+      if (currentBypassList.includes(val)) {
+        showAdminMsg('admin-panel-msg', 'Already in list', 'error');
+        return;
+      }
+      const updated = [...currentBypassList, val];
+      const resp = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+        body: JSON.stringify({ fullscreenBypass: updated })
+      }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) {
+        document.getElementById('admin-bypass-input').value = '';
+        renderBypassList(resp.settings.fullscreenBypass || updated);
+        showAdminMsg('admin-panel-msg', 'Game added', 'success');
+      }
+    }
+
+    async function removeBypassGame(name) {
+      const updated = currentBypassList.filter(g => g !== name);
+      const resp = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+        body: JSON.stringify({ fullscreenBypass: updated })
+      }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) {
+        renderBypassList(resp.settings.fullscreenBypass || updated);
+        showAdminMsg('admin-panel-msg', 'Game removed', 'success');
       }
     }
 
