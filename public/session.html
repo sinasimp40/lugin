@@ -333,13 +333,19 @@
           const resp = await fetch('/api/hotspot/status').then(r => r.json());
           if (resp && resp.success && resp.data && resp.data.isLogin) {
             const serverTime = parseInt(resp.data.sessionTimeLeft) || 0;
-            if (serverTime > 0) {
-              console.log('[session] Server still has time:', serverTime, '- aborting auto-logout (coin was added?)');
+            const serverUser = (resp.data.username || '').toLowerCase();
+            const currentUser = (sessionUsername || '').toLowerCase();
+            const sameUser = serverUser === currentUser;
+            if (serverTime > 0 && sameUser) {
+              console.log('[session] Same user still has time:', serverTime, '- aborting auto-logout (coin added to member)');
               timeLeft = serverTime;
               if (resp.data.logoutLink) logoutLink = resp.data.logoutLink;
               updateTimer();
               checkingExpiry = false;
               return;
+            }
+            if (serverTime > 0 && !sameUser) {
+              console.log('[session] Different user detected:', serverUser, 'vs current:', currentUser, '- proceeding with logout so new session can take over');
             }
           }
           break;
