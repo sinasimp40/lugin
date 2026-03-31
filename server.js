@@ -242,6 +242,10 @@ app.post('/api/hotspot/login', async (req, res) => {
           const chapResp = await tryChapLogin(username, password);
           if (chapResp.success) return res.json(chapResp);
         }
+        const errLower = (data.error || '').toLowerCase();
+        if (errLower.includes('disabled') || errLower.includes('not allowed')) {
+          console.log(`[Login] Account disabled: ${username}`);
+        }
         return res.json({ success: false, error: data.error });
       }
 
