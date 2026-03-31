@@ -323,11 +323,34 @@
     let ws = null;
     let wsReconnectTimer = null;
     let autoLogoutTriggered = false;
+    let checkingExpiry = false;
 
-    function checkExpiryLogout() {
-      if (timeLeft > 0 || autoLogoutTriggered) return;
+    async function checkExpiryLogout() {
+      if (timeLeft > 0 || autoLogoutTriggered || checkingExpiry) return;
+      checkingExpiry = true;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const resp = await fetch('/api/hotspot/status').then(r => r.json());
+          if (resp && resp.success && resp.data && resp.data.isLogin) {
+            const serverTime = parseInt(resp.data.sessionTimeLeft) || 0;
+            if (serverTime > 0) {
+              console.log('[session] Server still has time:', serverTime, '- aborting auto-logout (coin was added?)');
+              timeLeft = serverTime;
+              if (resp.data.logoutLink) logoutLink = resp.data.logoutLink;
+              updateTimer();
+              checkingExpiry = false;
+              return;
+            }
+          }
+          break;
+        } catch (e) {
+          console.log('[session] Server check attempt', attempt + 1, 'failed, retrying...');
+          if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+      checkingExpiry = false;
       autoLogoutTriggered = true;
-      console.log('[session] Timer expired, triggering auto-logout');
+      console.log('[session] Timer expired and server confirmed, triggering auto-logout');
       doLogout();
     }
 

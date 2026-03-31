@@ -1365,11 +1365,33 @@
     let countdownInterval = null;
     let localTimeLeft = 0;
     let autoLogoutTriggered = false;
+    let checkingExpiryIdx = false;
 
-    function checkExpiryLogout() {
-      if (localTimeLeft > 0 || autoLogoutTriggered || !sessionData) return;
+    async function checkExpiryLogout() {
+      if (localTimeLeft > 0 || autoLogoutTriggered || !sessionData || checkingExpiryIdx) return;
+      checkingExpiryIdx = true;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const resp = await fetch('/api/hotspot/status').then(r => r.json());
+          if (resp && resp.success && resp.data && resp.data.isLogin) {
+            const serverTime = parseInt(resp.data.sessionTimeLeft) || 0;
+            if (serverTime > 0) {
+              console.log('[index] Server still has time:', serverTime, '- aborting auto-logout (coin was added?)');
+              localTimeLeft = serverTime;
+              updateTimerDisplay();
+              checkingExpiryIdx = false;
+              return;
+            }
+          }
+          break;
+        } catch (e) {
+          console.log('[index] Server check attempt', attempt + 1, 'failed, retrying...');
+          if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+      checkingExpiryIdx = false;
       autoLogoutTriggered = true;
-      console.log('[index] Timer expired, triggering auto-logout');
+      console.log('[index] Timer expired and server confirmed, triggering auto-logout');
       doLogout();
     }
     let activeVoucher = '';
