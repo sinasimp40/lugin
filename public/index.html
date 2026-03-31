@@ -726,20 +726,59 @@
     }
 
     .ad-carousel {
-      width: 820px; max-width: 95vw; margin-top: 16px;
+      width: 820px; max-width: 95vw; margin-top: 18px;
       position: relative;
-      border-radius: 4px;
-      border: 1px solid var(--dark-border);
-      background: rgba(18,18,30,0.7);
-      backdrop-filter: blur(10px);
+      border-radius: 6px;
+      border: 1px solid rgba(255,140,0,0.25);
+      background: linear-gradient(135deg, rgba(10,10,10,0.92) 0%, rgba(18,14,8,0.95) 100%);
+      backdrop-filter: blur(12px);
+      box-shadow:
+        0 0 20px rgba(255,140,0,0.06),
+        inset 0 1px 0 rgba(255,140,0,0.08);
+      overflow: hidden;
     }
     .ad-carousel.empty { display: none; }
     .ad-carousel::before {
-      content: ''; position: absolute; top: -1px; left: 20px; right: 20px; height: 1px;
-      background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+      content: ''; position: absolute; top: 0; left: 30px; right: 30px; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,140,0,0.5), transparent);
       z-index: 2;
     }
-    .ad-slides-wrap { overflow: hidden; }
+    .ad-carousel::after {
+      content: ''; position: absolute; bottom: 0; left: 30px; right: 30px; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,140,0,0.3), transparent);
+      z-index: 2;
+    }
+    .ad-carousel-label {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 8px 16px 4px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 9px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      color: rgba(255,140,0,0.5);
+    }
+    .ad-carousel-label::before, .ad-carousel-label::after {
+      content: '';
+      flex: 1; max-width: 60px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,140,0,0.3));
+    }
+    .ad-carousel-label::after {
+      background: linear-gradient(90deg, rgba(255,140,0,0.3), transparent);
+    }
+    .ad-slides-wrap {
+      overflow: hidden;
+      position: relative;
+    }
+    .ad-slides-wrap::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 20px;
+      background: linear-gradient(to bottom, rgba(10,10,10,0.5), transparent);
+      z-index: 1; pointer-events: none;
+    }
+    .ad-slides-wrap::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 20px;
+      background: linear-gradient(to top, rgba(10,10,10,0.5), transparent);
+      z-index: 1; pointer-events: none;
+    }
     .ad-slides {
       position: relative;
       width: 100%;
@@ -754,19 +793,19 @@
     .ad-slide.active {
       position: relative; opacity: 1; pointer-events: auto;
       transform: translateX(0);
-      animation: slide-in-right 0.5s ease-out;
+      animation: slide-in-right 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .ad-slide.exiting {
       opacity: 1; pointer-events: none;
       animation: slide-out-left 0.5s ease-in forwards;
     }
     @keyframes slide-in-right {
-      from { transform: translateX(100%); opacity: 0; }
+      from { transform: translateX(80%); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
     }
     @keyframes slide-out-left {
       from { transform: translateX(0); opacity: 1; }
-      to { transform: translateX(-100%); opacity: 0; }
+      to { transform: translateX(-80%); opacity: 0; }
     }
     .ad-slide-img {
       display: block;
@@ -777,40 +816,41 @@
       object-fit: contain;
       margin: 0 auto;
       border-radius: 4px;
+      filter: brightness(0.95) contrast(1.05);
     }
     .ad-slide-content {
-      position: relative; z-index: 1; padding: 16px 20px;
+      position: relative; z-index: 1;
+      padding: 14px 24px;
       width: 100%; text-align: center;
       font-family: 'Share Tech Mono', monospace;
-      font-size: 13px; color: var(--text);
-      line-height: 1.5;
-      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+      font-size: 14px;
+      color: #ff8c00;
+      line-height: 1.6;
+      text-shadow: 0 0 8px rgba(255,140,0,0.3), 0 1px 3px rgba(0,0,0,0.8);
       word-wrap: break-word;
     }
-    .ad-slide-content b, .ad-slide-content strong { color: var(--neon-cyan); }
-    .ad-slide-content i, .ad-slide-content em { color: var(--neon-yellow); }
-    .ad-slide-content a { color: var(--neon-cyan); text-decoration: underline; }
-    .ad-slide-content img { max-width: 100%; height: auto; }
+    .ad-slide-content b, .ad-slide-content strong { color: #fff; text-shadow: 0 0 6px rgba(255,255,255,0.3); }
+    .ad-slide-content i, .ad-slide-content em { color: #ffd700; }
+    .ad-slide-content a { color: #ff8c00; text-decoration: underline; text-underline-offset: 2px; }
+    .ad-slide-content img { max-width: 100%; height: auto; border-radius: 3px; }
     .ad-slide-content ul, .ad-slide-content ol { margin: 4px 0; padding-left: 20px; text-align: left; }
-    .ad-slide-content blockquote { border-left: 3px solid var(--neon-cyan); margin: 4px 0; padding: 4px 10px; font-style: italic; }
-    .ad-slide-content hr { border: none; border-top: 1px solid var(--dark-border); margin: 8px 0; }
+    .ad-slide-content blockquote { border-left: 2px solid #ff8c00; margin: 4px 0; padding: 4px 12px; font-style: italic; color: rgba(255,140,0,0.7); }
+    .ad-slide-content hr { border: none; border-top: 1px solid rgba(255,140,0,0.15); margin: 8px 0; }
     .ad-dots {
-      display: flex; justify-content: center; gap: 8px;
-      padding: 10px 0;
-      background: rgba(10,10,10,0.6);
-      border-top: 1px solid var(--dark-border);
+      display: flex; justify-content: center; gap: 10px;
+      padding: 10px 0 12px;
     }
     .ad-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: rgba(255,140,0,0.3); cursor: pointer;
-      transition: all 0.3s;
-      border: 1px solid rgba(255,140,0,0.2);
+      width: 20px; height: 3px; border-radius: 2px;
+      background: rgba(255,140,0,0.2); cursor: pointer;
+      transition: all 0.4s ease;
+      border: none;
     }
     .ad-dot:hover { background: rgba(255,140,0,0.5); }
     .ad-dot.active {
-      background: var(--neon-cyan);
-      box-shadow: 0 0 8px rgba(255,140,0,0.6);
-      border-color: var(--neon-cyan);
+      background: #ff8c00;
+      width: 32px;
+      box-shadow: 0 0 10px rgba(255,140,0,0.5);
     }
 
     .admin-ads-list { margin: 8px 0; }
@@ -1198,6 +1238,7 @@
     </div>
 
     <div id="ad-carousel" class="ad-carousel empty" style="margin-top:16px">
+      <div class="ad-carousel-label">ANNOUNCEMENTS</div>
       <div class="ad-slides-wrap">
         <div class="ad-slides" id="ad-slides"></div>
       </div>
