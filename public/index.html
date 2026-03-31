@@ -1839,6 +1839,17 @@
     let loginPollTimer = null;
     let logoutPending = false;
     let logoutPendingTimer = null;
+    let shutdownGuardInterval = null;
+
+    function startShutdownGuard() {
+      if (shutdownGuardInterval) return;
+      shutdownGuardInterval = setInterval(() => {
+        if (!sessionData && appSettings && appSettings.autoShutdownSeconds > 0 && !shutdownInterval) {
+          console.log('[shutdownGuard] Timer not running on login view — restarting');
+          updateShutdownConfig(appSettings.autoShutdownSeconds);
+        }
+      }, 3000);
+    }
 
     async function init() {
       const resp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => ({ success: false }));
@@ -3226,6 +3237,7 @@
 
     loadSettings();
     connectSettingsWs();
+    startShutdownGuard();
     init();
   </script>
 </body>
