@@ -51,17 +51,15 @@
 
     .scanlines {
       position: fixed; inset: 0; z-index: 1; pointer-events: none;
-      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,140,0,0.02) 2px, rgba(255,140,0,0.02) 4px);
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,140,0,0.015) 2px, rgba(255,140,0,0.015) 4px);
     }
 
     .grid-bg {
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background-image:
-        linear-gradient(rgba(255,140,0,0.05) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,140,0,0.05) 1px, transparent 1px),
-        linear-gradient(rgba(255,140,0,0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,140,0,0.02) 1px, transparent 1px);
-      background-size: 80px 80px, 80px 80px, 20px 20px, 20px 20px;
+        linear-gradient(rgba(255,140,0,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,140,0,0.06) 1px, transparent 1px);
+      background-size: 40px 40px;
     }
 
     .drag-region { -webkit-app-region: drag; height: 24px; width: 100%; position: fixed; top: 0; left: 0; z-index: 50; }
@@ -1140,92 +1138,11 @@
     .hidden { display: none !important; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .corner-deco { position: fixed; z-index: 3; pointer-events: none; }
-    .corner-tl { top: 8px; left: 8px; width: 50px; height: 50px; border-top: 2px solid rgba(255,140,0,0.4); border-left: 2px solid rgba(255,140,0,0.4); }
-    .corner-tr { top: 8px; right: 8px; width: 50px; height: 50px; border-top: 2px solid rgba(255,140,0,0.4); border-right: 2px solid rgba(255,140,0,0.4); }
-    .corner-bl { bottom: 8px; left: 8px; width: 50px; height: 50px; border-bottom: 2px solid rgba(255,69,0,0.4); border-left: 2px solid rgba(255,69,0,0.4); }
-    .corner-br { bottom: 8px; right: 8px; width: 50px; height: 50px; border-bottom: 2px solid rgba(255,69,0,0.4); border-right: 2px solid rgba(255,69,0,0.4); }
-    .corner-deco::before {
-      content: '';
-      position: absolute;
-      width: 6px; height: 6px;
-      background: rgba(255,140,0,0.6);
-      box-shadow: 0 0 8px rgba(255,140,0,0.5);
-    }
-    .corner-tl::before { top: -1px; left: -1px; }
-    .corner-tr::before { top: -1px; right: -1px; }
-    .corner-bl::before { bottom: -1px; left: -1px; }
-    .corner-br::before { bottom: -1px; right: -1px; }
-
-    .sweep-line {
-      position: fixed; left: 0; right: 0; height: 2px; z-index: 2; pointer-events: none;
-      background: linear-gradient(90deg, transparent, rgba(255,140,0,0.6), rgba(255,100,0,0.8), rgba(255,140,0,0.6), transparent);
-      box-shadow: 0 0 15px rgba(255,140,0,0.4), 0 0 30px rgba(255,140,0,0.2);
-      opacity: 0;
-      animation: sweep-down 8s ease-in-out infinite;
-    }
-    @keyframes sweep-down {
-      0% { top: -2px; opacity: 0; }
-      5% { opacity: 0.7; }
-      50% { opacity: 0.5; }
-      95% { opacity: 0.7; }
-      100% { top: 100vh; opacity: 0; }
-    }
-
-    .edge-vignette {
-      position: fixed; inset: 0; z-index: 1; pointer-events: none;
-      background:
-        radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.7) 100%),
-        linear-gradient(0deg, rgba(255,80,0,0.04) 0%, transparent 15%),
-        linear-gradient(180deg, rgba(255,80,0,0.04) 0%, transparent 15%),
-        linear-gradient(90deg, rgba(255,80,0,0.03) 0%, transparent 10%),
-        linear-gradient(270deg, rgba(255,80,0,0.03) 0%, transparent 10%);
-    }
-
-    .hud-ticker {
-      position: fixed; bottom: 8px; left: 60px; right: 60px; z-index: 3; pointer-events: none;
-      overflow: hidden; height: 14px;
-    }
-    .hud-ticker-inner {
-      display: inline-block; white-space: nowrap;
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 9px; letter-spacing: 1.5px;
-      color: rgba(255,140,0,0.2);
-      animation: ticker-scroll 40s linear infinite;
-    }
-    @keyframes ticker-scroll {
-      from { transform: translateX(100vw); }
-      to { transform: translateX(-100%); }
-    }
-
-    .hud-side-left, .hud-side-right {
-      position: fixed; z-index: 3; pointer-events: none;
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 8px; letter-spacing: 1px;
-      color: rgba(255,140,0,0.15);
-      writing-mode: vertical-rl;
-    }
-    .hud-side-left {
-      left: 12px; top: 50%; transform: translateY(-50%) rotate(180deg);
-    }
-    .hud-side-right {
-      right: 12px; top: 50%; transform: translateY(-50%);
-    }
-
-    .screen-flicker {
-      position: fixed; inset: 0; z-index: 4; pointer-events: none;
-      background: transparent;
-      animation: screen-flicker 6s steps(1) infinite;
-    }
-    @keyframes screen-flicker {
-      0%, 100% { opacity: 0; }
-      92% { opacity: 0; }
-      92.5% { opacity: 1; background: rgba(255,140,0,0.015); }
-      93% { opacity: 0; }
-      97% { opacity: 0; }
-      97.3% { opacity: 1; background: rgba(255,140,0,0.02); }
-      97.6% { opacity: 0; }
-    }
+    .corner-deco { position: fixed; z-index: 1; pointer-events: none; }
+    .corner-tl { top: 10px; left: 10px; width: 30px; height: 30px; border-top: 2px solid rgba(255,140,0,0.3); border-left: 2px solid rgba(255,140,0,0.3); }
+    .corner-tr { top: 10px; right: 10px; width: 30px; height: 30px; border-top: 2px solid rgba(255,140,0,0.3); border-right: 2px solid rgba(255,140,0,0.3); }
+    .corner-bl { bottom: 10px; left: 10px; width: 30px; height: 30px; border-bottom: 2px solid rgba(255,69,0,0.3); border-left: 2px solid rgba(255,69,0,0.3); }
+    .corner-br { bottom: 10px; right: 10px; width: 30px; height: 30px; border-bottom: 2px solid rgba(255,69,0,0.3); border-right: 2px solid rgba(255,69,0,0.3); }
   </style>
 </head>
 <body>
@@ -1233,17 +1150,11 @@
   <canvas id="dust-particles" style="position:fixed;inset:0;z-index:1;pointer-events:none;"></canvas>
   <div class="scanlines"></div>
   <div class="grid-bg"></div>
-  <div class="edge-vignette"></div>
-  <div class="sweep-line"></div>
-  <div class="screen-flicker"></div>
   <div class="drag-region"></div>
   <div class="corner-deco corner-tl"></div>
   <div class="corner-deco corner-tr"></div>
   <div class="corner-deco corner-bl"></div>
   <div class="corner-deco corner-br"></div>
-  <div class="hud-side-left">SYS.DENFI//NET.LINK.ACTIVE&#x2002;&#x25C6;&#x2002;KIOSK.OS.v4.2.1</div>
-  <div class="hud-side-right">SEC.LAYER//FIREWALL.ON&#x2002;&#x25C6;&#x2002;UPLINK.STABLE</div>
-  <div class="hud-ticker"><div class="hud-ticker-inner">&#x25C6; DENFI NETWORK ONLINE &#x25C6; SYSTEM STATUS: NOMINAL &#x25C6; HOTSPOT UPLINK: ACTIVE &#x25C6; SECURITY PROTOCOL: ENGAGED &#x25C6; KIOSK TERMINAL READY &#x25C6; AUTO-SHUTDOWN MODULE ARMED &#x25C6; BANDWIDTH: OPTIMAL &#x25C6; PING: 2ms &#x25C6; SESSION MANAGER: STANDBY &#x25C6; AUTH SERVICE: ONLINE &#x25C6;</div></div>
 
   <div id="login-panel" class="login-panel">
     <div class="login-split-wrap">
