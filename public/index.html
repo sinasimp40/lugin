@@ -1198,6 +1198,103 @@
     body.register-bg .corner-tr { border-top-color: var(--reg-color-30); border-right-color: var(--reg-color-30); }
     body.register-bg .corner-bl { border-bottom-color: var(--reg-color-30); border-left-color: var(--reg-color-30); }
     body.register-bg .corner-br { border-bottom-color: var(--reg-color-30); border-right-color: var(--reg-color-30); }
+
+    #curfew-overlay {
+      display: none; position: absolute; inset: 0; z-index: 20;
+      flex-direction: column; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at center, rgba(15,5,5,0.98) 0%, rgba(5,0,0,0.99) 100%);
+      border-radius: 8px;
+    }
+    #curfew-overlay.active { display: flex; }
+    .curfew-icon {
+      font-size: 48px; margin-bottom: 12px;
+      animation: curfew-pulse 2s ease-in-out infinite;
+      filter: drop-shadow(0 0 20px rgba(255,40,40,0.6));
+    }
+    @keyframes curfew-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.08); }
+    }
+    .curfew-title {
+      font-family: 'Orbitron', monospace; font-size: 18px; font-weight: 900;
+      letter-spacing: 4px; text-transform: uppercase;
+      color: #ff2020;
+      text-shadow: 0 0 10px rgba(255,32,32,0.8), 0 0 30px rgba(255,32,32,0.4), 0 0 60px rgba(255,32,32,0.2);
+      margin-bottom: 8px; text-align: center;
+    }
+    .curfew-subtitle {
+      font-family: 'Share Tech Mono', monospace; font-size: 11px;
+      letter-spacing: 3px; text-transform: uppercase;
+      color: rgba(255,80,80,0.6); margin-bottom: 24px;
+    }
+    .curfew-schedule-box {
+      border: 1px solid rgba(255,40,40,0.3); border-radius: 4px;
+      padding: 18px 36px; text-align: center;
+      background: rgba(255,20,20,0.05);
+      box-shadow: 0 0 30px rgba(255,20,20,0.08), inset 0 0 30px rgba(255,20,20,0.03);
+      position: relative; overflow: hidden;
+    }
+    .curfew-schedule-box::before {
+      content: ''; position: absolute; top: -1px; left: 20%; right: 20%; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,40,40,0.5), transparent);
+    }
+    .curfew-schedule-box::after {
+      content: ''; position: absolute; bottom: -1px; left: 20%; right: 20%; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,40,40,0.3), transparent);
+    }
+    .curfew-label {
+      font-family: 'Share Tech Mono', monospace; font-size: 10px;
+      letter-spacing: 3px; text-transform: uppercase;
+      color: rgba(255,100,100,0.5); margin-bottom: 10px;
+    }
+    .curfew-time {
+      font-family: 'Orbitron', monospace; font-size: 26px; font-weight: 700;
+      color: #ff3030;
+      text-shadow: 0 0 10px rgba(255,48,48,0.7), 0 0 25px rgba(255,48,48,0.3);
+      letter-spacing: 3px;
+    }
+    .curfew-time .curfew-sep {
+      color: rgba(255,80,80,0.4); margin: 0 8px; font-size: 18px;
+    }
+    .curfew-msg {
+      margin-top: 20px; font-family: 'Share Tech Mono', monospace;
+      font-size: 10px; color: rgba(255,100,100,0.35);
+      letter-spacing: 2px; text-transform: uppercase;
+    }
+    .curfew-bar {
+      width: 60px; height: 2px; margin: 16px auto 0;
+      background: linear-gradient(90deg, transparent, rgba(255,40,40,0.4), transparent);
+      animation: curfew-bar-glow 3s ease-in-out infinite;
+    }
+    @keyframes curfew-bar-glow {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
+    .curfew-toggle-wrap {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    }
+    .curfew-toggle {
+      position: relative; width: 44px; height: 22px; cursor: pointer;
+    }
+    .curfew-toggle input { opacity: 0; width: 0; height: 0; }
+    .curfew-toggle .slider {
+      position: absolute; inset: 0; background: rgba(255,255,255,0.08);
+      border-radius: 11px; border: 1px solid rgba(255,255,255,0.15);
+      transition: all 0.3s;
+    }
+    .curfew-toggle .slider::before {
+      content: ''; position: absolute; width: 16px; height: 16px;
+      left: 2px; bottom: 2px; background: #666;
+      border-radius: 50%; transition: all 0.3s;
+    }
+    .curfew-toggle input:checked + .slider {
+      background: rgba(255,40,40,0.2); border-color: rgba(255,40,40,0.5);
+    }
+    .curfew-toggle input:checked + .slider::before {
+      transform: translateX(22px); background: #ff3030;
+      box-shadow: 0 0 8px rgba(255,40,40,0.5);
+    }
   </style>
 </head>
 <body>
@@ -1212,6 +1309,21 @@
   <div class="corner-deco corner-br"></div>
 
   <div id="login-panel" class="login-panel">
+    <div id="curfew-overlay">
+      <div class="curfew-icon">&#9888;</div>
+      <div class="curfew-title">CURFEW HOURS</div>
+      <div class="curfew-subtitle">no member login during</div>
+      <div class="curfew-schedule-box">
+        <div class="curfew-label">schedule</div>
+        <div class="curfew-time">
+          <span id="curfew-start-display">10:00 PM</span>
+          <span class="curfew-sep">&#8212;</span>
+          <span id="curfew-end-display">6:00 AM</span>
+        </div>
+      </div>
+      <div class="curfew-msg">system access restricted</div>
+      <div class="curfew-bar"></div>
+    </div>
     <div class="login-split-wrap">
     <div class="login-split-glow"></div>
     <div class="login-split-pulse"></div>
@@ -1368,6 +1480,26 @@
               <input type="number" id="admin-shutdown-time" placeholder="0" min="0" max="1440" />
             </div>
             <button class="btn-admin" onclick="saveShutdownTime()">Save</button>
+          </div>
+
+          <div class="admin-section">
+            <h3>&#9670; Curfew Hours</h3>
+            <div class="curfew-toggle-wrap">
+              <label class="curfew-toggle">
+                <input type="checkbox" id="admin-curfew-enabled" />
+                <span class="slider"></span>
+              </label>
+              <span style="font-family:'Share Tech Mono',monospace;font-size:11px;color:#e0e0e0;letter-spacing:1px">Enable Curfew</span>
+            </div>
+            <div class="form-group">
+              <label>// Start Time</label>
+              <input type="time" id="admin-curfew-start" value="22:00" style="color-scheme:dark" />
+            </div>
+            <div class="form-group">
+              <label>// End Time</label>
+              <input type="time" id="admin-curfew-end" value="06:00" style="color-scheme:dark" />
+            </div>
+            <button class="btn-admin" onclick="saveCurfewSettings()">Save Curfew</button>
           </div>
 
           <div class="admin-section">
@@ -1656,6 +1788,7 @@
       if (s.adSlideSeconds) adSlideMs = s.adSlideSeconds * 1000;
       renderAdCarousel(s.ads || []);
       updateShutdownConfig(s.autoShutdownSeconds || 0);
+      updateCurfewUI(s);
     }
 
     function applyLoginImage(imgInfo) {
@@ -2033,6 +2166,7 @@
     }
 
     async function doLogin() {
+      if (isClientWithinCurfew(appSettings)) { showError('Curfew hours active — login disabled'); return; }
       let username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value;
       if (!username || !password) { showError('Enter username and password'); return; }
@@ -2550,6 +2684,9 @@
         document.getElementById('admin-register-color-hex').value = rc;
         renderBypassList(resp.settings.fullscreenBypass || []);
         renderAdminAds(resp.settings.ads || []);
+        document.getElementById('admin-curfew-enabled').checked = !!resp.settings.curfewEnabled;
+        document.getElementById('admin-curfew-start').value = resp.settings.curfewStart || '22:00';
+        document.getElementById('admin-curfew-end').value = resp.settings.curfewEnd || '06:00';
       }
     }
 
@@ -2571,6 +2708,54 @@
       const resp = await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify({ autoShutdownSeconds: minutes * 60 }) }).then(r => r.json()).catch(() => ({ success: false }));
       if (resp.success) { showAdminMsg('admin-panel-msg', 'Saved', 'success'); applySettings(resp.settings); }
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+    }
+
+    async function saveCurfewSettings() {
+      const enabled = document.getElementById('admin-curfew-enabled').checked;
+      const start = document.getElementById('admin-curfew-start').value;
+      const end = document.getElementById('admin-curfew-end').value;
+      if (!start || !end) { showAdminMsg('admin-panel-msg', 'Set both start and end times', 'error'); return; }
+      const resp = await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify({ curfewEnabled: enabled, curfewStart: start, curfewEnd: end }) }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) { showAdminMsg('admin-panel-msg', 'Curfew settings saved', 'success'); applySettings(resp.settings); }
+      else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+    }
+
+    function formatCurfewTime(hhmm) {
+      const [h, m] = hhmm.split(':').map(Number);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
+      return h12 + ':' + String(m).padStart(2, '0') + ' ' + ampm;
+    }
+
+    function isClientWithinCurfew(s) {
+      if (!s || !s.curfewEnabled) return false;
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      const [sh, sm] = (s.curfewStart || '22:00').split(':').map(Number);
+      const [eh, em] = (s.curfewEnd || '06:00').split(':').map(Number);
+      const startMin = sh * 60 + sm;
+      const endMin = eh * 60 + em;
+      if (startMin <= endMin) return nowMin >= startMin && nowMin < endMin;
+      return nowMin >= startMin || nowMin < endMin;
+    }
+
+    let curfewCheckInterval = null;
+    function updateCurfewUI(s) {
+      const overlay = document.getElementById('curfew-overlay');
+      const splitWrap = document.querySelector('.login-split-wrap');
+      if (!overlay) return;
+      const inCurfew = isClientWithinCurfew(s);
+      overlay.classList.toggle('active', inCurfew);
+      if (splitWrap) splitWrap.style.display = inCurfew ? 'none' : '';
+      const adCarousel = document.querySelector('.ad-carousel');
+      if (adCarousel) adCarousel.style.display = inCurfew ? 'none' : '';
+      if (inCurfew) {
+        document.getElementById('curfew-start-display').textContent = formatCurfewTime(s.curfewStart || '22:00');
+        document.getElementById('curfew-end-display').textContent = formatCurfewTime(s.curfewEnd || '06:00');
+      }
+      if (!curfewCheckInterval) {
+        curfewCheckInterval = setInterval(() => { if (appSettings) updateCurfewUI(appSettings); }, 30000);
+      }
     }
 
     async function uploadBackground(input) {
@@ -3154,6 +3339,7 @@
     }
 
     async function doRegister() {
+      if (isClientWithinCurfew(appSettings)) { showRegError('Curfew hours active — registration disabled'); return; }
       const username = document.getElementById('reg-username').value.trim();
       const password = document.getElementById('reg-password').value;
       if (!username) { showRegError('Username required'); return; }

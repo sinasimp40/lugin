@@ -89,6 +89,9 @@ function getSettings() {
     ads: s.ads || [],
     adSlideSeconds: s.adSlideSeconds !== undefined ? s.adSlideSeconds : 5,
     fullscreenBypass: s.fullscreenBypass || ['valorant.exe', 'league of legends.exe', 'leagueclient.exe'],
+    curfewEnabled: !!s.curfewEnabled,
+    curfewStart: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.curfewStart) ? s.curfewStart : '22:00',
+    curfewEnd: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.curfewEnd) ? s.curfewEnd : '06:00',
   };
 }
 
@@ -105,7 +108,26 @@ function getPublicSettings() {
     ads: s.ads || [],
     adSlideSeconds: s.adSlideSeconds !== undefined ? s.adSlideSeconds : 5,
     fullscreenBypass: s.fullscreenBypass,
+    curfewEnabled: s.curfewEnabled,
+    curfewStart: s.curfewStart,
+    curfewEnd: s.curfewEnd,
   };
+}
+
+function isWithinCurfew() {
+  const s = getSettings();
+  if (!s.curfewEnabled) return false;
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const [sh, sm] = s.curfewStart.split(':').map(Number);
+  const [eh, em] = s.curfewEnd.split(':').map(Number);
+  const startMin = sh * 60 + sm;
+  const endMin = eh * 60 + em;
+  if (startMin <= endMin) {
+    return nowMin >= startMin && nowMin < endMin;
+  } else {
+    return nowMin >= startMin || nowMin < endMin;
+  }
 }
 
 function updateSettings(updates) {
@@ -124,6 +146,9 @@ function updateSettings(updates) {
         .filter(g => g.length > 0 && g.endsWith('.exe'));
     }
   }
+  if (updates.curfewEnabled !== undefined) s.curfewEnabled = !!updates.curfewEnabled;
+  if (updates.curfewStart !== undefined && /^([01]\d|2[0-3]):[0-5]\d$/.test(updates.curfewStart)) s.curfewStart = updates.curfewStart;
+  if (updates.curfewEnd !== undefined && /^([01]\d|2[0-3]):[0-5]\d$/.test(updates.curfewEnd)) s.curfewEnd = updates.curfewEnd;
   save(s);
   return getSettings();
 }
@@ -410,6 +435,7 @@ module.exports = {
   getSettings,
   getPublicSettings,
   updateSettings,
+  isWithinCurfew,
   saveBackgroundImage,
   removeBackgroundImage,
   getBackgroundImagePath,

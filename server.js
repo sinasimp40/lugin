@@ -196,6 +196,10 @@ app.get('/api/hotspot/login-data', async (req, res) => {
 });
 
 app.post('/api/hotspot/login', async (req, res) => {
+  if (settingsStore.isWithinCurfew()) {
+    const s = settingsStore.getSettings();
+    return res.json({ success: false, error: 'Curfew active', code: 'CURFEW_ACTIVE', curfew: { start: s.curfewStart, end: s.curfewEnd } });
+  }
   const { username, password } = req.body;
   if (!username || !password) return res.json({ success: false, error: 'Username and password required' });
 
@@ -435,6 +439,10 @@ app.post('/api/pisonet/check-member', async (req, res) => {
 });
 
 app.post('/api/pisonet/register', async (req, res) => {
+  if (settingsStore.isWithinCurfew()) {
+    const s = settingsStore.getSettings();
+    return res.json({ success: false, error: 'Curfew active', code: 'CURFEW_ACTIVE', curfew: { start: s.curfewStart, end: s.curfewEnd } });
+  }
   const { username, password, ip, mac } = req.body;
   if (!username) return res.json({ success: false, error: 'Username required' });
   try {

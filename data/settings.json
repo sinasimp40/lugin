@@ -30,5 +30,8 @@
     "filename": "registerimage.jpg",
     "mimeType": "image/jpeg",
     "size": 144922
-  }
+  },
+  "curfewEnabled": false,
+  "curfewStart": "22:00",
+  "curfewEnd": "06:00"
 }
