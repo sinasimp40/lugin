@@ -1537,6 +1537,16 @@
             <button class="btn-admin" onclick="changeAdminPassword()">Change Password</button>
           </div>
 
+          <div class="admin-section">
+            <h3>&#9670; Fullscreen Game Bypass</h3>
+            <p style="font-size:11px;color:#888;margin-bottom:8px">Games where session strip hides to avoid conflicts. Enter .exe names.</p>
+            <div id="admin-bypass-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="text" id="admin-bypass-input" placeholder="e.g. valorant.exe" style="flex:1" />
+              <button class="btn-admin" onclick="addBypassGame()">Add</button>
+            </div>
+          </div>
+
           <div class="admin-section full-width">
             <h3>&#9670; Panel Images (Login / Register)</h3>
             <div style="display:flex;gap:16px;margin-bottom:10px">
@@ -1583,16 +1593,6 @@
                 </div>
               </div>
               <button class="btn-admin" style="width:100%;margin-top:8px" onclick="saveThemeColors()">Save Colors</button>
-            </div>
-          </div>
-
-          <div class="admin-section full-width">
-            <h3>&#9670; Fullscreen Game Bypass</h3>
-            <p style="font-size:11px;color:#888;margin-bottom:8px">Games where session strip hides to avoid conflicts. Enter .exe names.</p>
-            <div id="admin-bypass-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <input type="text" id="admin-bypass-input" placeholder="e.g. valorant.exe" style="flex:1" />
-              <button class="btn-admin" onclick="addBypassGame()">Add</button>
             </div>
           </div>
 
