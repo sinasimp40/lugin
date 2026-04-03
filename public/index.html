@@ -82,6 +82,50 @@
         linear-gradient(var(--login-color-06, rgba(255,140,0,0.06)) 1px, transparent 1px),
         linear-gradient(90deg, var(--login-color-06, rgba(255,140,0,0.06)) 1px, transparent 1px);
       background-size: 40px 40px;
+      transition: background-image 0.4s;
+    }
+    .scanlines { transition: background 0.4s; }
+
+    body.register-bg .scanlines {
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, var(--reg-color-015, rgba(255,215,0,0.015)) 2px, var(--reg-color-015, rgba(255,215,0,0.015)) 4px);
+    }
+    body.register-bg .grid-bg {
+      background-image:
+        linear-gradient(var(--reg-color-06, rgba(255,215,0,0.06)) 1px, transparent 1px),
+        linear-gradient(90deg, var(--reg-color-06, rgba(255,215,0,0.06)) 1px, transparent 1px);
+    }
+    body.register-bg .ad-carousel {
+      border-color: var(--reg-color-25, rgba(255,215,0,0.25));
+      box-shadow: 0 0 20px var(--reg-color-06), inset 0 1px 0 var(--reg-color-07);
+    }
+    body.register-bg .ad-carousel::before {
+      background: linear-gradient(90deg, transparent, var(--reg-color-50), transparent);
+    }
+    body.register-bg .ad-carousel::after {
+      background: linear-gradient(90deg, transparent, var(--reg-color-30), transparent);
+    }
+    body.register-bg .ad-carousel-label {
+      color: var(--reg-color-50);
+    }
+    body.register-bg .ad-carousel-label::before {
+      background: linear-gradient(90deg, transparent, var(--reg-color-30));
+    }
+    body.register-bg .ad-carousel-label::after {
+      background: linear-gradient(90deg, var(--reg-color-30), transparent);
+    }
+    body.register-bg .ad-slide-content {
+      color: var(--reg-color, #ffd700);
+      text-shadow: 0 0 8px var(--reg-color-30), 0 1px 3px rgba(0,0,0,0.8);
+    }
+    body.register-bg .ad-dot {
+      background: var(--reg-color-20);
+    }
+    body.register-bg .ad-dot:hover {
+      background: var(--reg-color-50);
+    }
+    body.register-bg .ad-dot.active {
+      background: var(--reg-color);
+      box-shadow: 0 0 10px var(--reg-color-50);
     }
 
     .drag-region { -webkit-app-region: drag; height: 24px; width: 100%; position: fixed; top: 0; left: 0; z-index: 50; }
@@ -516,7 +560,7 @@
       display: block; font-family: 'Share Tech Mono', monospace;
       font-size: 11px; font-weight: 400; color: var(--neon-cyan);
       text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px;
-      text-shadow: 0 0 5px rgba(255,140,0,0.3);
+      text-shadow: 0 0 5px var(--login-color-30, rgba(255,140,0,0.3));
     }
     .form-group input {
       width: 100%; padding: 12px 14px;
@@ -529,13 +573,13 @@
     }
     .form-group input:focus {
       border-color: var(--neon-cyan);
-      box-shadow: 0 0 10px rgba(255,140,0,0.2), inset 0 0 10px rgba(255,140,0,0.05);
+      box-shadow: 0 0 10px var(--login-color-20, rgba(255,140,0,0.2)), inset 0 0 10px var(--login-color-05, rgba(255,140,0,0.05));
     }
     .form-group input::placeholder { color: #3a3a5a; }
 
     .btn-cyber {
       width: 100%; padding: 12px;
-      background: linear-gradient(135deg, rgba(255,140,0,0.15), rgba(255,69,0,0.1));
+      background: linear-gradient(135deg, var(--login-color-15, rgba(255,140,0,0.15)), var(--login-color-10, rgba(255,69,0,0.1)));
       border: 1px solid var(--neon-cyan);
       border-radius: 2px;
       color: var(--neon-cyan);
@@ -544,17 +588,17 @@
       letter-spacing: 3px; text-transform: uppercase;
       cursor: pointer; position: relative; overflow: hidden;
       transition: all 0.3s;
-      text-shadow: 0 0 10px rgba(255,140,0,0.5);
+      text-shadow: 0 0 10px var(--login-color-50, rgba(255,140,0,0.5));
     }
     .btn-cyber:hover {
-      background: linear-gradient(135deg, rgba(255,140,0,0.25), rgba(255,69,0,0.15));
-      box-shadow: 0 0 20px rgba(255,140,0,0.3), inset 0 0 20px rgba(255,140,0,0.05);
+      background: linear-gradient(135deg, var(--login-color-25, rgba(255,140,0,0.25)), var(--login-color-15, rgba(255,69,0,0.15)));
+      box-shadow: 0 0 20px var(--login-color-30, rgba(255,140,0,0.3)), inset 0 0 20px var(--login-color-05, rgba(255,140,0,0.05));
     }
     .btn-cyber:active { transform: scale(0.98); }
     .btn-cyber:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-cyber::after {
       content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-      background: linear-gradient(45deg, transparent, rgba(255,140,0,0.05), transparent);
+      background: linear-gradient(45deg, transparent, var(--login-color-05, rgba(255,140,0,0.05)), transparent);
       animation: btn-shine 3s linear infinite;
     }
     @keyframes btn-shine {
@@ -576,19 +620,19 @@
     .tab-btn.active {
       color: var(--neon-cyan);
       border-bottom-color: var(--neon-cyan);
-      background: rgba(255,140,0,0.05);
-      text-shadow: 0 0 8px rgba(255,140,0,0.4);
+      background: var(--login-color-05, rgba(255,140,0,0.05));
+      text-shadow: 0 0 8px var(--login-color-40, rgba(255,140,0,0.4));
     }
     .tab-btn:hover:not(.active) {
       color: var(--text);
-      background: rgba(255,140,0,0.03);
+      background: var(--login-color-03, rgba(255,140,0,0.03));
     }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
     .btn-register {
       width: 100%; padding: 12px;
-      background: linear-gradient(135deg, rgba(255,140,0,0.15), rgba(255,106,0,0.1));
+      background: linear-gradient(135deg, var(--login-color-15, rgba(255,140,0,0.15)), var(--login-color-10, rgba(255,106,0,0.1)));
       border: 1px solid var(--neon-green);
       border-radius: 2px;
       color: var(--neon-green);
@@ -597,16 +641,16 @@
       letter-spacing: 3px; text-transform: uppercase;
       cursor: pointer; position: relative; overflow: hidden;
       transition: all 0.3s;
-      text-shadow: 0 0 10px rgba(255,140,0,0.5);
+      text-shadow: 0 0 10px var(--login-color-50, rgba(255,140,0,0.5));
     }
     .btn-register:hover {
-      background: linear-gradient(135deg, rgba(255,140,0,0.25), rgba(255,106,0,0.15));
-      box-shadow: 0 0 20px rgba(255,140,0,0.3);
+      background: linear-gradient(135deg, var(--login-color-25, rgba(255,140,0,0.25)), var(--login-color-15, rgba(255,106,0,0.15)));
+      box-shadow: 0 0 20px var(--login-color-30, rgba(255,140,0,0.3));
     }
     .btn-register:disabled { opacity: 0.4; cursor: not-allowed; }
     .success-msg {
-      background: rgba(255,140,0,0.1); color: var(--neon-green);
-      border: 1px solid rgba(255,140,0,0.3);
+      background: var(--login-color-10, rgba(255,140,0,0.1)); color: var(--neon-green);
+      border: 1px solid var(--login-color-30, rgba(255,140,0,0.3));
       padding: 8px 12px; border-radius: 2px;
       font-family: 'Share Tech Mono', monospace;
       font-size: 12px; margin-bottom: 14px; display: none;
@@ -622,8 +666,8 @@
     .hotspot-status.offline { color: var(--neon-magenta); text-shadow: 0 0 8px var(--login-color-40, rgba(255,69,0,0.4)); }
 
     .error-msg {
-      background: rgba(255,69,0,0.1); color: var(--neon-magenta);
-      border: 1px solid rgba(255,69,0,0.3);
+      background: var(--login-color-10, rgba(255,69,0,0.1)); color: var(--neon-magenta);
+      border: 1px solid var(--login-color-30, rgba(255,69,0,0.3));
       padding: 8px 12px; border-radius: 2px;
       font-family: 'Share Tech Mono', monospace;
       font-size: 12px; margin-bottom: 14px; display: none;
@@ -3079,9 +3123,11 @@
       if (tab === 'register') {
         split.classList.add('register-theme');
         wrap.classList.add('register-theme');
+        document.body.classList.add('register-bg');
       } else {
         split.classList.remove('register-theme');
         wrap.classList.remove('register-theme');
+        document.body.classList.remove('register-bg');
       }
       showActiveTabImage();
       tabBusy = false;
