@@ -353,18 +353,18 @@
       align-items: stretch;
       border-radius: 3px;
       overflow: hidden;
-      border: 1px solid rgba(255,140,0,0.2);
+      border: 1px solid var(--login-color-20, rgba(255,140,0,0.2));
     }
     .pc-badge-tag {
       display: flex;
       align-items: center;
       gap: 6px;
       padding: 6px 12px;
-      background: rgba(255,140,0,0.08);
-      border-right: 1px solid rgba(255,140,0,0.2);
+      background: var(--login-color-07, rgba(255,140,0,0.08));
+      border-right: 1px solid var(--login-color-20, rgba(255,140,0,0.2));
       font-family: 'Share Tech Mono', monospace;
       font-size: 10px;
-      color: rgba(255,140,0,0.55);
+      color: var(--login-color-50, rgba(255,140,0,0.55));
       letter-spacing: 2px;
       text-transform: uppercase;
       white-space: nowrap;
@@ -372,8 +372,8 @@
     .pc-badge-tag-dot {
       width: 5px; height: 5px;
       border-radius: 50%;
-      background: #ff8c00;
-      box-shadow: 0 0 8px rgba(255,140,0,0.8);
+      background: var(--login-color, #ff8c00);
+      box-shadow: 0 0 8px var(--login-color-80, rgba(255,140,0,0.8));
       animation: pc-dot-blink 1.5s steps(2, start) infinite;
     }
     .pc-badge-num {
@@ -382,14 +382,14 @@
       justify-content: center;
       min-width: 48px;
       padding: 6px 14px;
-      background: rgba(255,140,0,0.03);
+      background: var(--login-color-03, rgba(255,140,0,0.03));
       font-family: 'Orbitron', monospace;
       font-size: 22px;
       font-weight: 900;
-      color: #ff8c00;
+      color: var(--login-color, #ff8c00);
       letter-spacing: 2px;
       line-height: 1;
-      text-shadow: 0 0 10px rgba(255,140,0,0.5), 0 0 25px rgba(255,140,0,0.2);
+      text-shadow: 0 0 10px var(--login-color-50, rgba(255,140,0,0.5)), 0 0 25px var(--login-color-20, rgba(255,140,0,0.2));
     }
     @keyframes pc-dot-blink {
       0%, 100% { opacity: 1; }
@@ -427,10 +427,10 @@
     }
     .login-right-placeholder-icon {
       width: 48px; height: 48px;
-      border: 2px dashed rgba(255,140,0,0.2);
+      border: 2px dashed var(--login-color-20, rgba(255,140,0,0.2));
       border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 20px; color: rgba(255,140,0,0.3);
+      font-size: 20px; color: var(--login-color-30, rgba(255,140,0,0.3));
     }
 
     @media (max-width: 700px) {
@@ -451,10 +451,10 @@
       white-space: pre-line;
       line-height: 1.3;
       text-shadow:
-        0 0 10px rgba(255,140,0,0.8),
-        0 0 20px rgba(255,140,0,0.5),
-        0 0 40px rgba(255,140,0,0.3),
-        0 0 80px rgba(255,140,0,0.15);
+        0 0 10px var(--login-color-80, rgba(255,140,0,0.8)),
+        0 0 20px var(--login-color-50, rgba(255,140,0,0.5)),
+        0 0 40px var(--login-color-30, rgba(255,140,0,0.3)),
+        0 0 80px var(--login-color-15, rgba(255,140,0,0.15));
     }
     .glitch-text::before, .glitch-text::after {
       content: attr(data-text);
@@ -495,7 +495,7 @@
     .cyber-line {
       width: 200px; height: 2px; margin: 0 auto 20px;
       background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--neon-magenta), transparent);
-      box-shadow: 0 0 10px rgba(255,140,0,0.5);
+      box-shadow: 0 0 10px var(--login-color-50, rgba(255,140,0,0.5));
       animation: line-pulse 3s ease-in-out infinite;
     }
     @keyframes line-pulse {
@@ -618,8 +618,8 @@
       font-family: 'Share Tech Mono', monospace;
       font-size: 11px; letter-spacing: 1px;
     }
-    .hotspot-status.online { color: var(--neon-green); text-shadow: 0 0 8px rgba(255,140,0,0.4); }
-    .hotspot-status.offline { color: var(--neon-magenta); text-shadow: 0 0 8px rgba(255,69,0,0.4); }
+    .hotspot-status.online { color: var(--neon-green); text-shadow: 0 0 8px var(--login-color-40, rgba(255,140,0,0.4)); }
+    .hotspot-status.offline { color: var(--neon-magenta); text-shadow: 0 0 8px var(--login-color-40, rgba(255,69,0,0.4)); }
 
     .error-msg {
       background: rgba(255,69,0,0.1); color: var(--neon-magenta);
@@ -633,7 +633,7 @@
     .shutdown-panel {
       margin-top: 20px; text-align: center; padding: 16px;
       background: rgba(15,15,15,0.6);
-      border: 1px solid rgba(255,69,0,0.2);
+      border: 1px solid var(--login-color-20, rgba(255,69,0,0.2));
       border-radius: 4px; position: relative;
       backdrop-filter: blur(10px);
       width: 100%; max-width: 340px;
@@ -646,20 +646,20 @@
     .shutdown-header {
       font-family: 'Share Tech Mono', monospace;
       font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
-      color: var(--neon-magenta); margin-bottom: 12px;
-      text-shadow: 0 0 5px rgba(255,69,0,0.4);
+      color: var(--neon-cyan); margin-bottom: 12px;
+      text-shadow: 0 0 5px var(--login-color-40, rgba(255,69,0,0.4));
     }
     .shutdown-time-display {
       font-family: 'Orbitron', monospace;
       font-size: 28px; font-weight: 800;
-      color: var(--neon-magenta); letter-spacing: 3px;
-      text-shadow: 0 0 15px rgba(255,69,0,0.6), 0 0 30px rgba(255,69,0,0.3);
+      color: var(--neon-cyan); letter-spacing: 3px;
+      text-shadow: 0 0 15px var(--login-color-60, rgba(255,69,0,0.6)), 0 0 30px var(--login-color-30, rgba(255,69,0,0.3));
       transition: color 0.3s, text-shadow 0.3s;
       margin-bottom: 10px;
     }
     .shutdown-time-display.caution {
-      color: #ff8c00;
-      text-shadow: 0 0 15px rgba(255,140,0,0.6), 0 0 30px rgba(255,140,0,0.3);
+      color: var(--login-color, #ff8c00);
+      text-shadow: 0 0 15px var(--login-color-60, rgba(255,140,0,0.6)), 0 0 30px var(--login-color-30, rgba(255,140,0,0.3));
     }
     .shutdown-time-display.warning {
       color: var(--neon-yellow);
@@ -676,18 +676,18 @@
     }
     .shutdown-bar-track {
       width: 100%; height: 6px; border-radius: 3px;
-      background: rgba(255,69,0,0.15); overflow: hidden;
+      background: var(--login-color-15, rgba(255,69,0,0.15)); overflow: hidden;
       margin-bottom: 10px; position: relative;
     }
     .shutdown-bar-fill {
       height: 100%; border-radius: 3px;
-      background: var(--neon-magenta);
-      box-shadow: 0 0 8px rgba(255,69,0,0.6), 0 0 16px rgba(255,69,0,0.3);
+      background: var(--login-color, #ff8c00);
+      box-shadow: 0 0 8px var(--login-color-60, rgba(255,69,0,0.6)), 0 0 16px var(--login-color-30, rgba(255,69,0,0.3));
       transition: width 1s linear, background 0.3s, box-shadow 0.3s;
     }
     .shutdown-bar-fill.caution {
-      background: #ff8c00;
-      box-shadow: 0 0 8px rgba(255,140,0,0.6), 0 0 16px rgba(255,140,0,0.3);
+      background: var(--login-color, #ff8c00);
+      box-shadow: 0 0 8px var(--login-color-60, rgba(255,140,0,0.6)), 0 0 16px var(--login-color-30, rgba(255,140,0,0.3));
     }
     .shutdown-bar-fill.warning {
       background: var(--neon-yellow);
@@ -728,7 +728,7 @@
     }
     .shutdown-label-bottom {
       font-family: 'Share Tech Mono', monospace;
-      font-size: 10px; color: rgba(255,69,0,0.5); letter-spacing: 2px;
+      font-size: 10px; color: var(--login-color-50, rgba(255,69,0,0.5)); letter-spacing: 2px;
       transition: color 0.3s;
     }
 
@@ -761,16 +761,16 @@
       font-family: 'Orbitron', sans-serif;
       font-size: 9px; font-weight: 700;
       letter-spacing: 3px; text-transform: uppercase;
-      color: rgba(255,140,0,0.5);
+      color: var(--login-color-50, rgba(255,140,0,0.5));
     }
     .ad-carousel-label::before, .ad-carousel-label::after {
       content: '';
       flex: 1; max-width: 60px;
       height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255,140,0,0.3));
+      background: linear-gradient(90deg, transparent, var(--login-color-30, rgba(255,140,0,0.3)));
     }
     .ad-carousel-label::after {
-      background: linear-gradient(90deg, rgba(255,140,0,0.3), transparent);
+      background: linear-gradient(90deg, var(--login-color-30, rgba(255,140,0,0.3)), transparent);
     }
     .ad-slides-wrap {
       overflow: hidden;
@@ -832,33 +832,33 @@
       width: 100%; text-align: center;
       font-family: 'Share Tech Mono', monospace;
       font-size: 14px;
-      color: #ff8c00;
+      color: var(--login-color, #ff8c00);
       line-height: 1.6;
-      text-shadow: 0 0 8px rgba(255,140,0,0.3), 0 1px 3px rgba(0,0,0,0.8);
+      text-shadow: 0 0 8px var(--login-color-30, rgba(255,140,0,0.3)), 0 1px 3px rgba(0,0,0,0.8);
       word-wrap: break-word;
     }
     .ad-slide-content b, .ad-slide-content strong { color: #fff; text-shadow: 0 0 6px rgba(255,255,255,0.3); }
-    .ad-slide-content i, .ad-slide-content em { color: #ffd700; }
-    .ad-slide-content a { color: #ff8c00; text-decoration: underline; text-underline-offset: 2px; }
+    .ad-slide-content i, .ad-slide-content em { color: var(--login-color, #ffd700); }
+    .ad-slide-content a { color: var(--login-color, #ff8c00); text-decoration: underline; text-underline-offset: 2px; }
     .ad-slide-content img { max-width: 100%; height: auto; border-radius: 3px; }
     .ad-slide-content ul, .ad-slide-content ol { margin: 4px 0; padding-left: 20px; text-align: left; }
-    .ad-slide-content blockquote { border-left: 2px solid #ff8c00; margin: 4px 0; padding: 4px 12px; font-style: italic; color: rgba(255,140,0,0.7); }
-    .ad-slide-content hr { border: none; border-top: 1px solid rgba(255,140,0,0.15); margin: 8px 0; }
+    .ad-slide-content blockquote { border-left: 2px solid var(--login-color, #ff8c00); margin: 4px 0; padding: 4px 12px; font-style: italic; color: var(--login-color-70, rgba(255,140,0,0.7)); }
+    .ad-slide-content hr { border: none; border-top: 1px solid var(--login-color-15, rgba(255,140,0,0.15)); margin: 8px 0; }
     .ad-dots {
       display: flex; justify-content: center; gap: 10px;
       padding: 10px 0 12px;
     }
     .ad-dot {
       width: 20px; height: 3px; border-radius: 2px;
-      background: rgba(255,140,0,0.2); cursor: pointer;
+      background: var(--login-color-20, rgba(255,140,0,0.2)); cursor: pointer;
       transition: all 0.4s ease;
       border: none;
     }
-    .ad-dot:hover { background: rgba(255,140,0,0.5); }
+    .ad-dot:hover { background: var(--login-color-50, rgba(255,140,0,0.5)); }
     .ad-dot.active {
-      background: #ff8c00;
+      background: var(--login-color, #ff8c00);
       width: 32px;
-      box-shadow: 0 0 10px rgba(255,140,0,0.5);
+      box-shadow: 0 0 10px var(--login-color-50, rgba(255,140,0,0.5));
     }
 
     .admin-ads-list { margin: 8px 0; }
