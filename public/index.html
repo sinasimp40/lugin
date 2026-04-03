@@ -1189,11 +1189,15 @@
     .hidden { display: none !important; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .corner-deco { position: fixed; z-index: 1; pointer-events: none; }
-    .corner-tl { top: 10px; left: 10px; width: 30px; height: 30px; border-top: 2px solid rgba(255,140,0,0.3); border-left: 2px solid rgba(255,140,0,0.3); }
-    .corner-tr { top: 10px; right: 10px; width: 30px; height: 30px; border-top: 2px solid rgba(255,140,0,0.3); border-right: 2px solid rgba(255,140,0,0.3); }
-    .corner-bl { bottom: 10px; left: 10px; width: 30px; height: 30px; border-bottom: 2px solid rgba(255,69,0,0.3); border-left: 2px solid rgba(255,69,0,0.3); }
-    .corner-br { bottom: 10px; right: 10px; width: 30px; height: 30px; border-bottom: 2px solid rgba(255,69,0,0.3); border-right: 2px solid rgba(255,69,0,0.3); }
+    .corner-deco { position: fixed; z-index: 1; pointer-events: none; transition: border-color 0.4s; }
+    .corner-tl { top: 10px; left: 10px; width: 30px; height: 30px; border-top: 2px solid var(--login-color-30, rgba(255,140,0,0.3)); border-left: 2px solid var(--login-color-30, rgba(255,140,0,0.3)); }
+    .corner-tr { top: 10px; right: 10px; width: 30px; height: 30px; border-top: 2px solid var(--login-color-30, rgba(255,140,0,0.3)); border-right: 2px solid var(--login-color-30, rgba(255,140,0,0.3)); }
+    .corner-bl { bottom: 10px; left: 10px; width: 30px; height: 30px; border-bottom: 2px solid var(--login-color-30, rgba(255,140,0,0.3)); border-left: 2px solid var(--login-color-30, rgba(255,140,0,0.3)); }
+    .corner-br { bottom: 10px; right: 10px; width: 30px; height: 30px; border-bottom: 2px solid var(--login-color-30, rgba(255,140,0,0.3)); border-right: 2px solid var(--login-color-30, rgba(255,140,0,0.3)); }
+    body.register-bg .corner-tl { border-top-color: var(--reg-color-30); border-left-color: var(--reg-color-30); }
+    body.register-bg .corner-tr { border-top-color: var(--reg-color-30); border-right-color: var(--reg-color-30); }
+    body.register-bg .corner-bl { border-bottom-color: var(--reg-color-30); border-left-color: var(--reg-color-30); }
+    body.register-bg .corner-br { border-bottom-color: var(--reg-color-30); border-right-color: var(--reg-color-30); }
   </style>
 </head>
 <body>
