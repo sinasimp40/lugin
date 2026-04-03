@@ -83,6 +83,8 @@ function getSettings() {
     backgroundImage: s.backgroundImage || null,
     loginImage: s.loginImage || null,
     registerImage: s.registerImage || null,
+    loginColor: s.loginColor || '#ff8c00',
+    registerColor: s.registerColor || '#ffd700',
     pisonetUnitName: s.pisonetUnitName || 'PC 1',
     ads: s.ads || [],
     adSlideSeconds: s.adSlideSeconds !== undefined ? s.adSlideSeconds : 5,
@@ -98,6 +100,8 @@ function getPublicSettings() {
     backgroundImage: s.backgroundImage,
     loginImage: s.loginImage,
     registerImage: s.registerImage,
+    loginColor: s.loginColor,
+    registerColor: s.registerColor,
     ads: s.ads || [],
     adSlideSeconds: s.adSlideSeconds !== undefined ? s.adSlideSeconds : 5,
     fullscreenBypass: s.fullscreenBypass,
@@ -111,6 +115,8 @@ function updateSettings(updates) {
   if (updates.backgroundImage !== undefined) s.backgroundImage = updates.backgroundImage;
   if (updates.pisonetUnitName !== undefined) s.pisonetUnitName = updates.pisonetUnitName;
   if (updates.adSlideSeconds !== undefined) s.adSlideSeconds = Math.max(1, Math.min(60, parseInt(updates.adSlideSeconds) || 5));
+  if (updates.loginColor !== undefined && /^#[0-9A-Fa-f]{6}$/.test(updates.loginColor)) s.loginColor = updates.loginColor;
+  if (updates.registerColor !== undefined && /^#[0-9A-Fa-f]{6}$/.test(updates.registerColor)) s.registerColor = updates.registerColor;
   if (updates.fullscreenBypass !== undefined) {
     if (Array.isArray(updates.fullscreenBypass)) {
       s.fullscreenBypass = updates.fullscreenBypass

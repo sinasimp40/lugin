@@ -36,6 +36,28 @@
       --dark-border: #2a2a2a;
       --text: #e0e0e0;
       --text-muted: #6a6a6a;
+      --login-color: #ff8c00; --login-color-dark: rgb(215,100,0); --login-color-darker: rgb(195,80,0);
+      --login-color-01: rgba(255,140,0,0.01); --login-color-015: rgba(255,140,0,0.015);
+      --login-color-03: rgba(255,140,0,0.03); --login-color-05: rgba(255,140,0,0.05);
+      --login-color-06: rgba(255,140,0,0.06); --login-color-07: rgba(255,140,0,0.07);
+      --login-color-10: rgba(255,140,0,0.10); --login-color-12: rgba(255,140,0,0.12);
+      --login-color-15: rgba(255,140,0,0.15); --login-color-20: rgba(255,140,0,0.20);
+      --login-color-25: rgba(255,140,0,0.25); --login-color-30: rgba(255,140,0,0.30);
+      --login-color-40: rgba(255,140,0,0.40); --login-color-50: rgba(255,140,0,0.50);
+      --login-color-60: rgba(255,140,0,0.60); --login-color-70: rgba(255,140,0,0.70);
+      --login-color-80: rgba(255,140,0,0.80); --login-color-90: rgba(255,140,0,0.90);
+      --login-color-dark-70: rgba(215,100,0,0.7); --login-color-dark-90: rgba(215,100,0,0.9);
+      --reg-color: #ffd700; --reg-color-dark: rgb(215,175,0); --reg-color-darker: rgb(195,155,0);
+      --reg-color-01: rgba(255,215,0,0.01); --reg-color-015: rgba(255,215,0,0.015);
+      --reg-color-03: rgba(255,215,0,0.03); --reg-color-05: rgba(255,215,0,0.05);
+      --reg-color-06: rgba(255,215,0,0.06); --reg-color-07: rgba(255,215,0,0.07);
+      --reg-color-10: rgba(255,215,0,0.10); --reg-color-12: rgba(255,215,0,0.12);
+      --reg-color-15: rgba(255,215,0,0.15); --reg-color-20: rgba(255,215,0,0.20);
+      --reg-color-25: rgba(255,215,0,0.25); --reg-color-30: rgba(255,215,0,0.30);
+      --reg-color-40: rgba(255,215,0,0.40); --reg-color-50: rgba(255,215,0,0.50);
+      --reg-color-60: rgba(255,215,0,0.60); --reg-color-70: rgba(255,215,0,0.70);
+      --reg-color-80: rgba(255,215,0,0.80); --reg-color-90: rgba(255,215,0,0.90);
+      --reg-color-dark-70: rgba(215,175,0,0.7); --reg-color-dark-90: rgba(215,175,0,0.9);
     }
     body { background: #0a0a0a; background: var(--dark-bg); color: var(--text); }
 
@@ -51,14 +73,14 @@
 
     .scanlines {
       position: fixed; inset: 0; z-index: 1; pointer-events: none;
-      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,140,0,0.015) 2px, rgba(255,140,0,0.015) 4px);
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, var(--login-color-015, rgba(255,140,0,0.015)) 2px, var(--login-color-015, rgba(255,140,0,0.015)) 4px);
     }
 
     .grid-bg {
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background-image:
-        linear-gradient(rgba(255,140,0,0.06) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,140,0,0.06) 1px, transparent 1px);
+        linear-gradient(var(--login-color-06, rgba(255,140,0,0.06)) 1px, transparent 1px),
+        linear-gradient(90deg, var(--login-color-06, rgba(255,140,0,0.06)) 1px, transparent 1px);
       background-size: 40px 40px;
     }
 
@@ -92,17 +114,17 @@
       background: conic-gradient(
         from 0deg,
         transparent 0deg,
-        rgba(255,140,0,0.8) 15deg,
-        rgba(255,80,0,0.9) 30deg,
+        var(--login-color-80, rgba(255,140,0,0.8)) 15deg,
+        var(--login-color-dark-90, rgba(255,80,0,0.9)) 30deg,
         transparent 50deg,
         transparent 90deg,
-        rgba(255,140,0,0.6) 110deg,
+        var(--login-color-60, rgba(255,140,0,0.6)) 110deg,
         transparent 130deg,
         transparent 180deg,
-        rgba(255,60,0,0.7) 200deg,
+        var(--login-color-dark-70, rgba(255,60,0,0.7)) 200deg,
         transparent 220deg,
         transparent 270deg,
-        rgba(255,140,0,0.5) 290deg,
+        var(--login-color-50, rgba(255,140,0,0.5)) 290deg,
         transparent 310deg,
         transparent 360deg
       );
@@ -125,9 +147,9 @@
       z-index: 0;
       animation: glow-pulse 1.8s ease-in-out infinite;
       box-shadow:
-        0 0 20px rgba(255,140,0,0.25),
-        0 0 40px rgba(255,140,0,0.12),
-        0 0 80px rgba(255,140,0,0.06);
+        0 0 20px var(--login-color-25, rgba(255,140,0,0.25)),
+        0 0 40px var(--login-color-12, rgba(255,140,0,0.12)),
+        0 0 80px var(--login-color-06, rgba(255,140,0,0.06));
     }
     @keyframes glow-pulse {
       0%, 100% { opacity: 0.4; }
@@ -139,7 +161,7 @@
       max-width: 95vw;
       min-height: 480px;
       background: rgba(12,12,20,0.75);
-      border: 1px solid rgba(255,140,0,0.12);
+      border: 1px solid var(--login-color-12, rgba(255,140,0,0.12));
       border-radius: 6px;
       overflow: hidden;
       backdrop-filter: blur(20px);
@@ -149,131 +171,116 @@
       transition: flex-direction 0s;
     }
     .login-split.register-theme {
-      --neon-cyan: #ffd700;
-      --neon-magenta: #ffaa00;
-      --neon-orange: #e6b800;
-      --neon-green: #ffd700;
-      border-color: rgba(255,215,0,0.15);
+      --neon-cyan: var(--reg-color);
+      --neon-magenta: var(--reg-color-dark);
+      --neon-orange: var(--reg-color-darker);
+      --neon-green: var(--reg-color);
+      border-color: var(--reg-color-15);
     }
     .login-split.register-theme .login-left {
       background:
-        radial-gradient(ellipse at 20% 0%, rgba(255,215,0,0.07) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 100%, rgba(255,170,0,0.05) 0%, transparent 50%),
+        radial-gradient(ellipse at 20% 0%, var(--reg-color-07) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 100%, var(--reg-color-05) 0%, transparent 50%),
         linear-gradient(180deg, rgba(15,15,25,0.95) 0%, rgba(8,8,14,0.98) 100%);
     }
     .login-split.register-theme .login-left::before {
       background-image:
-        linear-gradient(rgba(255,215,0,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,215,0,0.03) 1px, transparent 1px);
+        linear-gradient(var(--reg-color-03) 1px, transparent 1px),
+        linear-gradient(90deg, var(--reg-color-03) 1px, transparent 1px);
     }
     .login-split.register-theme .login-left::after {
       background: conic-gradient(from 0deg at 50% 50%,
-        transparent 0deg,
-        rgba(255,215,0,0.015) 60deg,
-        transparent 120deg,
-        rgba(255,170,0,0.01) 180deg,
-        transparent 240deg,
-        rgba(255,215,0,0.015) 300deg,
-        transparent 360deg
+        transparent 0deg, var(--reg-color-015) 60deg, transparent 120deg,
+        var(--reg-color-01) 180deg, transparent 240deg,
+        var(--reg-color-015) 300deg, transparent 360deg
       );
     }
     .login-split.register-theme .form-group label {
-      color: #ffd700;
-      text-shadow: 0 0 5px rgba(255,215,0,0.3);
+      color: var(--reg-color);
+      text-shadow: 0 0 5px var(--reg-color-30);
     }
     .login-split.register-theme .form-group input:focus {
-      border-color: #ffd700;
-      box-shadow: 0 0 10px rgba(255,215,0,0.2), inset 0 0 10px rgba(255,215,0,0.05);
+      border-color: var(--reg-color);
+      box-shadow: 0 0 10px var(--reg-color-20), inset 0 0 10px var(--reg-color-05);
     }
     .login-split.register-theme .tab-btn.active {
-      color: #ffd700;
-      border-bottom-color: #ffd700;
-      background: rgba(255,215,0,0.05);
-      text-shadow: 0 0 8px rgba(255,215,0,0.4);
+      color: var(--reg-color);
+      border-bottom-color: var(--reg-color);
+      background: var(--reg-color-05);
+      text-shadow: 0 0 8px var(--reg-color-40);
     }
     .login-split.register-theme .tab-btn:hover:not(.active) {
-      background: rgba(255,215,0,0.03);
+      background: var(--reg-color-03);
     }
     .login-split.register-theme .btn-register {
-      background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,170,0,0.1));
-      border-color: #ffd700;
-      color: #ffd700;
-      text-shadow: 0 0 10px rgba(255,215,0,0.5);
+      background: linear-gradient(135deg, var(--reg-color-15), var(--reg-color-10));
+      border-color: var(--reg-color);
+      color: var(--reg-color);
+      text-shadow: 0 0 10px var(--reg-color-50);
     }
     .login-split.register-theme .btn-register:hover {
-      background: linear-gradient(135deg, rgba(255,215,0,0.25), rgba(255,170,0,0.15));
-      box-shadow: 0 0 20px rgba(255,215,0,0.3), inset 0 0 20px rgba(255,215,0,0.05);
+      background: linear-gradient(135deg, var(--reg-color-25), var(--reg-color-15));
+      box-shadow: 0 0 20px var(--reg-color-30), inset 0 0 20px var(--reg-color-05);
     }
     .login-split.register-theme .btn-register::after {
-      background: linear-gradient(45deg, transparent, rgba(255,215,0,0.05), transparent);
+      background: linear-gradient(45deg, transparent, var(--reg-color-05), transparent);
     }
     .login-split.register-theme .login-right {
-      background: rgba(255,215,0,0.03);
+      background: var(--reg-color-03);
     }
     .login-split.register-theme .login-right::before {
-      background: radial-gradient(ellipse at center, rgba(255,215,0,0.06) 0%, transparent 70%);
+      background: radial-gradient(ellipse at center, var(--reg-color-06) 0%, transparent 70%);
     }
     .login-split.register-theme .glitch-text {
-      color: #ffd700;
+      color: var(--reg-color);
       text-shadow:
-        0 0 10px rgba(255,215,0,0.8),
-        0 0 20px rgba(255,215,0,0.5),
-        0 0 40px rgba(255,215,0,0.3),
-        0 0 80px rgba(255,215,0,0.15);
+        0 0 10px var(--reg-color-80), 0 0 20px var(--reg-color-50),
+        0 0 40px var(--reg-color-30), 0 0 80px var(--reg-color-15);
     }
     .login-split.register-theme .glitch-text::before {
-      color: #ffaa00;
-      text-shadow: -2px 0 #ffaa00;
+      color: var(--reg-color-dark);
+      text-shadow: -2px 0 var(--reg-color-dark);
     }
     .login-split.register-theme .glitch-text::after {
-      color: #ffd700;
-      text-shadow: 2px 0 #ffd700;
+      color: var(--reg-color);
+      text-shadow: 2px 0 var(--reg-color);
     }
     .login-split.register-theme .cyber-line {
-      background: linear-gradient(90deg, transparent, #ffd700, #ffaa00, transparent);
-      box-shadow: 0 0 10px rgba(255,215,0,0.5);
+      background: linear-gradient(90deg, transparent, var(--reg-color), var(--reg-color-dark), transparent);
+      box-shadow: 0 0 10px var(--reg-color-50);
     }
     .login-split.register-theme #shutdown-area {
-      border-color: rgba(255,215,0,0.15);
+      border-color: var(--reg-color-15);
     }
     .login-split.register-theme #shutdown-area .shutdown-label {
-      color: #ffd700;
+      color: var(--reg-color);
     }
     .login-split.register-theme #shutdown-area #shutdown-timer {
-      color: #ffd700;
-      text-shadow: 0 0 15px rgba(255,215,0,0.6), 0 0 30px rgba(255,215,0,0.3);
+      color: var(--reg-color);
+      text-shadow: 0 0 15px var(--reg-color-60), 0 0 30px var(--reg-color-30);
     }
     .login-split.register-theme #shutdown-area .shutdown-bar-fill {
-      background: linear-gradient(90deg, #ffd700, #ffaa00);
-      box-shadow: 0 0 12px rgba(255,215,0,0.5);
+      background: linear-gradient(90deg, var(--reg-color), var(--reg-color-dark));
+      box-shadow: 0 0 12px var(--reg-color-50);
     }
     .login-split.register-theme .hotspot-status {
-      color: rgba(255,215,0,0.5);
+      color: var(--reg-color-50);
     }
     .login-split-wrap.register-theme .login-split-glow::before {
       background: conic-gradient(
         from 0deg,
-        transparent 0deg,
-        rgba(255,215,0,0.8) 15deg,
-        rgba(255,170,0,0.9) 30deg,
-        transparent 50deg,
-        transparent 90deg,
-        rgba(255,215,0,0.6) 110deg,
-        transparent 130deg,
-        transparent 180deg,
-        rgba(255,170,0,0.7) 200deg,
-        transparent 220deg,
-        transparent 270deg,
-        rgba(255,215,0,0.5) 290deg,
-        transparent 310deg,
-        transparent 360deg
+        transparent 0deg, var(--reg-color-80) 15deg, var(--reg-color-dark-90) 30deg,
+        transparent 50deg, transparent 90deg, var(--reg-color-60) 110deg,
+        transparent 130deg, transparent 180deg, var(--reg-color-dark-70) 200deg,
+        transparent 220deg, transparent 270deg, var(--reg-color-50) 290deg,
+        transparent 310deg, transparent 360deg
       );
     }
     .login-split-wrap.register-theme .login-split-pulse {
       box-shadow:
-        0 0 20px rgba(255,215,0,0.25),
-        0 0 40px rgba(255,215,0,0.12),
-        0 0 80px rgba(255,215,0,0.06);
+        0 0 20px var(--reg-color-25),
+        0 0 40px var(--reg-color-12),
+        0 0 80px var(--reg-color-06);
     }
 
     .login-split::before {
@@ -294,16 +301,16 @@
       position: relative;
       overflow: hidden;
       background:
-        radial-gradient(ellipse at 20% 0%, rgba(255,140,0,0.07) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 100%, rgba(255,69,0,0.05) 0%, transparent 50%),
+        radial-gradient(ellipse at 20% 0%, var(--login-color-07, rgba(255,140,0,0.07)) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 100%, var(--login-color-05, rgba(255,69,0,0.05)) 0%, transparent 50%),
         linear-gradient(180deg, rgba(15,15,25,0.95) 0%, rgba(8,8,14,0.98) 100%);
     }
     .login-left::before {
       content: '';
       position: absolute; inset: 0;
       background-image:
-        linear-gradient(rgba(255,140,0,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,140,0,0.03) 1px, transparent 1px);
+        linear-gradient(var(--login-color-03, rgba(255,140,0,0.03)) 1px, transparent 1px),
+        linear-gradient(90deg, var(--login-color-03, rgba(255,140,0,0.03)) 1px, transparent 1px);
       background-size: 24px 24px;
       mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.6) 0%, transparent 80%);
       -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.6) 0%, transparent 80%);
@@ -316,11 +323,11 @@
       width: 200%; height: 200%;
       background: conic-gradient(from 0deg at 50% 50%,
         transparent 0deg,
-        rgba(255,140,0,0.015) 60deg,
+        var(--login-color-015, rgba(255,140,0,0.015)) 60deg,
         transparent 120deg,
-        rgba(255,69,0,0.01) 180deg,
+        var(--login-color-01, rgba(255,69,0,0.01)) 180deg,
         transparent 240deg,
-        rgba(255,140,0,0.015) 300deg,
+        var(--login-color-015, rgba(255,140,0,0.015)) 300deg,
         transparent 360deg
       );
       animation: login-bg-rotate 30s linear infinite;
@@ -392,14 +399,14 @@
     .login-right {
       width: 360px;
       display: flex; align-items: center; justify-content: center;
-      background: rgba(255,140,0,0.03);
+      background: var(--login-color-03, rgba(255,140,0,0.03));
       border-left: 1px solid var(--dark-border);
       position: relative;
       overflow: hidden;
     }
     .login-right::before {
       content: ''; position: absolute; inset: 0;
-      background: radial-gradient(ellipse at center, rgba(255,140,0,0.06) 0%, transparent 70%);
+      background: radial-gradient(ellipse at center, var(--login-color-06, rgba(255,140,0,0.06)) 0%, transparent 70%);
       pointer-events: none;
     }
     .login-right-img {
@@ -729,23 +736,23 @@
       width: 820px; max-width: 95vw; margin-top: 18px;
       position: relative;
       border-radius: 6px;
-      border: 1px solid rgba(255,140,0,0.25);
+      border: 1px solid var(--login-color-25, rgba(255,140,0,0.25));
       background: linear-gradient(135deg, rgba(10,10,10,0.92) 0%, rgba(18,14,8,0.95) 100%);
       backdrop-filter: blur(12px);
       box-shadow:
-        0 0 20px rgba(255,140,0,0.06),
-        inset 0 1px 0 rgba(255,140,0,0.08);
+        0 0 20px var(--login-color-06, rgba(255,140,0,0.06)),
+        inset 0 1px 0 var(--login-color-07, rgba(255,140,0,0.08));
       overflow: hidden;
     }
     .ad-carousel.empty { display: none; }
     .ad-carousel::before {
       content: ''; position: absolute; top: 0; left: 30px; right: 30px; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255,140,0,0.5), transparent);
+      background: linear-gradient(90deg, transparent, var(--login-color-50, rgba(255,140,0,0.5)), transparent);
       z-index: 2;
     }
     .ad-carousel::after {
       content: ''; position: absolute; bottom: 0; left: 30px; right: 30px; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255,140,0,0.3), transparent);
+      background: linear-gradient(90deg, transparent, var(--login-color-30, rgba(255,140,0,0.3)), transparent);
       z-index: 2;
     }
     .ad-carousel-label {
@@ -1366,6 +1373,27 @@
               </div>
             </div>
             <div class="file-size-hint">PNG, JPEG, GIF, WebP (max 50MB) &bull; <span style="color:#ffd700">If register is empty, login image is used for both</span></div>
+
+            <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--dark-border)">
+              <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(255,140,0,0.6);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;text-align:center">Theme Colors</div>
+              <div style="display:flex;gap:16px;align-items:center;justify-content:center">
+                <div style="flex:1;text-align:center">
+                  <label style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#888;display:block;margin-bottom:4px">Login Color</label>
+                  <div style="display:flex;align-items:center;gap:6px;justify-content:center">
+                    <input type="color" id="admin-login-color" value="#ff8c00" style="width:36px;height:28px;border:1px solid var(--dark-border);background:var(--dark-bg);cursor:pointer;border-radius:3px;padding:1px" />
+                    <input type="text" id="admin-login-color-hex" value="#ff8c00" maxlength="7" style="width:72px;font-family:'Share Tech Mono',monospace;font-size:11px;text-align:center;background:var(--dark-bg);border:1px solid var(--dark-border);color:#e0e0e0;border-radius:3px;padding:4px" />
+                  </div>
+                </div>
+                <div style="flex:1;text-align:center">
+                  <label style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#888;display:block;margin-bottom:4px">Register Color</label>
+                  <div style="display:flex;align-items:center;gap:6px;justify-content:center">
+                    <input type="color" id="admin-register-color" value="#ffd700" style="width:36px;height:28px;border:1px solid var(--dark-border);background:var(--dark-bg);cursor:pointer;border-radius:3px;padding:1px" />
+                    <input type="text" id="admin-register-color-hex" value="#ffd700" maxlength="7" style="width:72px;font-family:'Share Tech Mono',monospace;font-size:11px;text-align:center;background:var(--dark-bg);border:1px solid var(--dark-border);color:#e0e0e0;border-radius:3px;padding:4px" />
+                  </div>
+                </div>
+              </div>
+              <button class="btn-admin" style="width:100%;margin-top:8px" onclick="saveThemeColors()">Save Colors</button>
+            </div>
           </div>
 
           <div class="admin-section full-width">
@@ -1517,8 +1545,53 @@
       }, stepTime);
     }
 
+    function hexToRgb(hex) {
+      hex = hex.replace('#', '');
+      return {
+        r: parseInt(hex.substring(0,2), 16),
+        g: parseInt(hex.substring(2,4), 16),
+        b: parseInt(hex.substring(4,6), 16)
+      };
+    }
+    function darkenHex(hex, amt) {
+      const c = hexToRgb(hex);
+      return `rgb(${Math.max(0,c.r-amt)},${Math.max(0,c.g-amt)},${Math.max(0,c.b-amt)})`;
+    }
+    function setColorVars(prefix, hex) {
+      const c = hexToRgb(hex);
+      const r = c.r, g = c.g, b = c.b;
+      const dark = `${Math.max(0,r-40)},${Math.max(0,g-40)},${Math.max(0,b-40)}`;
+      const root = document.documentElement.style;
+      root.setProperty(`--${prefix}-color`, hex);
+      root.setProperty(`--${prefix}-color-dark`, `rgb(${dark})`);
+      root.setProperty(`--${prefix}-color-darker`, darkenHex(hex, 60));
+      const opacities = [
+        ['01',0.01],['015',0.015],['03',0.03],['05',0.05],['06',0.06],['07',0.07],
+        ['10',0.10],['12',0.12],['15',0.15],['20',0.20],['25',0.25],['30',0.30],
+        ['40',0.40],['50',0.50],['60',0.60],['70',0.70],['80',0.80],['90',0.90]
+      ];
+      for (const [key, a] of opacities) {
+        root.setProperty(`--${prefix}-color-${key}`, `rgba(${r},${g},${b},${a})`);
+      }
+      root.setProperty(`--${prefix}-color-dark-70`, `rgba(${dark},0.7)`);
+      root.setProperty(`--${prefix}-color-dark-90`, `rgba(${dark},0.9)`);
+    }
+
+    function applyThemeColors(loginColor, registerColor) {
+      loginColor = loginColor || '#ff8c00';
+      registerColor = registerColor || '#ffd700';
+      setColorVars('login', loginColor);
+      setColorVars('reg', registerColor);
+      const root = document.documentElement.style;
+      root.setProperty('--neon-cyan', loginColor);
+      root.setProperty('--neon-magenta', darkenHex(loginColor, 40));
+      root.setProperty('--neon-orange', darkenHex(loginColor, 20));
+      root.setProperty('--neon-green', loginColor);
+    }
+
     function applySettings(s) {
       appSettings = s;
+      applyThemeColors(s.loginColor, s.registerColor);
       const nameEl = document.getElementById('computer-name-el');
       if (s.computerName) {
         const upper = s.computerName.toUpperCase();
@@ -2421,6 +2494,12 @@
         updateLoginImgPreview(resp.settings.loginImage);
         updateRegisterImgPreview(resp.settings.registerImage);
         document.getElementById('admin-ad-interval').value = resp.settings.adSlideSeconds || 5;
+        const lc = resp.settings.loginColor || '#ff8c00';
+        const rc = resp.settings.registerColor || '#ffd700';
+        document.getElementById('admin-login-color').value = lc;
+        document.getElementById('admin-login-color-hex').value = lc;
+        document.getElementById('admin-register-color').value = rc;
+        document.getElementById('admin-register-color-hex').value = rc;
         renderBypassList(resp.settings.fullscreenBypass || []);
         renderAdminAds(resp.settings.ads || []);
       }
@@ -2540,6 +2619,25 @@
       if (newPw.length < 4) { showAdminMsg('admin-panel-msg', 'Minimum 4 characters', 'error'); return; }
       const resp = await fetch('/api/admin/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify({ oldPassword: oldPw, newPassword: newPw }) }).then(r => r.json()).catch(() => ({ success: false }));
       if (resp.success) { adminToken = resp.token; showAdminMsg('admin-panel-msg', 'Password changed', 'success'); document.getElementById('admin-old-pw').value = ''; document.getElementById('admin-new-pw').value = ''; }
+      else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+    }
+
+    (function setupColorPickers() {
+      const lPicker = document.getElementById('admin-login-color');
+      const lHex = document.getElementById('admin-login-color-hex');
+      const rPicker = document.getElementById('admin-register-color');
+      const rHex = document.getElementById('admin-register-color-hex');
+      lPicker.addEventListener('input', () => { lHex.value = lPicker.value; applyThemeColors(lPicker.value, rPicker.value); });
+      lHex.addEventListener('input', () => { if (/^#[0-9a-fA-F]{6}$/.test(lHex.value)) { lPicker.value = lHex.value; applyThemeColors(lHex.value, rPicker.value); } });
+      rPicker.addEventListener('input', () => { rHex.value = rPicker.value; applyThemeColors(lPicker.value, rPicker.value); });
+      rHex.addEventListener('input', () => { if (/^#[0-9a-fA-F]{6}$/.test(rHex.value)) { rPicker.value = rHex.value; applyThemeColors(lPicker.value, rHex.value); } });
+    })();
+
+    async function saveThemeColors() {
+      const loginColor = document.getElementById('admin-login-color').value;
+      const registerColor = document.getElementById('admin-register-color').value;
+      const resp = await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify({ loginColor, registerColor }) }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) { showAdminMsg('admin-panel-msg', 'Colors saved', 'success'); applySettings(resp.settings); }
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
     }
 
