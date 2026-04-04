@@ -34,6 +34,19 @@
   "curfewEnabled": false,
   "curfewStart": "22:00",
   "curfewEnd": "06:00",
-  "coinRates": [],
-  "pointRates": []
+  "coinRates": [
+    {
+      "id": "mnkxma4d68xj",
+      "pesos": 1,
+      "minutes": 5
+    }
+  ],
+  "pointRates": [
+    {
+      "id": "mnkxnnt5hmfv",
+      "pesos": 10,
+      "points": 1
+    }
+  ],
+  "_sig": "9a4c6fdce044fb19193290e97c84e9d15abf95e18d4db54d01cbb6999e56345b"
 }

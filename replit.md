@@ -100,6 +100,8 @@ When `isLogin: true` is detected → auto-shows the session (auto-connect).
 - Point calculation: for each log amount, tries all point rates and picks the one yielding the highest points (best match wins)
 - Adding/removing point rates recalculates ALL historical log points
 - Delete individual logs with automatic member point recalculation
+- **Delete All Logs** button (double confirmation) to clear all logs and free storage
+- **Data integrity protection**: HMAC-SHA256 signatures on both `settings.json` and `coin-logs.json` — if anyone manually edits the files, the app detects tampering and resets the data
 - Filtering: by username search, date range (from/to)
 - Summary cards: total earnings, total points, transaction count
 - Member points leaderboard showing accumulated points per member
@@ -120,6 +122,7 @@ When `isLogin: true` is detected → auto-shows the session (auto-connect).
 - `POST /api/admin/stop-app` — Stop the application (requires token)
 - `GET /api/admin/coin-logs` — Get coin insertion logs with optional filters: username, from, to; returns coinRates[], pointRates[], memberPoints (requires token)
 - `DELETE /api/admin/coin-logs/:id` — Delete a specific coin log and recalculate member points (requires token)
+- `DELETE /api/admin/coin-logs` — Clear all coin logs and member points (requires token)
 - `POST /api/admin/coin-rates` — Add a coin rate entry {pesos, minutes} (requires token)
 - `DELETE /api/admin/coin-rates/:id` — Remove a coin rate entry (requires token)
 - `POST /api/admin/point-rates` — Add a point rate entry {pesos, points}; recalculates all log points (requires token)

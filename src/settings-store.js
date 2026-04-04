@@ -6,6 +6,8 @@ let dataDir = path.join(__dirname, '..', 'data');
 let settingsPath = path.join(dataDir, 'settings.json');
 let uploadsDir = path.join(dataDir, 'uploads');
 
+const HMAC_KEY = 'denfi-settings-integrity-v1';
+
 function setDataDir(dir) {
   dataDir = dir;
   settingsPath = path.join(dataDir, 'settings.json');
@@ -18,10 +20,28 @@ function ensureDirs() {
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+function computeHmac(data) {
+  const copy = { ...data };
+  delete copy._sig;
+  return crypto.createHmac('sha256', HMAC_KEY).update(JSON.stringify(copy)).digest('hex');
+}
+
 function load() {
   ensureDirs();
   try {
-    return JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    const raw = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    if (raw._sig) {
+      const expected = computeHmac(raw);
+      if (raw._sig !== expected) {
+        console.log('[Settings] WARNING: Data integrity check failed — file may have been tampered with.');
+        console.log('[Settings] Admin password and settings have been reset for security.');
+        const fresh = {};
+        fresh._sig = computeHmac(fresh);
+        save(fresh);
+        return fresh;
+      }
+    }
+    return raw;
   } catch (e) {
     return {};
   }
@@ -29,6 +49,7 @@ function load() {
 
 function save(data) {
   ensureDirs();
+  data._sig = computeHmac(data);
   const tmp = settingsPath + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
   fs.renameSync(tmp, settingsPath);

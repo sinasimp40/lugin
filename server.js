@@ -1002,6 +1002,11 @@ app.delete('/api/admin/coin-logs/:id', verifyToken, (req, res) => {
   res.json({ success: true });
 });
 
+app.delete('/api/admin/coin-logs', verifyToken, (req, res) => {
+  coinLogs.clearAllLogs();
+  res.json({ success: true });
+});
+
 app.post('/api/admin/coin-rates', verifyToken, (req, res) => {
   const { pesos, minutes } = req.body;
   const p = parseInt(pesos);

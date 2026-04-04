@@ -1536,6 +1536,7 @@
           </div>
           <button class="btn-admin" onclick="loadCoinLogs()" style="height:34px;margin-bottom:0">Filter</button>
           <button class="btn-admin" onclick="clearCoinLogFilters()" style="height:34px;margin-bottom:0">Clear</button>
+          <button onclick="clearAllCoinLogs()" style="height:34px;margin-bottom:0;margin-left:auto;background:rgba(255,40,40,0.12);border:1px solid rgba(255,40,40,0.3);color:#ff4444;font-family:'Orbitron',monospace;font-size:10px;padding:0 14px;border-radius:4px;cursor:pointer;letter-spacing:1px">DELETE ALL LOGS</button>
         </div>
 
         <div id="coin-logs-summary" style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap"></div>
@@ -2954,6 +2955,26 @@
         }
       } catch (e) {
         showCoinMsg('Failed to remove ' + label, 'error');
+      }
+    }
+
+    async function clearAllCoinLogs() {
+      if (!confirm('DELETE ALL COIN LOGS?\n\nThis will permanently erase all coin insertion logs and member points.\n\nThis action cannot be undone.')) return;
+      if (!confirm('Are you absolutely sure? All log data will be lost forever.')) return;
+      try {
+        const resp = await fetch('/api/admin/coin-logs', {
+          method: 'DELETE',
+          headers: { 'x-admin-token': coinLogsToken }
+        });
+        const data = await resp.json();
+        if (data.success) {
+          showCoinMsg('All coin logs deleted successfully', 'success');
+          loadCoinLogs();
+        } else {
+          showCoinMsg('Failed to delete logs', 'error');
+        }
+      } catch (e) {
+        showCoinMsg('Failed to delete logs', 'error');
       }
     }
 

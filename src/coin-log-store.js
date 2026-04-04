@@ -1,8 +1,11 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 let dataDir = path.join(__dirname, '..', 'data');
 let logsPath = path.join(dataDir, 'coin-logs.json');
+
+const HMAC_KEY = 'denfi-coinlog-integrity-v1';
 
 function setDataDir(dir) {
   dataDir = dir;
@@ -14,10 +17,26 @@ function ensureDir() {
   if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 }
 
+function computeHmac(data) {
+  const payload = JSON.stringify({ logs: data.logs || [], memberPoints: data.memberPoints || {} });
+  return crypto.createHmac('sha256', HMAC_KEY).update(payload).digest('hex');
+}
+
 function load() {
   ensureDir();
   try {
-    return JSON.parse(fs.readFileSync(logsPath, 'utf8'));
+    const raw = JSON.parse(fs.readFileSync(logsPath, 'utf8'));
+    if (raw._sig) {
+      const expected = computeHmac(raw);
+      if (raw._sig !== expected) {
+        console.log('[CoinLog] WARNING: Data integrity check failed — file may have been tampered with. Resetting.');
+        const fresh = { logs: [], memberPoints: {}, _sig: '' };
+        fresh._sig = computeHmac(fresh);
+        save(fresh);
+        return fresh;
+      }
+    }
+    return raw;
   } catch (e) {
     return { logs: [], memberPoints: {} };
   }
@@ -25,6 +44,7 @@ function load() {
 
 function save(data) {
   ensureDir();
+  data._sig = computeHmac(data);
   const tmp = logsPath + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
   fs.renameSync(tmp, logsPath);
@@ -81,6 +101,12 @@ function deleteLog(logId) {
   return true;
 }
 
+function clearAllLogs() {
+  const data = { logs: [], memberPoints: {} };
+  save(data);
+  return true;
+}
+
 function recalcPoints(data) {
   data.memberPoints = {};
   (data.logs || []).forEach(l => {
@@ -132,4 +158,4 @@ function getMemberPoints(username) {
   return (data.memberPoints || {})[username] || 0;
 }
 
-module.exports = { setDataDir, appendLog, deleteLog, recalcAllPoints, getLogs, getMemberPoints };
+module.exports = { setDataDir, appendLog, deleteLog, clearAllLogs, recalcAllPoints, getLogs, getMemberPoints };
