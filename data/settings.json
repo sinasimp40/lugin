@@ -10,9 +10,9 @@
     }
   ],
   "backgroundImage": {
-    "filename": "background.png",
-    "mimeType": "image/png",
-    "size": 70
+    "filename": "background.jpeg",
+    "mimeType": "image/jpeg",
+    "size": 5417827
   },
   "fullscreenBypass": [
     "valorant.exe",
