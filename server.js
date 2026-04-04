@@ -605,13 +605,14 @@ app.post('/api/pisonet/done', async (req, res) => {
     const session = activeCoinSessions.get(key);
     if (session && session.username && session.totalCoin > 0) {
       try {
+        const s = settings.getSettings();
         const log = coinLogs.appendLog({
           username: session.username,
           amount: session.totalCoin,
           timeAdded: session.timeAdded,
           ip: session.ip,
           mac: session.mac
-        });
+        }, s.pesosPerPoint);
         console.log('[CoinLog] Recorded:', session.username, 'amount:', session.totalCoin, 'points:', log.points);
       } catch (e) {
         console.log('[CoinLog] Error saving log:', e.message);
@@ -977,6 +978,7 @@ app.post('/api/admin/stop-app', verifyToken, (req, res) => {
 app.get('/api/admin/coin-logs', verifyToken, (req, res) => {
   const { username, from, to } = req.query;
   const result = coinLogs.getLogs({ username, from, to });
+  const s = settings.getSettings();
   const hasFilters = username || from || to;
   let filteredPoints = result.memberPoints;
   if (hasFilters) {
@@ -985,7 +987,38 @@ app.get('/api/admin/coin-logs', verifyToken, (req, res) => {
       if (l.username) filteredPoints[l.username] = (filteredPoints[l.username] || 0) + (l.points || 0);
     });
   }
-  res.json({ success: true, logs: result.logs, memberPoints: filteredPoints });
+  res.json({
+    success: true,
+    logs: result.logs,
+    memberPoints: filteredPoints,
+    coinRate: s.coinRate,
+    pesosPerPoint: s.pesosPerPoint
+  });
+});
+
+app.delete('/api/admin/coin-logs/:id', verifyToken, (req, res) => {
+  const deleted = coinLogs.deleteLog(req.params.id);
+  if (!deleted) return res.status(404).json({ success: false, error: 'Log not found' });
+  res.json({ success: true });
+});
+
+app.post('/api/admin/coin-rate', verifyToken, (req, res) => {
+  const { coinRate, pesosPerPoint } = req.body;
+  const updates = {};
+  if (coinRate !== undefined && typeof coinRate === 'number' && coinRate > 0) {
+    updates.coinRate = coinRate;
+  }
+  if (pesosPerPoint !== undefined && typeof pesosPerPoint === 'number' && pesosPerPoint > 0) {
+    updates.pesosPerPoint = pesosPerPoint;
+  }
+  if (Object.keys(updates).length === 0) {
+    return res.json({ success: false, error: 'No valid values' });
+  }
+  const resp = settings.updateSettings(updates);
+  if (updates.pesosPerPoint) {
+    coinLogs.recalcAllPoints(updates.pesosPerPoint);
+  }
+  res.json({ success: true });
 });
 
 function broadcastSettings() {

@@ -33,5 +33,7 @@
   },
   "curfewEnabled": false,
   "curfewStart": "22:00",
-  "curfewEnd": "06:00"
+  "curfewEnd": "06:00",
+  "coinRate": 5,
+  "pesosPerPoint": 10
 }

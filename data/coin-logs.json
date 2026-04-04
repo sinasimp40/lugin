@@ -12,17 +12,6 @@
       "mac": "AA:BB:CC:DD:EE:FF"
     },
     {
-      "id": "mnkwumgsrlvv",
-      "username": "mem-johndoe",
-      "amount": 10,
-      "timeAdded": "50m 0s",
-      "points": 1,
-      "timestamp": 1775342103868,
-      "date": "2026-04-04T22:35:03.868Z",
-      "ip": "10.0.0.101",
-      "mac": "AA:BB:CC:DD:EE:01"
-    },
-    {
       "id": "mnkwumgsw019",
       "username": "mem-raprap",
       "amount": 100,
@@ -32,6 +21,17 @@
       "date": "2026-04-04T22:35:03.868Z",
       "ip": "10.0.0.100",
       "mac": "AA:BB:CC:DD:EE:FF"
+    },
+    {
+      "id": "mnkx0wsu5gda",
+      "username": "mem-johndoe",
+      "amount": 10,
+      "timeAdded": "50m 0s",
+      "points": 1,
+      "timestamp": 1775342397198,
+      "date": "2026-04-04T22:39:57.198Z",
+      "ip": "10.0.0.101",
+      "mac": "AA:BB:CC:DD:EE:01"
     }
   ],
   "memberPoints": {

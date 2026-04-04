@@ -30,14 +30,20 @@ function save(data) {
   fs.renameSync(tmp, logsPath);
 }
 
-function appendLog(entry) {
+function calcPoints(amount, pesosPerPoint) {
+  const rate = pesosPerPoint || 10;
+  return Math.floor((amount || 0) / rate);
+}
+
+function appendLog(entry, pesosPerPoint) {
   const data = load();
+  const pts = calcPoints(entry.amount, pesosPerPoint);
   const log = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     username: entry.username || '',
     amount: entry.amount || 0,
     timeAdded: entry.timeAdded || '',
-    points: Math.floor((entry.amount || 0) / 10),
+    points: pts,
     timestamp: Date.now(),
     date: new Date().toISOString(),
     ip: entry.ip || '',
@@ -53,6 +59,36 @@ function appendLog(entry) {
 
   save(data);
   return log;
+}
+
+function deleteLog(logId) {
+  const data = load();
+  const idx = (data.logs || []).findIndex(l => l.id === logId);
+  if (idx === -1) return false;
+
+  data.logs.splice(idx, 1);
+  recalcPoints(data);
+  save(data);
+  return true;
+}
+
+function recalcPoints(data) {
+  data.memberPoints = {};
+  (data.logs || []).forEach(l => {
+    if (l.username) {
+      data.memberPoints[l.username] = (data.memberPoints[l.username] || 0) + (l.points || 0);
+    }
+  });
+}
+
+function recalcAllPoints(pesosPerPoint) {
+  const data = load();
+  (data.logs || []).forEach(l => {
+    l.points = calcPoints(l.amount, pesosPerPoint);
+  });
+  recalcPoints(data);
+  save(data);
+  return data;
 }
 
 function getLogs(filters) {
@@ -87,4 +123,4 @@ function getMemberPoints(username) {
   return (data.memberPoints || {})[username] || 0;
 }
 
-module.exports = { setDataDir, appendLog, getLogs, getMemberPoints };
+module.exports = { setDataDir, appendLog, deleteLog, recalcAllPoints, getLogs, getMemberPoints };
