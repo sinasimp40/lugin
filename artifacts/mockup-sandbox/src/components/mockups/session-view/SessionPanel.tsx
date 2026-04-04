@@ -4,7 +4,7 @@ const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
 
   .panel-root {
-    width: 260px; height: 80px;
+    width: 300px; height: 80px;
   }
 
   .panel-compact {
@@ -38,10 +38,10 @@ const styles = `
 
   .panel-pts {
     font-family: 'Orbitron', monospace;
-    font-size: 10px; font-weight: 700;
+    font-size: 12px; font-weight: 900;
     color: #ffd740;
     letter-spacing: 0.5px;
-    text-shadow: 0 0 6px rgba(255,215,64,0.5), 0 0 12px rgba(255,215,64,0.2);
+    text-shadow: 0 0 8px rgba(255,215,64,0.6), 0 0 16px rgba(255,215,64,0.3);
     white-space: nowrap;
   }
 

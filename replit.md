@@ -105,7 +105,8 @@ When `isLogin: true` is detected → auto-shows the session (auto-connect).
 - Filtering: by username search, date range (from/to)
 - Summary cards: total earnings, total points, transaction count
 - Member points leaderboard showing accumulated points per member
-- **Session points display**: member points shown in both session views (session.html compact strip + index.html session panel) via WebSocket and `/api/hotspot/status` enrichment; gold star badge with decimal formatting; auto-clears on logout or non-member sessions
+- **Session points display**: member points shown in both session views (session.html compact strip 300x50 + index.html session panel 300x80) via WebSocket and `/api/hotspot/status` enrichment; points on right side with bold 13px Orbitron font + "POINTS" sub-label; auto-clears on logout or non-member sessions
+- **Delete member**: each member in the Points Summary leaderboard has an ✕ button; double-confirmation prompt; deletes ALL logs for that member and recalculates points
 - **Data flow**: Server tracks active coin sessions via `activeCoinSessions` map; `/api/pisonet/avail` starts tracking, `/api/vendo/check-coin` updates coin amounts, `/api/pisonet/done` finalizes and persists the log
 - **Storage**: `data/coin-logs.json` (atomic writes, same pattern as settings-store)
 - **Module**: `src/coin-log-store.js` — appendLog, getLogs (with filters + optional pointRates for auto-sync), getMemberPoints (with optional pointRates), deleteLog, recalcAllPoints, ensurePointsSync

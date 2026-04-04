@@ -1007,6 +1007,13 @@ app.delete('/api/admin/coin-logs/:id', verifyToken, (req, res) => {
   res.json({ success: true });
 });
 
+app.delete('/api/admin/coin-logs/member/:username', verifyToken, (req, res) => {
+  const username = decodeURIComponent(req.params.username);
+  const deleted = coinLogs.deleteMemberLogs(username);
+  if (!deleted) return res.status(404).json({ success: false, error: 'No logs found for member' });
+  res.json({ success: true });
+});
+
 app.delete('/api/admin/coin-logs', verifyToken, (req, res) => {
   coinLogs.clearAllLogs();
   res.json({ success: true });

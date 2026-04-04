@@ -178,4 +178,14 @@ function getMemberPoints(username, pointRates) {
   return (data.memberPoints || {})[username] || 0;
 }
 
-module.exports = { setDataDir, appendLog, deleteLog, clearAllLogs, recalcAllPoints, ensurePointsSync, getLogs, getMemberPoints };
+function deleteMemberLogs(username) {
+  const data = load();
+  const before = (data.logs || []).length;
+  data.logs = (data.logs || []).filter(l => l.username !== username);
+  if (data.logs.length === before) return false;
+  recalcPoints(data);
+  save(data);
+  return true;
+}
+
+module.exports = { setDataDir, appendLog, deleteLog, deleteMemberLogs, clearAllLogs, recalcAllPoints, ensurePointsSync, getLogs, getMemberPoints };

@@ -4,7 +4,7 @@ const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
 
   .strip-root {
-    width: 260px; height: 50px;
+    width: 300px; height: 50px;
     display: flex; align-items: center;
     padding: 0 12px;
     background: linear-gradient(180deg, #0d0d0d 0%, #080808 100%);
@@ -45,6 +45,16 @@ const styles = `
   }
   @keyframes sweep-anim { 0% { left: -40%; } 100% { left: 140%; } }
 
+  .bg-particles {
+    position: absolute; inset: 0; pointer-events: none; z-index: 0;
+    background: radial-gradient(1px 1px at 20% 30%, rgba(255,140,0,0.3), transparent),
+                radial-gradient(1px 1px at 60% 70%, rgba(255,140,0,0.2), transparent),
+                radial-gradient(1px 1px at 80% 20%, rgba(255,140,0,0.25), transparent),
+                radial-gradient(1px 1px at 40% 80%, rgba(255,140,0,0.15), transparent),
+                radial-gradient(1px 1px at 10% 60%, rgba(255,140,0,0.2), transparent),
+                radial-gradient(1px 1px at 90% 50%, rgba(255,140,0,0.15), transparent);
+  }
+
   .left-sec {
     display: flex; flex-direction: column; gap: 1px;
     flex: 1; min-width: 0;
@@ -84,21 +94,23 @@ const styles = `
     text-shadow: 0 0 4px rgba(255,140,0,0.2);
   }
 
-  .pts-badge {
-    font-family: 'Orbitron', monospace;
-    font-size: 9px; font-weight: 700;
-    color: #ffd740;
-    letter-spacing: 0.5px;
-    text-shadow: 0 0 6px rgba(255,215,64,0.5), 0 0 12px rgba(255,215,64,0.2);
-    white-space: nowrap;
-    margin-left: 2px;
-  }
-
   .right-sec {
     flex-shrink: 0;
-    margin-left: 6px;
+    margin-left: 8px;
+    display: flex; align-items: center; gap: 8px;
     position: relative; z-index: 3;
   }
+
+  .pts-badge {
+    font-family: 'Orbitron', monospace;
+    display: flex; flex-direction: column; align-items: flex-end;
+    text-align: right; line-height: 1;
+    color: #ffd740;
+    text-shadow: 0 0 8px rgba(255,215,64,0.6), 0 0 16px rgba(255,215,64,0.3);
+    white-space: nowrap;
+  }
+  .pts-badge .pts-val { font-size: 13px; font-weight: 900; }
+  .pts-badge .pts-lbl { font-size: 6px; font-weight: 700; letter-spacing: 2px; color: rgba(255,215,64,0.6); margin-top: 1px; }
 
   .logout-btn {
     background: transparent;
@@ -116,6 +128,7 @@ export function SessionWithPoints() {
     <div style={{ background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
       <style>{styles}</style>
       <div className="strip-root">
+        <div className="bg-particles" />
         <div className="scanline-bg" />
         <div className="sweep-bg" />
         <div className="neon-line-l" />
@@ -127,10 +140,13 @@ export function SessionWithPoints() {
           <div className="user-row">
             <div className="status-dot" />
             <div className="user-text">mem-raprap</div>
-            <div className="pts-badge">{'\u2605'} 12.50 pts</div>
           </div>
         </div>
         <div className="right-sec">
+          <div className="pts-badge">
+            <span className="pts-val">{'\u2605'} 12.50</span>
+            <span className="pts-lbl">POINTS</span>
+          </div>
           <button className="logout-btn">LOGOUT</button>
         </div>
       </div>

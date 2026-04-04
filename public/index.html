@@ -991,7 +991,7 @@
     .ad-content-editor ul, .ad-content-editor ol { margin: 4px 0; padding-left: 20px; }
     .ad-content-editor hr { border: none; border-top: 1px solid var(--dark-border); margin: 8px 0; }
 
-    .session-panel { display: none; position: fixed; right: 10px; bottom: 10px; width: 260px; height: 80px; z-index: 99; }
+    .session-panel { display: none; position: fixed; right: 10px; bottom: 10px; width: 300px; height: 80px; z-index: 99; }
     .session-panel.active { display: block; }
     .session-compact {
       padding: 10px 14px; width: 100%; height: 100%;
@@ -1020,10 +1020,10 @@
     }
     .session-bottom .session-points {
       font-family: 'Orbitron', monospace;
-      font-size: 10px; font-weight: 700;
+      font-size: 12px; font-weight: 900;
       color: #ffd740;
       letter-spacing: 0.5px;
-      text-shadow: 0 0 6px rgba(255,215,64,0.5), 0 0 12px rgba(255,215,64,0.2);
+      text-shadow: 0 0 8px rgba(255,215,64,0.6), 0 0 16px rgba(255,215,64,0.3);
       white-space: nowrap;
       display: none;
     }
@@ -3025,6 +3025,23 @@
       }
     }
 
+    async function deleteMemberLogs(username) {
+      if (!confirm('Delete ALL logs for ' + username + '?\nThis will remove all their transaction history and points.\n\nThis cannot be undone!')) return;
+      if (!confirm('Are you really sure? All logs and points for "' + username + '" will be permanently deleted.')) return;
+      const resp = await fetch('/api/admin/coin-logs/member/' + encodeURIComponent(username), {
+        method: 'DELETE',
+        headers: { 'x-admin-token': coinLogsToken }
+      }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) {
+        loadCoinLogs();
+      } else {
+        const msg = document.getElementById('coin-logs-msg');
+        msg.textContent = resp.error || 'Failed to delete member logs';
+        msg.className = 'admin-msg error';
+        setTimeout(() => { msg.textContent = ''; msg.className = 'admin-msg'; }, 3000);
+      }
+    }
+
     function renderCoinLogs(logs, memberPoints) {
       const tbody = document.getElementById('coin-logs-tbody');
       const totalEl = document.getElementById('coin-logs-total');
@@ -3078,9 +3095,11 @@
       } else {
         let phtml = '';
         sortedPoints.forEach(([user, pts]) => {
-          phtml += '<div style="background:rgba(255,215,64,0.08);border:1px solid rgba(255,215,64,0.15);border-radius:4px;padding:6px 12px;font-family:\'Share Tech Mono\',monospace;font-size:11px">'
-            + '<span style="color:#e0e0e0">' + escapeHtml(user) + '</span>'
-            + ' <span style="color:#ffd740;font-weight:bold">' + fmtPts(pts) + ' pts</span></div>';
+          phtml += '<div style="background:rgba(255,215,64,0.08);border:1px solid rgba(255,215,64,0.15);border-radius:4px;padding:6px 12px;font-family:\'Share Tech Mono\',monospace;font-size:11px;display:flex;align-items:center;gap:8px">'
+            + '<span style="color:#e0e0e0;flex:1">' + escapeHtml(user) + '</span>'
+            + '<span style="color:#ffd740;font-weight:bold">' + fmtPts(pts) + ' pts</span>'
+            + '<button onclick="deleteMemberLogs(\'' + escapeHtml(user).replace(/'/g, "\\'") + '\')" style="background:rgba(255,60,60,0.12);border:1px solid rgba(255,60,60,0.25);color:#ff6060;font-size:9px;padding:2px 6px;border-radius:3px;cursor:pointer;font-family:\'Share Tech Mono\',monospace" title="Delete all logs for this member">&#10005;</button>'
+            + '</div>';
         });
         pointsEl.innerHTML = phtml;
       }

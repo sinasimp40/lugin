@@ -137,20 +137,25 @@
 
   .points-badge {
     font-family: 'Orbitron', monospace;
-    font-size: 9px; font-weight: 700;
+    font-size: 12px; font-weight: 900;
     color: #ffd740;
-    letter-spacing: 0.5px;
-    text-shadow: 0 0 6px rgba(255,215,64,0.5), 0 0 12px rgba(255,215,64,0.2);
+    letter-spacing: 1px;
+    text-shadow: 0 0 8px rgba(255,215,64,0.6), 0 0 16px rgba(255,215,64,0.3);
     white-space: nowrap;
     display: none;
-    margin-left: 2px;
+    text-align: right;
+    line-height: 1;
   }
-  .points-badge.active { display: block; }
+  .points-badge.active { display: flex; flex-direction: column; align-items: flex-end; }
+  .points-badge .pts-value { font-size: 13px; font-weight: 900; }
+  .points-badge .pts-label { font-size: 6px; font-weight: 700; letter-spacing: 2px; color: rgba(255,215,64,0.6); margin-top: 1px; }
   .strip.danger-mode .points-badge { color: rgba(255,215,64,0.5); }
+  .strip.danger-mode .points-badge .pts-label { color: rgba(255,215,64,0.3); }
 
   .right-section {
     flex-shrink: 0;
-    margin-left: 6px;
+    margin-left: 8px;
+    display: flex; align-items: center; gap: 8px;
     position: relative; z-index: 3;
   }
 
@@ -237,11 +242,11 @@
       <div class="user-row">
         <div class="status-dot" id="status-dot"></div>
         <div class="user" id="username">User</div>
-        <div class="points-badge" id="points-badge"></div>
         <div class="pc-label" id="pc-label"></div>
       </div>
     </div>
     <div class="right-section">
+      <div class="points-badge" id="points-badge"></div>
       <button class="logout-btn" id="logout-btn">LOGOUT</button>
     </div>
   </div>
@@ -423,9 +428,9 @@
 
     function setPoints(pts) {
       const el = document.getElementById('points-badge');
-      if (pts === undefined || pts === null) { el.classList.remove('active'); return; }
+      if (pts === undefined || pts === null) { el.classList.remove('active'); el.innerHTML = ''; return; }
       const display = pts % 1 === 0 ? pts.toString() : pts.toFixed(2);
-      el.textContent = '\u2605 ' + display + ' pts';
+      el.innerHTML = '<span class="pts-value">\u2605 ' + display + '</span><span class="pts-label">POINTS</span>';
       el.classList.add('active');
     }
 
