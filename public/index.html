@@ -1015,9 +1015,19 @@
     .session-bottom .user-name {
       font-family: 'Share Tech Mono', monospace;
       font-size: 10px; color: rgba(255,140,0,0.4);
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100px;
       letter-spacing: 1px;
     }
+    .session-bottom .session-points {
+      font-family: 'Orbitron', monospace;
+      font-size: 8px; font-weight: 700;
+      color: #ffd740;
+      letter-spacing: 0.5px;
+      text-shadow: 0 0 6px rgba(255,215,64,0.4);
+      white-space: nowrap;
+      display: none;
+    }
+    .session-bottom .session-points.active { display: block; }
     .session-bottom .btn-logout-sm {
       -webkit-app-region: no-drag;
       background: rgba(255,140,0,0.08);
@@ -1443,6 +1453,7 @@
       <div class="session-timer" id="timer-remaining">--:--:--</div>
       <div class="session-bottom">
         <div class="user-name" id="session-username">User</div>
+        <div class="session-points" id="session-points"></div>
         <button class="btn-logout-sm" onclick="doLogout()">Logout</button>
       </div>
     </div>
@@ -2232,6 +2243,8 @@
               if (localTimeLeft > 0) autoLogoutTriggered = false;
               updateTimerDisplay();
               if (msg.data.username) document.getElementById('session-username').textContent = msg.data.username;
+              if (msg.data.memberPoints !== undefined) updateSessionPoints(msg.data.memberPoints);
+              else updateSessionPoints(null);
               if (msg.data.logoutLink && sessionData) sessionData.logoutLink = msg.data.logoutLink;
               checkExpiryLogout();
             } else if (sessionData) {
@@ -2392,6 +2405,8 @@
       document.getElementById('login-panel').classList.add('hidden');
       document.getElementById('session-panel').classList.add('active');
       document.getElementById('session-username').textContent = data.username || 'User';
+      if (data.memberPoints !== undefined) updateSessionPoints(data.memberPoints);
+      else updateSessionPoints(null);
       localTimeLeft = parseInt(data.sessionTimeLeft) || 0;
       autoLogoutTriggered = false;
       updateTimerDisplay();
@@ -2409,6 +2424,14 @@
       disconnectSettingsWs();
       disconnectSessionWs();
       connectSessionWs();
+    }
+
+    function updateSessionPoints(pts) {
+      const el = document.getElementById('session-points');
+      if (pts === undefined || pts === null) { el.classList.remove('active'); return; }
+      const display = pts % 1 === 0 ? pts.toString() : pts.toFixed(2);
+      el.textContent = '\u2605 ' + display + ' pts';
+      el.classList.add('active');
     }
 
     function updateTimerDisplay() {
@@ -2494,6 +2517,7 @@
       countdownInterval = null; statusInterval = null;
       disconnectSessionWs();
       stopLoginPolling();
+      updateSessionPoints(null);
       document.getElementById('session-panel').classList.remove('active');
       document.getElementById('login-panel').classList.remove('hidden');
       document.getElementById('password').value = '';

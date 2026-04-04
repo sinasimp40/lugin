@@ -135,6 +135,18 @@
   }
   .pc-label.active { display: block; }
 
+  .points-badge {
+    font-family: 'Orbitron', monospace;
+    font-size: 7px; font-weight: 700;
+    color: #ffd740;
+    letter-spacing: 0.5px;
+    text-shadow: 0 0 6px rgba(255,215,64,0.4);
+    white-space: nowrap;
+    display: none;
+  }
+  .points-badge.active { display: block; }
+  .strip.danger-mode .points-badge { color: rgba(255,215,64,0.5); }
+
   .right-section {
     flex-shrink: 0;
     margin-left: 6px;
@@ -224,6 +236,7 @@
       <div class="user-row">
         <div class="status-dot" id="status-dot"></div>
         <div class="user" id="username">User</div>
+        <div class="points-badge" id="points-badge"></div>
         <div class="pc-label" id="pc-label"></div>
       </div>
     </div>
@@ -383,10 +396,13 @@
               if (msg.data.units && msg.data.ip && msg.data.units[msg.data.ip]) {
                 setPcLabel(msg.data.units[msg.data.ip]);
               }
+              if (msg.data.memberPoints !== undefined) setPoints(msg.data.memberPoints);
+              else setPoints(null);
               updateTimer();
               checkExpiryLogout();
             }
           } else if (msg.type === 'logged-out') {
+            setPoints(null);
             if (window.electronAPI && window.electronAPI.setSessionState) {
               window.electronAPI.setSessionState('logged-out');
             }
@@ -401,6 +417,14 @@
       if (!name) return;
       const el = document.getElementById('pc-label');
       el.textContent = '[ ' + name + ' ]';
+      el.classList.add('active');
+    }
+
+    function setPoints(pts) {
+      const el = document.getElementById('points-badge');
+      if (pts === undefined || pts === null) { el.classList.remove('active'); return; }
+      const display = pts % 1 === 0 ? pts.toString() : pts.toFixed(2);
+      el.textContent = '\u2605 ' + display + ' pts';
       el.classList.add('active');
     }
 
@@ -424,6 +448,8 @@
           if (data.data.units && data.data.ip && data.data.units[data.data.ip]) {
             setPcLabel(data.data.units[data.data.ip]);
           }
+          if (data.data.memberPoints !== undefined) setPoints(data.data.memberPoints);
+          else setPoints(null);
           updateTimer();
           checkExpiryLogout();
         }

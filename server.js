@@ -326,6 +326,10 @@ app.get('/api/hotspot/status', async (req, res) => {
     const resp = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(5000) });
     const buffer = Buffer.from(await resp.arrayBuffer());
     const data = parseHotspotResponse(buffer);
+    if (data.isLogin && data.username && data.username.startsWith('mem-')) {
+      const s = settings.getSettings();
+      data.memberPoints = coinLogs.getMemberPoints(data.username, s.pointRates || []);
+    }
     res.json({ success: true, data });
   } catch (err) {
     res.json({ success: false, error: err.message });
@@ -1110,6 +1114,11 @@ async function pollHotspotForWs() {
     const wasLoggedIn = lastSessionData?.isLogin;
     const prevTime = lastSessionData?.sessionTimeLeft;
     const newTime = parseInt(data.sessionTimeLeft) || 0;
+
+    if (data.isLogin && data.username && data.username.startsWith('mem-')) {
+      const s = settings.getSettings();
+      data.memberPoints = coinLogs.getMemberPoints(data.username, s.pointRates || []);
+    }
 
     lastSessionData = data;
 
