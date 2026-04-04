@@ -975,20 +975,6 @@ app.post('/api/admin/stop-app', verifyToken, (req, res) => {
   }, 500);
 });
 
-function calcPointsForMember(totalSpent, pointRates) {
-  if (!Array.isArray(pointRates) || pointRates.length === 0 || !totalSpent || totalSpent <= 0) return 0;
-  let best = 0;
-  for (const rate of pointRates) {
-    const rp = rate.pesos || 0;
-    const rPts = rate.points || 0;
-    if (rp > 0 && rPts > 0 && totalSpent >= rp) {
-      const pts = Math.floor(totalSpent / rp) * rPts;
-      if (pts > best) best = pts;
-    }
-  }
-  return best;
-}
-
 app.get('/api/admin/coin-logs', verifyToken, (req, res) => {
   const { username, from, to } = req.query;
   const s = settings.getSettings();
@@ -996,32 +982,23 @@ app.get('/api/admin/coin-logs', verifyToken, (req, res) => {
   const result = coinLogs.getLogs({ username, from, to }, currentRates);
   const hasFilters = username || from || to;
   let filteredPoints = result.memberPoints;
-  let filteredSpending = result.memberSpending || {};
   if (hasFilters) {
     filteredPoints = {};
-    filteredSpending = {};
     (result.logs || []).forEach(l => {
-      if (l.username) {
-        filteredSpending[l.username] = (filteredSpending[l.username] || 0) + (l.amount || 0);
-      }
+      if (l.username) filteredPoints[l.username] = parseFloat(((filteredPoints[l.username] || 0) + (l.points || 0)).toFixed(2));
     });
-    for (const [u, spent] of Object.entries(filteredSpending)) {
-      filteredPoints[u] = calcPointsForMember(spent, currentRates);
-    }
   }
   res.json({
     success: true,
     logs: result.logs,
     memberPoints: filteredPoints,
-    memberSpending: filteredSpending,
     coinRates: s.coinRates || [],
     pointRates: currentRates
   });
 });
 
 app.delete('/api/admin/coin-logs/:id', verifyToken, (req, res) => {
-  const s = settings.getSettings();
-  const deleted = coinLogs.deleteLog(req.params.id, s.pointRates || []);
+  const deleted = coinLogs.deleteLog(req.params.id);
   if (!deleted) return res.status(404).json({ success: false, error: 'Log not found' });
   res.json({ success: true });
 });

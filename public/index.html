@@ -1549,6 +1549,7 @@
                 <th style="padding:8px 10px;text-align:center;color:#ff8c00;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--dark-border)">AMOUNT (&#8369;)</th>
                 <th style="padding:8px 10px;text-align:center;color:#ff8c00;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--dark-border)">TIME ADDED</th>
                 <th style="padding:8px 10px;text-align:center;color:#ff8c00;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--dark-border)">DATE</th>
+                <th style="padding:8px 10px;text-align:center;color:#ff8c00;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--dark-border)">POINTS</th>
                 <th style="padding:8px 10px;text-align:center;color:#ff8c00;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--dark-border)"></th>
               </tr>
             </thead>
@@ -2856,7 +2857,7 @@
       renderRatesList('coin-rates-list', resp.coinRates || [], 'coin');
       renderRatesList('point-rates-list', resp.pointRates || [], 'point');
 
-      renderCoinLogs(resp.logs || [], resp.memberPoints || {}, resp.memberSpending || {});
+      renderCoinLogs(resp.logs || [], resp.memberPoints || {});
     }
 
     function renderRatesList(containerId, rates, type) {
@@ -3000,17 +3001,19 @@
       }
     }
 
-    function renderCoinLogs(logs, memberPoints, memberSpending) {
+    function renderCoinLogs(logs, memberPoints) {
       const tbody = document.getElementById('coin-logs-tbody');
       const totalEl = document.getElementById('coin-logs-total');
       const pointsEl = document.getElementById('coin-logs-points');
       const summaryEl = document.getElementById('coin-logs-summary');
 
       let totalAmount = 0;
-      const totalPoints = Object.values(memberPoints).reduce((a, b) => a + b, 0);
+      let totalPoints = 0;
+
+      function fmtPts(v) { return v % 1 === 0 ? v.toString() : v.toFixed(2); }
 
       if (logs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:#666">No coin logs found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:#666">No coin logs found</td></tr>';
         totalEl.textContent = '';
         summaryEl.innerHTML = '';
       } else {
@@ -3020,16 +3023,18 @@
           const dateStr = d.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
           const timeStr = d.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', hour12: true });
           totalAmount += log.amount || 0;
+          totalPoints += log.points || 0;
           html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
             + '<td style="padding:6px 10px;color:#e0e0e0">' + escapeHtml(log.username) + '</td>'
             + '<td style="padding:6px 10px;text-align:center;color:#4fc3f7">&#8369;' + (log.amount || 0) + '</td>'
             + '<td style="padding:6px 10px;text-align:center;color:#81c784">' + escapeHtml(log.timeAdded || '--') + '</td>'
             + '<td style="padding:6px 10px;text-align:center;color:#bbb">' + dateStr + ' ' + timeStr + '</td>'
+            + '<td style="padding:6px 10px;text-align:center;color:#ffd740;font-weight:bold">' + fmtPts(log.points || 0) + '</td>'
             + '<td style="padding:6px 6px;text-align:center"><button onclick="deleteCoinLog(\'' + log.id + '\',\'' + escapeHtml(log.username).replace(/'/g, "\\'") + '\')" style="background:rgba(255,60,60,0.15);border:1px solid rgba(255,60,60,0.3);color:#ff6060;font-size:10px;padding:3px 8px;border-radius:3px;cursor:pointer;font-family:\'Share Tech Mono\',monospace">&#10005;</button></td>'
             + '</tr>';
         });
         tbody.innerHTML = html;
-        totalEl.textContent = 'Showing ' + logs.length + ' log(s) | Total: \u20b1' + totalAmount + ' | Points: ' + totalPoints;
+        totalEl.textContent = 'Showing ' + logs.length + ' log(s) | Total: \u20b1' + totalAmount + ' | Points: ' + fmtPts(totalPoints);
 
         summaryEl.innerHTML = ''
           + '<div style="flex:1;min-width:100px;background:rgba(79,195,247,0.1);border:1px solid rgba(79,195,247,0.2);border-radius:4px;padding:10px;text-align:center">'
@@ -3037,7 +3042,7 @@
           + '<div style="font-family:\'Orbitron\',monospace;font-size:18px;color:#4fc3f7">&#8369;' + totalAmount + '</div></div>'
           + '<div style="flex:1;min-width:100px;background:rgba(255,215,64,0.1);border:1px solid rgba(255,215,64,0.2);border-radius:4px;padding:10px;text-align:center">'
           + '<div style="font-family:\'Share Tech Mono\',monospace;font-size:10px;color:#ffd740;letter-spacing:1px;margin-bottom:4px">TOTAL POINTS</div>'
-          + '<div style="font-family:\'Orbitron\',monospace;font-size:18px;color:#ffd740">' + totalPoints + '</div></div>'
+          + '<div style="font-family:\'Orbitron\',monospace;font-size:18px;color:#ffd740">' + fmtPts(totalPoints) + '</div></div>'
           + '<div style="flex:1;min-width:100px;background:rgba(129,199,132,0.1);border:1px solid rgba(129,199,132,0.2);border-radius:4px;padding:10px;text-align:center">'
           + '<div style="font-family:\'Share Tech Mono\',monospace;font-size:10px;color:#81c784;letter-spacing:1px;margin-bottom:4px">TRANSACTIONS</div>'
           + '<div style="font-family:\'Orbitron\',monospace;font-size:18px;color:#81c784">' + logs.length + '</div></div>';
@@ -3049,11 +3054,9 @@
       } else {
         let phtml = '';
         sortedPoints.forEach(([user, pts]) => {
-          const spent = (memberSpending || {})[user] || 0;
-          phtml += '<div style="background:rgba(255,215,64,0.08);border:1px solid rgba(255,215,64,0.15);border-radius:4px;padding:6px 12px;font-family:\'Share Tech Mono\',monospace;font-size:11px;display:flex;justify-content:space-between;align-items:center">'
+          phtml += '<div style="background:rgba(255,215,64,0.08);border:1px solid rgba(255,215,64,0.15);border-radius:4px;padding:6px 12px;font-family:\'Share Tech Mono\',monospace;font-size:11px">'
             + '<span style="color:#e0e0e0">' + escapeHtml(user) + '</span>'
-            + '<span><span style="color:#4fc3f7;font-size:10px;margin-right:8px">&#8369;' + spent + ' spent</span>'
-            + '<span style="color:#ffd740;font-weight:bold">' + pts + ' pts</span></span></div>';
+            + ' <span style="color:#ffd740;font-weight:bold">' + fmtPts(pts) + ' pts</span></div>';
         });
         pointsEl.innerHTML = phtml;
       }

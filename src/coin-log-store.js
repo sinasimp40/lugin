@@ -56,8 +56,8 @@ function calcPoints(amount, pointRates) {
   for (const rate of pointRates) {
     const rp = rate.pesos || 0;
     const rPts = rate.points || 0;
-    if (rp > 0 && rPts > 0 && amount >= rp) {
-      const pts = Math.floor(amount / rp) * rPts;
+    if (rp > 0 && rPts > 0) {
+      const pts = parseFloat(((amount / rp) * rPts).toFixed(2));
       if (pts > best) best = pts;
     }
   }
@@ -66,29 +66,37 @@ function calcPoints(amount, pointRates) {
 
 function appendLog(entry, pointRates) {
   const data = load();
+  const pts = calcPoints(entry.amount, pointRates);
   const log = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     username: entry.username || '',
     amount: entry.amount || 0,
     timeAdded: entry.timeAdded || '',
+    points: pts,
     timestamp: entry.timestamp || Date.now(),
     date: new Date().toISOString(),
     ip: entry.ip || '',
     mac: entry.mac || ''
   };
   data.logs.push(log);
-  recalcPoints(data, pointRates);
+
+  if (!data.memberPoints) data.memberPoints = {};
+  const user = log.username;
+  if (user) {
+    data.memberPoints[user] = parseFloat(((data.memberPoints[user] || 0) + log.points).toFixed(2));
+  }
+
   save(data);
   return log;
 }
 
-function deleteLog(logId, pointRates) {
+function deleteLog(logId) {
   const data = load();
   const idx = (data.logs || []).findIndex(l => l.id === logId);
   if (idx === -1) return false;
 
   data.logs.splice(idx, 1);
-  recalcPoints(data, pointRates);
+  recalcPoints(data);
   save(data);
   return true;
 }
@@ -99,17 +107,13 @@ function clearAllLogs() {
   return true;
 }
 
-function recalcPoints(data, pointRates) {
-  const memberSpending = {};
+function recalcPoints(data) {
+  data.memberPoints = {};
   (data.logs || []).forEach(l => {
     if (l.username) {
-      memberSpending[l.username] = (memberSpending[l.username] || 0) + (l.amount || 0);
+      data.memberPoints[l.username] = parseFloat(((data.memberPoints[l.username] || 0) + (l.points || 0)).toFixed(2));
     }
   });
-  data.memberPoints = {};
-  for (const [username, totalSpent] of Object.entries(memberSpending)) {
-    data.memberPoints[username] = calcPoints(totalSpent, pointRates);
-  }
 }
 
 function ratesHash(rates) {
@@ -121,14 +125,20 @@ function ensurePointsSync(pointRates) {
   const data = load();
   const currentHash = ratesHash(pointRates);
   if (data._ratesHash === currentHash) return;
-  recalcPoints(data, pointRates);
+  (data.logs || []).forEach(l => {
+    l.points = calcPoints(l.amount, pointRates);
+  });
+  recalcPoints(data);
   data._ratesHash = currentHash;
   save(data);
 }
 
 function recalcAllPoints(pointRates) {
   const data = load();
-  recalcPoints(data, pointRates);
+  (data.logs || []).forEach(l => {
+    l.points = calcPoints(l.amount, pointRates);
+  });
+  recalcPoints(data);
   data._ratesHash = ratesHash(pointRates);
   save(data);
   return data;
@@ -156,15 +166,9 @@ function getLogs(filters, pointRates) {
 
   logs.sort((a, b) => b.timestamp - a.timestamp);
 
-  const memberSpending = {};
-  (data.logs || []).forEach(l => {
-    if (l.username) memberSpending[l.username] = (memberSpending[l.username] || 0) + (l.amount || 0);
-  });
-
   return {
     logs,
-    memberPoints: data.memberPoints || {},
-    memberSpending
+    memberPoints: data.memberPoints || {}
   };
 }
 
