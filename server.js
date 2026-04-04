@@ -977,8 +977,9 @@ app.post('/api/admin/stop-app', verifyToken, (req, res) => {
 
 app.get('/api/admin/coin-logs', verifyToken, (req, res) => {
   const { username, from, to } = req.query;
-  const result = coinLogs.getLogs({ username, from, to });
   const s = settings.getSettings();
+  const currentRates = s.pointRates || [];
+  const result = coinLogs.getLogs({ username, from, to }, currentRates);
   const hasFilters = username || from || to;
   let filteredPoints = result.memberPoints;
   if (hasFilters) {
@@ -992,7 +993,7 @@ app.get('/api/admin/coin-logs', verifyToken, (req, res) => {
     logs: result.logs,
     memberPoints: filteredPoints,
     coinRates: s.coinRates || [],
-    pointRates: s.pointRates || []
+    pointRates: currentRates
   });
 });
 

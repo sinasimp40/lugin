@@ -107,7 +107,8 @@ When `isLogin: true` is detected → auto-shows the session (auto-connect).
 - Member points leaderboard showing accumulated points per member
 - **Data flow**: Server tracks active coin sessions via `activeCoinSessions` map; `/api/pisonet/avail` starts tracking, `/api/vendo/check-coin` updates coin amounts, `/api/pisonet/done` finalizes and persists the log
 - **Storage**: `data/coin-logs.json` (atomic writes, same pattern as settings-store)
-- **Module**: `src/coin-log-store.js` — appendLog, getLogs (with filters), getMemberPoints, deleteLog, recalcAllPoints
+- **Module**: `src/coin-log-store.js` — appendLog, getLogs (with filters + optional pointRates for auto-sync), getMemberPoints (with optional pointRates), deleteLog, recalcAllPoints, ensurePointsSync
+- **Points sync**: `ensurePointsSync(pointRates)` uses a `_ratesHash` (MD5 of canonical {pesos,points} sorted array) stored in coin-logs.json to detect when rates changed; auto-recalculates only when hash differs; `getLogs` and `getMemberPoints` accept optional `pointRates` param to self-sync before returning data
 - Stale session cleanup: 10-minute TTL on in-memory coin sessions
 
 ## Admin API

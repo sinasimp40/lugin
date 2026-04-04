@@ -36,17 +36,17 @@
   "curfewEnd": "06:00",
   "coinRates": [
     {
-      "id": "mnkxma4d68xj",
+      "id": "mnky68x5my80",
       "pesos": 1,
       "minutes": 5
     }
   ],
   "pointRates": [
     {
-      "id": "mnkxnnt5hmfv",
+      "id": "mnky6cwmnagp",
       "pesos": 10,
       "points": 1
     }
   ],
-  "_sig": "9a4c6fdce044fb19193290e97c84e9d15abf95e18d4db54d01cbb6999e56345b"
+  "_sig": "fb2a4c555d4128d6547b0cb69f3d4e2a9b1fd5027b81b6559b4bd854eb87a01c"
 }

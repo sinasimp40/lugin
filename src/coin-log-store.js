@@ -116,17 +116,36 @@ function recalcPoints(data) {
   });
 }
 
+function ratesHash(rates) {
+  const canonical = (rates || []).map(r => ({ pesos: r.pesos, points: r.points })).sort((a, b) => a.pesos - b.pesos || a.points - b.points);
+  return crypto.createHash('md5').update(JSON.stringify(canonical)).digest('hex');
+}
+
+function ensurePointsSync(pointRates) {
+  const data = load();
+  const currentHash = ratesHash(pointRates);
+  if (data._ratesHash === currentHash) return;
+  (data.logs || []).forEach(l => {
+    l.points = calcPoints(l.amount, pointRates);
+  });
+  recalcPoints(data);
+  data._ratesHash = currentHash;
+  save(data);
+}
+
 function recalcAllPoints(pointRates) {
   const data = load();
   (data.logs || []).forEach(l => {
     l.points = calcPoints(l.amount, pointRates);
   });
   recalcPoints(data);
+  data._ratesHash = ratesHash(pointRates);
   save(data);
   return data;
 }
 
-function getLogs(filters) {
+function getLogs(filters, pointRates) {
+  if (pointRates) ensurePointsSync(pointRates);
   const data = load();
   let logs = data.logs || [];
 
@@ -153,9 +172,10 @@ function getLogs(filters) {
   };
 }
 
-function getMemberPoints(username) {
+function getMemberPoints(username, pointRates) {
+  if (pointRates) ensurePointsSync(pointRates);
   const data = load();
   return (data.memberPoints || {})[username] || 0;
 }
 
-module.exports = { setDataDir, appendLog, deleteLog, clearAllLogs, recalcAllPoints, getLogs, getMemberPoints };
+module.exports = { setDataDir, appendLog, deleteLog, clearAllLogs, recalcAllPoints, ensurePointsSync, getLogs, getMemberPoints };
