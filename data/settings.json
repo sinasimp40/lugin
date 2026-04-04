@@ -33,5 +33,7 @@
   },
   "curfewEnabled": false,
   "curfewStart": "22:00",
-  "curfewEnd": "06:00"
+  "curfewEnd": "06:00",
+  "coinRates": [],
+  "pointRates": []
 }
