@@ -97,9 +97,9 @@ When `isLogin: true` is detected → auto-shows the session (auto-connect).
 - Logs: username, amount (pesos), time added, date/timestamp, points earned
 - **Coin Rates**: list of {pesos, minutes} entries — admin adds as many as needed, no defaults
 - **Point Rates**: list of {pesos, points} entries — admin adds as many as needed, no defaults; points = 0 until rates are configured
-- Point calculation: for each log amount, tries all point rates and picks the one yielding the highest points (best match wins)
-- Adding/removing point rates recalculates ALL historical log points
-- Delete individual logs with automatic member point recalculation
+- Point calculation: **cumulative** — member points are calculated from their total spending across ALL logs (not per-transaction), using best-match algorithm against all point rates. This means small amounts like ₱5 are never "wasted" — they accumulate toward the next point threshold.
+- Adding/removing point rates recalculates ALL member points from cumulative spending
+- Delete individual logs with automatic member point recalculation (cumulative)
 - **Delete All Logs** button (double confirmation) to clear all logs and free storage
 - **Data integrity protection**: HMAC-SHA256 signatures on both `settings.json` and `coin-logs.json` — if anyone manually edits the files, the app detects tampering and resets the data
 - Filtering: by username search, date range (from/to)

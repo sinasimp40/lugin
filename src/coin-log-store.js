@@ -66,37 +66,29 @@ function calcPoints(amount, pointRates) {
 
 function appendLog(entry, pointRates) {
   const data = load();
-  const pts = calcPoints(entry.amount, pointRates);
   const log = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     username: entry.username || '',
     amount: entry.amount || 0,
     timeAdded: entry.timeAdded || '',
-    points: pts,
-    timestamp: Date.now(),
+    timestamp: entry.timestamp || Date.now(),
     date: new Date().toISOString(),
     ip: entry.ip || '',
     mac: entry.mac || ''
   };
   data.logs.push(log);
-
-  if (!data.memberPoints) data.memberPoints = {};
-  const user = log.username;
-  if (user) {
-    data.memberPoints[user] = (data.memberPoints[user] || 0) + log.points;
-  }
-
+  recalcPoints(data, pointRates);
   save(data);
   return log;
 }
 
-function deleteLog(logId) {
+function deleteLog(logId, pointRates) {
   const data = load();
   const idx = (data.logs || []).findIndex(l => l.id === logId);
   if (idx === -1) return false;
 
   data.logs.splice(idx, 1);
-  recalcPoints(data);
+  recalcPoints(data, pointRates);
   save(data);
   return true;
 }
@@ -107,13 +99,17 @@ function clearAllLogs() {
   return true;
 }
 
-function recalcPoints(data) {
-  data.memberPoints = {};
+function recalcPoints(data, pointRates) {
+  const memberSpending = {};
   (data.logs || []).forEach(l => {
     if (l.username) {
-      data.memberPoints[l.username] = (data.memberPoints[l.username] || 0) + (l.points || 0);
+      memberSpending[l.username] = (memberSpending[l.username] || 0) + (l.amount || 0);
     }
   });
+  data.memberPoints = {};
+  for (const [username, totalSpent] of Object.entries(memberSpending)) {
+    data.memberPoints[username] = calcPoints(totalSpent, pointRates);
+  }
 }
 
 function ratesHash(rates) {
@@ -125,20 +121,14 @@ function ensurePointsSync(pointRates) {
   const data = load();
   const currentHash = ratesHash(pointRates);
   if (data._ratesHash === currentHash) return;
-  (data.logs || []).forEach(l => {
-    l.points = calcPoints(l.amount, pointRates);
-  });
-  recalcPoints(data);
+  recalcPoints(data, pointRates);
   data._ratesHash = currentHash;
   save(data);
 }
 
 function recalcAllPoints(pointRates) {
   const data = load();
-  (data.logs || []).forEach(l => {
-    l.points = calcPoints(l.amount, pointRates);
-  });
-  recalcPoints(data);
+  recalcPoints(data, pointRates);
   data._ratesHash = ratesHash(pointRates);
   save(data);
   return data;
@@ -166,9 +156,15 @@ function getLogs(filters, pointRates) {
 
   logs.sort((a, b) => b.timestamp - a.timestamp);
 
+  const memberSpending = {};
+  (data.logs || []).forEach(l => {
+    if (l.username) memberSpending[l.username] = (memberSpending[l.username] || 0) + (l.amount || 0);
+  });
+
   return {
     logs,
-    memberPoints: data.memberPoints || {}
+    memberPoints: data.memberPoints || {},
+    memberSpending
   };
 }
 
