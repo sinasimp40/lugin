@@ -1,83 +1,76 @@
 import React from 'react';
 
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+  .panel-root {
+    width: 260px; height: 80px;
+  }
+
+  .panel-compact {
+    padding: 10px 14px; width: 100%; height: 100%;
+    display: flex; flex-direction: column; justify-content: center; gap: 6px;
+    background: linear-gradient(135deg, #0a0a0a 0%, #141414 50%, #0a0a0a 100%);
+    border-radius: 4px;
+    border: 1px solid rgba(255,140,0,0.2);
+    box-shadow: 0 0 20px rgba(255,140,0,0.1);
+    box-sizing: border-box;
+  }
+
+  .panel-timer {
+    font-family: 'Orbitron', monospace;
+    font-size: 20px; font-weight: 700;
+    color: #ff8c00; text-align: center;
+    letter-spacing: 3px; line-height: 1;
+    text-shadow: 0 0 10px rgba(255,140,0,0.6), 0 0 20px rgba(255,140,0,0.3);
+  }
+
+  .panel-bottom {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .panel-user {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; color: rgba(255,140,0,0.4);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 80px; letter-spacing: 1px;
+  }
+
+  .panel-pts {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px; font-weight: 700;
+    color: #ffd740;
+    letter-spacing: 0.5px;
+    text-shadow: 0 0 6px rgba(255,215,64,0.5), 0 0 12px rgba(255,215,64,0.2);
+    white-space: nowrap;
+  }
+
+  .panel-logout {
+    background: rgba(255,140,0,0.08);
+    border: 1px solid rgba(255,140,0,0.3);
+    color: #ff8c00;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px; font-weight: 700;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    border-radius: 2px;
+    cursor: pointer;
+    text-shadow: 0 0 4px rgba(255,140,0,0.3);
+  }
+`;
+
 export function SessionPanel() {
   return (
-    <div style={{
-      width: 260, height: 80,
-      fontFamily: "'Segoe UI', sans-serif",
-    }}>
-      <div style={{
-        padding: '10px 14px',
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        gap: 6,
-        background: 'linear-gradient(135deg, #0a0a0a 0%, #141414 50%, #0a0a0a 100%)',
-        borderRadius: 4,
-        border: '1px solid rgba(255,140,0,0.2)',
-        boxShadow: '0 0 20px rgba(255,140,0,0.1)',
-        boxSizing: 'border-box',
-      }}>
-        <div style={{
-          fontFamily: "'Courier New', monospace",
-          fontSize: 20,
-          fontWeight: 700,
-          color: '#ff8c00',
-          textAlign: 'center',
-          letterSpacing: 3,
-          lineHeight: 1,
-          textShadow: '0 0 10px rgba(255,140,0,0.6), 0 0 20px rgba(255,140,0,0.3)',
-        }}>
-          01:23:45
-        </div>
-
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}>
-          <div style={{
-            fontFamily: "'Courier New', monospace",
-            fontSize: 10,
-            color: 'rgba(255,140,0,0.4)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            maxWidth: 80,
-            letterSpacing: 1,
-          }}>
-            mem-raprap
+    <div style={{ background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+      <style>{styles}</style>
+      <div className="panel-root">
+        <div className="panel-compact">
+          <div className="panel-timer">01:23:45</div>
+          <div className="panel-bottom">
+            <div className="panel-user">mem-raprap</div>
+            <div className="panel-pts">{'\u2605'} 12.50 pts</div>
+            <button className="panel-logout">Logout</button>
           </div>
-
-          <div style={{
-            fontFamily: "'Courier New', monospace",
-            fontSize: 8,
-            fontWeight: 700,
-            color: '#ffd740',
-            letterSpacing: 0.5,
-            textShadow: '0 0 6px rgba(255,215,64,0.4)',
-            whiteSpace: 'nowrap',
-          }}>
-            ★ 12.50 pts
-          </div>
-
-          <button style={{
-            background: 'rgba(255,140,0,0.08)',
-            border: '1px solid rgba(255,140,0,0.3)',
-            color: '#ff8c00',
-            fontFamily: "'Courier New', monospace",
-            fontSize: 8,
-            fontWeight: 700,
-            letterSpacing: 1,
-            padding: '3px 8px',
-            borderRadius: 2,
-            cursor: 'pointer',
-            textShadow: '0 0 4px rgba(255,140,0,0.3)',
-          }}>
-            Logout
-          </button>
         </div>
       </div>
     </div>
