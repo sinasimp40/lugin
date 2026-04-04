@@ -4,7 +4,7 @@ const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
 
   .panel-root {
-    width: 300px; height: 80px;
+    width: 250px; height: 80px;
   }
 
   .panel-compact {
@@ -33,16 +33,7 @@ const styles = `
     font-family: 'Share Tech Mono', monospace;
     font-size: 10px; color: rgba(255,140,0,0.4);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    max-width: 80px; letter-spacing: 1px;
-  }
-
-  .panel-pts {
-    font-family: 'Orbitron', monospace;
-    font-size: 12px; font-weight: 900;
-    color: #ffd740;
-    letter-spacing: 0.5px;
-    text-shadow: 0 0 8px rgba(255,215,64,0.6), 0 0 16px rgba(255,215,64,0.3);
-    white-space: nowrap;
+    max-width: 70px; letter-spacing: 1px;
   }
 
   .panel-logout {
@@ -57,6 +48,20 @@ const styles = `
     cursor: pointer;
     text-shadow: 0 0 4px rgba(255,140,0,0.3);
   }
+
+  .panel-pts {
+    font-family: 'Orbitron', monospace;
+    font-size: 12px; font-weight: 900;
+    color: #ffd740;
+    letter-spacing: 0.5px;
+    text-shadow: 0 0 8px rgba(255,215,64,0.6), 0 0 16px rgba(255,215,64,0.3);
+    white-space: nowrap;
+    background: linear-gradient(180deg, rgba(255,215,64,0.08) 0%, rgba(255,215,64,0.03) 100%);
+    border: 1px solid rgba(255,215,64,0.25);
+    border-radius: 3px;
+    padding: 2px 8px;
+    box-shadow: 0 0 8px rgba(255,215,64,0.08);
+  }
 `;
 
 export function SessionPanel() {
@@ -68,8 +73,8 @@ export function SessionPanel() {
           <div className="panel-timer">01:23:45</div>
           <div className="panel-bottom">
             <div className="panel-user">mem-raprap</div>
-            <div className="panel-pts">{'\u2605'} 12.50 pts</div>
             <button className="panel-logout">Logout</button>
+            <div className="panel-pts">{'\u2605'} 12.50</div>
           </div>
         </div>
       </div>

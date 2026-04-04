@@ -135,27 +135,46 @@
   }
   .pc-label.active { display: block; }
 
-  .points-badge {
+  .points-box {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, rgba(255,215,64,0.08) 0%, rgba(255,215,64,0.03) 100%);
+    border: 1px solid rgba(255,215,64,0.25);
+    border-radius: 3px;
+    padding: 2px 8px;
+    min-width: 50px;
+    line-height: 1;
+    box-shadow: 0 0 8px rgba(255,215,64,0.08), inset 0 0 6px rgba(255,215,64,0.04);
+  }
+  .points-box.active { display: flex; }
+  .points-box .pts-value {
     font-family: 'Orbitron', monospace;
-    font-size: 12px; font-weight: 900;
+    font-size: 14px; font-weight: 900;
     color: #ffd740;
     letter-spacing: 1px;
     text-shadow: 0 0 8px rgba(255,215,64,0.6), 0 0 16px rgba(255,215,64,0.3);
     white-space: nowrap;
-    display: none;
-    text-align: right;
-    line-height: 1;
   }
-  .points-badge.active { display: flex; flex-direction: column; align-items: flex-end; }
-  .points-badge .pts-value { font-size: 13px; font-weight: 900; }
-  .points-badge .pts-label { font-size: 6px; font-weight: 700; letter-spacing: 2px; color: rgba(255,215,64,0.6); margin-top: 1px; }
-  .strip.danger-mode .points-badge { color: rgba(255,215,64,0.5); }
-  .strip.danger-mode .points-badge .pts-label { color: rgba(255,215,64,0.3); }
+  .points-box .pts-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 5px; font-weight: 700;
+    letter-spacing: 2px;
+    color: rgba(255,215,64,0.5);
+    margin-top: 1px;
+  }
+  .strip.danger-mode .points-box {
+    border-color: rgba(255,215,64,0.15);
+    background: linear-gradient(180deg, rgba(255,215,64,0.04) 0%, rgba(255,215,64,0.01) 100%);
+  }
+  .strip.danger-mode .points-box .pts-value { color: rgba(255,215,64,0.5); }
+  .strip.danger-mode .points-box .pts-label { color: rgba(255,215,64,0.3); }
 
   .right-section {
     flex-shrink: 0;
-    margin-left: 8px;
-    display: flex; align-items: center; gap: 8px;
+    margin-left: 6px;
+    display: flex; align-items: center; gap: 6px;
     position: relative; z-index: 3;
   }
 
@@ -246,8 +265,8 @@
       </div>
     </div>
     <div class="right-section">
-      <div class="points-badge" id="points-badge"></div>
       <button class="logout-btn" id="logout-btn">LOGOUT</button>
+      <div class="points-box" id="points-box"></div>
     </div>
   </div>
 
@@ -427,7 +446,7 @@
     }
 
     function setPoints(pts) {
-      const el = document.getElementById('points-badge');
+      const el = document.getElementById('points-box');
       if (pts === undefined || pts === null) { el.classList.remove('active'); el.innerHTML = ''; return; }
       const display = pts % 1 === 0 ? pts.toString() : pts.toFixed(2);
       el.innerHTML = '<span class="pts-value">\u2605 ' + display + '</span><span class="pts-label">POINTS</span>';

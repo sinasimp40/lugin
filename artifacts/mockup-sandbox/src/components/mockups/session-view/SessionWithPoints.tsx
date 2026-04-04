@@ -4,9 +4,9 @@ const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
 
   .strip-root {
-    width: 300px; height: 50px;
+    width: 250px; height: 50px;
     display: flex; align-items: center;
-    padding: 0 12px;
+    padding: 0 10px;
     background: linear-gradient(180deg, #0d0d0d 0%, #080808 100%);
     border-radius: 3px;
     border: none;
@@ -96,21 +96,10 @@ const styles = `
 
   .right-sec {
     flex-shrink: 0;
-    margin-left: 8px;
-    display: flex; align-items: center; gap: 8px;
+    margin-left: 6px;
+    display: flex; align-items: center; gap: 6px;
     position: relative; z-index: 3;
   }
-
-  .pts-badge {
-    font-family: 'Orbitron', monospace;
-    display: flex; flex-direction: column; align-items: flex-end;
-    text-align: right; line-height: 1;
-    color: #ffd740;
-    text-shadow: 0 0 8px rgba(255,215,64,0.6), 0 0 16px rgba(255,215,64,0.3);
-    white-space: nowrap;
-  }
-  .pts-badge .pts-val { font-size: 13px; font-weight: 900; }
-  .pts-badge .pts-lbl { font-size: 6px; font-weight: 700; letter-spacing: 2px; color: rgba(255,215,64,0.6); margin-top: 1px; }
 
   .logout-btn {
     background: transparent;
@@ -120,6 +109,32 @@ const styles = `
     font-family: 'Share Tech Mono', monospace;
     font-size: 7px; font-weight: 600;
     letter-spacing: 1.5px; text-transform: uppercase;
+  }
+
+  .pts-box {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: linear-gradient(180deg, rgba(255,215,64,0.08) 0%, rgba(255,215,64,0.03) 100%);
+    border: 1px solid rgba(255,215,64,0.25);
+    border-radius: 3px;
+    padding: 2px 8px;
+    min-width: 50px;
+    line-height: 1;
+    box-shadow: 0 0 8px rgba(255,215,64,0.08), inset 0 0 6px rgba(255,215,64,0.04);
+  }
+  .pts-box .pts-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px; font-weight: 900;
+    color: #ffd740;
+    letter-spacing: 1px;
+    text-shadow: 0 0 8px rgba(255,215,64,0.6), 0 0 16px rgba(255,215,64,0.3);
+    white-space: nowrap;
+  }
+  .pts-box .pts-lbl {
+    font-family: 'Orbitron', monospace;
+    font-size: 5px; font-weight: 700;
+    letter-spacing: 2px;
+    color: rgba(255,215,64,0.5);
+    margin-top: 1px;
   }
 `;
 
@@ -143,11 +158,11 @@ export function SessionWithPoints() {
           </div>
         </div>
         <div className="right-sec">
-          <div className="pts-badge">
+          <button className="logout-btn">LOGOUT</button>
+          <div className="pts-box">
             <span className="pts-val">{'\u2605'} 12.50</span>
             <span className="pts-lbl">POINTS</span>
           </div>
-          <button className="logout-btn">LOGOUT</button>
         </div>
       </div>
     </div>
