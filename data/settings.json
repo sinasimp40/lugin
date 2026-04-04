@@ -35,7 +35,7 @@
     "mimeType": "image/jpeg",
     "size": 144922
   },
-  "curfewEnabled": false,
-  "curfewStart": "22:00",
-  "curfewEnd": "06:00"
+  "curfewEnabled": true,
+  "curfewStart": "00:00",
+  "curfewEnd": "23:59"
 }
