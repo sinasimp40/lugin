@@ -612,7 +612,7 @@ app.post('/api/pisonet/done', async (req, res) => {
           timeAdded: session.timeAdded,
           ip: session.ip,
           mac: session.mac
-        }, s.pesosPerPoint);
+        }, s.pointRates);
         console.log('[CoinLog] Recorded:', session.username, 'amount:', session.totalCoin, 'points:', log.points);
       } catch (e) {
         console.log('[CoinLog] Error saving log:', e.message);
@@ -991,8 +991,8 @@ app.get('/api/admin/coin-logs', verifyToken, (req, res) => {
     success: true,
     logs: result.logs,
     memberPoints: filteredPoints,
-    coinRate: s.coinRate,
-    pesosPerPoint: s.pesosPerPoint
+    coinRates: s.coinRates || [],
+    pointRates: s.pointRates || []
   });
 });
 
@@ -1002,23 +1002,44 @@ app.delete('/api/admin/coin-logs/:id', verifyToken, (req, res) => {
   res.json({ success: true });
 });
 
-app.post('/api/admin/coin-rate', verifyToken, (req, res) => {
-  const { coinRate, pesosPerPoint } = req.body;
-  const updates = {};
-  if (coinRate !== undefined && typeof coinRate === 'number' && coinRate > 0) {
-    updates.coinRate = coinRate;
-  }
-  if (pesosPerPoint !== undefined && typeof pesosPerPoint === 'number' && pesosPerPoint > 0) {
-    updates.pesosPerPoint = pesosPerPoint;
-  }
-  if (Object.keys(updates).length === 0) {
-    return res.json({ success: false, error: 'No valid values' });
-  }
-  const resp = settings.updateSettings(updates);
-  if (updates.pesosPerPoint) {
-    coinLogs.recalcAllPoints(updates.pesosPerPoint);
-  }
-  res.json({ success: true });
+app.post('/api/admin/coin-rates', verifyToken, (req, res) => {
+  const { pesos, minutes } = req.body;
+  const p = parseInt(pesos);
+  const m = parseInt(minutes);
+  if (!p || p < 1 || !m || m < 1) return res.json({ success: false, error: 'Invalid pesos or minutes' });
+  const s = settings.getSettings();
+  const rates = s.coinRates || [];
+  rates.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), pesos: p, minutes: m });
+  settings.updateSettings({ coinRates: rates });
+  res.json({ success: true, coinRates: rates });
+});
+
+app.delete('/api/admin/coin-rates/:id', verifyToken, (req, res) => {
+  const s = settings.getSettings();
+  const rates = (s.coinRates || []).filter(r => r.id !== req.params.id);
+  settings.updateSettings({ coinRates: rates });
+  res.json({ success: true, coinRates: rates });
+});
+
+app.post('/api/admin/point-rates', verifyToken, (req, res) => {
+  const { pesos, points } = req.body;
+  const p = parseInt(pesos);
+  const pts = parseInt(points);
+  if (!p || p < 1 || !pts || pts < 1) return res.json({ success: false, error: 'Invalid pesos or points' });
+  const s = settings.getSettings();
+  const rates = s.pointRates || [];
+  rates.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), pesos: p, points: pts });
+  settings.updateSettings({ pointRates: rates });
+  coinLogs.recalcAllPoints(rates);
+  res.json({ success: true, pointRates: rates });
+});
+
+app.delete('/api/admin/point-rates/:id', verifyToken, (req, res) => {
+  const s = settings.getSettings();
+  const rates = (s.pointRates || []).filter(r => r.id !== req.params.id);
+  settings.updateSettings({ pointRates: rates });
+  coinLogs.recalcAllPoints(rates);
+  res.json({ success: true, pointRates: rates });
 });
 
 function broadcastSettings() {

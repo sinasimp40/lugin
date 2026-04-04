@@ -95,15 +95,14 @@ When `isLogin: true` is detected → auto-shows the session (auto-connect).
 - Requires admin password authentication (same credentials as admin panel)
 - Tracks all member coin insertions (only `mem-` prefixed users, NOT voucher/walk-up)
 - Logs: username, amount (pesos), time added, date/timestamp, points earned
-- Points system: configurable pesos-per-point (default 10), accumulated per member
-- Configurable coin rate: minutes per peso (default 5, range 1-60)
-- Configurable pesos per point (default 10, range 1-1000)
-- Changing rates recalculates ALL historical log points
+- **Coin Rates**: list of {pesos, minutes} entries — admin adds as many as needed, no defaults
+- **Point Rates**: list of {pesos, points} entries — admin adds as many as needed, no defaults; points = 0 until rates are configured
+- Point calculation: for each log amount, tries all point rates and picks the one yielding the highest points (best match wins)
+- Adding/removing point rates recalculates ALL historical log points
 - Delete individual logs with automatic member point recalculation
 - Filtering: by username search, date range (from/to)
 - Summary cards: total earnings, total points, transaction count
 - Member points leaderboard showing accumulated points per member
-- Rate settings UI with live preview (e.g. "1 peso = 5 min | 50 pesos = 250 min")
 - **Data flow**: Server tracks active coin sessions via `activeCoinSessions` map; `/api/pisonet/avail` starts tracking, `/api/vendo/check-coin` updates coin amounts, `/api/pisonet/done` finalizes and persists the log
 - **Storage**: `data/coin-logs.json` (atomic writes, same pattern as settings-store)
 - **Module**: `src/coin-log-store.js` — appendLog, getLogs (with filters), getMemberPoints, deleteLog, recalcAllPoints
@@ -119,9 +118,12 @@ When `isLogin: true` is detected → auto-shows the session (auto-connect).
 - `POST /api/admin/background` — Upload background image via raw body (requires token)
 - `DELETE /api/admin/background` — Remove background image (requires token)
 - `POST /api/admin/stop-app` — Stop the application (requires token)
-- `GET /api/admin/coin-logs` — Get coin insertion logs with optional filters: username, from, to; returns coinRate, pesosPerPoint, memberPoints (requires token)
+- `GET /api/admin/coin-logs` — Get coin insertion logs with optional filters: username, from, to; returns coinRates[], pointRates[], memberPoints (requires token)
 - `DELETE /api/admin/coin-logs/:id` — Delete a specific coin log and recalculate member points (requires token)
-- `POST /api/admin/coin-rate` — Update coinRate and/or pesosPerPoint; recalculates all historical points if pesosPerPoint changes (requires token)
+- `POST /api/admin/coin-rates` — Add a coin rate entry {pesos, minutes} (requires token)
+- `DELETE /api/admin/coin-rates/:id` — Remove a coin rate entry (requires token)
+- `POST /api/admin/point-rates` — Add a point rate entry {pesos, points}; recalculates all log points (requires token)
+- `DELETE /api/admin/point-rates/:id` — Remove a point rate entry; recalculates all log points (requires token)
 - Token: in-memory, 1hr expiry, sent via `x-admin-token` header
 
 ## Pisonet Proxy API (our server → vendo)

@@ -1485,27 +1485,37 @@
         <div id="coin-logs-msg" class="admin-msg"></div>
 
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--dark-border)">
-          <div style="flex:1;min-width:200px;background:rgba(255,140,0,0.05);border:1px solid rgba(255,140,0,0.15);border-radius:4px;padding:10px">
-            <h3 style="font-family:'Orbitron',monospace;font-size:11px;color:#ff8c00;margin-bottom:8px;letter-spacing:1px">&#9670; Coin Rate</h3>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <div class="form-group" style="margin-bottom:0;flex:1;min-width:80px">
-                <label>// Minutes per Peso</label>
-                <input type="number" id="coin-rate-mins" min="1" max="999" style="width:100%" />
+          <div style="flex:1;min-width:250px;background:rgba(255,140,0,0.05);border:1px solid rgba(255,140,0,0.15);border-radius:4px;padding:10px">
+            <h3 style="font-family:'Orbitron',monospace;font-size:11px;color:#ff8c00;margin-bottom:8px;letter-spacing:1px">&#9670; Coin Rates</h3>
+            <div id="coin-rates-list" style="margin-bottom:8px"></div>
+            <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap">
+              <div class="form-group" style="margin-bottom:0;flex:1;min-width:60px">
+                <label>// Pesos</label>
+                <input type="number" id="coin-rate-add-pesos" min="1" placeholder="&#8369;" style="width:100%" />
               </div>
-              <button class="btn-admin" onclick="saveCoinRate()" style="height:34px;margin-top:16px">Save</button>
+              <div style="color:#666;font-size:11px;padding-bottom:8px">=</div>
+              <div class="form-group" style="margin-bottom:0;flex:1;min-width:60px">
+                <label>// Minutes</label>
+                <input type="number" id="coin-rate-add-mins" min="1" placeholder="min" style="width:100%" />
+              </div>
+              <button class="btn-admin" onclick="addCoinRate()" style="height:34px">+ Add</button>
             </div>
-            <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#888;margin-top:6px" id="coin-rate-preview"></div>
           </div>
-          <div style="flex:1;min-width:200px;background:rgba(255,215,64,0.05);border:1px solid rgba(255,215,64,0.15);border-radius:4px;padding:10px">
-            <h3 style="font-family:'Orbitron',monospace;font-size:11px;color:#ffd740;margin-bottom:8px;letter-spacing:1px">&#9670; Points Conversion</h3>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <div class="form-group" style="margin-bottom:0;flex:1;min-width:80px">
-                <label>// Pesos per Point</label>
-                <input type="number" id="coin-rate-pesos-per-point" min="1" max="9999" style="width:100%" />
+          <div style="flex:1;min-width:250px;background:rgba(255,215,64,0.05);border:1px solid rgba(255,215,64,0.15);border-radius:4px;padding:10px">
+            <h3 style="font-family:'Orbitron',monospace;font-size:11px;color:#ffd740;margin-bottom:8px;letter-spacing:1px">&#9670; Point Conversion</h3>
+            <div id="point-rates-list" style="margin-bottom:8px"></div>
+            <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap">
+              <div class="form-group" style="margin-bottom:0;flex:1;min-width:60px">
+                <label>// Pesos</label>
+                <input type="number" id="point-rate-add-pesos" min="1" placeholder="&#8369;" style="width:100%" />
               </div>
-              <button class="btn-admin" onclick="savePesosPerPoint()" style="height:34px;margin-top:16px">Save</button>
+              <div style="color:#666;font-size:11px;padding-bottom:8px">=</div>
+              <div class="form-group" style="margin-bottom:0;flex:1;min-width:60px">
+                <label>// Points</label>
+                <input type="number" id="point-rate-add-pts" min="1" placeholder="pts" style="width:100%" />
+              </div>
+              <button class="btn-admin" onclick="addPointRate()" style="height:34px">+ Add</button>
             </div>
-            <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#888;margin-top:6px" id="coin-points-preview"></div>
           </div>
         </div>
 
@@ -2841,90 +2851,92 @@
         return;
       }
 
-      const rateInput = document.getElementById('coin-rate-mins');
-      const pppInput = document.getElementById('coin-rate-pesos-per-point');
-      if (resp.coinRate && !rateInput.dataset.touched) {
-        rateInput.value = resp.coinRate;
-        updateRatePreview();
-      }
-      if (resp.pesosPerPoint && !pppInput.dataset.touched) {
-        pppInput.value = resp.pesosPerPoint;
-        updatePointsPreview();
-      }
+      renderRatesList('coin-rates-list', resp.coinRates || [], 'coin');
+      renderRatesList('point-rates-list', resp.pointRates || [], 'point');
 
       renderCoinLogs(resp.logs || [], resp.memberPoints || {});
     }
 
-    function updateRatePreview() {
-      const v = parseInt(document.getElementById('coin-rate-mins').value) || 0;
-      const el = document.getElementById('coin-rate-preview');
-      if (v > 0) {
-        el.textContent = '1 peso = ' + v + ' min | 50 pesos = ' + (v * 50) + ' min | 100 pesos = ' + (v * 100) + ' min';
-      } else {
-        el.textContent = '';
+    function renderRatesList(containerId, rates, type) {
+      const el = document.getElementById(containerId);
+      if (!rates || rates.length === 0) {
+        el.innerHTML = '<div style="font-family:\'Share Tech Mono\',monospace;font-size:10px;color:#666;padding:4px 0">[ no rates set ]</div>';
+        return;
       }
+      let html = '';
+      rates.forEach(r => {
+        const label = type === 'coin'
+          ? '&#8369;' + r.pesos + ' = ' + r.minutes + ' min'
+          : '&#8369;' + r.pesos + ' = ' + r.points + ' pt' + (r.points > 1 ? 's' : '');
+        html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'
+          + '<span style="font-family:\'Share Tech Mono\',monospace;font-size:11px;color:' + (type === 'coin' ? '#ff8c00' : '#ffd740') + ';flex:1">' + label + '</span>'
+          + '<button onclick="deleteRate(\'' + type + '\',\'' + r.id + '\')" style="background:rgba(255,60,60,0.12);border:1px solid rgba(255,60,60,0.25);color:#ff6060;font-size:9px;padding:2px 6px;border-radius:3px;cursor:pointer;font-family:\'Share Tech Mono\',monospace">&#10005;</button>'
+          + '</div>';
+      });
+      el.innerHTML = html;
     }
 
-    function updatePointsPreview() {
-      const v = parseInt(document.getElementById('coin-rate-pesos-per-point').value) || 0;
-      const el = document.getElementById('coin-points-preview');
-      if (v > 0) {
-        el.textContent = 'Every ' + v + ' pesos = 1 point | ' + (v * 5) + ' pesos = 5 pts | ' + (v * 10) + ' pesos = 10 pts';
-      } else {
-        el.textContent = '';
-      }
-    }
-
-    document.addEventListener('input', function(e) {
-      if (e.target.id === 'coin-rate-mins') {
-        e.target.dataset.touched = '1';
-        updateRatePreview();
-      }
-      if (e.target.id === 'coin-rate-pesos-per-point') {
-        e.target.dataset.touched = '1';
-        updatePointsPreview();
-      }
-    });
-
-    async function saveCoinRate() {
-      const val = parseInt(document.getElementById('coin-rate-mins').value);
-      if (!val || val < 1) return;
-      const resp = await fetch('/api/admin/coin-rate', {
+    async function addCoinRate() {
+      const pesos = parseInt(document.getElementById('coin-rate-add-pesos').value);
+      const mins = parseInt(document.getElementById('coin-rate-add-mins').value);
+      if (!pesos || pesos < 1 || !mins || mins < 1) return;
+      const resp = await fetch('/api/admin/coin-rates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-token': coinLogsToken },
-        body: JSON.stringify({ coinRate: val })
+        body: JSON.stringify({ pesos, minutes: mins })
       }).then(r => r.json()).catch(() => ({ success: false }));
-      const msg = document.getElementById('coin-logs-msg');
       if (resp.success) {
-        msg.textContent = 'Coin rate saved: 1 peso = ' + val + ' minutes';
-        msg.className = 'admin-msg success';
-        document.getElementById('coin-rate-mins').dataset.touched = '';
+        renderRatesList('coin-rates-list', resp.coinRates, 'coin');
+        document.getElementById('coin-rate-add-pesos').value = '';
+        document.getElementById('coin-rate-add-mins').value = '';
+        showCoinMsg('Coin rate added: \u20b1' + pesos + ' = ' + mins + ' min', 'success');
       } else {
-        msg.textContent = 'Failed to save coin rate';
-        msg.className = 'admin-msg error';
+        showCoinMsg('Failed to add coin rate', 'error');
       }
-      setTimeout(() => { msg.textContent = ''; msg.className = 'admin-msg'; }, 3000);
     }
 
-    async function savePesosPerPoint() {
-      const val = parseInt(document.getElementById('coin-rate-pesos-per-point').value);
-      if (!val || val < 1) return;
-      if (!confirm('Changing points conversion will recalculate ALL existing log points. Continue?')) return;
-      const resp = await fetch('/api/admin/coin-rate', {
+    async function addPointRate() {
+      const pesos = parseInt(document.getElementById('point-rate-add-pesos').value);
+      const pts = parseInt(document.getElementById('point-rate-add-pts').value);
+      if (!pesos || pesos < 1 || !pts || pts < 1) return;
+      const resp = await fetch('/api/admin/point-rates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-token': coinLogsToken },
-        body: JSON.stringify({ pesosPerPoint: val })
+        body: JSON.stringify({ pesos, points: pts })
       }).then(r => r.json()).catch(() => ({ success: false }));
-      const msg = document.getElementById('coin-logs-msg');
       if (resp.success) {
-        msg.textContent = 'Points conversion updated. All logs recalculated.';
-        msg.className = 'admin-msg success';
-        document.getElementById('coin-rate-pesos-per-point').dataset.touched = '';
+        renderRatesList('point-rates-list', resp.pointRates, 'point');
+        document.getElementById('point-rate-add-pesos').value = '';
+        document.getElementById('point-rate-add-pts').value = '';
+        showCoinMsg('Point rate added. All logs recalculated.', 'success');
         loadCoinLogs();
       } else {
-        msg.textContent = 'Failed to save points conversion';
-        msg.className = 'admin-msg error';
+        showCoinMsg('Failed to add point rate', 'error');
       }
+    }
+
+    async function deleteRate(type, rateId) {
+      const endpoint = type === 'coin' ? '/api/admin/coin-rates/' : '/api/admin/point-rates/';
+      const resp = await fetch(endpoint + rateId, {
+        method: 'DELETE',
+        headers: { 'x-admin-token': coinLogsToken }
+      }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) {
+        if (type === 'coin') {
+          renderRatesList('coin-rates-list', resp.coinRates, 'coin');
+          showCoinMsg('Coin rate removed', 'success');
+        } else {
+          renderRatesList('point-rates-list', resp.pointRates, 'point');
+          showCoinMsg('Point rate removed. All logs recalculated.', 'success');
+          loadCoinLogs();
+        }
+      }
+    }
+
+    function showCoinMsg(text, cls) {
+      const msg = document.getElementById('coin-logs-msg');
+      msg.textContent = text;
+      msg.className = 'admin-msg ' + cls;
       setTimeout(() => { msg.textContent = ''; msg.className = 'admin-msg'; }, 3000);
     }
 

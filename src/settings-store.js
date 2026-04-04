@@ -92,8 +92,8 @@ function getSettings() {
     curfewEnabled: !!s.curfewEnabled,
     curfewStart: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.curfewStart) ? s.curfewStart : '22:00',
     curfewEnd: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.curfewEnd) ? s.curfewEnd : '06:00',
-    coinRate: s.coinRate !== undefined ? s.coinRate : 5,
-    pesosPerPoint: s.pesosPerPoint !== undefined ? s.pesosPerPoint : 10,
+    coinRates: Array.isArray(s.coinRates) ? s.coinRates : [],
+    pointRates: Array.isArray(s.pointRates) ? s.pointRates : [],
   };
 }
 
@@ -151,8 +151,8 @@ function updateSettings(updates) {
   if (updates.curfewEnabled !== undefined) s.curfewEnabled = !!updates.curfewEnabled;
   if (updates.curfewStart !== undefined && /^([01]\d|2[0-3]):[0-5]\d$/.test(updates.curfewStart)) s.curfewStart = updates.curfewStart;
   if (updates.curfewEnd !== undefined && /^([01]\d|2[0-3]):[0-5]\d$/.test(updates.curfewEnd)) s.curfewEnd = updates.curfewEnd;
-  if (updates.coinRate !== undefined) s.coinRate = Math.max(1, Math.min(60, parseInt(updates.coinRate) || 5));
-  if (updates.pesosPerPoint !== undefined) s.pesosPerPoint = Math.max(1, Math.min(1000, parseInt(updates.pesosPerPoint) || 10));
+  if (updates.coinRates !== undefined && Array.isArray(updates.coinRates)) s.coinRates = updates.coinRates;
+  if (updates.pointRates !== undefined && Array.isArray(updates.pointRates)) s.pointRates = updates.pointRates;
   save(s);
   return getSettings();
 }

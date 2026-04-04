@@ -30,14 +30,23 @@ function save(data) {
   fs.renameSync(tmp, logsPath);
 }
 
-function calcPoints(amount, pesosPerPoint) {
-  const rate = pesosPerPoint || 10;
-  return Math.floor((amount || 0) / rate);
+function calcPoints(amount, pointRates) {
+  if (!Array.isArray(pointRates) || pointRates.length === 0 || !amount || amount <= 0) return 0;
+  let best = 0;
+  for (const rate of pointRates) {
+    const rp = rate.pesos || 0;
+    const rPts = rate.points || 0;
+    if (rp > 0 && rPts > 0 && amount >= rp) {
+      const pts = Math.floor(amount / rp) * rPts;
+      if (pts > best) best = pts;
+    }
+  }
+  return best;
 }
 
-function appendLog(entry, pesosPerPoint) {
+function appendLog(entry, pointRates) {
   const data = load();
-  const pts = calcPoints(entry.amount, pesosPerPoint);
+  const pts = calcPoints(entry.amount, pointRates);
   const log = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     username: entry.username || '',
@@ -81,10 +90,10 @@ function recalcPoints(data) {
   });
 }
 
-function recalcAllPoints(pesosPerPoint) {
+function recalcAllPoints(pointRates) {
   const data = load();
   (data.logs || []).forEach(l => {
-    l.points = calcPoints(l.amount, pesosPerPoint);
+    l.points = calcPoints(l.amount, pointRates);
   });
   recalcPoints(data);
   save(data);
