@@ -90,6 +90,20 @@ When `isLogin: true` is detected → auto-shows the session (auto-connect).
 - GIF warning shown for memory concerns on low-end devices
 - Settings broadcast to all WebSocket clients in real-time
 
+## Coin Logs & Points System
+- Triggered by typing "zxc2" on the login screen (separate from admin panel)
+- Requires admin password authentication (same credentials as admin panel)
+- Tracks all member coin insertions (only `mem-` prefixed users, NOT voucher/walk-up)
+- Logs: username, amount (pesos), time added, date/timestamp, points earned
+- Points system: every 10 pesos = 1 point (accumulated per member)
+- Filtering: by username search, date range (from/to)
+- Summary cards: total earnings, total points, transaction count
+- Member points leaderboard showing accumulated points per member
+- **Data flow**: Server tracks active coin sessions via `activeCoinSessions` map; `/api/pisonet/avail` starts tracking, `/api/vendo/check-coin` updates coin amounts, `/api/pisonet/done` finalizes and persists the log
+- **Storage**: `data/coin-logs.json` (atomic writes, same pattern as settings-store)
+- **Module**: `src/coin-log-store.js` — appendLog, getLogs (with filters), getMemberPoints
+- Stale session cleanup: 10-minute TTL on in-memory coin sessions
+
 ## Admin API
 - `GET /api/admin/status` — Check if registered + current settings
 - `POST /api/admin/register` — First-time admin setup (returns token)
@@ -100,6 +114,7 @@ When `isLogin: true` is detected → auto-shows the session (auto-connect).
 - `POST /api/admin/background` — Upload background image via raw body (requires token)
 - `DELETE /api/admin/background` — Remove background image (requires token)
 - `POST /api/admin/stop-app` — Stop the application (requires token)
+- `GET /api/admin/coin-logs` — Get coin insertion logs with optional filters: username, from, to (requires token)
 - Token: in-memory, 1hr expiry, sent via `x-admin-token` header
 
 ## Pisonet Proxy API (our server → vendo)

@@ -5,12 +5,24 @@ const fs = require('fs');
 const { WebSocketServer } = require('ws');
 const http = require('http');
 const settings = require('./src/settings-store');
+const coinLogs = require('./src/coin-log-store');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 const HOTSPOT_DNS = 'pisonet.app';
 const VENDO_IP = '10.0.0.5:8989';
+
+const activeCoinSessions = new Map();
+const COIN_SESSION_TTL = 600000;
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, session] of activeCoinSessions) {
+    if (now - session.startTime > COIN_SESSION_TTL) {
+      activeCoinSessions.delete(key);
+    }
+  }
+}, 60000);
 
 const adminTokens = new Map();
 const loginAttempts = new Map();
@@ -544,7 +556,7 @@ app.post('/api/pisonet/logout', async (req, res) => {
 });
 
 app.post('/api/pisonet/avail', async (req, res) => {
-  const { ip, mac } = req.body;
+  const { ip, mac, username } = req.body;
   try {
     const url = `http://${VENDO_IP}/pisonet/avail`;
     const body = { macAddress: mac || '', ip: ip || '' };
@@ -557,6 +569,12 @@ app.post('/api/pisonet/avail', async (req, res) => {
     });
     const text = await resp.text();
     console.log('[Pisonet] avail response:', resp.status, text);
+
+    if (username && username.startsWith('mem-')) {
+      const key = `${ip || ''}|${mac || ''}`;
+      activeCoinSessions.set(key, { username, ip, mac, startTime: Date.now(), totalCoin: 0, timeAdded: '' });
+    }
+
     try {
       res.json({ success: true, data: JSON.parse(text) });
     } catch (_) {
@@ -582,6 +600,25 @@ app.post('/api/pisonet/done', async (req, res) => {
     });
     const text = await resp.text();
     console.log('[Pisonet] done response:', resp.status, text);
+
+    const key = `${ip || ''}|${mac || ''}`;
+    const session = activeCoinSessions.get(key);
+    if (session && session.username && session.totalCoin > 0) {
+      try {
+        const log = coinLogs.appendLog({
+          username: session.username,
+          amount: session.totalCoin,
+          timeAdded: session.timeAdded,
+          ip: session.ip,
+          mac: session.mac
+        });
+        console.log('[CoinLog] Recorded:', session.username, 'amount:', session.totalCoin, 'points:', log.points);
+      } catch (e) {
+        console.log('[CoinLog] Error saving log:', e.message);
+      }
+    }
+    activeCoinSessions.delete(key);
+
     try {
       res.json({ success: true, data: JSON.parse(text) });
     } catch (_) {
@@ -594,16 +631,29 @@ app.post('/api/pisonet/done', async (req, res) => {
 });
 
 app.get('/api/vendo/check-coin', async (req, res) => {
-  const { voucher } = req.query;
+  const { voucher, ip, mac } = req.query;
   try {
     const url = `http://${VENDO_IP}/checkCoin?voucher=${encodeURIComponent(voucher || '')}`;
     const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
     const text = await resp.text();
+    let parsed;
     try {
-      res.json({ success: true, data: JSON.parse(text) });
+      parsed = JSON.parse(text);
     } catch (_) {
-      res.json({ success: true, data: text });
+      parsed = null;
     }
+
+    if (parsed && ip && mac) {
+      const key = `${ip}|${mac}`;
+      const session = activeCoinSessions.get(key);
+      if (session) {
+        const coins = parseInt(parsed.totalCoinReceived, 10);
+        if (!isNaN(coins) && coins > 0) session.totalCoin = coins;
+        if (parsed.timeAdded) session.timeAdded = parsed.timeAdded;
+      }
+    }
+
+    res.json({ success: true, data: parsed || text });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
@@ -922,6 +972,20 @@ app.post('/api/admin/stop-app', verifyToken, (req, res) => {
       process.exit(0);
     }, 2000);
   }, 500);
+});
+
+app.get('/api/admin/coin-logs', verifyToken, (req, res) => {
+  const { username, from, to } = req.query;
+  const result = coinLogs.getLogs({ username, from, to });
+  const hasFilters = username || from || to;
+  let filteredPoints = result.memberPoints;
+  if (hasFilters) {
+    filteredPoints = {};
+    (result.logs || []).forEach(l => {
+      if (l.username) filteredPoints[l.username] = (filteredPoints[l.username] || 0) + (l.points || 0);
+    });
+  }
+  res.json({ success: true, logs: result.logs, memberPoints: filteredPoints });
 });
 
 function broadcastSettings() {

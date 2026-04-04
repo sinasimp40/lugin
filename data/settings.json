@@ -9,11 +9,7 @@
       "order": 0
     }
   ],
-  "backgroundImage": {
-    "filename": "background.jpeg",
-    "mimeType": "image/jpeg",
-    "size": 5417827
-  },
+  "backgroundImage": null,
   "fullscreenBypass": [
     "valorant.exe",
     "league of legends.exe",
@@ -35,7 +31,7 @@
     "mimeType": "image/jpeg",
     "size": 144922
   },
-  "curfewEnabled": true,
-  "curfewStart": "00:00",
-  "curfewEnd": "23:59"
+  "curfewEnabled": false,
+  "curfewStart": "22:00",
+  "curfewEnd": "06:00"
 }

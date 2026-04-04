@@ -288,8 +288,10 @@ app.whenReady().then(() => {
 
   const path = require('path');
   const settings = require('./src/settings-store');
+  const coinLogs = require('./src/coin-log-store');
   const portableDataDir = path.join(path.dirname(app.getPath('exe')), 'data');
   settings.setDataDir(portableDataDir);
+  coinLogs.setDataDir(portableDataDir);
   console.log('[Electron] Data dir (portable):', portableDataDir);
 
   function waitForServer(retries) {

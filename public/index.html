@@ -1465,6 +1465,73 @@
     </div>
   </div>
 
+  <div id="coin-logs-modal" class="admin-modal">
+    <div class="admin-box" id="coin-logs-box">
+      <div id="coin-logs-auth-view">
+        <h2>Coin Logs Access</h2>
+        <div id="coin-logs-auth-msg" class="admin-msg"></div>
+        <div class="form-group">
+          <label>// Admin Password</label>
+          <input type="password" id="coin-logs-pw-input" placeholder="enter admin password" />
+        </div>
+        <div class="btn-group">
+          <button class="btn-admin" onclick="closeCoinLogs()">Cancel</button>
+          <button class="btn-admin" onclick="coinLogsAuth()">Login</button>
+        </div>
+      </div>
+
+      <div id="coin-logs-panel-view" style="display:none">
+        <h2>&#9670; Member Coin Logs</h2>
+        <div id="coin-logs-msg" class="admin-msg"></div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
+          <div class="form-group" style="margin-bottom:0;flex:1;min-width:140px">
+            <label>// Search Username</label>
+            <input type="text" id="coin-log-filter-user" placeholder="e.g. mem-raprap" />
+          </div>
+          <div class="form-group" style="margin-bottom:0;min-width:130px">
+            <label>// From Date</label>
+            <input type="date" id="coin-log-filter-from" style="color-scheme:dark" />
+          </div>
+          <div class="form-group" style="margin-bottom:0;min-width:130px">
+            <label>// To Date</label>
+            <input type="date" id="coin-log-filter-to" style="color-scheme:dark" />
+          </div>
+          <button class="btn-admin" onclick="loadCoinLogs()" style="height:34px;margin-bottom:0">Filter</button>
+          <button class="btn-admin" onclick="clearCoinLogFilters()" style="height:34px;margin-bottom:0">Clear</button>
+        </div>
+
+        <div id="coin-logs-summary" style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap"></div>
+
+        <div style="overflow-x:auto;max-height:50vh;overflow-y:auto;border:1px solid var(--dark-border);border-radius:4px">
+          <table style="width:100%;border-collapse:collapse;font-family:'Share Tech Mono',monospace;font-size:11px">
+            <thead>
+              <tr style="background:rgba(255,140,0,0.1);position:sticky;top:0">
+                <th style="padding:8px 10px;text-align:left;color:#ff8c00;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--dark-border)">USERNAME</th>
+                <th style="padding:8px 10px;text-align:center;color:#ff8c00;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--dark-border)">AMOUNT (&#8369;)</th>
+                <th style="padding:8px 10px;text-align:center;color:#ff8c00;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--dark-border)">TIME ADDED</th>
+                <th style="padding:8px 10px;text-align:center;color:#ff8c00;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--dark-border)">DATE</th>
+                <th style="padding:8px 10px;text-align:center;color:#ff8c00;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--dark-border)">POINTS</th>
+              </tr>
+            </thead>
+            <tbody id="coin-logs-tbody"></tbody>
+          </table>
+        </div>
+
+        <div id="coin-logs-total" style="font-family:'Share Tech Mono',monospace;font-size:11px;color:#888;margin-top:10px;text-align:right"></div>
+
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--dark-border)">
+          <h3 style="font-family:'Orbitron',monospace;font-size:12px;color:#ff8c00;margin-bottom:10px;letter-spacing:2px">&#9670; Member Points Summary</h3>
+          <div id="coin-logs-points" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        </div>
+
+        <div style="display:flex;gap:12px;justify-content:center;margin-top:20px;padding-top:12px;border-top:1px solid var(--dark-border)">
+          <button class="btn-admin" onclick="closeCoinLogs()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="admin-modal" class="admin-modal">
     <div class="admin-box" id="admin-box">
       <div id="admin-auth-view">
@@ -2432,6 +2499,7 @@
     let coinVoucherCode = '';
     let totalCoinReceived = 0;
     let coinFlowState = 'idle';
+    let coinActiveUsername = '';
 
     function startCoinPolling(voucherCode) {
       stopCoinPolling();
@@ -2444,7 +2512,8 @@
         if (!coinPollActive || gen !== coinPollGeneration || inFlight) return;
         inFlight = true;
         try {
-          const resp = await fetch('/api/vendo/check-coin?voucher=' + encodeURIComponent(voucherCode)).then(r => r.json()).catch(() => null);
+          const checkParams = new URLSearchParams({ voucher: voucherCode, ip: coinClientIp || '', mac: coinClientMac || '' });
+          const resp = await fetch('/api/vendo/check-coin?' + checkParams).then(r => r.json()).catch(() => null);
           if (!coinPollActive || gen !== coinPollGeneration) return;
           if (!resp || !resp.success || !resp.data) return;
 
@@ -2581,9 +2650,10 @@
         document.getElementById('coin-voucher-display').innerHTML = 'User: <span>' + username + '</span>';
         coinFlowState = 'opening-pisonet';
 
+        coinActiveUsername = username;
         const availResp = await fetch('/api/pisonet/avail', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ip: coinClientIp, mac: coinClientMac }),
+          body: JSON.stringify({ ip: coinClientIp, mac: coinClientMac, username: username }),
           signal: coinAbortController.signal,
         }).then(r => r.json()).catch(err => ({ success: false, error: err.name === 'AbortError' ? 'Cancelled' : err.message, aborted: err.name === 'AbortError' }));
 
@@ -2657,14 +2727,167 @@
     document.addEventListener('keydown', (e) => {
       if (document.getElementById('admin-modal').classList.contains('active')) return;
       if (document.getElementById('coin-modal').classList.contains('active')) return;
+      if (document.getElementById('coin-logs-modal').classList.contains('active')) return;
       if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
         const active = document.activeElement;
         if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
         secretBuffer += e.key.toLowerCase();
         if (secretBuffer.length > 10) secretBuffer = secretBuffer.slice(-10);
         if (secretBuffer.endsWith('zxc1')) { secretBuffer = ''; openAdmin(); }
+        if (secretBuffer.endsWith('zxc2')) { secretBuffer = ''; openCoinLogs(); }
       }
     });
+
+    let coinLogsToken = null;
+
+    async function openCoinLogs() {
+      const resp = await fetch('/api/admin/status').then(r => r.json()).catch(() => ({}));
+      if (!resp.registered) {
+        return;
+      }
+      const modal = document.getElementById('coin-logs-modal');
+      document.getElementById('coin-logs-auth-view').style.display = 'block';
+      document.getElementById('coin-logs-panel-view').style.display = 'none';
+      document.getElementById('coin-logs-box').classList.add('auth-mode');
+      document.getElementById('coin-logs-auth-msg').className = 'admin-msg';
+      document.getElementById('coin-logs-pw-input').value = '';
+      document.getElementById('coin-logs-auth-msg').textContent = '';
+      modal.classList.add('active');
+      setTimeout(() => document.getElementById('coin-logs-pw-input').focus(), 100);
+    }
+
+    function closeCoinLogs() {
+      document.getElementById('coin-logs-modal').classList.remove('active');
+      coinLogsToken = null;
+    }
+
+    async function coinLogsAuth() {
+      const pw = document.getElementById('coin-logs-pw-input').value;
+      if (!pw) return;
+      const resp = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw })
+      }).then(r => r.json()).catch(() => ({ success: false }));
+
+      if (resp.success && resp.token) {
+        coinLogsToken = resp.token;
+        document.getElementById('coin-logs-auth-view').style.display = 'none';
+        document.getElementById('coin-logs-panel-view').style.display = 'block';
+        document.getElementById('coin-logs-box').classList.remove('auth-mode');
+        loadCoinLogs();
+      } else {
+        const msg = document.getElementById('coin-logs-auth-msg');
+        msg.textContent = resp.error || 'Invalid password';
+        msg.className = 'admin-msg error';
+      }
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (document.getElementById('coin-logs-modal').classList.contains('active')) {
+        if (e.key === 'Enter') {
+          const authView = document.getElementById('coin-logs-auth-view');
+          if (authView.style.display !== 'none') {
+            coinLogsAuth();
+          }
+        }
+        if (e.key === 'Escape') closeCoinLogs();
+      }
+    });
+
+    async function loadCoinLogs() {
+      if (!coinLogsToken) return;
+      const username = document.getElementById('coin-log-filter-user').value.trim();
+      const from = document.getElementById('coin-log-filter-from').value;
+      const to = document.getElementById('coin-log-filter-to').value;
+      const params = new URLSearchParams();
+      if (username) params.set('username', username);
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
+
+      const resp = await fetch('/api/admin/coin-logs?' + params, {
+        headers: { 'x-admin-token': coinLogsToken }
+      }).then(r => r.json()).catch(() => ({ success: false }));
+
+      if (!resp.success) {
+        document.getElementById('coin-logs-msg').textContent = 'Failed to load logs';
+        document.getElementById('coin-logs-msg').className = 'admin-msg error';
+        return;
+      }
+
+      renderCoinLogs(resp.logs || [], resp.memberPoints || {});
+    }
+
+    function renderCoinLogs(logs, memberPoints) {
+      const tbody = document.getElementById('coin-logs-tbody');
+      const totalEl = document.getElementById('coin-logs-total');
+      const pointsEl = document.getElementById('coin-logs-points');
+      const summaryEl = document.getElementById('coin-logs-summary');
+
+      let totalAmount = 0;
+      let totalPoints = 0;
+
+      if (logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:#666">No coin logs found</td></tr>';
+        totalEl.textContent = '';
+        summaryEl.innerHTML = '';
+      } else {
+        let html = '';
+        logs.forEach(log => {
+          const d = new Date(log.timestamp);
+          const dateStr = d.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+          const timeStr = d.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', hour12: true });
+          totalAmount += log.amount || 0;
+          totalPoints += log.points || 0;
+          html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
+            + '<td style="padding:6px 10px;color:#e0e0e0">' + escapeHtml(log.username) + '</td>'
+            + '<td style="padding:6px 10px;text-align:center;color:#4fc3f7">&#8369;' + (log.amount || 0) + '</td>'
+            + '<td style="padding:6px 10px;text-align:center;color:#81c784">' + escapeHtml(log.timeAdded || '--') + '</td>'
+            + '<td style="padding:6px 10px;text-align:center;color:#bbb">' + dateStr + ' ' + timeStr + '</td>'
+            + '<td style="padding:6px 10px;text-align:center;color:#ffd740;font-weight:bold">' + (log.points || 0) + '</td>'
+            + '</tr>';
+        });
+        tbody.innerHTML = html;
+        totalEl.textContent = 'Showing ' + logs.length + ' log(s) | Total: ₱' + totalAmount + ' | Points: ' + totalPoints;
+
+        summaryEl.innerHTML = ''
+          + '<div style="flex:1;min-width:100px;background:rgba(79,195,247,0.1);border:1px solid rgba(79,195,247,0.2);border-radius:4px;padding:10px;text-align:center">'
+          + '<div style="font-family:\'Share Tech Mono\',monospace;font-size:10px;color:#4fc3f7;letter-spacing:1px;margin-bottom:4px">TOTAL EARNINGS</div>'
+          + '<div style="font-family:\'Orbitron\',monospace;font-size:18px;color:#4fc3f7">&#8369;' + totalAmount + '</div></div>'
+          + '<div style="flex:1;min-width:100px;background:rgba(255,215,64,0.1);border:1px solid rgba(255,215,64,0.2);border-radius:4px;padding:10px;text-align:center">'
+          + '<div style="font-family:\'Share Tech Mono\',monospace;font-size:10px;color:#ffd740;letter-spacing:1px;margin-bottom:4px">TOTAL POINTS</div>'
+          + '<div style="font-family:\'Orbitron\',monospace;font-size:18px;color:#ffd740">' + totalPoints + '</div></div>'
+          + '<div style="flex:1;min-width:100px;background:rgba(129,199,132,0.1);border:1px solid rgba(129,199,132,0.2);border-radius:4px;padding:10px;text-align:center">'
+          + '<div style="font-family:\'Share Tech Mono\',monospace;font-size:10px;color:#81c784;letter-spacing:1px;margin-bottom:4px">TRANSACTIONS</div>'
+          + '<div style="font-family:\'Orbitron\',monospace;font-size:18px;color:#81c784">' + logs.length + '</div></div>';
+      }
+
+      const sortedPoints = Object.entries(memberPoints).sort((a, b) => b[1] - a[1]);
+      if (sortedPoints.length === 0) {
+        pointsEl.innerHTML = '<div style="color:#666;font-family:\'Share Tech Mono\',monospace;font-size:11px">No member points yet</div>';
+      } else {
+        let phtml = '';
+        sortedPoints.forEach(([user, pts]) => {
+          phtml += '<div style="background:rgba(255,215,64,0.08);border:1px solid rgba(255,215,64,0.15);border-radius:4px;padding:6px 12px;font-family:\'Share Tech Mono\',monospace;font-size:11px">'
+            + '<span style="color:#e0e0e0">' + escapeHtml(user) + '</span>'
+            + ' <span style="color:#ffd740;font-weight:bold">' + pts + ' pts</span></div>';
+        });
+        pointsEl.innerHTML = phtml;
+      }
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function clearCoinLogFilters() {
+      document.getElementById('coin-log-filter-user').value = '';
+      document.getElementById('coin-log-filter-from').value = '';
+      document.getElementById('coin-log-filter-to').value = '';
+      loadCoinLogs();
+    }
 
     async function openAdmin() {
       const resp = await fetch('/api/admin/status').then(r => r.json()).catch(() => ({}));
@@ -3543,9 +3766,10 @@
         return;
       }
 
+      coinActiveUsername = username;
       const availResp = await fetch('/api/pisonet/avail', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ip: coinClientIp, mac: coinClientMac }),
+        body: JSON.stringify({ ip: coinClientIp, mac: coinClientMac, username: username }),
         signal: coinAbortController.signal,
       }).then(r => r.json()).catch(err => ({ success: false, error: err.name === 'AbortError' ? 'Cancelled' : err.message, aborted: err.name === 'AbortError' }));
       if (myRequestId !== coinRequestId) return;
