@@ -1338,6 +1338,14 @@
       <div class="curfew-msg">member login &amp; register disabled</div>
       <div class="curfew-coin-note">&#9654; you can still insert coins and play</div>
       <div class="curfew-coin-warn">&#9888; no pause time &mdash; play only if you can, don't insert too much</div>
+      <div id="curfew-shutdown-area" class="shutdown-panel hidden" style="margin-top:24px;">
+        <div class="shutdown-header" style="color:#ff4040;">&#9888; System Auto Shutdown &#9888;</div>
+        <div class="shutdown-time-display" id="curfew-shutdown-timer" style="color:#ff4040; text-shadow: 0 0 15px rgba(255,64,64,0.6), 0 0 30px rgba(255,64,64,0.3);">--:--</div>
+        <div class="shutdown-bar-track">
+          <div class="shutdown-bar-fill" id="curfew-shutdown-bar" style="width:100%"></div>
+        </div>
+        <div class="shutdown-label-bottom" style="color:rgba(255,80,80,0.5);">[ time remaining ]</div>
+      </div>
       <div class="curfew-bar"></div>
     </div>
     <div class="login-split-wrap">
@@ -1991,8 +1999,10 @@
 
     function updateShutdownConfig(totalSeconds) {
       const area = document.getElementById('shutdown-area');
+      const curfewArea = document.getElementById('curfew-shutdown-area');
       if (totalSeconds <= 0 || sessionData) {
         area.classList.add('hidden');
+        if (curfewArea) curfewArea.classList.add('hidden');
         if (shutdownInterval) { clearInterval(shutdownInterval); shutdownInterval = null; }
         shutdownLeft = 0;
         return;
@@ -2040,9 +2050,10 @@
       const h = Math.floor(shutdownLeft / 3600);
       const m = Math.floor((shutdownLeft % 3600) / 60);
       const s = shutdownLeft % 60;
-      el.textContent = h > 0
+      const timeStr = h > 0
         ? String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0')
         : String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+      el.textContent = timeStr;
 
       el.className = 'shutdown-time-display';
       bar.className = 'shutdown-bar-fill';
@@ -2065,6 +2076,35 @@
 
       const pct = shutdownTotal > 0 ? (shutdownLeft / shutdownTotal) * 100 : 0;
       bar.style.width = pct + '%';
+
+      const curfewEl = document.getElementById('curfew-shutdown-timer');
+      const curfewBar = document.getElementById('curfew-shutdown-bar');
+      const curfewArea = document.getElementById('curfew-shutdown-area');
+      if (curfewEl && curfewBar && curfewArea) {
+        curfewEl.textContent = timeStr;
+        curfewEl.className = 'shutdown-time-display';
+        curfewBar.className = 'shutdown-bar-fill';
+        curfewArea.classList.remove('danger-mode');
+        if (shutdownLeft <= 60) {
+          curfewEl.classList.add('danger');
+          curfewBar.classList.add('danger');
+          curfewArea.classList.add('danger-mode');
+        } else if (shutdownLeft <= 120) {
+          curfewEl.classList.add('warning');
+          curfewBar.classList.add('warning');
+        } else if (shutdownLeft <= 180) {
+          curfewEl.classList.add('caution');
+          curfewBar.classList.add('caution');
+        }
+        curfewBar.style.width = pct + '%';
+        curfewBar.style.background = '';
+        curfewBar.style.boxShadow = '';
+        if (shutdownLeft > 0 && shutdownTotal > 0) {
+          curfewArea.classList.remove('hidden');
+        } else {
+          curfewArea.classList.add('hidden');
+        }
+      }
     }
 
     async function loadSettings() {
@@ -2765,9 +2805,15 @@
       if (splitWrap) splitWrap.style.display = inCurfew ? 'none' : '';
       const adCarousel = document.querySelector('.ad-carousel');
       if (adCarousel) adCarousel.style.display = inCurfew ? 'none' : '';
+      const curfewArea = document.getElementById('curfew-shutdown-area');
       if (inCurfew) {
         document.getElementById('curfew-start-display').textContent = formatCurfewTime(s.curfewStart || '22:00');
         document.getElementById('curfew-end-display').textContent = formatCurfewTime(s.curfewEnd || '06:00');
+        if (curfewArea && shutdownLeft > 0 && shutdownTotal > 0) {
+          curfewArea.classList.remove('hidden');
+        }
+      } else {
+        if (curfewArea) curfewArea.classList.add('hidden');
       }
       if (!curfewCheckInterval) {
         curfewCheckInterval = setInterval(() => { if (appSettings) updateCurfewUI(appSettings); }, 30000);
