@@ -50,9 +50,7 @@ const styles = `
     background: radial-gradient(1px 1px at 20% 30%, rgba(255,140,0,0.3), transparent),
                 radial-gradient(1px 1px at 60% 70%, rgba(255,140,0,0.2), transparent),
                 radial-gradient(1px 1px at 80% 20%, rgba(255,140,0,0.25), transparent),
-                radial-gradient(1px 1px at 40% 80%, rgba(255,140,0,0.15), transparent),
-                radial-gradient(1px 1px at 10% 60%, rgba(255,140,0,0.2), transparent),
-                radial-gradient(1px 1px at 90% 50%, rgba(255,140,0,0.15), transparent);
+                radial-gradient(1px 1px at 40% 80%, rgba(255,140,0,0.15), transparent);
   }
 
   .left-sec {
@@ -70,9 +68,7 @@ const styles = `
     white-space: nowrap;
   }
 
-  .user-row {
-    display: flex; align-items: center; gap: 4px;
-  }
+  .user-row { display: flex; align-items: center; gap: 4px; }
 
   .status-dot {
     width: 4px; height: 4px; border-radius: 50%;
@@ -81,10 +77,7 @@ const styles = `
     flex-shrink: 0;
     animation: dot-pulse 2s ease-in-out infinite;
   }
-  @keyframes dot-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
+  @keyframes dot-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
   .user-text {
     font-family: 'Share Tech Mono', monospace;
@@ -95,9 +88,8 @@ const styles = `
   }
 
   .right-sec {
-    flex-shrink: 0;
-    margin-left: 6px;
-    display: flex; align-items: center; gap: 6px;
+    flex-shrink: 0; margin-left: 6px;
+    display: flex; align-items: center;
     position: relative; z-index: 3;
   }
 
@@ -112,29 +104,31 @@ const styles = `
   }
 
   .pts-box {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: linear-gradient(180deg, rgba(255,215,64,0.08) 0%, rgba(255,215,64,0.03) 100%);
-    border: 1px solid rgba(255,215,64,0.25);
-    border-radius: 3px;
-    padding: 2px 8px;
-    min-width: 50px;
+    position: absolute;
+    top: 0; bottom: 0; right: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: linear-gradient(180deg, rgba(255,215,64,0.1) 0%, rgba(255,215,64,0.04) 100%);
+    border-left: 1px solid rgba(255,215,64,0.3);
+    padding: 0 10px;
+    min-width: 60px;
     line-height: 1;
-    box-shadow: 0 0 8px rgba(255,215,64,0.08), inset 0 0 6px rgba(255,215,64,0.04);
+    z-index: 4;
   }
   .pts-box .pts-val {
     font-family: 'Orbitron', monospace;
-    font-size: 14px; font-weight: 900;
+    font-size: 18px; font-weight: 900;
     color: #ffd740;
     letter-spacing: 1px;
-    text-shadow: 0 0 8px rgba(255,215,64,0.6), 0 0 16px rgba(255,215,64,0.3);
+    text-shadow: 0 0 10px rgba(255,215,64,0.7), 0 0 20px rgba(255,215,64,0.3);
     white-space: nowrap;
   }
   .pts-box .pts-lbl {
     font-family: 'Orbitron', monospace;
-    font-size: 5px; font-weight: 700;
+    font-size: 6px; font-weight: 700;
     letter-spacing: 2px;
     color: rgba(255,215,64,0.5);
-    margin-top: 1px;
+    margin-top: 2px;
   }
 `;
 
@@ -159,10 +153,10 @@ export function SessionWithPoints() {
         </div>
         <div className="right-sec">
           <button className="logout-btn">LOGOUT</button>
-          <div className="pts-box">
-            <span className="pts-val">{'\u2605'} 12.50</span>
-            <span className="pts-lbl">POINTS</span>
-          </div>
+        </div>
+        <div className="pts-box">
+          <span className="pts-val">{'\u2605'} 12.50</span>
+          <span className="pts-lbl">POINTS</span>
         </div>
       </div>
     </div>
