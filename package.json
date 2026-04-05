@@ -45,6 +45,7 @@
       "icon.png",
       "kiosk-setup.bat",
       "kiosk-disable.bat",
+      "denfi-data-path.txt",
       "node_modules/**/*",
       "!node_modules/.cache",
       "!node_modules/electron",
