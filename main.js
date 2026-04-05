@@ -383,6 +383,11 @@ app.whenReady().then(() => {
     });
   }
 
+  if (!syncServerUrl) {
+    process.env.DENFI_LISTEN_HOST = '0.0.0.0';
+    console.log('[Electron] Server mode: listening on all interfaces (0.0.0.0)');
+  }
+
   try {
     const serverModule = require('./server');
     if (syncServerUrl && serverModule.setSyncServer) {
