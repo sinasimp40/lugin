@@ -784,12 +784,58 @@
       position: relative;
       border-radius: 6px;
       border: 1px solid var(--login-color-25, rgba(255,140,0,0.25));
-      background: linear-gradient(135deg, rgba(10,10,10,0.92) 0%, rgba(18,14,8,0.95) 100%);
+      background:
+        radial-gradient(ellipse 80% 60% at 15% 80%, var(--login-color-06, rgba(255,140,0,0.06)), transparent),
+        radial-gradient(ellipse 60% 50% at 85% 20%, var(--login-color-04, rgba(255,140,0,0.04)), transparent),
+        linear-gradient(135deg, rgba(10,10,10,0.95) 0%, rgba(18,14,8,0.97) 50%, rgba(10,10,10,0.95) 100%);
       backdrop-filter: blur(12px);
       box-shadow:
         0 0 20px var(--login-color-06, rgba(255,140,0,0.06)),
         inset 0 1px 0 var(--login-color-07, rgba(255,140,0,0.08));
       overflow: hidden;
+    }
+    .ad-carousel .ad-bg-glow {
+      position: absolute; inset: 0; pointer-events: none; z-index: 0;
+      overflow: hidden;
+    }
+    .ad-carousel .ad-bg-glow::before {
+      content: '';
+      position: absolute;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: conic-gradient(
+        from 0deg at 50% 50%,
+        transparent 0deg,
+        var(--login-color-04, rgba(255,140,0,0.04)) 60deg,
+        transparent 120deg,
+        var(--login-color-03, rgba(255,140,0,0.03)) 200deg,
+        transparent 260deg,
+        var(--login-color-04, rgba(255,140,0,0.04)) 320deg,
+        transparent 360deg
+      );
+      animation: ad-glow-rotate 20s linear infinite;
+    }
+    .ad-carousel .ad-bg-glow::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 10%; right: 10%; height: 1px;
+      background: linear-gradient(90deg,
+        transparent,
+        var(--login-color-15, rgba(255,140,0,0.15)),
+        var(--login-color-30, rgba(255,140,0,0.3)),
+        var(--login-color-15, rgba(255,140,0,0.15)),
+        transparent
+      );
+      background-size: 200% 100%;
+      animation: ad-line-sweep 4s ease-in-out infinite;
+    }
+    @keyframes ad-glow-rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes ad-line-sweep {
+      0%, 100% { background-position: 200% 0; }
+      50% { background-position: -100% 0; }
     }
     .ad-carousel.empty { display: none; }
     .ad-carousel::before {
@@ -803,6 +849,7 @@
       z-index: 2;
     }
     .ad-carousel-label {
+      position: relative; z-index: 1;
       display: flex; align-items: center; justify-content: center; gap: 8px;
       padding: 8px 16px 4px;
       font-family: 'Orbitron', sans-serif;
@@ -822,6 +869,7 @@
     .ad-slides-wrap {
       overflow: hidden;
       position: relative;
+      z-index: 1;
       height: 140px;
     }
     .ad-slides-wrap::before {
@@ -1493,6 +1541,7 @@
     </div>
 
     <div id="ad-carousel" class="ad-carousel empty" style="margin-top:16px">
+      <div class="ad-bg-glow"></div>
       <div class="ad-carousel-label">ANNOUNCEMENTS</div>
       <div class="ad-slides-wrap">
         <div class="ad-slides" id="ad-slides"></div>
