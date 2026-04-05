@@ -113,28 +113,29 @@ const styles = `
 
   .pts-box {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: linear-gradient(180deg, rgba(255,215,64,0.08) 0%, rgba(255,215,64,0.03) 100%);
-    border: 1px solid rgba(255,215,64,0.25);
+    background: linear-gradient(180deg, rgba(255,215,64,0.12) 0%, rgba(255,215,64,0.04) 100%);
+    border: 1px solid rgba(255,215,64,0.3);
     border-radius: 3px;
-    padding: 2px 8px;
-    min-width: 50px;
+    padding: 4px 10px;
+    min-width: 55px;
+    height: 100%;
     line-height: 1;
-    box-shadow: 0 0 8px rgba(255,215,64,0.08), inset 0 0 6px rgba(255,215,64,0.04);
+    box-shadow: 0 0 10px rgba(255,215,64,0.1), inset 0 0 8px rgba(255,215,64,0.05);
   }
   .pts-box .pts-val {
     font-family: 'Orbitron', monospace;
-    font-size: 14px; font-weight: 900;
+    font-size: 16px; font-weight: 900;
     color: #ffd740;
     letter-spacing: 1px;
-    text-shadow: 0 0 8px rgba(255,215,64,0.6), 0 0 16px rgba(255,215,64,0.3);
+    text-shadow: 0 0 10px rgba(255,215,64,0.7), 0 0 20px rgba(255,215,64,0.35);
     white-space: nowrap;
   }
   .pts-box .pts-lbl {
     font-family: 'Orbitron', monospace;
-    font-size: 5px; font-weight: 700;
+    font-size: 6px; font-weight: 700;
     letter-spacing: 2px;
-    color: rgba(255,215,64,0.5);
-    margin-top: 1px;
+    color: rgba(255,215,64,0.6);
+    margin-top: 2px;
   }
 `;
 
@@ -160,7 +161,7 @@ export function SessionWithPoints() {
         <div className="right-sec">
           <button className="logout-btn">LOGOUT</button>
           <div className="pts-box">
-            <span className="pts-val">{'\u2605'} 12.50</span>
+            <span className="pts-val">12.50</span>
             <span className="pts-lbl">POINTS</span>
           </div>
         </div>

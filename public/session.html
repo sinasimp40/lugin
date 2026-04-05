@@ -140,33 +140,34 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(180deg, rgba(255,215,64,0.08) 0%, rgba(255,215,64,0.03) 100%);
-    border: 1px solid rgba(255,215,64,0.25);
+    background: linear-gradient(180deg, rgba(255,215,64,0.12) 0%, rgba(255,215,64,0.04) 100%);
+    border: 1px solid rgba(255,215,64,0.3);
     border-radius: 3px;
-    padding: 2px 8px;
-    min-width: 50px;
+    padding: 4px 10px;
+    min-width: 55px;
+    height: 100%;
     line-height: 1;
-    box-shadow: 0 0 8px rgba(255,215,64,0.08), inset 0 0 6px rgba(255,215,64,0.04);
+    box-shadow: 0 0 10px rgba(255,215,64,0.1), inset 0 0 8px rgba(255,215,64,0.05);
   }
   .points-box.active { display: flex; }
   .points-box .pts-value {
     font-family: 'Orbitron', monospace;
-    font-size: 14px; font-weight: 900;
+    font-size: 16px; font-weight: 900;
     color: #ffd740;
     letter-spacing: 1px;
-    text-shadow: 0 0 8px rgba(255,215,64,0.6), 0 0 16px rgba(255,215,64,0.3);
+    text-shadow: 0 0 10px rgba(255,215,64,0.7), 0 0 20px rgba(255,215,64,0.35);
     white-space: nowrap;
   }
   .points-box .pts-label {
     font-family: 'Orbitron', monospace;
-    font-size: 5px; font-weight: 700;
+    font-size: 6px; font-weight: 700;
     letter-spacing: 2px;
-    color: rgba(255,215,64,0.5);
-    margin-top: 1px;
+    color: rgba(255,215,64,0.6);
+    margin-top: 2px;
   }
   .strip.danger-mode .points-box {
     border-color: rgba(255,215,64,0.15);
-    background: linear-gradient(180deg, rgba(255,215,64,0.04) 0%, rgba(255,215,64,0.01) 100%);
+    background: linear-gradient(180deg, rgba(255,215,64,0.06) 0%, rgba(255,215,64,0.02) 100%);
   }
   .strip.danger-mode .points-box .pts-value { color: rgba(255,215,64,0.5); }
   .strip.danger-mode .points-box .pts-label { color: rgba(255,215,64,0.3); }
@@ -449,7 +450,7 @@
       const el = document.getElementById('points-box');
       if (pts === undefined || pts === null) { el.classList.remove('active'); el.innerHTML = ''; return; }
       const display = pts % 1 === 0 ? pts.toString() : pts.toFixed(2);
-      el.innerHTML = '<span class="pts-value">\u2605 ' + display + '</span><span class="pts-label">POINTS</span>';
+      el.innerHTML = '<span class="pts-value">' + display + '</span><span class="pts-label">POINTS</span>';
       el.classList.add('active');
     }
 

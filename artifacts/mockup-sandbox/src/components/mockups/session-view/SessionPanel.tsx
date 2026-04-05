@@ -51,16 +51,16 @@ const styles = `
 
   .panel-pts {
     font-family: 'Orbitron', monospace;
-    font-size: 12px; font-weight: 900;
+    font-size: 13px; font-weight: 900;
     color: #ffd740;
     letter-spacing: 0.5px;
-    text-shadow: 0 0 8px rgba(255,215,64,0.6), 0 0 16px rgba(255,215,64,0.3);
+    text-shadow: 0 0 10px rgba(255,215,64,0.7), 0 0 20px rgba(255,215,64,0.35);
     white-space: nowrap;
-    background: linear-gradient(180deg, rgba(255,215,64,0.08) 0%, rgba(255,215,64,0.03) 100%);
-    border: 1px solid rgba(255,215,64,0.25);
+    background: linear-gradient(180deg, rgba(255,215,64,0.12) 0%, rgba(255,215,64,0.04) 100%);
+    border: 1px solid rgba(255,215,64,0.3);
     border-radius: 3px;
-    padding: 2px 8px;
-    box-shadow: 0 0 8px rgba(255,215,64,0.08);
+    padding: 4px 10px;
+    box-shadow: 0 0 10px rgba(255,215,64,0.1);
   }
 `;
 
@@ -74,7 +74,7 @@ export function SessionPanel() {
           <div className="panel-bottom">
             <div className="panel-user">mem-raprap</div>
             <button className="panel-logout">Logout</button>
-            <div className="panel-pts">{'\u2605'} 12.50</div>
+            <div className="panel-pts">12.50 pts</div>
           </div>
         </div>
       </div>

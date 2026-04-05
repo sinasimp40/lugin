@@ -1020,17 +1020,17 @@
     }
     .session-bottom .session-points {
       font-family: 'Orbitron', monospace;
-      font-size: 12px; font-weight: 900;
+      font-size: 13px; font-weight: 900;
       color: #ffd740;
       letter-spacing: 0.5px;
-      text-shadow: 0 0 8px rgba(255,215,64,0.6), 0 0 16px rgba(255,215,64,0.3);
+      text-shadow: 0 0 10px rgba(255,215,64,0.7), 0 0 20px rgba(255,215,64,0.35);
       white-space: nowrap;
       display: none;
-      background: linear-gradient(180deg, rgba(255,215,64,0.08) 0%, rgba(255,215,64,0.03) 100%);
-      border: 1px solid rgba(255,215,64,0.25);
+      background: linear-gradient(180deg, rgba(255,215,64,0.12) 0%, rgba(255,215,64,0.04) 100%);
+      border: 1px solid rgba(255,215,64,0.3);
       border-radius: 3px;
-      padding: 2px 8px;
-      box-shadow: 0 0 8px rgba(255,215,64,0.08);
+      padding: 4px 10px;
+      box-shadow: 0 0 10px rgba(255,215,64,0.1);
     }
     .session-bottom .session-points.active { display: block; }
     .session-bottom .btn-logout-sm {
@@ -2435,7 +2435,7 @@
       const el = document.getElementById('session-points');
       if (pts === undefined || pts === null) { el.classList.remove('active'); return; }
       const display = pts % 1 === 0 ? pts.toString() : pts.toFixed(2);
-      el.textContent = '\u2605 ' + display + ' pts';
+      el.textContent = display + ' pts';
       el.classList.add('active');
     }
 
