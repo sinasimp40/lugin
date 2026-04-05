@@ -1010,7 +1010,8 @@ app.get('/api/admin/coin-logs', verifyToken, async (req, res) => {
   const { username, from, to } = req.query;
   const s = settings.getSettings();
   const currentRates = s.pointRates || [];
-  const result = coinLogs.getLogs({ username, from, to }, currentRates);
+  const ratesForCalc = coinLogsReadOnly && currentRates.length === 0 ? null : currentRates;
+  const result = coinLogs.getLogs({ username, from, to }, ratesForCalc);
   const hasFilters = username || from || to;
   let filteredPoints = result.memberPoints;
   if (hasFilters) {
