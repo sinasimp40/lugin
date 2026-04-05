@@ -45,7 +45,6 @@
       "icon.png",
       "kiosk-setup.bat",
       "kiosk-disable.bat",
-      "denfi-data-path.txt",
       "node_modules/**/*",
       "!node_modules/.cache",
       "!node_modules/electron",
@@ -54,6 +53,9 @@
     "extraResources": [
       { "from": "kiosk-setup.bat", "to": "kiosk-setup.bat" },
       { "from": "kiosk-disable.bat", "to": "kiosk-disable.bat" }
+    ],
+    "extraFiles": [
+      { "from": "denfi-data-path.txt", "to": "denfi-data-path.txt" }
     ]
   },
   "keywords": [
