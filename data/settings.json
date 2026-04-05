@@ -4,7 +4,7 @@
   "ads": [
     {
       "id": "2a75f8c012ce88aa",
-      "content": "<div style=\"text-align: center\"><b><font color=\"#ffffff\">hahaha</font></b></div>",
+      "content": "<div style=\"text-align: center\"><b>hahaha</b></div>",
       "image": null,
       "order": 0
     }
@@ -48,5 +48,5 @@
       "points": 1
     }
   ],
-  "_sig": "ea08eb88d90d546835a8c51404ce7b1488389e413f94f0d0fdd2a1151ec759b9"
+  "_sig": "fb2a4c555d4128d6547b0cb69f3d4e2a9b1fd5027b81b6559b4bd854eb87a01c"
 }
