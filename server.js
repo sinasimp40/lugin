@@ -13,55 +13,6 @@ const PORT = process.env.PORT || 5000;
 const HOTSPOT_DNS = 'pisonet.app';
 const VENDO_IP = '10.0.0.5:8989';
 
-let syncServerUrl = '';
-
-(function initDataPath() {
-  const dataPathFile = path.join(__dirname, 'denfi-data-path.txt');
-  let customDataDir = '';
-  let initSyncUrl = '';
-  try {
-    if (fs.existsSync(dataPathFile)) {
-      const raw = fs.readFileSync(dataPathFile, 'utf8').trim();
-      const lines = raw.split('\n');
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith('#')) continue;
-        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-          initSyncUrl = trimmed.replace(/\/+$/, '');
-        } else {
-          customDataDir = trimmed;
-        }
-      }
-    }
-  } catch (e) {
-    console.log('[Server] Error reading denfi-data-path.txt:', e.message);
-  }
-
-  if (process.env.DENFI_DATA_DIR) {
-    customDataDir = process.env.DENFI_DATA_DIR;
-  }
-  if (process.env.DENFI_SYNC_SERVER) {
-    initSyncUrl = process.env.DENFI_SYNC_SERVER.replace(/\/+$/, '');
-  }
-
-  if (customDataDir) {
-    try {
-      if (!fs.existsSync(customDataDir)) fs.mkdirSync(customDataDir, { recursive: true });
-      fs.accessSync(customDataDir, fs.constants.W_OK);
-      settings.setDataDir(customDataDir);
-      coinLogs.setDataDir(customDataDir);
-      console.log('[Server] Using custom data dir:', customDataDir);
-    } catch (e) {
-      console.log('[Server] Cannot access custom data dir, using default:', e.message);
-    }
-  }
-
-  if (initSyncUrl) {
-    syncServerUrl = initSyncUrl;
-    console.log('[Server] Using sync server from denfi-data-path.txt:', syncServerUrl);
-  }
-})();
-
 const activeCoinSessions = new Map();
 const COIN_SESSION_TTL = 600000;
 setInterval(() => {
@@ -667,7 +618,6 @@ app.post('/api/pisonet/done', async (req, res) => {
           source: 'app'
         }, s.pointRates);
         console.log('[CoinLog] Recorded:', session.username, 'amount:', session.totalCoin, 'points:', log.points);
-        broadcastCoinLogUpdate(log);
         syncCoinLog({ username: session.username, amount: session.totalCoin, timeAdded: session.timeAdded, ip: session.ip, mac: session.mac, source: 'app' });
       } catch (e) {
         console.log('[CoinLog] Error saving log:', e.message);
@@ -1073,7 +1023,6 @@ app.get('/api/admin/coin-logs', verifyToken, async (req, res) => {
 app.delete('/api/admin/coin-logs/:id', verifyToken, (req, res) => {
   const deleted = coinLogs.deleteLog(req.params.id);
   if (!deleted) return res.status(404).json({ success: false, error: 'Log not found' });
-  broadcastCoinLogUpdate();
   res.json({ success: true });
 });
 
@@ -1081,13 +1030,11 @@ app.delete('/api/admin/coin-logs/member/:username', verifyToken, (req, res) => {
   const username = decodeURIComponent(req.params.username);
   const deleted = coinLogs.deleteMemberLogs(username);
   if (!deleted) return res.status(404).json({ success: false, error: 'No logs found for member' });
-  broadcastCoinLogUpdate();
   res.json({ success: true });
 });
 
 app.delete('/api/admin/coin-logs', verifyToken, (req, res) => {
   coinLogs.clearAllLogs();
-  broadcastCoinLogUpdate();
   res.json({ success: true });
 });
 
@@ -1139,19 +1086,7 @@ function broadcastSettings() {
   }
 }
 
-function broadcastCoinLogUpdate(logEntry) {
-  const s = settings.getSettings();
-  const data = coinLogs.getLogs(null, s.pointRates || []);
-  const msg = JSON.stringify({
-    type: 'coin-log-updated',
-    latestLog: logEntry || null,
-    memberPoints: data.memberPoints || {},
-    totalLogs: (data.logs || []).length
-  });
-  for (const ws of wsClients) {
-    try { if (ws.readyState === 1) ws.send(msg); } catch (e) {}
-  }
-}
+let syncServerUrl = '';
 
 function setSyncServer(url) {
   syncServerUrl = (url || '').trim().replace(/\/+$/, '');
@@ -1220,7 +1155,6 @@ app.post('/api/sync/coin-log', express.json(), (req, res) => {
       source: entry.source || 'vendo'
     }, s.pointRates || []);
     console.log('[Sync] Received coin log from client:', entry.username, 'amount:', entry.amount, 'points:', log.points);
-    broadcastCoinLogUpdate(log);
     res.json({ ok: true, log });
   } catch (e) {
     console.log('[Sync] Error:', e.message);
@@ -1378,7 +1312,6 @@ async function pollHotspotForWs() {
                 source: 'vendo'
               }, s.pointRates || []);
               console.log('[AutoLog] Detected time increase for', data.username, '- seconds:', secondsAdded, 'pesos:', pesos, 'points:', log.points);
-              broadcastCoinLogUpdate(log);
               syncCoinLog({ username: data.username, amount: pesos, timeAdded: minutesAdded + ' min', ip: data.ip || '', mac: data.mac || '', source: 'vendo' });
               autoLogCooldowns.set(userCooldownKey, now + 15000);
             } catch (e) {
