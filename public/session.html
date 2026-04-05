@@ -135,6 +135,9 @@
   }
   .pc-label.active { display: block; }
 
+  .strip { padding-right: 0; }
+  .strip.has-points .right-section { margin-right: 0; }
+
   .points-box {
     display: none;
     position: absolute;
@@ -448,10 +451,18 @@
 
     function setPoints(pts) {
       const el = document.getElementById('points-box');
-      if (pts === undefined || pts === null) { el.classList.remove('active'); el.innerHTML = ''; return; }
+      const strip = document.getElementById('strip');
+      if (pts === undefined || pts === null) {
+        el.classList.remove('active'); el.innerHTML = '';
+        strip.style.paddingRight = '12px';
+        return;
+      }
       const display = pts % 1 === 0 ? pts.toString() : pts.toFixed(2);
       el.innerHTML = '<span class="pts-value">\u2605 ' + display + '</span><span class="pts-label">POINTS</span>';
       el.classList.add('active');
+      requestAnimationFrame(() => {
+        strip.style.paddingRight = (el.offsetWidth + 4) + 'px';
+      });
     }
 
     async function loadStatus() {

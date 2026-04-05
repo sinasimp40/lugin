@@ -6,7 +6,7 @@ const styles = `
   .strip-root {
     width: 250px; height: 50px;
     display: flex; align-items: center;
-    padding: 0 10px;
+    padding: 0 84px 0 10px;
     background: linear-gradient(180deg, #0d0d0d 0%, #080808 100%);
     border-radius: 3px;
     border: none;
