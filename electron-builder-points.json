@@ -1,0 +1,39 @@
+{
+  "appId": "com.denfi.points",
+  "productName": "Denfi Points",
+  "icon": "icon.ico",
+  "directories": {
+    "buildResources": "build"
+  },
+  "asar": false,
+  "win": {
+    "target": "nsis",
+    "requestedExecutionLevel": "asInvoker",
+    "icon": "icon.ico",
+    "executableName": "denfi-points"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "perMachine": true,
+    "deleteAppDataOnUninstall": true,
+    "artifactName": "Denfi Points Setup.${ext}",
+    "shortcutName": "Denfi Points",
+    "uninstallDisplayName": "Denfi Points",
+    "installerIcon": "icon.ico",
+    "uninstallerIcon": "icon.ico"
+  },
+  "files": [
+    "main-server.js",
+    "server.js",
+    "src/**/*",
+    "public/**/*",
+    "build/**/*",
+    "icon.ico",
+    "icon.png",
+    "node_modules/**/*",
+    "!node_modules/.cache",
+    "!node_modules/electron",
+    "!node_modules/electron-builder"
+  ]
+}
