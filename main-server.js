@@ -7,14 +7,30 @@ let serverModule = null;
 app.on('ready', () => {
   process.env.DENFI_LISTEN_HOST = '0.0.0.0';
 
+  const fs = require('fs');
   const exeDir = path.dirname(app.getPath('exe'));
   const dataDir = path.join(exeDir, 'data');
-  process.env.DENFI_DATA_DIR = dataDir;
 
-  const fs = require('fs');
-  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+  try {
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+  } catch (e) {
+    console.error('[Denfi Points] Cannot create data dir:', e.message);
+  }
 
-  serverModule = require('./server');
+  const settings = require('./src/settings-store');
+  const coinLogs = require('./src/coin-log-store');
+  settings.setDataDir(dataDir);
+  coinLogs.setDataDir(dataDir);
+
+  try {
+    serverModule = require('./server');
+  } catch (err) {
+    console.error('[Denfi Points] Failed to start server:', err);
+    const { dialog } = require('electron');
+    dialog.showErrorBox('Denfi Points', 'Server failed to start:\n' + err.message);
+    app.quit();
+    return;
+  }
 
   let iconPath = path.join(__dirname, 'public', 'icon.png');
   if (!fs.existsSync(iconPath)) iconPath = path.join(__dirname, 'icon.png');
@@ -32,6 +48,7 @@ app.on('ready', () => {
   const contextMenu = Menu.buildFromTemplate([
     { label: 'Denfi Points Server', enabled: false },
     { label: 'Port: 5000 (0.0.0.0)', enabled: false },
+    { label: 'Data: ' + dataDir, enabled: false },
     { type: 'separator' },
     {
       label: 'Open Coin Logs Panel',
@@ -66,7 +83,7 @@ app.on('ready', () => {
 
   tray.setContextMenu(contextMenu);
   tray.on('double-click', () => {
-    contextMenu.items[3].click();
+    contextMenu.items[4].click();
   });
 
   console.log('[Denfi Points] Server running on 0.0.0.0:5000');
