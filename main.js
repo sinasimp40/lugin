@@ -287,12 +287,40 @@ app.whenReady().then(() => {
   process.env.PORT = String(PORT);
 
   const path = require('path');
+  const fs = require('fs');
   const settings = require('./src/settings-store');
   const coinLogs = require('./src/coin-log-store');
-  const portableDataDir = path.join(path.dirname(app.getPath('exe')), 'data');
-  settings.setDataDir(portableDataDir);
-  coinLogs.setDataDir(portableDataDir);
-  console.log('[Electron] Data dir (portable):', portableDataDir);
+
+  let dataDir = path.join(path.dirname(app.getPath('exe')), 'data');
+
+  const dataPathFile = path.join(path.dirname(app.getPath('exe')), 'denfi-data-path.txt');
+  try {
+    if (fs.existsSync(dataPathFile)) {
+      const customPath = fs.readFileSync(dataPathFile, 'utf8').trim();
+      if (customPath) {
+        dataDir = customPath;
+        console.log('[Electron] Using custom data path from denfi-data-path.txt:', dataDir);
+      }
+    }
+  } catch (e) {
+    console.log('[Electron] Error reading denfi-data-path.txt:', e.message);
+  }
+
+  if (process.env.DENFI_DATA_DIR) {
+    dataDir = process.env.DENFI_DATA_DIR;
+    console.log('[Electron] Using data path from DENFI_DATA_DIR env:', dataDir);
+  }
+
+  try {
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+  } catch (e) {
+    console.log('[Electron] Cannot create data dir, falling back to portable:', e.message);
+    dataDir = path.join(path.dirname(app.getPath('exe')), 'data');
+  }
+
+  settings.setDataDir(dataDir);
+  coinLogs.setDataDir(dataDir);
+  console.log('[Electron] Data dir:', dataDir);
 
   function waitForServer(retries) {
     const http = require('http');

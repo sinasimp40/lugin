@@ -1177,7 +1177,8 @@ async function pollHotspotForWs() {
                 amount: pesos,
                 timeAdded: minutesAdded + ' min',
                 ip: data.ip || '',
-                mac: data.mac || ''
+                mac: data.mac || '',
+                source: 'vendo'
               }, s.pointRates || []);
               console.log('[AutoLog] Detected time increase for', data.username, '- seconds:', secondsAdded, 'pesos:', pesos, 'points:', log.points);
               autoLogCooldowns.set(userCooldownKey, now + 15000);
@@ -1201,6 +1202,13 @@ async function pollHotspotForWs() {
 
     if (wasLoggedIn && !data.isLogin) {
       broadcast({ type: 'logged-out' });
+    }
+
+    if (autoLogCooldowns.size > 50) {
+      const now = Date.now();
+      for (const [key, expiry] of autoLogCooldowns) {
+        if (now > expiry) autoLogCooldowns.delete(key);
+      }
     }
   } catch (err) {
     broadcast({ type: 'error', error: err.message });

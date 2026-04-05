@@ -108,8 +108,8 @@ When `isLogin: true` is detected → auto-shows the session (auto-connect).
 - **Session points display**: member points shown in both session views (session.html compact strip 300x50 + index.html session panel 300x80) via WebSocket and `/api/hotspot/status` enrichment; points on right side with bold 13px Orbitron font + "POINTS" sub-label; auto-clears on logout or non-member sessions
 - **Delete member**: each member in the Points Summary leaderboard has an ✕ button; double-confirmation prompt; deletes ALL logs for that member and recalculates points
 - **Data flow**: Server tracks active coin sessions via `activeCoinSessions` map; `/api/pisonet/avail` starts tracking, `/api/vendo/check-coin` updates coin amounts, `/api/pisonet/done` finalizes and persists the log
-- **Auto-detection**: `pollHotspotForWs` detects time increases for `mem-` users and automatically creates coin log entries by reverse-calculating pesos from coin rates; 10s cooldown prevents duplicates; skips if an active coin session exists (user is using Insert Coin button); uses `reverseCalcPesos()` with sorted coin rates to find best matching denomination
-- **Storage**: `data/coin-logs.json` (atomic writes, same pattern as settings-store)
+- **Auto-detection**: `pollHotspotForWs` detects time increases for `mem-` users and automatically creates coin log entries by reverse-calculating pesos from coin rates; per-user 15s cooldown prevents duplicates; skips if an active coin session exists (user is using Insert Coin button); uses `reverseCalcPesos()` with tolerance-based best-match algorithm (15% tolerance per rate); polling has in-flight guard to prevent race conditions; log entries include `source: 'vendo'` vs `source: 'app'` to distinguish origin
+- **Storage**: `data/coin-logs.json` (atomic writes with PID+timestamp unique tmp files for multi-unit safety)
 - **Module**: `src/coin-log-store.js` — appendLog, getLogs (with filters + optional pointRates for auto-sync), getMemberPoints (with optional pointRates), deleteLog, recalcAllPoints, ensurePointsSync
 - **Points sync**: `ensurePointsSync(pointRates)` uses a `_ratesHash` (MD5 of canonical {pesos,points} sorted array) stored in coin-logs.json to detect when rates changed; auto-recalculates only when hash differs; `getLogs` and `getMemberPoints` accept optional `pointRates` param to self-sync before returning data
 - Stale session cleanup: 10-minute TTL on in-memory coin sessions
@@ -199,6 +199,15 @@ npm run electron     # Electron mode
 ```
 npm run build        # Produces installer in dist/
 ```
+
+## Diskless / Deep Freeze Setup
+For diskless (CCBoot, iCafe) or Deep Freeze environments where local changes are wiped on reboot:
+- Create a file `denfi-data-path.txt` next to the Denfi .exe (bake it into the game disk image)
+- Inside the file, put the path to a persistent shared folder, e.g.: `\\SERVER\DenfiData` or `D:\DenfiData`
+- All units will read/write settings and coin logs to that shared location instead of the local `data/` folder
+- Priority: `DENFI_DATA_DIR` env var > `denfi-data-path.txt` > default portable `data/` folder
+- Atomic writes use PID+timestamp temp files to prevent corruption from concurrent multi-unit access
+- Each unit's auto-detection still works independently (polls its own MikroTik session), but logs go to the shared file
 
 ## Requirements
 - Device must be connected to the MikroTik hotspot WiFi network

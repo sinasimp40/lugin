@@ -50,9 +50,14 @@ function load() {
 function save(data) {
   ensureDirs();
   data._sig = computeHmac(data);
-  const tmp = settingsPath + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
-  fs.renameSync(tmp, settingsPath);
+  const tmp = settingsPath + '.' + process.pid + '.' + Date.now() + '.tmp';
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
+    fs.renameSync(tmp, settingsPath);
+  } catch (e) {
+    try { fs.unlinkSync(tmp); } catch (_) {}
+    throw e;
+  }
 }
 
 function hashPassword(password, salt) {

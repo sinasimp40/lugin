@@ -42,12 +42,36 @@ function load() {
   }
 }
 
+function getFileMtime() {
+  try { return fs.statSync(logsPath).mtimeMs; } catch (_) { return 0; }
+}
+
 function save(data) {
   ensureDir();
   data._sig = computeHmac(data);
-  const tmp = logsPath + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
-  fs.renameSync(tmp, logsPath);
+  const tmp = logsPath + '.' + process.pid + '.' + Date.now() + '.tmp';
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
+    fs.renameSync(tmp, logsPath);
+  } catch (e) {
+    try { fs.unlinkSync(tmp); } catch (_) {}
+    throw e;
+  }
+}
+
+function loadModifySave(modifyFn, maxRetries) {
+  maxRetries = maxRetries || 3;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const mtimeBefore = getFileMtime();
+    const data = load();
+    const result = modifyFn(data);
+    const mtimeAfter = getFileMtime();
+    if (mtimeBefore !== mtimeAfter && attempt < maxRetries - 1) {
+      continue;
+    }
+    save(data);
+    return result;
+  }
 }
 
 function calcPoints(amount, pointRates) {
@@ -65,7 +89,6 @@ function calcPoints(amount, pointRates) {
 }
 
 function appendLog(entry, pointRates) {
-  const data = load();
   const pts = calcPoints(entry.amount, pointRates);
   const log = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -76,29 +99,30 @@ function appendLog(entry, pointRates) {
     timestamp: entry.timestamp || Date.now(),
     date: new Date().toISOString(),
     ip: entry.ip || '',
-    mac: entry.mac || ''
+    mac: entry.mac || '',
+    source: entry.source || 'app'
   };
-  data.logs.push(log);
-
-  if (!data.memberPoints) data.memberPoints = {};
-  const user = log.username;
-  if (user) {
-    data.memberPoints[user] = parseFloat(((data.memberPoints[user] || 0) + log.points).toFixed(2));
-  }
-
-  save(data);
+  loadModifySave(function(data) {
+    data.logs.push(log);
+    if (!data.memberPoints) data.memberPoints = {};
+    const user = log.username;
+    if (user) {
+      data.memberPoints[user] = parseFloat(((data.memberPoints[user] || 0) + log.points).toFixed(2));
+    }
+  });
   return log;
 }
 
 function deleteLog(logId) {
-  const data = load();
-  const idx = (data.logs || []).findIndex(l => l.id === logId);
-  if (idx === -1) return false;
-
-  data.logs.splice(idx, 1);
-  recalcPoints(data);
-  save(data);
-  return true;
+  let found = false;
+  loadModifySave(function(data) {
+    const idx = (data.logs || []).findIndex(l => l.id === logId);
+    if (idx === -1) return;
+    found = true;
+    data.logs.splice(idx, 1);
+    recalcPoints(data);
+  });
+  return found;
 }
 
 function clearAllLogs() {
@@ -179,13 +203,15 @@ function getMemberPoints(username, pointRates) {
 }
 
 function deleteMemberLogs(username) {
-  const data = load();
-  const before = (data.logs || []).length;
-  data.logs = (data.logs || []).filter(l => l.username !== username);
-  if (data.logs.length === before) return false;
-  recalcPoints(data);
-  save(data);
-  return true;
+  let found = false;
+  loadModifySave(function(data) {
+    const before = (data.logs || []).length;
+    data.logs = (data.logs || []).filter(l => l.username !== username);
+    if (data.logs.length === before) return;
+    found = true;
+    recalcPoints(data);
+  });
+  return found;
 }
 
 module.exports = { setDataDir, appendLog, deleteLog, deleteMemberLogs, clearAllLogs, recalcAllPoints, ensurePointsSync, getLogs, getMemberPoints };
