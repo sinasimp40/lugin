@@ -5,11 +5,9 @@ const styles = `
 
   .strip-root {
     width: 250px; height: 50px;
-    display: flex; align-items: center;
-    padding: 0 10px;
+    display: flex; align-items: stretch;
     background: linear-gradient(180deg, #0d0d0d 0%, #080808 100%);
     border-radius: 3px;
-    border: none;
     border-left: 2px solid #ff8c00;
     border-right: 2px solid #ff8c00;
     position: relative; overflow: hidden;
@@ -55,10 +53,41 @@ const styles = `
                 radial-gradient(1px 1px at 90% 50%, rgba(255,140,0,0.15), transparent);
   }
 
-  .left-sec {
+  .pts-zone {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: linear-gradient(180deg, rgba(255,215,64,0.12) 0%, rgba(255,215,64,0.04) 100%);
+    border-right: 1px solid rgba(255,215,64,0.25);
+    padding: 0 10px;
+    min-width: 60px;
+    position: relative; z-index: 3;
+    box-shadow: inset -4px 0 8px rgba(255,215,64,0.04);
+  }
+  .pts-zone .pts-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 16px; font-weight: 900;
+    color: #ffd740;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(255,215,64,0.7), 0 0 20px rgba(255,215,64,0.35);
+    line-height: 1;
+  }
+  .pts-zone .pts-lbl {
+    font-family: 'Orbitron', monospace;
+    font-size: 5px; font-weight: 700;
+    letter-spacing: 2px;
+    color: rgba(255,215,64,0.5);
+    margin-top: 2px;
+  }
+
+  .main-sec {
+    flex: 1; min-width: 0;
+    display: flex; align-items: center;
+    padding: 0 10px;
+    position: relative; z-index: 3;
+  }
+
+  .info-sec {
     display: flex; flex-direction: column; gap: 1px;
     flex: 1; min-width: 0;
-    position: relative; z-index: 3;
   }
 
   .timer-text {
@@ -94,48 +123,16 @@ const styles = `
     text-shadow: 0 0 4px rgba(255,140,0,0.2);
   }
 
-  .right-sec {
-    flex-shrink: 0;
-    margin-left: 6px;
-    display: flex; align-items: center; gap: 6px;
-    position: relative; z-index: 3;
-  }
-
   .logout-btn {
     background: transparent;
     border: 1px solid rgba(255,140,0,0.3);
-    color: #ff8c00; padding: 3px 8px;
+    color: #ff8c00; padding: 2px 6px;
     border-radius: 2px; cursor: pointer;
     font-family: 'Share Tech Mono', monospace;
-    font-size: 7px; font-weight: 600;
-    letter-spacing: 1.5px; text-transform: uppercase;
-  }
-
-  .pts-box {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: linear-gradient(180deg, rgba(255,215,64,0.12) 0%, rgba(255,215,64,0.04) 100%);
-    border: 1px solid rgba(255,215,64,0.3);
-    border-radius: 3px;
-    padding: 4px 10px;
-    min-width: 55px;
-    height: 100%;
-    line-height: 1;
-    box-shadow: 0 0 10px rgba(255,215,64,0.1), inset 0 0 8px rgba(255,215,64,0.05);
-  }
-  .pts-box .pts-val {
-    font-family: 'Orbitron', monospace;
-    font-size: 16px; font-weight: 900;
-    color: #ffd740;
-    letter-spacing: 1px;
-    text-shadow: 0 0 10px rgba(255,215,64,0.7), 0 0 20px rgba(255,215,64,0.35);
-    white-space: nowrap;
-  }
-  .pts-box .pts-lbl {
-    font-family: 'Orbitron', monospace;
-    font-size: 6px; font-weight: 700;
-    letter-spacing: 2px;
-    color: rgba(255,215,64,0.6);
-    margin-top: 2px;
+    font-size: 6px; font-weight: 600;
+    letter-spacing: 1px; text-transform: uppercase;
+    flex-shrink: 0; margin-left: 6px;
+    align-self: flex-end;
   }
 `;
 
@@ -151,19 +148,19 @@ export function SessionWithPoints() {
         <div className="neon-line-r" />
         <div className="neon-glow-l" />
         <div className="neon-glow-r" />
-        <div className="left-sec">
-          <div className="timer-text">01:23:45</div>
-          <div className="user-row">
-            <div className="status-dot" />
-            <div className="user-text">mem-raprap</div>
-          </div>
+        <div className="pts-zone">
+          <span className="pts-val">12.50</span>
+          <span className="pts-lbl">POINTS</span>
         </div>
-        <div className="right-sec">
-          <button className="logout-btn">LOGOUT</button>
-          <div className="pts-box">
-            <span className="pts-val">12.50</span>
-            <span className="pts-lbl">POINTS</span>
+        <div className="main-sec">
+          <div className="info-sec">
+            <div className="timer-text">29d 23:59:59</div>
+            <div className="user-row">
+              <div className="status-dot" />
+              <div className="user-text">mem-raprap</div>
+            </div>
           </div>
+          <button className="logout-btn">LOGOUT</button>
         </div>
       </div>
     </div>

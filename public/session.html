@@ -25,8 +25,8 @@
 
   .strip {
     width: 100%; height: 100%;
-    display: flex; align-items: center;
-    padding: 0 12px;
+    display: flex; align-items: stretch;
+    padding: 0;
     background: linear-gradient(180deg, #0d0d0d 0%, #080808 100%);
     border-radius: 3px;
     border: none;
@@ -77,10 +77,52 @@
     width: 100%; height: 100%;
   }
 
+  .points-zone {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, rgba(255,215,64,0.12) 0%, rgba(255,215,64,0.04) 100%);
+    border-right: 1px solid rgba(255,215,64,0.25);
+    padding: 0 10px;
+    min-width: 60px;
+    position: relative; z-index: 3;
+    box-shadow: inset -4px 0 8px rgba(255,215,64,0.04);
+  }
+  .points-zone.active { display: flex; }
+  .points-zone .pts-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 16px; font-weight: 900;
+    color: #ffd740;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(255,215,64,0.7), 0 0 20px rgba(255,215,64,0.35);
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .points-zone .pts-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 5px; font-weight: 700;
+    letter-spacing: 2px;
+    color: rgba(255,215,64,0.5);
+    margin-top: 2px;
+  }
+  .strip.danger-mode .points-zone {
+    border-color: rgba(255,215,64,0.12);
+    background: linear-gradient(180deg, rgba(255,215,64,0.06) 0%, rgba(255,215,64,0.02) 100%);
+  }
+  .strip.danger-mode .points-zone .pts-value { color: rgba(255,215,64,0.5); }
+  .strip.danger-mode .points-zone .pts-label { color: rgba(255,215,64,0.3); }
+
+  .main-section {
+    flex: 1; min-width: 0;
+    display: flex; align-items: center;
+    padding: 0 10px;
+    position: relative; z-index: 3;
+  }
+
   .left-section {
     display: flex; flex-direction: column; gap: 1px;
     flex: 1; min-width: 0;
-    position: relative; z-index: 3;
   }
 
   .timer {
@@ -135,61 +177,19 @@
   }
   .pc-label.active { display: block; }
 
-  .points-box {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(180deg, rgba(255,215,64,0.12) 0%, rgba(255,215,64,0.04) 100%);
-    border: 1px solid rgba(255,215,64,0.3);
-    border-radius: 3px;
-    padding: 4px 10px;
-    min-width: 55px;
-    height: 100%;
-    line-height: 1;
-    box-shadow: 0 0 10px rgba(255,215,64,0.1), inset 0 0 8px rgba(255,215,64,0.05);
-  }
-  .points-box.active { display: flex; }
-  .points-box .pts-value {
-    font-family: 'Orbitron', monospace;
-    font-size: 16px; font-weight: 900;
-    color: #ffd740;
-    letter-spacing: 1px;
-    text-shadow: 0 0 10px rgba(255,215,64,0.7), 0 0 20px rgba(255,215,64,0.35);
-    white-space: nowrap;
-  }
-  .points-box .pts-label {
-    font-family: 'Orbitron', monospace;
-    font-size: 6px; font-weight: 700;
-    letter-spacing: 2px;
-    color: rgba(255,215,64,0.6);
-    margin-top: 2px;
-  }
-  .strip.danger-mode .points-box {
-    border-color: rgba(255,215,64,0.15);
-    background: linear-gradient(180deg, rgba(255,215,64,0.06) 0%, rgba(255,215,64,0.02) 100%);
-  }
-  .strip.danger-mode .points-box .pts-value { color: rgba(255,215,64,0.5); }
-  .strip.danger-mode .points-box .pts-label { color: rgba(255,215,64,0.3); }
-
-  .right-section {
-    flex-shrink: 0;
-    margin-left: 6px;
-    display: flex; align-items: center; gap: 6px;
-    position: relative; z-index: 3;
-  }
-
   .logout-btn {
     -webkit-app-region: no-drag;
     background: transparent;
     border: 1px solid rgba(255,140,0,0.3);
-    color: #ff8c00; padding: 3px 8px;
+    color: #ff8c00; padding: 2px 6px;
     border-radius: 2px; cursor: pointer;
     font-family: 'Share Tech Mono', monospace;
-    font-size: 7px; font-weight: 600;
-    letter-spacing: 1.5px; text-transform: uppercase;
+    font-size: 6px; font-weight: 600;
+    letter-spacing: 1px; text-transform: uppercase;
     transition: all 0.3s;
     position: relative; overflow: hidden;
+    flex-shrink: 0; margin-left: 6px;
+    align-self: flex-end;
   }
   .logout-btn::before {
     content: ''; position: absolute; inset: 0;
@@ -257,17 +257,17 @@
     <div class="neon-line-right"></div>
     <div class="neon-glow-left"></div>
     <div class="neon-glow-right"></div>
-    <div class="left-section">
-      <div class="timer" id="timer">--:--:--</div>
-      <div class="user-row">
-        <div class="status-dot" id="status-dot"></div>
-        <div class="user" id="username">User</div>
-        <div class="pc-label" id="pc-label"></div>
+    <div class="points-zone" id="points-zone"></div>
+    <div class="main-section">
+      <div class="left-section">
+        <div class="timer" id="timer">--:--:--</div>
+        <div class="user-row">
+          <div class="status-dot" id="status-dot"></div>
+          <div class="user" id="username">User</div>
+          <div class="pc-label" id="pc-label"></div>
+        </div>
       </div>
-    </div>
-    <div class="right-section">
       <button class="logout-btn" id="logout-btn">LOGOUT</button>
-      <div class="points-box" id="points-box"></div>
     </div>
   </div>
 
@@ -447,7 +447,7 @@
     }
 
     function setPoints(pts) {
-      const el = document.getElementById('points-box');
+      const el = document.getElementById('points-zone');
       if (pts === undefined || pts === null) { el.classList.remove('active'); el.innerHTML = ''; return; }
       const display = pts % 1 === 0 ? pts.toString() : pts.toFixed(2);
       el.innerHTML = '<span class="pts-value">' + display + '</span><span class="pts-label">POINTS</span>';
