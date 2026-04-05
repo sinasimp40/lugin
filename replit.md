@@ -197,8 +197,20 @@ npm run electron     # Electron mode
 
 ## Building .exe
 ```
-npm run build        # Produces installer in dist/
+npm run build          # Denfi Auto Shutdown (full app) — installer in dist/
+npm run build:points   # Denfi Points (server-only, no window) — installer in dist/
+npm run build:all      # Build both installers
 ```
+
+## Denfi Points (Server-Only App)
+- Separate lightweight Electron app for the diskless server
+- **No window** — runs as a system tray icon only
+- Listens on `0.0.0.0:5000` so all client PCs can sync coin logs to it
+- Stores data in `data/` folder next to the .exe
+- Tray icon menu: "Open Coin Logs Panel" (opens a browser window to manage logs), "Quit"
+- Double-click tray icon opens the Coin Logs panel
+- Entry point: `main-server.js` (vs `main.js` for the full app)
+- Build config: `electron-builder-points.json`
 
 ## Diskless / Deep Freeze Setup
 For diskless (CCBoot, iCafe) or Deep Freeze environments where local changes are wiped on reboot:

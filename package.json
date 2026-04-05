@@ -8,7 +8,7 @@
     "electron": "electron .",
     "prebuild": "node -e \"const fs=require('fs'),p=require('path');const bd=p.join(__dirname,'build');if(!fs.existsSync(bd))fs.mkdirSync(bd);['icon.ico','icon.png'].forEach(f=>{const src=p.join(__dirname,'public',f),dst=p.join(bd,f);if(fs.existsSync(src)&&!fs.existsSync(dst))fs.copyFileSync(src,dst);const rootDst=p.join(__dirname,f);if(fs.existsSync(src)&&!fs.existsSync(rootDst))fs.copyFileSync(src,rootDst)});console.log('Icons ready:',fs.readdirSync(bd))\"",
     "build": "npm run prebuild && electron-builder --win --x64",
-    "build:points": "node -e \"const fs=require('fs'),p=require('./package.json');p.main='main-server.js';fs.writeFileSync('package-points.json',JSON.stringify(p,null,2))\" && npm run prebuild && electron-builder --win --x64 --config electron-builder-points.json --project .",
+    "build:points": "npm run prebuild && electron-builder --win --x64 --config electron-builder-points.json",
     "build:all": "npm run build && npm run build:points"
   },
   "build": {

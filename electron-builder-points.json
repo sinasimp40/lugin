@@ -6,6 +6,9 @@
     "buildResources": "build"
   },
   "asar": false,
+  "extraMetadata": {
+    "main": "main-server.js"
+  },
   "win": {
     "target": "nsis",
     "requestedExecutionLevel": "asInvoker",
