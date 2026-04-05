@@ -80,14 +80,18 @@ const styles = `
 
   .main-sec {
     flex: 1; min-width: 0;
-    display: flex; align-items: center;
-    padding: 0 10px;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 4px 10px;
     position: relative; z-index: 3;
+    gap: 1px;
   }
 
-  .info-sec {
-    display: flex; flex-direction: column; gap: 1px;
-    flex: 1; min-width: 0;
+  .top-row {
+    display: flex; align-items: center;
+  }
+
+  .bottom-row {
+    display: flex; align-items: center; justify-content: space-between;
   }
 
   .timer-text {
@@ -131,8 +135,7 @@ const styles = `
     font-family: 'Share Tech Mono', monospace;
     font-size: 7px; font-weight: 600;
     letter-spacing: 1.5px; text-transform: uppercase;
-    flex-shrink: 0; margin-left: 6px;
-    align-self: center;
+    flex-shrink: 0; margin-left: auto;
   }
 `;
 
@@ -153,14 +156,16 @@ export function SessionWithPoints() {
           <span className="pts-lbl">POINTS</span>
         </div>
         <div className="main-sec">
-          <div className="info-sec">
+          <div className="top-row">
             <div className="timer-text">29d 23:59:59</div>
+          </div>
+          <div className="bottom-row">
             <div className="user-row">
               <div className="status-dot" />
               <div className="user-text">mem-raprap</div>
             </div>
+            <button className="logout-btn">LOGOUT</button>
           </div>
-          <button className="logout-btn">LOGOUT</button>
         </div>
       </div>
     </div>

@@ -115,14 +115,18 @@
 
   .main-section {
     flex: 1; min-width: 0;
-    display: flex; align-items: center;
-    padding: 0 10px;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 4px 10px;
     position: relative; z-index: 3;
+    gap: 1px;
   }
 
-  .left-section {
-    display: flex; flex-direction: column; gap: 1px;
-    flex: 1; min-width: 0;
+  .top-row {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .bottom-row {
+    display: flex; align-items: center; justify-content: space-between;
   }
 
   .timer {
@@ -188,8 +192,7 @@
     letter-spacing: 1.5px; text-transform: uppercase;
     transition: all 0.3s;
     position: relative; overflow: hidden;
-    flex-shrink: 0; margin-left: 6px;
-    align-self: center;
+    flex-shrink: 0; margin-left: auto;
   }
   .logout-btn::before {
     content: ''; position: absolute; inset: 0;
@@ -259,15 +262,17 @@
     <div class="neon-glow-right"></div>
     <div class="points-zone" id="points-zone"></div>
     <div class="main-section">
-      <div class="left-section">
+      <div class="top-row">
         <div class="timer" id="timer">--:--:--</div>
+      </div>
+      <div class="bottom-row">
         <div class="user-row">
           <div class="status-dot" id="status-dot"></div>
           <div class="user" id="username">User</div>
           <div class="pc-label" id="pc-label"></div>
         </div>
+        <button class="logout-btn" id="logout-btn">LOGOUT</button>
       </div>
-      <button class="logout-btn" id="logout-btn">LOGOUT</button>
     </div>
   </div>
 
