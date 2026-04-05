@@ -202,12 +202,14 @@ npm run build        # Produces installer in dist/
 
 ## Diskless / Deep Freeze Setup
 For diskless (CCBoot, iCafe) or Deep Freeze environments where local changes are wiped on reboot:
-- Create a file `denfi-data-path.txt` next to the Denfi .exe (bake it into the game disk image)
-- Inside the file, put the path to a persistent shared folder, e.g.: `\\SERVER\DenfiData` or `D:\DenfiData`
-- All units will read/write settings and coin logs to that shared location instead of the local `data/` folder
-- Priority: `DENFI_DATA_DIR` env var > `denfi-data-path.txt` > default portable `data/` folder
-- Atomic writes use PID+timestamp temp files to prevent corruption from concurrent multi-unit access
-- Each unit's auto-detection still works independently (polls its own MikroTik session), but logs go to the shared file
+- Create a file `denfi-data-path.txt` next to the Denfi .exe (included in installer, baked into game disk image)
+- Supports two modes:
+  - **HTTP Sync (recommended for diskless)**: Put an HTTP URL like `http://10.10.10.29:5000` — each client sends coin logs to a central Denfi server instance via HTTP. No shared folders needed.
+  - **Shared folder**: Put a network path like `\\SERVER\DenfiData` — all units read/write to the same file (requires Windows file sharing/SMB)
+- **HTTP Sync setup**: Run `node server.js` on the diskless server machine (it listens on 0.0.0.0:5000 when not in Electron); each client's `denfi-data-path.txt` points to `http://SERVER_IP:5000`; clients auto-send coin logs via `POST /api/sync/coin-log`; server stores all data locally in `./data/`
+- Priority: `DENFI_SYNC_SERVER` env var > `DENFI_DATA_DIR` env var > `denfi-data-path.txt` > default portable `data/` folder
+- Sync endpoints: `POST /api/sync/coin-log` (receive coin log from client), `GET /api/sync/member-points/:username` (query points)
+- Server listens on `0.0.0.0` in standalone mode (node), `127.0.0.1` in Electron mode (override with `DENFI_LISTEN_HOST`)
 
 ## Requirements
 - Device must be connected to the MikroTik hotspot WiFi network

@@ -294,14 +294,21 @@ app.whenReady().then(() => {
   const defaultDataDir = path.join(path.dirname(app.getPath('exe')), 'data');
   let dataDir = defaultDataDir;
 
+  let syncServerUrl = '';
+
   const dataPathFile = path.join(path.dirname(app.getPath('exe')), 'denfi-data-path.txt');
   try {
     if (fs.existsSync(dataPathFile)) {
       const raw = fs.readFileSync(dataPathFile, 'utf8').trim();
       const customPath = raw.split('\n')[0].trim();
       if (customPath && customPath.length > 2 && !customPath.startsWith('#')) {
-        dataDir = customPath;
-        console.log('[Electron] Using custom data path from denfi-data-path.txt:', dataDir);
+        if (customPath.startsWith('http://') || customPath.startsWith('https://')) {
+          syncServerUrl = customPath.replace(/\/+$/, '');
+          console.log('[Electron] Using HTTP sync server:', syncServerUrl);
+        } else {
+          dataDir = customPath;
+          console.log('[Electron] Using custom data path from denfi-data-path.txt:', dataDir);
+        }
       }
     }
   } catch (e) {
@@ -311,6 +318,11 @@ app.whenReady().then(() => {
   if (process.env.DENFI_DATA_DIR) {
     dataDir = process.env.DENFI_DATA_DIR;
     console.log('[Electron] Using data path from DENFI_DATA_DIR env:', dataDir);
+  }
+
+  if (process.env.DENFI_SYNC_SERVER) {
+    syncServerUrl = process.env.DENFI_SYNC_SERVER.replace(/\/+$/, '');
+    console.log('[Electron] Using sync server from env:', syncServerUrl);
   }
 
   if (dataDir !== defaultDataDir) {
@@ -372,7 +384,10 @@ app.whenReady().then(() => {
   }
 
   try {
-    require('./server');
+    const serverModule = require('./server');
+    if (syncServerUrl && serverModule.setSyncServer) {
+      serverModule.setSyncServer(syncServerUrl);
+    }
   } catch (err) {
     console.error('[Electron] Failed to start server:', err);
     const { dialog } = require('electron');

@@ -615,9 +615,11 @@ app.post('/api/pisonet/done', async (req, res) => {
           amount: session.totalCoin,
           timeAdded: session.timeAdded,
           ip: session.ip,
-          mac: session.mac
+          mac: session.mac,
+          source: 'app'
         }, s.pointRates);
         console.log('[CoinLog] Recorded:', session.username, 'amount:', session.totalCoin, 'points:', log.points);
+        syncCoinLog({ username: session.username, amount: session.totalCoin, timeAdded: session.timeAdded, ip: session.ip, mac: session.mac, source: 'app' });
       } catch (e) {
         console.log('[CoinLog] Error saving log:', e.message);
       }
@@ -1067,6 +1069,67 @@ function broadcastSettings() {
   }
 }
 
+let syncServerUrl = '';
+
+function setSyncServer(url) {
+  syncServerUrl = (url || '').trim().replace(/\/+$/, '');
+  if (syncServerUrl) {
+    console.log('[Sync] Data server URL:', syncServerUrl);
+  }
+}
+
+async function syncCoinLog(logEntry) {
+  if (!syncServerUrl) return;
+  try {
+    const resp = await fetch(syncServerUrl + '/api/sync/coin-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(logEntry),
+      signal: AbortSignal.timeout(5000)
+    });
+    if (resp.ok) {
+      console.log('[Sync] Coin log sent to server:', logEntry.username, logEntry.amount);
+    } else {
+      console.log('[Sync] Server returned:', resp.status);
+    }
+  } catch (e) {
+    console.log('[Sync] Failed to send coin log:', e.message);
+  }
+}
+
+app.post('/api/sync/coin-log', express.json(), (req, res) => {
+  try {
+    const entry = req.body;
+    if (!entry || !entry.username || !entry.amount) {
+      return res.status(400).json({ error: 'Missing fields' });
+    }
+    const s = settings.getSettings();
+    const log = coinLogs.appendLog({
+      username: entry.username,
+      amount: entry.amount,
+      timeAdded: entry.timeAdded || '',
+      ip: entry.ip || '',
+      mac: entry.mac || '',
+      source: entry.source || 'vendo'
+    }, s.pointRates || []);
+    console.log('[Sync] Received coin log from client:', entry.username, 'amount:', entry.amount, 'points:', log.points);
+    res.json({ ok: true, log });
+  } catch (e) {
+    console.log('[Sync] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/sync/member-points/:username', (req, res) => {
+  try {
+    const s = settings.getSettings();
+    const points = coinLogs.getMemberPoints(req.params.username, s.pointRates || []);
+    res.json({ points });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws/session' });
 
@@ -1181,6 +1244,7 @@ async function pollHotspotForWs() {
                 source: 'vendo'
               }, s.pointRates || []);
               console.log('[AutoLog] Detected time increase for', data.username, '- seconds:', secondsAdded, 'pesos:', pesos, 'points:', log.points);
+              syncCoinLog({ username: data.username, amount: pesos, timeAdded: minutesAdded + ' min', ip: data.ip || '', mac: data.mac || '', source: 'vendo' });
               autoLogCooldowns.set(userCooldownKey, now + 15000);
             } catch (e) {
               console.log('[AutoLog] Error:', e.message);
@@ -1240,7 +1304,11 @@ server.on('error', (err) => {
   }
 });
 
-server.listen(PORT, '127.0.0.1', () => {
-  console.log(`Denfi Auto Shutdown running at http://127.0.0.1:${PORT}`);
+const isElectron = typeof process.versions.electron !== 'undefined';
+const LISTEN_HOST = process.env.DENFI_LISTEN_HOST || (isElectron ? '127.0.0.1' : '0.0.0.0');
+server.listen(PORT, LISTEN_HOST, () => {
+  console.log(`Denfi Auto Shutdown running at http://${LISTEN_HOST}:${PORT}`);
   if (typeof process.send === 'function') process.send('server-ready');
 });
+
+module.exports = { setSyncServer };
