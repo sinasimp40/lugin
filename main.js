@@ -291,13 +291,15 @@ app.whenReady().then(() => {
   const settings = require('./src/settings-store');
   const coinLogs = require('./src/coin-log-store');
 
-  let dataDir = path.join(path.dirname(app.getPath('exe')), 'data');
+  const defaultDataDir = path.join(path.dirname(app.getPath('exe')), 'data');
+  let dataDir = defaultDataDir;
 
   const dataPathFile = path.join(path.dirname(app.getPath('exe')), 'denfi-data-path.txt');
   try {
     if (fs.existsSync(dataPathFile)) {
-      const customPath = fs.readFileSync(dataPathFile, 'utf8').trim();
-      if (customPath) {
+      const raw = fs.readFileSync(dataPathFile, 'utf8').trim();
+      const customPath = raw.split('\n')[0].trim();
+      if (customPath && customPath.length > 2 && !customPath.startsWith('#')) {
         dataDir = customPath;
         console.log('[Electron] Using custom data path from denfi-data-path.txt:', dataDir);
       }
@@ -311,11 +313,22 @@ app.whenReady().then(() => {
     console.log('[Electron] Using data path from DENFI_DATA_DIR env:', dataDir);
   }
 
+  if (dataDir !== defaultDataDir) {
+    try {
+      fs.accessSync(dataDir.replace(/\\[^\\]+$/, '\\'), fs.constants.F_OK);
+      if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+      fs.accessSync(dataDir, fs.constants.W_OK);
+      console.log('[Electron] Custom data dir OK:', dataDir);
+    } catch (e) {
+      console.log('[Electron] Cannot access custom data dir, falling back to portable:', e.message);
+      dataDir = defaultDataDir;
+    }
+  }
+
   try {
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
   } catch (e) {
-    console.log('[Electron] Cannot create data dir, falling back to portable:', e.message);
-    dataDir = path.join(path.dirname(app.getPath('exe')), 'data');
+    console.log('[Electron] Cannot create data dir:', e.message);
   }
 
   settings.setDataDir(dataDir);
