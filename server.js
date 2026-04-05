@@ -1112,7 +1112,43 @@ function broadcast(msg) {
   if (wsClients.size === 0) stopWsPolling();
 }
 
+function reverseCalcPesos(secondsAdded, coinRates) {
+  if (!Array.isArray(coinRates) || coinRates.length === 0 || secondsAdded <= 0) return 0;
+  const minutesAdded = secondsAdded / 60;
+  const valid = coinRates.filter(r => r.pesos > 0 && r.minutes > 0);
+  if (valid.length === 0) return 0;
+
+  let bestPesos = 0;
+  let bestError = Infinity;
+
+  for (const rate of valid) {
+    const units = Math.round(minutesAdded / rate.minutes);
+    if (units <= 0) continue;
+    const expectedMinutes = units * rate.minutes;
+    const error = Math.abs(minutesAdded - expectedMinutes);
+    const tolerance = rate.minutes * 0.15;
+    if (error <= tolerance && error < bestError) {
+      bestPesos = units * rate.pesos;
+      bestError = error;
+    }
+  }
+
+  return bestPesos;
+}
+
+function hasActiveCoinSessionForUser(username) {
+  for (const [, session] of activeCoinSessions) {
+    if (session.username === username) return true;
+  }
+  return false;
+}
+
+const autoLogCooldowns = new Map();
+let pollInFlight = false;
+
 async function pollHotspotForWs() {
+  if (pollInFlight) return;
+  pollInFlight = true;
   try {
     const resp = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(5000) });
     const buffer = Buffer.from(await resp.arrayBuffer());
@@ -1121,9 +1157,37 @@ async function pollHotspotForWs() {
     const wasLoggedIn = lastSessionData?.isLogin;
     const prevTime = lastSessionData?.sessionTimeLeft;
     const newTime = parseInt(data.sessionTimeLeft) || 0;
+    const prevUser = lastSessionData?.username;
 
     if (data.isLogin && data.username && data.username.startsWith('mem-')) {
       const s = settings.getSettings();
+
+      if (prevTime !== undefined && data.username === prevUser && newTime > parseInt(prevTime) + 5) {
+        const secondsAdded = newTime - parseInt(prevTime);
+        const now = Date.now();
+        const userCooldownKey = data.username;
+        const userCooldown = autoLogCooldowns.get(userCooldownKey) || 0;
+        if (now > userCooldown && !hasActiveCoinSessionForUser(data.username)) {
+          const pesos = reverseCalcPesos(secondsAdded, s.coinRates || []);
+          if (pesos > 0) {
+            const minutesAdded = Math.round(secondsAdded / 60);
+            try {
+              const log = coinLogs.appendLog({
+                username: data.username,
+                amount: pesos,
+                timeAdded: minutesAdded + ' min',
+                ip: data.ip || '',
+                mac: data.mac || ''
+              }, s.pointRates || []);
+              console.log('[AutoLog] Detected time increase for', data.username, '- seconds:', secondsAdded, 'pesos:', pesos, 'points:', log.points);
+              autoLogCooldowns.set(userCooldownKey, now + 15000);
+            } catch (e) {
+              console.log('[AutoLog] Error:', e.message);
+            }
+          }
+        }
+      }
+
       data.memberPoints = coinLogs.getMemberPoints(data.username, s.pointRates || []);
     }
 
@@ -1140,6 +1204,8 @@ async function pollHotspotForWs() {
     }
   } catch (err) {
     broadcast({ type: 'error', error: err.message });
+  } finally {
+    pollInFlight = false;
   }
 }
 
