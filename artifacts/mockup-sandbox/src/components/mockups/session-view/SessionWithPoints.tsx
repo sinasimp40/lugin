@@ -151,7 +151,7 @@ export function SessionWithPoints() {
         <div className="neon-glow-l" />
         <div className="neon-glow-r" />
         <div className="left-sec">
-          <div className="timer-text">28d 23:59:45</div>
+          <div className="timer-text">01:23:45</div>
           <div className="user-row">
             <div className="status-dot" />
             <div className="user-text">mem-raprap</div>
