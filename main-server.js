@@ -1,6 +1,8 @@
 const { app, Tray, Menu, nativeImage, BrowserWindow } = require('electron');
 const path = require('path');
 
+process.env.DENFI_APP_ROLE = 'points';
+
 let tray = null;
 let serverModule = null;
 

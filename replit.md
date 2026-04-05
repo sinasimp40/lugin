@@ -223,8 +223,21 @@ For diskless (CCBoot, iCafe) or Deep Freeze environments where local changes are
 - Sync endpoints: `POST /api/sync/coin-log` (receive coin log from client), `GET /api/sync/member-points/:username` (query points)
 - Server listens on `0.0.0.0` in standalone mode (node), `127.0.0.1` in Electron mode (override with `DENFI_LISTEN_HOST`)
 
+## App Role System
+- **DENFI_APP_ROLE env var**: Set by Electron entry points to distinguish runtime mode
+  - `main.js` sets `DENFI_APP_ROLE=auto-shutdown` (Denfi Auto Shutdown.exe)
+  - `main-server.js` sets `DENFI_APP_ROLE=points` (Denfi Points.exe)
+  - Standalone `node server.js` defaults to `auto-shutdown`
+- **Coin Logs Read-Only Mode**: When running as auto-shutdown, the zxc2 coin logs panel is view-only:
+  - All add/delete UI controls are hidden via CSS class `.coin-logs-read-only .coin-logs-edit-only { display:none !important }`
+  - Server-side `blockIfReadOnly` middleware returns 403 on all coin-log/rate write endpoints
+  - `/api/admin/settings` strips `coinRates`/`pointRates` from request body in read-only mode
+  - View, filter, search, and export remain fully functional
+  - Stop App button still works from the zxc1 admin panel
+- `/api/admin/status` now returns `appRole` and `coinLogsReadOnly` fields
+
 ## Security Fixes Applied
-- **Custom confirm modals**: All native `confirm()` dialogs replaced with in-page custom modals to prevent kiosk mode escape on Windows (native dialogs can allow Alt+Tab bypass). Includes double-click guard to prevent duplicate destructive operations.
+- **Custom confirm modals**: All native `confirm()` dialogs replaced with in-page custom modals to prevent kiosk mode escape on Windows (native dialogs can allow Alt+Tab bypass). Includes double-click guard to prevent duplicate destructive operations. `customConfirm()` now supports optional `okLabel` parameter (Stop App uses "STOP" instead of "DELETE").
 - **XSS sanitization**: All user-controlled data (usernames, comments, IPs, profile names) in admin panel HTML templates sanitized via `escHtml()`. Inline `onclick` handlers replaced with delegated `data-*` attribute event listeners.
 - **Form-wrapped password fields**: All password inputs wrapped in `<form>` tags for proper browser handling and autofill support. Redundant Enter key handlers removed.
 - **Token clearing race fix**: Coin logs token clearing uses cancellable timer to prevent new auth tokens from being wiped by stale timeouts.

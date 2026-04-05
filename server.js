@@ -753,9 +753,12 @@ app.get('/api/session/poll', (req, res) => {
   res.json({ event: evt });
 });
 
+const appRole = process.env.DENFI_APP_ROLE || 'auto-shutdown';
+const coinLogsReadOnly = appRole !== 'points';
+
 app.get('/api/admin/status', (req, res) => {
   const s = settings.getPublicSettings();
-  res.json({ registered: settings.isAdminRegistered(), settings: s });
+  res.json({ registered: settings.isAdminRegistered(), settings: s, appRole, coinLogsReadOnly });
 });
 
 app.get('/api/admin/settings-public', (req, res) => {
@@ -799,7 +802,12 @@ app.get('/api/admin/settings', verifyToken, (req, res) => {
 });
 
 app.post('/api/admin/settings', verifyToken, (req, res) => {
-  const updated = settings.updateSettings(req.body);
+  const body = req.body;
+  if (coinLogsReadOnly) {
+    delete body.coinRates;
+    delete body.pointRates;
+  }
+  const updated = settings.updateSettings(body);
   broadcastSettings();
   res.json({ success: true, settings: updated });
 });
@@ -1020,25 +1028,30 @@ app.get('/api/admin/coin-logs', verifyToken, async (req, res) => {
   });
 });
 
-app.delete('/api/admin/coin-logs/:id', verifyToken, (req, res) => {
+function blockIfReadOnly(req, res, next) {
+  if (coinLogsReadOnly) return res.status(403).json({ success: false, error: 'Read-only mode. Use Denfi Points to manage coin logs.' });
+  next();
+}
+
+app.delete('/api/admin/coin-logs/:id', verifyToken, blockIfReadOnly, (req, res) => {
   const deleted = coinLogs.deleteLog(req.params.id);
   if (!deleted) return res.status(404).json({ success: false, error: 'Log not found' });
   res.json({ success: true });
 });
 
-app.delete('/api/admin/coin-logs/member/:username', verifyToken, (req, res) => {
+app.delete('/api/admin/coin-logs/member/:username', verifyToken, blockIfReadOnly, (req, res) => {
   const username = decodeURIComponent(req.params.username);
   const deleted = coinLogs.deleteMemberLogs(username);
   if (!deleted) return res.status(404).json({ success: false, error: 'No logs found for member' });
   res.json({ success: true });
 });
 
-app.delete('/api/admin/coin-logs', verifyToken, (req, res) => {
+app.delete('/api/admin/coin-logs', verifyToken, blockIfReadOnly, (req, res) => {
   coinLogs.clearAllLogs();
   res.json({ success: true });
 });
 
-app.post('/api/admin/coin-rates', verifyToken, (req, res) => {
+app.post('/api/admin/coin-rates', verifyToken, blockIfReadOnly, (req, res) => {
   const { pesos, minutes } = req.body;
   const p = parseInt(pesos);
   const m = parseInt(minutes);
@@ -1050,14 +1063,14 @@ app.post('/api/admin/coin-rates', verifyToken, (req, res) => {
   res.json({ success: true, coinRates: rates });
 });
 
-app.delete('/api/admin/coin-rates/:id', verifyToken, (req, res) => {
+app.delete('/api/admin/coin-rates/:id', verifyToken, blockIfReadOnly, (req, res) => {
   const s = settings.getSettings();
   const rates = (s.coinRates || []).filter(r => r.id !== req.params.id);
   settings.updateSettings({ coinRates: rates });
   res.json({ success: true, coinRates: rates });
 });
 
-app.post('/api/admin/point-rates', verifyToken, (req, res) => {
+app.post('/api/admin/point-rates', verifyToken, blockIfReadOnly, (req, res) => {
   const { pesos, points } = req.body;
   const p = parseInt(pesos);
   const pts = parseInt(points);
@@ -1070,7 +1083,7 @@ app.post('/api/admin/point-rates', verifyToken, (req, res) => {
   res.json({ success: true, pointRates: rates });
 });
 
-app.delete('/api/admin/point-rates/:id', verifyToken, (req, res) => {
+app.delete('/api/admin/point-rates/:id', verifyToken, blockIfReadOnly, (req, res) => {
   const s = settings.getSettings();
   const rates = (s.pointRates || []).filter(r => r.id !== req.params.id);
   settings.updateSettings({ pointRates: rates });

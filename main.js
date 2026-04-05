@@ -2,6 +2,8 @@ const { app, BrowserWindow, Menu, ipcMain, globalShortcut } = require('electron'
 const { exec, spawn } = require('child_process');
 const path = require('path');
 
+process.env.DENFI_APP_ROLE = 'auto-shutdown';
+
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 const PORT = 5000;

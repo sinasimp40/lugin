@@ -1135,6 +1135,9 @@
     .admin-box.auth-mode {
       max-width: 380px; max-height: none;
     }
+    .coin-logs-read-only .coin-logs-edit-only {
+      display: none !important;
+    }
     .admin-box h2 {
       font-family: 'Orbitron', monospace;
       font-size: 16px; font-weight: 700; color: var(--neon-cyan);
@@ -1562,7 +1565,7 @@
             <h3 style="font-family:'Orbitron',monospace;font-size:11px;color:#ff8c00;margin-bottom:4px;letter-spacing:1px">&#9670; Coin Rates</h3>
             <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#666;margin-bottom:8px">pesos to minutes pricing</div>
             <div id="coin-rates-list" style="margin-bottom:8px"></div>
-            <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap">
+            <div class="coin-logs-edit-only" style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap">
               <div class="form-group" style="margin-bottom:0;flex:1;min-width:60px">
                 <label>// Pesos</label>
                 <input type="number" id="coin-rate-add-pesos" min="1" placeholder="&#8369;" style="width:100%" />
@@ -1579,7 +1582,7 @@
             <h3 style="font-family:'Orbitron',monospace;font-size:11px;color:#ffd740;margin-bottom:4px;letter-spacing:1px">&#9670; Point Conversion</h3>
             <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#666;margin-bottom:8px">pesos to loyalty points (affects log points)</div>
             <div id="point-rates-list" style="margin-bottom:8px"></div>
-            <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap">
+            <div class="coin-logs-edit-only" style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap">
               <div class="form-group" style="margin-bottom:0;flex:1;min-width:60px">
                 <label>// Pesos</label>
                 <input type="number" id="point-rate-add-pesos" min="1" placeholder="&#8369;" style="width:100%" />
@@ -1609,7 +1612,7 @@
           </div>
           <button class="btn-admin" onclick="loadCoinLogs()" style="height:34px;margin-bottom:0">Filter</button>
           <button class="btn-admin" onclick="clearCoinLogFilters()" style="height:34px;margin-bottom:0">Clear</button>
-          <button onclick="clearAllCoinLogs()" style="height:34px;margin-bottom:0;margin-left:auto;background:rgba(255,40,40,0.12);border:1px solid rgba(255,40,40,0.3);color:#ff4444;font-family:'Orbitron',monospace;font-size:10px;padding:0 14px;border-radius:4px;cursor:pointer;letter-spacing:1px">DELETE ALL LOGS</button>
+          <button class="coin-logs-edit-only" onclick="clearAllCoinLogs()" style="height:34px;margin-bottom:0;margin-left:auto;background:rgba(255,40,40,0.12);border:1px solid rgba(255,40,40,0.3);color:#ff4444;font-family:'Orbitron',monospace;font-size:10px;padding:0 14px;border-radius:4px;cursor:pointer;letter-spacing:1px">DELETE ALL LOGS</button>
         </div>
 
         <div id="coin-logs-summary" style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap"></div>
@@ -1623,7 +1626,7 @@
                 <th style="padding:8px 10px;text-align:center;color:#ff8c00;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--dark-border)">TIME ADDED</th>
                 <th style="padding:8px 10px;text-align:center;color:#ff8c00;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--dark-border)">DATE</th>
                 <th style="padding:8px 10px;text-align:center;color:#ff8c00;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--dark-border)">POINTS</th>
-                <th style="padding:8px 10px;text-align:center;color:#ff8c00;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--dark-border)"></th>
+                <th class="coin-logs-edit-only" style="padding:8px 10px;text-align:center;color:#ff8c00;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--dark-border)"></th>
               </tr>
             </thead>
             <tbody id="coin-logs-tbody"></tbody>
@@ -1829,7 +1832,7 @@
 
   <script>
     var _confirmPending = false;
-    function customConfirm(title, message, isDanger) {
+    function customConfirm(title, message, isDanger, okLabel) {
       if (_confirmPending) return Promise.resolve(false);
       _confirmPending = true;
       return new Promise(function(resolve) {
@@ -1841,7 +1844,7 @@
         titleEl.textContent = title;
         msgEl.textContent = message;
         okBtn.className = isDanger ? 'confirm-danger' : 'confirm-ok';
-        okBtn.textContent = isDanger ? 'DELETE' : 'OK';
+        okBtn.textContent = okLabel || (isDanger ? 'DELETE' : 'OK');
         overlay.classList.add('active');
         function cleanup() {
           _confirmPending = false;
@@ -2907,12 +2910,14 @@
     });
 
     let coinLogsToken = null;
+    let coinLogsReadOnly = false;
 
     async function openCoinLogs() {
       const resp = await fetch('/api/admin/status').then(r => r.json()).catch(() => ({}));
       if (!resp.registered) {
         return;
       }
+      coinLogsReadOnly = !!resp.coinLogsReadOnly;
       const modal = document.getElementById('coin-logs-modal');
       document.getElementById('coin-logs-auth-view').style.display = 'block';
       document.getElementById('coin-logs-panel-view').style.display = 'none';
@@ -2946,6 +2951,7 @@
         document.getElementById('coin-logs-auth-view').style.display = 'none';
         document.getElementById('coin-logs-panel-view').style.display = 'block';
         document.getElementById('coin-logs-box').classList.remove('auth-mode');
+        applyCoinLogsReadOnly();
         loadCoinLogs();
       } else {
         const msg = document.getElementById('coin-logs-auth-msg');
@@ -2999,13 +3005,14 @@
           : '&#8369;' + r.pesos + ' = ' + r.points + ' pt' + (r.points > 1 ? 's' : '');
         html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'
           + '<span style="font-family:\'Share Tech Mono\',monospace;font-size:11px;color:' + (type === 'coin' ? '#ff8c00' : '#ffd740') + ';flex:1">' + label + '</span>'
-          + '<button onclick="deleteRate(\'' + type + '\',\'' + r.id + '\')" style="background:rgba(255,60,60,0.12);border:1px solid rgba(255,60,60,0.25);color:#ff6060;font-size:9px;padding:2px 6px;border-radius:3px;cursor:pointer;font-family:\'Share Tech Mono\',monospace">&#10005;</button>'
+          + (coinLogsReadOnly ? '' : '<button onclick="deleteRate(\'' + type + '\',\'' + r.id + '\')" style="background:rgba(255,60,60,0.12);border:1px solid rgba(255,60,60,0.25);color:#ff6060;font-size:9px;padding:2px 6px;border-radius:3px;cursor:pointer;font-family:\'Share Tech Mono\',monospace">&#10005;</button>')
           + '</div>';
       });
       el.innerHTML = html;
     }
 
     async function addCoinRate() {
+      if (coinLogsReadOnly) return;
       const pesosEl = document.getElementById('coin-rate-add-pesos');
       const minsEl = document.getElementById('coin-rate-add-mins');
       const pesos = parseInt(pesosEl.value);
@@ -3035,6 +3042,7 @@
     }
 
     async function addPointRate() {
+      if (coinLogsReadOnly) return;
       const pesosEl = document.getElementById('point-rate-add-pesos');
       const ptsEl = document.getElementById('point-rate-add-pts');
       const pesos = parseInt(pesosEl.value);
@@ -3064,6 +3072,7 @@
     }
 
     async function deleteRate(type, rateId) {
+      if (coinLogsReadOnly) return;
       const label = type === 'coin' ? 'coin rate' : 'point rate';
       if (!await customConfirm('Remove Rate', 'Remove this ' + label + '?' + (type === 'point' ? ' All log points will be recalculated.' : ''), true)) return;
       const endpoint = type === 'coin' ? '/api/admin/coin-rates/' : '/api/admin/point-rates/';
@@ -3085,6 +3094,7 @@
     }
 
     async function clearAllCoinLogs() {
+      if (coinLogsReadOnly) return;
       if (!await customConfirm('DELETE ALL COIN LOGS?', 'This will permanently erase all coin insertion logs and member points.\n\nThis action cannot be undone.', true)) return;
       if (!await customConfirm('ARE YOU SURE?', 'Are you absolutely sure? All log data will be lost forever.', true)) return;
       try {
@@ -3104,6 +3114,15 @@
       }
     }
 
+    function applyCoinLogsReadOnly() {
+      var box = document.getElementById('coin-logs-box');
+      if (coinLogsReadOnly) {
+        box.classList.add('coin-logs-read-only');
+      } else {
+        box.classList.remove('coin-logs-read-only');
+      }
+    }
+
     function showCoinMsg(text, cls) {
       const msg = document.getElementById('coin-logs-msg');
       msg.textContent = text;
@@ -3112,6 +3131,7 @@
     }
 
     async function deleteCoinLog(logId, username) {
+      if (coinLogsReadOnly) return;
       if (!await customConfirm('Delete Log Entry', 'Delete this log entry for ' + username + '? Points will be recalculated.', true)) return;
       const resp = await fetch('/api/admin/coin-logs/' + logId, {
         method: 'DELETE',
@@ -3128,6 +3148,7 @@
     }
 
     async function deleteMemberLogs(username) {
+      if (coinLogsReadOnly) return;
       if (!await customConfirm('Delete Member Logs', 'Delete ALL logs for ' + username + '?\nThis will remove all their transaction history and points.\n\nThis cannot be undone!', true)) return;
       if (!await customConfirm('ARE YOU SURE?', 'Are you really sure? All logs and points for "' + username + '" will be permanently deleted.', true)) return;
       const resp = await fetch('/api/admin/coin-logs/member/' + encodeURIComponent(username), {
@@ -3156,7 +3177,7 @@
       function fmtPts(v) { return v % 1 === 0 ? v.toString() : v.toFixed(2); }
 
       if (logs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:#666">No coin logs found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="' + (coinLogsReadOnly ? '5' : '6') + '" style="padding:20px;text-align:center;color:#666">No coin logs found</td></tr>';
         totalEl.textContent = '';
         summaryEl.innerHTML = '';
       } else {
@@ -3173,7 +3194,7 @@
             + '<td style="padding:6px 10px;text-align:center;color:#81c784">' + escapeHtml(log.timeAdded || '--') + '</td>'
             + '<td style="padding:6px 10px;text-align:center;color:#bbb">' + dateStr + ' ' + timeStr + '</td>'
             + '<td style="padding:6px 10px;text-align:center;color:#ffd740;font-weight:bold">' + fmtPts(log.points || 0) + '</td>'
-            + '<td style="padding:6px 6px;text-align:center"><button onclick="deleteCoinLog(\'' + log.id + '\',\'' + escapeHtml(log.username).replace(/'/g, "\\'") + '\')" style="background:rgba(255,60,60,0.15);border:1px solid rgba(255,60,60,0.3);color:#ff6060;font-size:10px;padding:3px 8px;border-radius:3px;cursor:pointer;font-family:\'Share Tech Mono\',monospace">&#10005;</button></td>'
+            + (coinLogsReadOnly ? '' : '<td style="padding:6px 6px;text-align:center"><button onclick="deleteCoinLog(\'' + log.id + '\',\'' + escapeHtml(log.username).replace(/'/g, "\\'") + '\')" style="background:rgba(255,60,60,0.15);border:1px solid rgba(255,60,60,0.3);color:#ff6060;font-size:10px;padding:3px 8px;border-radius:3px;cursor:pointer;font-family:\'Share Tech Mono\',monospace">&#10005;</button></td>')
             + '</tr>';
         });
         tbody.innerHTML = html;
@@ -3200,7 +3221,7 @@
           phtml += '<div style="background:rgba(255,215,64,0.08);border:1px solid rgba(255,215,64,0.15);border-radius:4px;padding:6px 12px;font-family:\'Share Tech Mono\',monospace;font-size:11px;display:flex;align-items:center;gap:8px">'
             + '<span style="color:#e0e0e0;flex:1">' + escapeHtml(user) + '</span>'
             + '<span style="color:#ffd740;font-weight:bold">' + fmtPts(pts) + ' pts</span>'
-            + '<button onclick="deleteMemberLogs(\'' + escapeHtml(user).replace(/'/g, "\\'") + '\')" style="background:rgba(255,60,60,0.12);border:1px solid rgba(255,60,60,0.25);color:#ff6060;font-size:9px;padding:2px 6px;border-radius:3px;cursor:pointer;font-family:\'Share Tech Mono\',monospace" title="Delete all logs for this member">&#10005;</button>'
+            + (coinLogsReadOnly ? '' : '<button onclick="deleteMemberLogs(\'' + escapeHtml(user).replace(/'/g, "\\'") + '\')" style="background:rgba(255,60,60,0.12);border:1px solid rgba(255,60,60,0.25);color:#ff6060;font-size:9px;padding:2px 6px;border-radius:3px;cursor:pointer;font-family:\'Share Tech Mono\',monospace" title="Delete all logs for this member">&#10005;</button>')
             + '</div>';
         });
         pointsEl.innerHTML = phtml;
@@ -3491,7 +3512,7 @@
     }
 
     async function stopApp() {
-      if (!await customConfirm('Stop Application', 'Are you sure you want to stop the application?\n\nThe kiosk lockdown will be released.', true)) return;
+      if (!await customConfirm('Stop Application', 'Are you sure you want to stop the application?\n\nThe kiosk lockdown will be released.', true, 'STOP')) return;
       await fetch('/api/admin/stop-app', { method: 'POST', headers: { 'x-admin-token': adminToken } }).catch(() => {});
     }
 
