@@ -837,30 +837,21 @@
     .ad-slides {
       position: relative;
       width: 100%;
+      min-height: 140px;
     }
     .ad-slide {
       width: 100%; height: 140px; position: absolute; top: 0; left: 0;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       overflow: hidden;
       opacity: 0; pointer-events: none;
-      transform: translateX(100%);
+      transition: opacity 0.6s ease;
     }
     .ad-slide.active {
       position: relative; opacity: 1; pointer-events: auto;
-      transform: translateX(0);
-      animation: slide-in-right 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .ad-slide.exiting {
-      opacity: 1; pointer-events: none;
-      animation: slide-out-left 0.5s ease-in forwards;
-    }
-    @keyframes slide-in-right {
-      from { transform: translateX(80%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-    @keyframes slide-out-left {
-      from { transform: translateX(0); opacity: 1; }
-      to { transform: translateX(-80%); opacity: 0; }
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.5s ease;
     }
     .ad-slide-img {
       display: block;
@@ -3591,10 +3582,7 @@
         if (i === prevAdSlideIndex && i !== adSlideIndex) {
           s.classList.remove('active');
           s.classList.add('exiting');
-          s.addEventListener('animationend', function handler() {
-            s.classList.remove('exiting');
-            s.removeEventListener('animationend', handler);
-          }, { once: true });
+          setTimeout(() => s.classList.remove('exiting'), 600);
         } else if (i === adSlideIndex) {
           s.classList.remove('exiting');
           s.classList.add('active');
