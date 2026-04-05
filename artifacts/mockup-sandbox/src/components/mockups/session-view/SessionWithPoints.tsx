@@ -6,7 +6,7 @@ const styles = `
   .strip-root {
     width: 250px; height: 50px;
     display: flex; align-items: center;
-    padding: 0 84px 0 10px;
+    padding: 0 12px;
     background: linear-gradient(180deg, #0d0d0d 0%, #080808 100%);
     border-radius: 3px;
     border: none;
@@ -104,16 +104,16 @@ const styles = `
   }
 
   .pts-box {
-    position: absolute;
-    top: 0; bottom: 0; right: 0;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
+    align-self: stretch;
     background: linear-gradient(180deg, rgba(255,215,64,0.1) 0%, rgba(255,215,64,0.04) 100%);
     border-left: 1px solid rgba(255,215,64,0.3);
     padding: 0 10px;
     min-width: 60px;
     line-height: 1;
     z-index: 4;
+    margin-right: -12px;
   }
   .pts-box .pts-val {
     font-family: 'Orbitron', monospace;
