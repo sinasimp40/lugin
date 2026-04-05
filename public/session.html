@@ -432,6 +432,11 @@
               updateTimer();
               checkExpiryLogout();
             }
+          } else if (msg.type === 'coin-log-updated') {
+            if (sessionUsername && msg.memberPoints !== undefined) {
+              const pts = (msg.memberPoints || {})[sessionUsername];
+              setPoints(pts !== undefined ? pts : 0);
+            }
           } else if (msg.type === 'logged-out') {
             setPoints(null);
             if (window.electronAPI && window.electronAPI.setSessionState) {

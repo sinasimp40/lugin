@@ -2255,6 +2255,11 @@
             } else if (sessionData) {
               showLoggedOut();
             }
+          } else if (msg.type === 'coin-log-updated') {
+            if (sessionData && sessionData.username && msg.memberPoints !== undefined) {
+              const pts = (msg.memberPoints || {})[sessionData.username];
+              updateSessionPoints(pts !== undefined ? pts : 0);
+            }
           } else if (msg.type === 'logged-out' && sessionData) {
             showLoggedOut();
           } else if (msg.type === 'settings' && msg.data) {
