@@ -7,7 +7,7 @@ A lightweight Electron desktop app for pisonet member login. Connects to a Mikro
 - Shows login form with member login (username + password)
 - Login tries both CHAP (`MD5(chapId + password + chapChallenge)`) and PAP (plaintext) automatically
 - After login, shows session panel with countdown timer (days-hours-minutes-seconds), uptime, and IP
-- Uses WebSocket (`/ws/session`) for real-time session updates — server polls MikroTik every 5s and pushes changes to all connected clients instantly
+- Uses WebSocket (`/ws/session`) for real-time session updates — server polls MikroTik every 2s and pushes changes to all connected clients instantly; immediate re-poll triggered after coin done for near-instant points display
 - Insert Coin talks to JuanFi NodeMCU vendo at `10.0.0.5:8989` for coin-slot time purchases
 - Logout calls the hotspot's logout link
 - Auto-logout on app close/kill/uninstall
@@ -108,9 +108,11 @@ When `isLogin: true` is detected → auto-shows the session (auto-connect).
 - **Session points display**: member points shown in both session views (session.html compact strip 300x50 + index.html session panel 300x80) via WebSocket and `/api/hotspot/status` enrichment; points on right side with bold 13px Orbitron font + "POINTS" sub-label; auto-clears on logout or non-member sessions
 - **Delete member**: each member in the Points Summary leaderboard has an ✕ button; double-confirmation prompt; deletes ALL logs for that member and recalculates points
 - **Data flow**: Server tracks active coin sessions via `activeCoinSessions` map; `/api/pisonet/avail` starts tracking, `/api/vendo/check-coin` updates coin amounts, `/api/pisonet/done` finalizes and persists the log
-- **Auto-detection**: `pollHotspotForWs` detects time increases for `mem-` users and automatically creates coin log entries by reverse-calculating pesos from coin rates; per-user 15s cooldown prevents duplicates; skips if an active coin session exists (user is using Insert Coin button); uses `reverseCalcPesos()` with tolerance-based best-match algorithm (15% tolerance per rate); polling has in-flight guard to prevent race conditions; log entries include `source: 'vendo'` vs `source: 'app'` to distinguish origin
+- **Auto-detection**: `pollHotspotForWs` detects time increases for `mem-` users and automatically creates coin log entries by reverse-calculating pesos from coin rates; per-user 15s cooldown prevents duplicates; `/pisonet/done` also sets 20s cooldown to prevent duplicate auto-detection; skips if an active coin session exists (user is using Insert Coin button); uses `reverseCalcPesos()` with tolerance-based best-match algorithm (15% tolerance per rate); polling has in-flight guard with queued re-poll support to prevent race conditions; log entries include `source: 'vendo'` vs `source: 'app'` to distinguish origin
+- **Dedup guard**: `appendLog` rejects duplicate entries (same username + amount + ip + mac within 10s window) to prevent race-condition double-logging
+- **Member points**: Local-first calculation (instant); remote fetch from sync server only when local is 0 (avoids network delay blocking display)
 - **Storage**: `data/coin-logs.json` (atomic writes with PID+timestamp unique tmp files for multi-unit safety)
-- **Module**: `src/coin-log-store.js` — appendLog, getLogs (with filters + optional pointRates for auto-sync), getMemberPoints (with optional pointRates), deleteLog, recalcAllPoints, ensurePointsSync
+- **Module**: `src/coin-log-store.js` — appendLog (with dedup), getLogs (with filters + optional pointRates for auto-sync), getMemberPoints (with optional pointRates), deleteLog, recalcAllPoints, ensurePointsSync
 - **Points sync**: `ensurePointsSync(pointRates)` uses a `_ratesHash` (MD5 of canonical {pesos,points} sorted array) stored in coin-logs.json to detect when rates changed; auto-recalculates only when hash differs; `getLogs` and `getMemberPoints` accept optional `pointRates` param to self-sync before returning data
 - Stale session cleanup: 10-minute TTL on in-memory coin sessions
 

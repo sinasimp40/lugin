@@ -88,21 +88,35 @@ function calcPoints(amount, pointRates) {
   return best;
 }
 
+const DEDUP_WINDOW_MS = 10000;
+
 function appendLog(entry, pointRates) {
   const pts = calcPoints(entry.amount, pointRates);
+  const now = entry.timestamp || Date.now();
   const log = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     username: entry.username || '',
     amount: entry.amount || 0,
     timeAdded: entry.timeAdded || '',
     points: pts,
-    timestamp: entry.timestamp || Date.now(),
+    timestamp: now,
     date: new Date().toISOString(),
     ip: entry.ip || '',
     mac: entry.mac || '',
     source: entry.source || 'app'
   };
   loadModifySave(function(data) {
+    const dupeCheck = (data.logs || []).some(l =>
+      l.username === log.username &&
+      l.amount === log.amount &&
+      l.ip === log.ip &&
+      l.mac === log.mac &&
+      Math.abs(l.timestamp - log.timestamp) < DEDUP_WINDOW_MS
+    );
+    if (dupeCheck) {
+      console.log('[CoinLog] Duplicate entry blocked:', log.username, log.amount, log.source);
+      return;
+    }
     data.logs.push(log);
     if (!data.memberPoints) data.memberPoints = {};
     const user = log.username;

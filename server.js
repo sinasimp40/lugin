@@ -616,9 +616,13 @@ app.post('/api/pisonet/done', async (req, res) => {
           ip: session.ip,
           mac: session.mac,
           source: 'app'
-        }, s.pointRates);
+        }, s.pointRates || []);
         console.log('[CoinLog] Recorded:', session.username, 'amount:', session.totalCoin, 'points:', log.points);
         syncCoinLog({ username: session.username, amount: session.totalCoin, timeAdded: session.timeAdded, ip: session.ip, mac: session.mac, source: 'app' });
+        autoLogCooldowns.set(session.username, Date.now() + 20000);
+        if (wsClients.size > 0) {
+          scheduleImmediatePoll();
+        }
       } catch (e) {
         console.log('[CoinLog] Error saving log:', e.message);
       }
@@ -1106,13 +1110,15 @@ function broadcastSettings() {
 }
 
 let syncServerUrl = '';
+let syncRatesInterval = null;
 
 function setSyncServer(url) {
   syncServerUrl = (url || '').trim().replace(/\/+$/, '');
+  if (syncRatesInterval) { clearInterval(syncRatesInterval); syncRatesInterval = null; }
   if (syncServerUrl) {
     console.log('[Sync] Data server URL:', syncServerUrl);
     syncRatesFromServer();
-    setInterval(syncRatesFromServer, 5 * 60 * 1000);
+    syncRatesInterval = setInterval(syncRatesFromServer, 5 * 60 * 1000);
   }
 }
 
@@ -1155,11 +1161,13 @@ async function fetchRemotePoints(username) {
 
 async function getMemberPointsAuto(username) {
   const s = settings.getSettings();
+  const local = coinLogs.getMemberPoints(username, s.pointRates || []);
+  if (local > 0) return local;
   if (syncServerUrl) {
     const remote = await fetchRemotePoints(username);
     if (remote !== null) return remote;
   }
-  return coinLogs.getMemberPoints(username, s.pointRates || []);
+  return local;
 }
 
 async function syncCoinLog(logEntry) {
@@ -1327,6 +1335,15 @@ function hasActiveCoinSessionForUser(username) {
 
 const autoLogCooldowns = new Map();
 let pollInFlight = false;
+let pollQueued = false;
+
+function scheduleImmediatePoll() {
+  if (pollInFlight) {
+    pollQueued = true;
+  } else {
+    setTimeout(() => pollHotspotForWs(), 300);
+  }
+}
 
 async function pollHotspotForWs() {
   if (pollInFlight) return;
@@ -1372,15 +1389,10 @@ async function pollHotspotForWs() {
         }
       }
 
-      if (syncServerUrl) {
+      data.memberPoints = coinLogs.getMemberPoints(data.username, s.pointRates || []);
+      if (syncServerUrl && data.memberPoints === 0) {
         const remote = await fetchRemotePoints(data.username);
-        if (remote !== null) {
-          data.memberPoints = remote;
-        } else {
-          data.memberPoints = coinLogs.getMemberPoints(data.username, s.pointRates || []);
-        }
-      } else {
-        data.memberPoints = coinLogs.getMemberPoints(data.username, s.pointRates || []);
+        if (remote !== null) data.memberPoints = remote;
       }
     }
 
@@ -1406,6 +1418,10 @@ async function pollHotspotForWs() {
     broadcast({ type: 'error', error: err.message });
   } finally {
     pollInFlight = false;
+    if (pollQueued) {
+      pollQueued = false;
+      setTimeout(() => pollHotspotForWs(), 300);
+    }
   }
 }
 
@@ -1413,7 +1429,7 @@ function startWsPolling() {
   if (wsPollingInterval) return;
   console.log('[WS] Starting server-side polling');
   pollHotspotForWs();
-  wsPollingInterval = setInterval(pollHotspotForWs, 5000);
+  wsPollingInterval = setInterval(pollHotspotForWs, 2000);
 }
 
 function stopWsPolling() {
