@@ -70,7 +70,7 @@ export function SessionPanel() {
       <style>{styles}</style>
       <div className="panel-root">
         <div className="panel-compact">
-          <div className="panel-timer">01:23:45</div>
+          <div className="panel-timer">28d 23:59:45</div>
           <div className="panel-bottom">
             <div className="panel-user">mem-raprap</div>
             <button className="panel-logout">Logout</button>
