@@ -234,6 +234,11 @@ For diskless (CCBoot, iCafe) or Deep Freeze environments where local changes are
   - `/api/admin/settings` strips `coinRates`/`pointRates` from request body in read-only mode
   - View, filter, search, and export remain fully functional
   - Stop App button still works from the zxc1 admin panel
+- **Rates Sync**: When `syncServerUrl` is configured, auto-shutdown fetches coin/point rates from the Points server:
+  - On startup: immediately syncs rates via `GET /api/sync/rates`
+  - Periodically: re-syncs every 5 minutes to pick up rate changes
+  - On coin-logs fetch: also caches rates from the sync response
+  - Synced rates are saved to local settings so coin insertion uses correct rates for point calculation
 - `/api/admin/status` now returns `appRole` and `coinLogsReadOnly` fields
 
 ## Security Fixes Applied

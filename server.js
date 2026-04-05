@@ -1001,6 +1001,12 @@ app.get('/api/admin/coin-logs', verifyToken, async (req, res) => {
       });
       if (resp.ok) {
         const data = await resp.json();
+        if (Array.isArray(data.coinRates) || Array.isArray(data.pointRates)) {
+          const rateUpdates = {};
+          if (Array.isArray(data.coinRates)) rateUpdates.coinRates = data.coinRates;
+          if (Array.isArray(data.pointRates)) rateUpdates.pointRates = data.pointRates;
+          settings.updateSettings(rateUpdates);
+        }
         return res.json(data);
       }
     } catch (e) {
@@ -1010,8 +1016,7 @@ app.get('/api/admin/coin-logs', verifyToken, async (req, res) => {
   const { username, from, to } = req.query;
   const s = settings.getSettings();
   const currentRates = s.pointRates || [];
-  const ratesForCalc = coinLogsReadOnly && currentRates.length === 0 ? null : currentRates;
-  const result = coinLogs.getLogs({ username, from, to }, ratesForCalc);
+  const result = coinLogs.getLogs({ username, from, to }, currentRates);
   const hasFilters = username || from || to;
   let filteredPoints = result.memberPoints;
   if (hasFilters) {
@@ -1106,6 +1111,29 @@ function setSyncServer(url) {
   syncServerUrl = (url || '').trim().replace(/\/+$/, '');
   if (syncServerUrl) {
     console.log('[Sync] Data server URL:', syncServerUrl);
+    syncRatesFromServer();
+    setInterval(syncRatesFromServer, 5 * 60 * 1000);
+  }
+}
+
+async function syncRatesFromServer() {
+  if (!syncServerUrl) return;
+  try {
+    const resp = await fetch(syncServerUrl + '/api/sync/rates', {
+      signal: AbortSignal.timeout(5000)
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      const updates = {};
+      if (Array.isArray(data.coinRates)) updates.coinRates = data.coinRates;
+      if (Array.isArray(data.pointRates)) updates.pointRates = data.pointRates;
+      if (Object.keys(updates).length > 0) {
+        settings.updateSettings(updates);
+        console.log('[Sync] Rates synced from server — coinRates:', (updates.coinRates || []).length, 'pointRates:', (updates.pointRates || []).length);
+      }
+    }
+  } catch (e) {
+    console.log('[Sync] Failed to sync rates:', e.message);
   }
 }
 
@@ -1172,6 +1200,15 @@ app.post('/api/sync/coin-log', express.json(), (req, res) => {
     res.json({ ok: true, log });
   } catch (e) {
     console.log('[Sync] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/sync/rates', (req, res) => {
+  try {
+    const s = settings.getSettings();
+    res.json({ coinRates: s.coinRates || [], pointRates: s.pointRates || [] });
+  } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
