@@ -327,8 +327,7 @@ app.get('/api/hotspot/status', async (req, res) => {
     const buffer = Buffer.from(await resp.arrayBuffer());
     const data = parseHotspotResponse(buffer);
     if (data.isLogin && data.username && data.username.startsWith('mem-')) {
-      const s = settings.getSettings();
-      data.memberPoints = coinLogs.getMemberPoints(data.username, s.pointRates || []);
+      data.memberPoints = await getMemberPointsAuto(data.username);
     }
     res.json({ success: true, data });
   } catch (err) {
@@ -1078,6 +1077,31 @@ function setSyncServer(url) {
   }
 }
 
+async function fetchRemotePoints(username) {
+  if (!syncServerUrl) return null;
+  try {
+    const resp = await fetch(syncServerUrl + '/api/sync/member-points/' + encodeURIComponent(username), {
+      signal: AbortSignal.timeout(3000)
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      return data.points !== undefined ? data.points : null;
+    }
+  } catch (e) {
+    console.log('[Sync] Failed to fetch points for', username, ':', e.message);
+  }
+  return null;
+}
+
+async function getMemberPointsAuto(username) {
+  const s = settings.getSettings();
+  if (syncServerUrl) {
+    const remote = await fetchRemotePoints(username);
+    if (remote !== null) return remote;
+  }
+  return coinLogs.getMemberPoints(username, s.pointRates || []);
+}
+
 async function syncCoinLog(logEntry) {
   if (!syncServerUrl) return;
   try {
@@ -1253,7 +1277,16 @@ async function pollHotspotForWs() {
         }
       }
 
-      data.memberPoints = coinLogs.getMemberPoints(data.username, s.pointRates || []);
+      if (syncServerUrl) {
+        const remote = await fetchRemotePoints(data.username);
+        if (remote !== null) {
+          data.memberPoints = remote;
+        } else {
+          data.memberPoints = coinLogs.getMemberPoints(data.username, s.pointRates || []);
+        }
+      } else {
+        data.memberPoints = coinLogs.getMemberPoints(data.username, s.pointRates || []);
+      }
     }
 
     lastSessionData = data;
