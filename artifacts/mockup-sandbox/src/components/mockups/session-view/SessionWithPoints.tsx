@@ -83,7 +83,7 @@ const styles = `
     display: flex; flex-direction: column; justify-content: center;
     padding: 4px 10px;
     position: relative; z-index: 3;
-    gap: 1px;
+    gap: 3px;
   }
 
   .top-row {
