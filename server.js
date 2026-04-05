@@ -1001,15 +1001,11 @@ app.get('/api/admin/coin-logs', verifyToken, async (req, res) => {
       });
       if (resp.ok) {
         const data = await resp.json();
-        try {
-          if (Array.isArray(data.coinRates) || Array.isArray(data.pointRates)) {
-            const rateUpdates = {};
-            if (Array.isArray(data.coinRates)) rateUpdates.coinRates = data.coinRates;
-            if (Array.isArray(data.pointRates)) rateUpdates.pointRates = data.pointRates;
-            settings.updateSettings(rateUpdates);
-          }
-        } catch (cacheErr) {
-          console.log('[Sync] Could not cache rates locally:', cacheErr.message);
+        if (Array.isArray(data.coinRates) || Array.isArray(data.pointRates)) {
+          const rateUpdates = {};
+          if (Array.isArray(data.coinRates)) rateUpdates.coinRates = data.coinRates;
+          if (Array.isArray(data.pointRates)) rateUpdates.pointRates = data.pointRates;
+          settings.updateSettings(rateUpdates);
         }
         return res.json(data);
       }
