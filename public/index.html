@@ -1324,6 +1324,57 @@
       transform: translateX(22px); background: #ff3030;
       box-shadow: 0 0 8px rgba(255,40,40,0.5);
     }
+
+    .custom-confirm-overlay {
+      display: none; position: fixed; inset: 0; z-index: 99999;
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center;
+    }
+    .custom-confirm-overlay.active { display: flex; }
+    .custom-confirm-box {
+      background: #111; border: 1px solid rgba(255,140,0,0.3);
+      border-radius: 4px; padding: 24px 28px; max-width: 420px; width: 90%;
+      box-shadow: 0 0 30px rgba(255,140,0,0.1), 0 4px 20px rgba(0,0,0,0.5);
+      position: relative;
+    }
+    .custom-confirm-box::before {
+      content: ''; position: absolute; top: -1px; left: 20px; right: 20px; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,140,0,0.5), transparent);
+    }
+    .custom-confirm-title {
+      font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700;
+      color: #ff8c00; letter-spacing: 2px; margin-bottom: 14px;
+      text-shadow: 0 0 8px rgba(255,140,0,0.3);
+    }
+    .custom-confirm-msg {
+      font-family: 'Share Tech Mono', monospace; font-size: 12px;
+      color: #ccc; line-height: 1.6; margin-bottom: 20px; white-space: pre-line;
+    }
+    .custom-confirm-btns {
+      display: flex; gap: 10px; justify-content: flex-end;
+    }
+    .custom-confirm-btns button {
+      font-family: 'Orbitron', monospace; font-size: 10px; font-weight: 700;
+      letter-spacing: 1px; padding: 8px 20px; border-radius: 3px; cursor: pointer;
+      border: 1px solid rgba(255,140,0,0.3); background: transparent; color: #ff8c00;
+      transition: all 0.2s;
+    }
+    .custom-confirm-btns button:hover {
+      background: rgba(255,140,0,0.12); border-color: rgba(255,140,0,0.6);
+    }
+    .custom-confirm-btns .confirm-ok {
+      background: rgba(255,140,0,0.15); border-color: rgba(255,140,0,0.5);
+    }
+    .custom-confirm-btns .confirm-ok:hover {
+      background: rgba(255,140,0,0.25); box-shadow: 0 0 10px rgba(255,140,0,0.2);
+    }
+    .custom-confirm-btns .confirm-danger {
+      background: rgba(255,40,40,0.12); border-color: rgba(255,40,40,0.3); color: #ff4444;
+    }
+    .custom-confirm-btns .confirm-danger:hover {
+      background: rgba(255,40,40,0.25); border-color: rgba(255,40,40,0.5);
+      box-shadow: 0 0 10px rgba(255,40,40,0.2);
+    }
   </style>
 </head>
 <body>
@@ -1380,36 +1431,40 @@
           </div>
 
           <div id="tab-login" class="tab-content active">
-            <div id="error-msg" class="error-msg"></div>
-            <div class="form-group">
-              <label>// Username</label>
-              <input type="text" id="username" placeholder="enter username" autocomplete="username" />
-            </div>
-            <div class="form-group">
-              <label>// Password</label>
-              <input type="password" id="password" placeholder="enter password" autocomplete="current-password" />
-            </div>
-            <button class="btn-cyber" id="login-btn" onclick="doLogin()">
-              <span id="login-text">Authenticate</span>
-              <span id="login-spinner" class="spinner hidden"></span>
-            </button>
+            <form onsubmit="event.preventDefault(); doLogin();">
+              <div id="error-msg" class="error-msg"></div>
+              <div class="form-group">
+                <label>// Username</label>
+                <input type="text" id="username" placeholder="enter username" autocomplete="username" />
+              </div>
+              <div class="form-group">
+                <label>// Password</label>
+                <input type="password" id="password" placeholder="enter password" autocomplete="current-password" />
+              </div>
+              <button type="submit" class="btn-cyber" id="login-btn">
+                <span id="login-text">Authenticate</span>
+                <span id="login-spinner" class="spinner hidden"></span>
+              </button>
+            </form>
           </div>
 
           <div id="tab-register" class="tab-content">
-            <div id="reg-error-msg" class="error-msg"></div>
-            <div id="reg-success-msg" class="success-msg"></div>
-            <div class="form-group">
-              <label>// Choose Username</label>
-              <input type="text" id="reg-username" placeholder="pick your username" autocomplete="off" />
-            </div>
-            <div class="form-group">
-              <label>// Choose Password</label>
-              <input type="password" id="reg-password" placeholder="pick your password" autocomplete="new-password" />
-            </div>
-            <button class="btn-register" id="reg-btn" onclick="doRegister()">
-              <span id="reg-text">Register &amp; Insert Coin</span>
-              <span id="reg-spinner" class="spinner hidden"></span>
-            </button>
+            <form onsubmit="event.preventDefault(); doRegister();">
+              <div id="reg-error-msg" class="error-msg"></div>
+              <div id="reg-success-msg" class="success-msg"></div>
+              <div class="form-group">
+                <label>// Choose Username</label>
+                <input type="text" id="reg-username" placeholder="pick your username" autocomplete="off" />
+              </div>
+              <div class="form-group">
+                <label>// Choose Password</label>
+                <input type="password" id="reg-password" placeholder="pick your password" autocomplete="new-password" />
+              </div>
+              <button type="submit" class="btn-register" id="reg-btn">
+                <span id="reg-text">Register &amp; Insert Coin</span>
+                <span id="reg-spinner" class="spinner hidden"></span>
+              </button>
+            </form>
           </div>
         </div>
 
@@ -1486,14 +1541,16 @@
       <div id="coin-logs-auth-view">
         <h2>Coin Logs Access</h2>
         <div id="coin-logs-auth-msg" class="admin-msg"></div>
-        <div class="form-group">
-          <label>// Admin Password</label>
-          <input type="password" id="coin-logs-pw-input" placeholder="enter admin password" />
-        </div>
-        <div class="btn-group">
-          <button class="btn-admin" onclick="closeCoinLogs()">Cancel</button>
-          <button class="btn-admin" onclick="coinLogsAuth()">Login</button>
-        </div>
+        <form onsubmit="event.preventDefault(); coinLogsAuth();" autocomplete="off">
+          <div class="form-group">
+            <label>// Admin Password</label>
+            <input type="password" id="coin-logs-pw-input" placeholder="enter admin password" />
+          </div>
+          <div class="btn-group">
+            <button type="button" class="btn-admin" onclick="closeCoinLogs()">Cancel</button>
+            <button type="submit" class="btn-admin">Login</button>
+          </div>
+        </form>
       </div>
 
       <div id="coin-logs-panel-view" style="display:none">
@@ -1587,23 +1644,36 @@
     </div>
   </div>
 
+  <div id="custom-confirm-overlay" class="custom-confirm-overlay">
+    <div class="custom-confirm-box">
+      <div class="custom-confirm-title" id="custom-confirm-title"></div>
+      <div class="custom-confirm-msg" id="custom-confirm-msg"></div>
+      <div class="custom-confirm-btns">
+        <button id="custom-confirm-cancel">Cancel</button>
+        <button id="custom-confirm-ok" class="confirm-ok">OK</button>
+      </div>
+    </div>
+  </div>
+
   <div id="admin-modal" class="admin-modal">
     <div class="admin-box" id="admin-box">
       <div id="admin-auth-view">
         <h2 id="admin-title">Admin Access</h2>
         <div id="admin-auth-msg" class="admin-msg"></div>
-        <div class="form-group">
-          <label id="admin-pw-label">// Password</label>
-          <input type="password" id="admin-pw-input" placeholder="enter admin password" />
-        </div>
-        <div id="admin-pw-confirm-group" class="form-group" style="display:none">
-          <label>// Confirm Password</label>
-          <input type="password" id="admin-pw-confirm" placeholder="confirm password" />
-        </div>
-        <div class="btn-group">
-          <button class="btn-admin" onclick="closeAdmin()">Cancel</button>
-          <button class="btn-admin" id="admin-auth-btn" onclick="adminAuth()">Login</button>
-        </div>
+        <form onsubmit="event.preventDefault(); adminAuth();" autocomplete="off">
+          <div class="form-group">
+            <label id="admin-pw-label">// Password</label>
+            <input type="password" id="admin-pw-input" placeholder="enter admin password" />
+          </div>
+          <div id="admin-pw-confirm-group" class="form-group" style="display:none">
+            <label>// Confirm Password</label>
+            <input type="password" id="admin-pw-confirm" placeholder="confirm password" />
+          </div>
+          <div class="btn-group">
+            <button type="button" class="btn-admin" onclick="closeAdmin()">Cancel</button>
+            <button type="submit" class="btn-admin" id="admin-auth-btn">Login</button>
+          </div>
+        </form>
       </div>
 
       <div id="admin-panel-view" style="display:none">
@@ -1662,15 +1732,17 @@
 
           <div class="admin-section">
             <h3>&#9670; Change Admin Password</h3>
-            <div class="form-group">
-              <label>// Current Password</label>
-              <input type="password" id="admin-old-pw" placeholder="current password" />
-            </div>
-            <div class="form-group">
-              <label>// New Password</label>
-              <input type="password" id="admin-new-pw" placeholder="new password" />
-            </div>
-            <button class="btn-admin" onclick="changeAdminPassword()">Change Password</button>
+            <form onsubmit="event.preventDefault(); changeAdminPassword();" autocomplete="off">
+              <div class="form-group">
+                <label>// Current Password</label>
+                <input type="password" id="admin-old-pw" placeholder="current password" />
+              </div>
+              <div class="form-group">
+                <label>// New Password</label>
+                <input type="password" id="admin-new-pw" placeholder="new password" />
+              </div>
+              <button type="submit" class="btn-admin">Change Password</button>
+            </form>
           </div>
 
           <div class="admin-section">
@@ -1756,6 +1828,34 @@
   </div>
 
   <script>
+    var _confirmPending = false;
+    function customConfirm(title, message, isDanger) {
+      if (_confirmPending) return Promise.resolve(false);
+      _confirmPending = true;
+      return new Promise(function(resolve) {
+        var overlay = document.getElementById('custom-confirm-overlay');
+        var titleEl = document.getElementById('custom-confirm-title');
+        var msgEl = document.getElementById('custom-confirm-msg');
+        var okBtn = document.getElementById('custom-confirm-ok');
+        var cancelBtn = document.getElementById('custom-confirm-cancel');
+        titleEl.textContent = title;
+        msgEl.textContent = message;
+        okBtn.className = isDanger ? 'confirm-danger' : 'confirm-ok';
+        okBtn.textContent = isDanger ? 'DELETE' : 'OK';
+        overlay.classList.add('active');
+        function cleanup() {
+          _confirmPending = false;
+          overlay.classList.remove('active');
+          okBtn.removeEventListener('click', onOk);
+          cancelBtn.removeEventListener('click', onCancel);
+        }
+        function onOk() { cleanup(); resolve(true); }
+        function onCancel() { cleanup(); resolve(false); }
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+      });
+    }
+
     let loginData = null;
     let sessionData = null;
     let statusInterval = null;
@@ -2824,12 +2924,15 @@
       setTimeout(() => document.getElementById('coin-logs-pw-input').focus(), 100);
     }
 
+    var _coinLogsClearTimer = null;
     function closeCoinLogs() {
       document.getElementById('coin-logs-modal').classList.remove('active');
-      coinLogsToken = null;
+      if (_coinLogsClearTimer) clearTimeout(_coinLogsClearTimer);
+      _coinLogsClearTimer = setTimeout(function() { coinLogsToken = null; _coinLogsClearTimer = null; }, 2000);
     }
 
     async function coinLogsAuth() {
+      if (_coinLogsClearTimer) { clearTimeout(_coinLogsClearTimer); _coinLogsClearTimer = null; }
       const pw = document.getElementById('coin-logs-pw-input').value;
       if (!pw) return;
       const resp = await fetch('/api/admin/login', {
@@ -2853,12 +2956,6 @@
 
     document.addEventListener('keydown', function(e) {
       if (document.getElementById('coin-logs-modal').classList.contains('active')) {
-        if (e.key === 'Enter') {
-          const authView = document.getElementById('coin-logs-auth-view');
-          if (authView.style.display !== 'none') {
-            coinLogsAuth();
-          }
-        }
         if (e.key === 'Escape') closeCoinLogs();
       }
     });
@@ -2968,7 +3065,7 @@
 
     async function deleteRate(type, rateId) {
       const label = type === 'coin' ? 'coin rate' : 'point rate';
-      if (!confirm('Remove this ' + label + '?' + (type === 'point' ? ' All log points will be recalculated.' : ''))) return;
+      if (!await customConfirm('Remove Rate', 'Remove this ' + label + '?' + (type === 'point' ? ' All log points will be recalculated.' : ''), true)) return;
       const endpoint = type === 'coin' ? '/api/admin/coin-rates/' : '/api/admin/point-rates/';
       try {
         const resp = await fetch(endpoint + rateId, {
@@ -2988,8 +3085,8 @@
     }
 
     async function clearAllCoinLogs() {
-      if (!confirm('DELETE ALL COIN LOGS?\n\nThis will permanently erase all coin insertion logs and member points.\n\nThis action cannot be undone.')) return;
-      if (!confirm('Are you absolutely sure? All log data will be lost forever.')) return;
+      if (!await customConfirm('DELETE ALL COIN LOGS?', 'This will permanently erase all coin insertion logs and member points.\n\nThis action cannot be undone.', true)) return;
+      if (!await customConfirm('ARE YOU SURE?', 'Are you absolutely sure? All log data will be lost forever.', true)) return;
       try {
         const resp = await fetch('/api/admin/coin-logs', {
           method: 'DELETE',
@@ -3015,7 +3112,7 @@
     }
 
     async function deleteCoinLog(logId, username) {
-      if (!confirm('Delete this log entry for ' + username + '? Points will be recalculated.')) return;
+      if (!await customConfirm('Delete Log Entry', 'Delete this log entry for ' + username + '? Points will be recalculated.', true)) return;
       const resp = await fetch('/api/admin/coin-logs/' + logId, {
         method: 'DELETE',
         headers: { 'x-admin-token': coinLogsToken }
@@ -3031,8 +3128,8 @@
     }
 
     async function deleteMemberLogs(username) {
-      if (!confirm('Delete ALL logs for ' + username + '?\nThis will remove all their transaction history and points.\n\nThis cannot be undone!')) return;
-      if (!confirm('Are you really sure? All logs and points for "' + username + '" will be permanently deleted.')) return;
+      if (!await customConfirm('Delete Member Logs', 'Delete ALL logs for ' + username + '?\nThis will remove all their transaction history and points.\n\nThis cannot be undone!', true)) return;
+      if (!await customConfirm('ARE YOU SURE?', 'Are you really sure? All logs and points for "' + username + '" will be permanently deleted.', true)) return;
       const resp = await fetch('/api/admin/coin-logs/member/' + encodeURIComponent(username), {
         method: 'DELETE',
         headers: { 'x-admin-token': coinLogsToken }
@@ -3394,6 +3491,7 @@
     }
 
     async function stopApp() {
+      if (!await customConfirm('Stop Application', 'Are you sure you want to stop the application?\n\nThe kiosk lockdown will be released.', true)) return;
       await fetch('/api/admin/stop-app', { method: 'POST', headers: { 'x-admin-token': adminToken } }).catch(() => {});
     }
 
@@ -4057,9 +4155,6 @@
       }
     }, true);
 
-    document.getElementById('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
-    document.getElementById('reg-password').addEventListener('keydown', (e) => { if (e.key === 'Enter') doRegister(); });
-    document.getElementById('admin-pw-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('admin-auth-btn').click(); });
 
     let settingsWs = null;
     function connectSettingsWs() {

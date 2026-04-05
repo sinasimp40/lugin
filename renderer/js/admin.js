@@ -13,6 +13,11 @@ function formatUptime(str) {
   return str || '—';
 }
 
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 function renderUsersTable(users) {
   const wrap = document.getElementById('users-table-wrap');
   if (!users || users.length === 0) {
@@ -22,19 +27,19 @@ function renderUsersTable(users) {
 
   const rows = users.map(u => `
     <tr>
-      <td><strong>${u.name}</strong></td>
-      <td><span class="badge badge-gray">${u.profile}</span></td>
-      <td>${formatUptime(u.limitUptime)}</td>
+      <td><strong>${escHtml(u.name)}</strong></td>
+      <td><span class="badge badge-gray">${escHtml(u.profile)}</span></td>
+      <td>${escHtml(formatUptime(u.limitUptime))}</td>
       <td>${u.active ? `<span class="badge badge-green">Online</span>` : `<span class="badge badge-gray">Offline</span>`}</td>
-      <td>${u.uptime || '—'}</td>
-      <td>${u.address || '—'}</td>
-      <td>${u.comment || '—'}</td>
+      <td>${escHtml(u.uptime) || '—'}</td>
+      <td>${escHtml(u.address) || '—'}</td>
+      <td>${escHtml(u.comment) || '—'}</td>
       <td>
         <div class="table-actions">
-          <button class="btn btn-sm btn-outline" onclick="toggleUser('${u.id}', ${u.disabled})">
+          <button class="btn btn-sm btn-outline" data-action="toggle" data-id="${escHtml(u.id)}" data-disabled="${u.disabled}">
             ${u.disabled ? 'Enable' : 'Disable'}
           </button>
-          <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}', '${u.name}')">Del</button>
+          <button class="btn btn-sm btn-danger" data-action="delete" data-id="${escHtml(u.id)}" data-name="${escHtml(u.name)}">Del</button>
         </div>
       </td>
     </tr>
@@ -70,14 +75,14 @@ function renderActiveTable(sessions) {
 
   const rows = sessions.map(s => `
     <tr>
-      <td><strong>${s.user || '—'}</strong></td>
-      <td>${s.address || '—'}</td>
-      <td>${s['mac-address'] || '—'}</td>
-      <td>${s.uptime || '—'}</td>
+      <td><strong>${escHtml(s.user) || '—'}</strong></td>
+      <td>${escHtml(s.address) || '—'}</td>
+      <td>${escHtml(s['mac-address']) || '—'}</td>
+      <td>${escHtml(s.uptime) || '—'}</td>
       <td>${formatBytes(s['bytes-in'] || '0')}</td>
       <td>${formatBytes(s['bytes-out'] || '0')}</td>
       <td>
-        <button class="btn btn-sm btn-danger" onclick="disconnectSession('${s['.id']}')">Kick</button>
+        <button class="btn btn-sm btn-danger" data-action="kick" data-session-id="${escHtml(s['.id'])}">Kick</button>
       </td>
     </tr>
   `).join('');
@@ -109,10 +114,10 @@ function renderProfiles(profiles) {
 
   const cards = profiles.map(p => `
     <div class="profile-card">
-      <div class="profile-name">${p.name}</div>
-      <div class="profile-stat">Shared Users: ${p.sharedUsers || 1}</div>
-      <div class="profile-stat">Session Timeout: ${p.sessionTimeout || 'Unlimited'}</div>
-      <div class="profile-stat">Rate Limit: ${p.rateLimit || 'None'}</div>
+      <div class="profile-name">${escHtml(p.name)}</div>
+      <div class="profile-stat">Shared Users: ${escHtml(String(p.sharedUsers || 1))}</div>
+      <div class="profile-stat">Session Timeout: ${escHtml(p.sessionTimeout || 'Unlimited')}</div>
+      <div class="profile-stat">Rate Limit: ${escHtml(p.rateLimit || 'None')}</div>
     </div>
   `).join('');
 
@@ -148,7 +153,7 @@ async function loadData() {
     selects.forEach(id => {
       const sel = document.getElementById(id);
       if (sel && allProfiles.length > 0) {
-        sel.innerHTML = allProfiles.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+        sel.innerHTML = allProfiles.map(p => `<option value="${escHtml(p.name)}">${escHtml(p.name)}</option>`).join('');
       }
     });
   }
@@ -159,38 +164,44 @@ async function loadData() {
   }
 }
 
-window.deleteUser = async function(id, name) {
-  if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
-  const result = await window.api.deleteUser({ id, username: name });
-  if (result.success) {
-    showStatus(`User "${name}" deleted.`, 'success');
-    await loadData();
-  } else {
-    showStatus(result.error || 'Failed to delete user.', 'error');
+document.addEventListener('click', async function(e) {
+  var btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  var action = btn.dataset.action;
+  if (action === 'delete') {
+    var id = btn.dataset.id;
+    var name = btn.dataset.name;
+    if (!confirm('Delete user "' + name + '"? This cannot be undone.')) return;
+    var result = await window.api.deleteUser({ id: id, username: name });
+    if (result.success) {
+      showStatus('User "' + name + '" deleted.', 'success');
+      await loadData();
+    } else {
+      showStatus(result.error || 'Failed to delete user.', 'error');
+    }
+  } else if (action === 'toggle') {
+    var tid = btn.dataset.id;
+    var currentlyDisabled = btn.dataset.disabled === 'true';
+    var disable = !currentlyDisabled;
+    var tres = await window.api.disableUser({ id: tid, disable: disable });
+    if (tres.success) {
+      showStatus('User ' + (disable ? 'disabled' : 'enabled') + '.', 'success');
+      await loadData();
+    } else {
+      showStatus(tres.error || 'Failed to update user.', 'error');
+    }
+  } else if (action === 'kick') {
+    var sid = btn.dataset.sessionId;
+    var kres = await window.api.disconnectUser(sid);
+    if (kres.success) {
+      showStatus('Session disconnected.', 'success');
+      var activeResult = await window.api.getActiveSessions();
+      if (activeResult.success) renderActiveTable(activeResult.sessions);
+    } else {
+      showStatus(kres.error || 'Failed to disconnect.', 'error');
+    }
   }
-};
-
-window.toggleUser = async function(id, currentlyDisabled) {
-  const disable = !currentlyDisabled;
-  const result = await window.api.disableUser({ id, disable });
-  if (result.success) {
-    showStatus(`User ${disable ? 'disabled' : 'enabled'}.`, 'success');
-    await loadData();
-  } else {
-    showStatus(result.error || 'Failed to update user.', 'error');
-  }
-};
-
-window.disconnectSession = async function(sessionId) {
-  const result = await window.api.disconnectUser(sessionId);
-  if (result.success) {
-    showStatus('Session disconnected.', 'success');
-    const activeResult = await window.api.getActiveSessions();
-    if (activeResult.success) renderActiveTable(activeResult.sessions);
-  } else {
-    showStatus(result.error || 'Failed to disconnect.', 'error');
-  }
-};
+});
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadData();

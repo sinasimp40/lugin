@@ -223,6 +223,13 @@ For diskless (CCBoot, iCafe) or Deep Freeze environments where local changes are
 - Sync endpoints: `POST /api/sync/coin-log` (receive coin log from client), `GET /api/sync/member-points/:username` (query points)
 - Server listens on `0.0.0.0` in standalone mode (node), `127.0.0.1` in Electron mode (override with `DENFI_LISTEN_HOST`)
 
+## Security Fixes Applied
+- **Custom confirm modals**: All native `confirm()` dialogs replaced with in-page custom modals to prevent kiosk mode escape on Windows (native dialogs can allow Alt+Tab bypass). Includes double-click guard to prevent duplicate destructive operations.
+- **XSS sanitization**: All user-controlled data (usernames, comments, IPs, profile names) in admin panel HTML templates sanitized via `escHtml()`. Inline `onclick` handlers replaced with delegated `data-*` attribute event listeners.
+- **Form-wrapped password fields**: All password inputs wrapped in `<form>` tags for proper browser handling and autofill support. Redundant Enter key handlers removed.
+- **Token clearing race fix**: Coin logs token clearing uses cancellable timer to prevent new auth tokens from being wiped by stale timeouts.
+- **Stop-app race condition fix**: Increased `process.exit()` delay to allow Electron cleanup (keyboard hook release, kiosk disable) to complete before forced exit.
+
 ## Requirements
 - Device must be connected to the MikroTik hotspot WiFi network
 - Hotspot DNS name must be `pisonet.app`

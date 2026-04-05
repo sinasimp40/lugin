@@ -975,8 +975,8 @@ app.post('/api/admin/stop-app', verifyToken, (req, res) => {
   setTimeout(() => {
     process.emit('admin-stop-app');
     setTimeout(() => {
-      process.exit(0);
-    }, 2000);
+      try { process.exit(0); } catch (e) {}
+    }, 5000);
   }, 500);
 });
 
