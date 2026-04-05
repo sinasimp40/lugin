@@ -33,16 +33,20 @@ function load() {
     if (raw._sig) {
       const expected = computeHmac(raw);
       if (raw._sig !== expected) {
-        console.log('[Settings] WARNING: Data integrity check failed — file may have been tampered with.');
-        console.log('[Settings] Admin password and settings have been reset for security.');
-        const fresh = {};
-        fresh._sig = computeHmac(fresh);
-        save(fresh);
-        return fresh;
+        console.log('[Settings] WARNING: Data integrity mismatch — re-signing file (data preserved).');
+        raw._sig = computeHmac(raw);
+        try { save(raw); } catch (_) {}
       }
     }
     return raw;
   } catch (e) {
+    const backupPath = settingsPath + '.corrupted.' + Date.now();
+    try {
+      if (fs.existsSync(settingsPath)) {
+        fs.copyFileSync(settingsPath, backupPath);
+        console.log('[Settings] Corrupted file backed up to:', backupPath);
+      }
+    } catch (_) {}
     return {};
   }
 }

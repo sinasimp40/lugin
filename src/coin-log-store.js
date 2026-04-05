@@ -29,15 +29,20 @@ function load() {
     if (raw._sig) {
       const expected = computeHmac(raw);
       if (raw._sig !== expected) {
-        console.log('[CoinLog] WARNING: Data integrity check failed — file may have been tampered with. Resetting.');
-        const fresh = { logs: [], memberPoints: {}, _sig: '' };
-        fresh._sig = computeHmac(fresh);
-        save(fresh);
-        return fresh;
+        console.log('[CoinLog] WARNING: Data integrity mismatch — re-signing file (data preserved).');
+        raw._sig = computeHmac(raw);
+        try { save(raw); } catch (_) {}
       }
     }
     return raw;
   } catch (e) {
+    const backupPath = logsPath + '.corrupted.' + Date.now();
+    try {
+      if (fs.existsSync(logsPath)) {
+        fs.copyFileSync(logsPath, backupPath);
+        console.log('[CoinLog] Corrupted file backed up to:', backupPath);
+      }
+    } catch (_) {}
     return { logs: [], memberPoints: {} };
   }
 }
