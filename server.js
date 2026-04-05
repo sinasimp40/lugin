@@ -980,7 +980,25 @@ app.post('/api/admin/stop-app', verifyToken, (req, res) => {
   }, 500);
 });
 
-app.get('/api/admin/coin-logs', verifyToken, (req, res) => {
+app.get('/api/admin/coin-logs', verifyToken, async (req, res) => {
+  if (syncServerUrl) {
+    try {
+      const params = new URLSearchParams();
+      if (req.query.username) params.set('username', req.query.username);
+      if (req.query.from) params.set('from', req.query.from);
+      if (req.query.to) params.set('to', req.query.to);
+      const qs = params.toString() ? '?' + params.toString() : '';
+      const resp = await fetch(syncServerUrl + '/api/sync/coin-logs' + qs, {
+        signal: AbortSignal.timeout(5000)
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        return res.json(data);
+      }
+    } catch (e) {
+      console.log('[Sync] Failed to fetch coin logs from server:', e.message);
+    }
+  }
   const { username, from, to } = req.query;
   const s = settings.getSettings();
   const currentRates = s.pointRates || [];
@@ -1140,6 +1158,32 @@ app.post('/api/sync/coin-log', express.json(), (req, res) => {
     res.json({ ok: true, log });
   } catch (e) {
     console.log('[Sync] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/sync/coin-logs', (req, res) => {
+  try {
+    const { username, from, to } = req.query;
+    const s = settings.getSettings();
+    const currentRates = s.pointRates || [];
+    const result = coinLogs.getLogs({ username, from, to }, currentRates);
+    const hasFilters = username || from || to;
+    let filteredPoints = result.memberPoints;
+    if (hasFilters) {
+      filteredPoints = {};
+      (result.logs || []).forEach(l => {
+        if (l.username) filteredPoints[l.username] = parseFloat(((filteredPoints[l.username] || 0) + (l.points || 0)).toFixed(2));
+      });
+    }
+    res.json({
+      success: true,
+      logs: result.logs,
+      memberPoints: filteredPoints,
+      coinRates: s.coinRates || [],
+      pointRates: currentRates
+    });
+  } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
