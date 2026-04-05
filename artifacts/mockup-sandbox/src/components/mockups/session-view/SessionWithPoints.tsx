@@ -126,13 +126,13 @@ const styles = `
   .logout-btn {
     background: transparent;
     border: 1px solid rgba(255,140,0,0.3);
-    color: #ff8c00; padding: 2px 6px;
+    color: #ff8c00; padding: 3px 8px;
     border-radius: 2px; cursor: pointer;
     font-family: 'Share Tech Mono', monospace;
-    font-size: 6px; font-weight: 600;
-    letter-spacing: 1px; text-transform: uppercase;
+    font-size: 7px; font-weight: 600;
+    letter-spacing: 1.5px; text-transform: uppercase;
     flex-shrink: 0; margin-left: 6px;
-    align-self: flex-end;
+    align-self: center;
   }
 `;
 
