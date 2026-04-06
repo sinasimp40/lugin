@@ -2920,8 +2920,10 @@
     }
 
     var _coinLogsClearTimer = null;
+    var _coinLogsRefreshTimer = null;
     function closeCoinLogs() {
       document.getElementById('coin-logs-modal').classList.remove('active');
+      if (_coinLogsRefreshTimer) { clearInterval(_coinLogsRefreshTimer); _coinLogsRefreshTimer = null; }
       if (_coinLogsClearTimer) clearTimeout(_coinLogsClearTimer);
       _coinLogsClearTimer = setTimeout(function() { coinLogsToken = null; _coinLogsClearTimer = null; }, 2000);
     }
@@ -2943,6 +2945,12 @@
         document.getElementById('coin-logs-box').classList.remove('auth-mode');
         applyCoinLogsReadOnly();
         loadCoinLogs();
+        if (_coinLogsRefreshTimer) clearInterval(_coinLogsRefreshTimer);
+        _coinLogsRefreshTimer = setInterval(function() {
+          if (coinLogsToken && document.getElementById('coin-logs-modal').classList.contains('active')) {
+            loadCoinLogs();
+          }
+        }, 5000);
       } else {
         const msg = document.getElementById('coin-logs-auth-msg');
         msg.textContent = resp.error || 'Invalid password';
