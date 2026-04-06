@@ -2092,10 +2092,16 @@
 
     function applyBackground(bgInfo) {
       const bgLayer = document.getElementById('bg-layer');
+      const dustCanvas = document.getElementById('dust-particles');
+      const corners = document.querySelectorAll('.corner-deco');
       if (bgInfo && bgInfo.filename) {
         bgLayer.style.backgroundImage = 'url(/uploads/' + bgInfo.filename + '?t=' + Date.now() + ')';
+        if (dustCanvas) dustCanvas.style.display = 'none';
+        corners.forEach(c => c.style.display = 'none');
       } else {
         bgLayer.style.backgroundImage = '';
+        if (dustCanvas) dustCanvas.style.display = '';
+        corners.forEach(c => c.style.display = '');
       }
     }
 
