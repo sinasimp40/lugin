@@ -549,6 +549,18 @@
       "date": "2026-04-04T23:23:45.883Z",
       "ip": "",
       "mac": ""
+    },
+    {
+      "id": "mnmz1g6gjsez",
+      "username": "mem-john123",
+      "amount": 44,
+      "timeAdded": "220 min",
+      "points": 4.4,
+      "timestamp": 1775466713896,
+      "date": "2026-04-06T09:11:53.896Z",
+      "ip": "",
+      "mac": "",
+      "source": "manual"
     }
   ],
   "memberPoints": {
@@ -559,8 +571,9 @@
     "mem-gina": 27.5,
     "mem-alice": 28,
     "mem-carlo": 34,
-    "mem-raprap": 17.5
+    "mem-raprap": 17.5,
+    "mem-john123": 4.4
   },
-  "_sig": "5edfff0f8b344559d0e9a525161b77bf7cfd1b5c66e63b787cd15e5a280c95d8",
+  "_sig": "11ffbdf7d27ba8fb7792e4fa4ac25b67bd90bb77934c9430b96ee93eb01662f6",
   "_ratesHash": "769abd41f66218c0fbab9693077cffb1"
 }
