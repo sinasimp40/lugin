@@ -1394,6 +1394,13 @@ async function pollHotspotForWs() {
               syncCoinLog({ username: data.username, amount: pesos, timeAdded: minutesAdded + ' min', ip: data.ip || regEntry.ip || '', mac: data.mac || regEntry.mac || '', source: 'vendo' });
               autoLogCooldowns.set(data.username, now + 20000);
               recentRegistrations.delete(data.username);
+              for (const [key, sess] of activeCoinSessions) {
+                if (sess.username === data.username) {
+                  activeCoinSessions.delete(key);
+                  console.log('[AutoLog-NewReg] Cleared stale coin session for', data.username);
+                  break;
+                }
+              }
               regHandled = true;
             } catch (e) {
               console.log('[AutoLog-NewReg] Error:', e.message);
