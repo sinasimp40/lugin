@@ -333,7 +333,7 @@ function getUploadsDir() {
 function sanitizeAdHtml(html) {
   if (!html) return '';
   const allowedTags = ['b', 'i', 'u', 's', 'strike', 'del', 'strong', 'em', 'br', 'font', 'span', 'div', 'p', 'a', 'img', 'ul', 'ol', 'li', 'hr', 'blockquote', 'sub', 'sup', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'code'];
-  const allowedAttrs = { font: ['color', 'size', 'face'], span: ['style'], div: ['style'], p: ['style'], a: ['href', 'target'], img: ['src', 'alt', 'width', 'height', 'style'], h1: ['style'], h2: ['style'], h3: ['style'], h4: ['style'], h5: ['style'], h6: ['style'], blockquote: ['style'], li: ['style'], ul: ['style'], ol: ['style'] };
+  const allowedAttrs = { font: ['color', 'size', 'face'], span: ['style'], div: ['style'], p: ['style'], b: ['style'], strong: ['style'], i: ['style'], em: ['style'], u: ['style'], s: ['style'], strike: ['style'], del: ['style'], sub: ['style'], sup: ['style'], a: ['href', 'target', 'style'], img: ['src', 'alt', 'width', 'height', 'style'], h1: ['style'], h2: ['style'], h3: ['style'], h4: ['style'], h5: ['style'], h6: ['style'], blockquote: ['style'], li: ['style'], ul: ['style'], ol: ['style'] };
   const safeStyleProps = ['color', 'font-size', 'text-align', 'font-weight', 'font-style', 'text-decoration', 'background-color', 'font-family', 'line-height', 'margin', 'padding', 'max-width', 'width', 'height', 'border', 'display'];
 
   function decodeEntities(str) {

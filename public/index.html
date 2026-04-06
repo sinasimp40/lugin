@@ -872,10 +872,9 @@
       font-size: 14px;
       color: var(--login-color, #ff8c00);
       line-height: 1.6;
-      text-shadow: 0 0 8px var(--login-color-30, rgba(255,140,0,0.3)), 0 1px 3px rgba(0,0,0,0.8);
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
       word-wrap: break-word;
     }
-    .ad-slide-content b, .ad-slide-content strong { text-shadow: 0 0 6px rgba(255,255,255,0.3); }
     .ad-slide-content a { color: var(--login-color, #ff8c00); text-decoration: underline; text-underline-offset: 2px; }
     .ad-slide-content img { max-width: 100%; height: auto; border-radius: 3px; }
     .ad-slide-content ul, .ad-slide-content ol { margin: 4px 0; padding-left: 20px; text-align: left; }
@@ -3700,6 +3699,7 @@
       });
       list.querySelectorAll('.ad-content-editor').forEach(el => {
         el.addEventListener('blur', () => saveAdContent(el.dataset.adid));
+        el.addEventListener('input', () => updateAdPreviewLive());
       });
     }
 
@@ -3707,6 +3707,7 @@
       const editor = document.getElementById('ad-editor-' + id);
       editor.focus();
       document.execCommand(cmd, false, null);
+      updateAdPreviewLive();
     }
 
     function adFontSize(id, size) {
@@ -3714,6 +3715,7 @@
       const editor = document.getElementById('ad-editor-' + id);
       editor.focus();
       document.execCommand('fontSize', false, size);
+      updateAdPreviewLive();
     }
 
     function adFontName(id, name) {
@@ -3721,18 +3723,21 @@
       const editor = document.getElementById('ad-editor-' + id);
       editor.focus();
       document.execCommand('fontName', false, name);
+      updateAdPreviewLive();
     }
 
     function adFontColor(id, color) {
       const editor = document.getElementById('ad-editor-' + id);
       editor.focus();
       document.execCommand('foreColor', false, color);
+      updateAdPreviewLive();
     }
 
     function adBgColor(id, color) {
       const editor = document.getElementById('ad-editor-' + id);
       editor.focus();
       document.execCommand('hiliteColor', false, color);
+      updateAdPreviewLive();
     }
 
     function adInsertLink(id) {
@@ -3916,6 +3921,44 @@
       const resp = await fetch('/api/admin/ads', { headers: { 'x-admin-token': adminToken } }).then(r => r.json()).catch(() => ({}));
       if (resp.ads) renderAdminAds(resp.ads);
       refreshAdsPreview();
+    }
+
+    function updateAdPreviewLive() {
+      const slidesEl = document.getElementById('ad-slides');
+      if (!slidesEl || !adminAdsData || adminAdsData.length === 0) return;
+      const liveAds = adminAdsData.map(ad => {
+        const editor = document.getElementById('ad-editor-' + ad.id);
+        const content = editor ? editor.innerHTML : (ad.content || '');
+        return { ...ad, content };
+      });
+      const visibleAds = liveAds.filter(ad => {
+        const hasImage = ad.image && ad.image.filename;
+        const hasContent = ad.content && ad.content.replace(/<[^>]*>/g, '').trim().length > 0;
+        return hasImage || hasContent;
+      });
+      if (visibleAds.length === 0) return;
+      slidesEl.innerHTML = visibleAds.map(ad => {
+        const imgSrc = ad.image && ad.image.filename ? '/uploads/' + ad.image.filename + '?t=' + Date.now() : '';
+        const content = ad.content || '';
+        const hasText = content.replace(/<[^>]*>/g, '').trim().length > 0;
+        return '<div class="ad-slide">' +
+          (imgSrc ? '<img class="ad-slide-img" src="' + imgSrc + '" alt="Ad">' : '') +
+          (hasText ? '<div class="ad-slide-content">' + content + '</div>' : '') +
+          '</div>';
+      }).join('');
+      currentAds = visibleAds;
+      if (adSlideIndex >= visibleAds.length) adSlideIndex = 0;
+      const allSlides = slidesEl.querySelectorAll('.ad-slide');
+      allSlides.forEach((s, i) => { if (i === adSlideIndex) s.classList.add('active'); });
+      const dotsEl = document.getElementById('ad-dots');
+      if (visibleAds.length > 1) {
+        dotsEl.style.display = '';
+        dotsEl.innerHTML = visibleAds.map((_, i) =>
+          '<div class="ad-dot' + (i === adSlideIndex ? ' active' : '') + '" onclick="goToAdSlide(' + i + ')"></div>'
+        ).join('');
+      } else {
+        dotsEl.style.display = 'none';
+      }
     }
 
     async function refreshAdsPreview() {
