@@ -2090,19 +2090,25 @@
       }
     }
 
-    function applyBackground(bgInfo) {
+    let _currentBgFilename = null;
+    function applyBackground(bgInfo, force) {
       const bgLayer = document.getElementById('bg-layer');
       const dustCanvas = document.getElementById('dust-particles');
       const corners = document.querySelectorAll('.corner-deco');
       const scanlines = document.querySelector('.scanlines');
       const gridBg = document.querySelector('.grid-bg');
-      if (bgInfo && bgInfo.filename) {
-        bgLayer.style.backgroundImage = 'url(/uploads/' + bgInfo.filename + '?t=' + Date.now() + ')';
+      const newFilename = (bgInfo && bgInfo.filename) ? bgInfo.filename : null;
+      if (newFilename) {
+        if (force || newFilename !== _currentBgFilename) {
+          bgLayer.style.backgroundImage = 'url(/uploads/' + newFilename + '?t=' + Date.now() + ')';
+        }
+        _currentBgFilename = newFilename;
         if (dustCanvas) dustCanvas.style.display = 'none';
         corners.forEach(c => c.style.display = 'none');
         if (scanlines) scanlines.style.display = 'none';
         if (gridBg) gridBg.style.display = 'none';
       } else {
+        _currentBgFilename = null;
         bgLayer.style.backgroundImage = '';
         if (dustCanvas) dustCanvas.style.display = '';
         corners.forEach(c => c.style.display = '');
@@ -3414,7 +3420,7 @@
       showAdminMsg('admin-panel-msg', 'Uploading...', 'success');
       const buffer = await file.arrayBuffer();
       const resp = await fetch('/api/admin/background', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'x-admin-token': adminToken, 'x-filename': file.name, 'x-mime-type': file.type }, body: buffer }).then(r => r.json()).catch(e => ({ success: false, error: 'Upload failed: ' + e.message }));
-      if (resp.success) { showAdminMsg('admin-panel-msg', 'Uploaded', 'success'); updateBgPreview(resp.background); applyBackground(resp.background); }
+      if (resp.success) { showAdminMsg('admin-panel-msg', 'Uploaded', 'success'); updateBgPreview(resp.background); applyBackground(resp.background, true); }
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
       input.value = '';
     }

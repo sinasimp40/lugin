@@ -4,12 +4,16 @@
   "ads": [
     {
       "id": "2a75f8c012ce88aa",
-      "content": "<div style=\"text-align: center\"><b><font color=\"#ffffff\">hahaha</font></b></div>",
+      "content": "<div><font color=\"#ff4242\">hahaha </font><font color=\"#f2f2f2\">qweqw</font></div>",
       "image": null,
       "order": 0
     }
   ],
-  "backgroundImage": null,
+  "backgroundImage": {
+    "filename": "background.png",
+    "mimeType": "image/png",
+    "size": 2270006
+  },
   "fullscreenBypass": [
     "valorant.exe",
     "league of legends.exe",
@@ -48,6 +52,6 @@
       "points": 1
     }
   ],
-  "_sig": "99a8a0201dc21d81466e19a477456faf854b461128e392efde3a75e5697da63b",
+  "_sig": "0686b0d661e6f6e487c104b5cdae96e19e4d7842cdaef0df2b489553d914fa92",
   "adSlideSeconds": 5
 }
