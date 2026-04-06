@@ -485,6 +485,10 @@ app.post('/api/pisonet/register', async (req, res) => {
       if (typeof data === 'object' && data !== null) {
         if ((data.success === true || data.success === 'true') && !data.errorCode) {
           console.log('[Pisonet] register SUCCESS (vendo confirmed):', fullText);
+          if (username && username.startsWith('mem-')) {
+            recentRegistrations.set(username, { timestamp: Date.now(), ip: ip || '', mac: mac || '' });
+            console.log('[Register] Tracking new registration for points:', username);
+          }
           res.json({ success: true, data });
           return;
         }
@@ -1334,6 +1338,7 @@ function hasActiveCoinSessionForUser(username) {
 }
 
 const autoLogCooldowns = new Map();
+const recentRegistrations = new Map();
 let pollInFlight = false;
 let pollQueued = false;
 
@@ -1361,7 +1366,39 @@ async function pollHotspotForWs() {
     if (data.isLogin && data.username && data.username.startsWith('mem-')) {
       const s = settings.getSettings();
 
-      if (prevTime !== undefined && data.username === prevUser && newTime > parseInt(prevTime) + 5) {
+      const regEntry = recentRegistrations.get(data.username);
+      let regHandled = false;
+      if (regEntry && newTime > 5) {
+        const now = Date.now();
+        const userCooldown = autoLogCooldowns.get(data.username) || 0;
+        if (now > userCooldown && !hasActiveCoinSessionForUser(data.username)) {
+          const pesos = reverseCalcPesos(newTime, s.coinRates || []);
+          if (pesos > 0) {
+            const minutesAdded = Math.round(newTime / 60);
+            try {
+              const log = coinLogs.appendLog({
+                username: data.username,
+                amount: pesos,
+                timeAdded: minutesAdded + ' min',
+                ip: data.ip || regEntry.ip || '',
+                mac: data.mac || regEntry.mac || '',
+                source: 'vendo'
+              }, s.pointRates || []);
+              console.log('[AutoLog-NewReg] First login for', data.username, '- seconds:', newTime, 'pesos:', pesos, 'points:', log.points);
+              syncCoinLog({ username: data.username, amount: pesos, timeAdded: minutesAdded + ' min', ip: data.ip || regEntry.ip || '', mac: data.mac || regEntry.mac || '', source: 'vendo' });
+              autoLogCooldowns.set(data.username, now + 20000);
+              recentRegistrations.delete(data.username);
+              regHandled = true;
+            } catch (e) {
+              console.log('[AutoLog-NewReg] Error:', e.message);
+            }
+          }
+        }
+      }
+      if (regEntry && !regHandled && (Date.now() - regEntry.timestamp > 300000)) {
+        recentRegistrations.delete(data.username);
+      }
+      if (!regEntry && prevTime !== undefined && data.username === prevUser && newTime > parseInt(prevTime) + 5) {
         const secondsAdded = newTime - parseInt(prevTime);
         const now = Date.now();
         const userCooldownKey = data.username;
@@ -1386,6 +1423,13 @@ async function pollHotspotForWs() {
               console.log('[AutoLog] Error:', e.message);
             }
           }
+        }
+      }
+
+      if (recentRegistrations.size > 0) {
+        const now = Date.now();
+        for (const [key, entry] of recentRegistrations) {
+          if (now - entry.timestamp > 300000) recentRegistrations.delete(key);
         }
       }
 
