@@ -611,24 +611,30 @@ app.post('/api/pisonet/done', async (req, res) => {
     const key = `${ip || ''}|${mac || ''}`;
     const session = activeCoinSessions.get(key);
     if (session && session.username && session.totalCoin > 0) {
-      try {
-        const s = settings.getSettings();
-        const log = coinLogs.appendLog({
-          username: session.username,
-          amount: session.totalCoin,
-          timeAdded: session.timeAdded,
-          ip: session.ip,
-          mac: session.mac,
-          source: 'app'
-        }, s.pointRates || []);
-        console.log('[CoinLog] Recorded:', session.username, 'amount:', session.totalCoin, 'points:', log.points);
-        syncCoinLog({ username: session.username, amount: session.totalCoin, timeAdded: session.timeAdded, ip: session.ip, mac: session.mac, source: 'app' });
-        autoLogCooldowns.set(session.username, Date.now() + 20000);
-        if (wsClients.size > 0) {
-          scheduleImmediatePoll();
+      const now = Date.now();
+      const cooldown = autoLogCooldowns.get(session.username) || 0;
+      if (now > cooldown) {
+        try {
+          const s = settings.getSettings();
+          const log = coinLogs.appendLog({
+            username: session.username,
+            amount: session.totalCoin,
+            timeAdded: session.timeAdded,
+            ip: session.ip,
+            mac: session.mac,
+            source: 'app'
+          }, s.pointRates || []);
+          console.log('[CoinLog] Recorded:', session.username, 'amount:', session.totalCoin, 'points:', log.points);
+          syncCoinLog({ username: session.username, amount: session.totalCoin, timeAdded: session.timeAdded, ip: session.ip, mac: session.mac, source: 'app' });
+          autoLogCooldowns.set(session.username, now + 20000);
+          if (wsClients.size > 0) {
+            scheduleImmediatePoll();
+          }
+        } catch (e) {
+          console.log('[CoinLog] Error saving log:', e.message);
         }
-      } catch (e) {
-        console.log('[CoinLog] Error saving log:', e.message);
+      } else {
+        console.log('[CoinLog] Skipped (cooldown active, already logged by auto-detection):', session.username);
       }
     }
     activeCoinSessions.delete(key);
@@ -1371,7 +1377,7 @@ async function pollHotspotForWs() {
       if (regEntry && newTime > 5) {
         const now = Date.now();
         const userCooldown = autoLogCooldowns.get(data.username) || 0;
-        if (now > userCooldown && !hasActiveCoinSessionForUser(data.username)) {
+        if (now > userCooldown) {
           const pesos = reverseCalcPesos(newTime, s.coinRates || []);
           if (pesos > 0) {
             const minutesAdded = Math.round(newTime / 60);
