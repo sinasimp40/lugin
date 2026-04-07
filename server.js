@@ -627,6 +627,9 @@ app.post('/api/pisonet/done', async (req, res) => {
           console.log('[CoinLog] Recorded:', session.username, 'amount:', session.totalCoin, 'points:', log.points);
           syncCoinLog({ username: session.username, amount: session.totalCoin, timeAdded: session.timeAdded, ip: session.ip, mac: session.mac, source: 'app' });
           autoLogCooldowns.set(session.username, now + 20000);
+          if (lastSessionData && lastSessionData.sessionTimeLeft) {
+            lastAutoLoggedTime.set(session.username, parseInt(lastSessionData.sessionTimeLeft) || 0);
+          }
           if (wsClients.size > 0) {
             scheduleImmediatePoll();
           }
@@ -1345,6 +1348,7 @@ function hasActiveCoinSessionForUser(username) {
 
 const autoLogCooldowns = new Map();
 const recentRegistrations = new Map();
+const lastAutoLoggedTime = new Map();
 let pollInFlight = false;
 let pollQueued = false;
 
@@ -1393,6 +1397,7 @@ async function pollHotspotForWs() {
               console.log('[AutoLog-NewReg] First login for', data.username, '- seconds:', newTime, 'pesos:', pesos, 'points:', log.points);
               syncCoinLog({ username: data.username, amount: pesos, timeAdded: minutesAdded + ' min', ip: data.ip || regEntry.ip || '', mac: data.mac || regEntry.mac || '', source: 'vendo' });
               autoLogCooldowns.set(data.username, now + 20000);
+              lastAutoLoggedTime.set(data.username, newTime);
               recentRegistrations.delete(data.username);
               for (const [key, sess] of activeCoinSessions) {
                 if (sess.username === data.username) {
@@ -1411,31 +1416,37 @@ async function pollHotspotForWs() {
       if (regEntry && !regHandled && (Date.now() - regEntry.timestamp > 300000)) {
         recentRegistrations.delete(data.username);
       }
-      if (!regEntry && prevTime !== undefined && data.username === prevUser && newTime > parseInt(prevTime) + 5) {
-        const secondsAdded = newTime - parseInt(prevTime);
-        const now = Date.now();
-        const userCooldownKey = data.username;
-        const userCooldown = autoLogCooldowns.get(userCooldownKey) || 0;
-        if (now > userCooldown && !hasActiveCoinSessionForUser(data.username)) {
-          const pesos = reverseCalcPesos(secondsAdded, s.coinRates || []);
-          if (pesos > 0) {
-            const minutesAdded = Math.round(secondsAdded / 60);
-            try {
-              const log = coinLogs.appendLog({
-                username: data.username,
-                amount: pesos,
-                timeAdded: minutesAdded + ' min',
-                ip: data.ip || '',
-                mac: data.mac || '',
-                source: 'vendo'
-              }, s.pointRates || []);
-              console.log('[AutoLog] Detected time increase for', data.username, '- seconds:', secondsAdded, 'pesos:', pesos, 'points:', log.points);
-              syncCoinLog({ username: data.username, amount: pesos, timeAdded: minutesAdded + ' min', ip: data.ip || '', mac: data.mac || '', source: 'vendo' });
-              autoLogCooldowns.set(userCooldownKey, now + 15000);
-            } catch (e) {
-              console.log('[AutoLog] Error:', e.message);
+      if (!regEntry && prevTime !== undefined && data.username === prevUser) {
+        const baseline = lastAutoLoggedTime.has(data.username) ? lastAutoLoggedTime.get(data.username) : parseInt(prevTime);
+        if (newTime > baseline + 5) {
+          const secondsAdded = newTime - baseline;
+          const now = Date.now();
+          const userCooldownKey = data.username;
+          const userCooldown = autoLogCooldowns.get(userCooldownKey) || 0;
+          if (now > userCooldown && !hasActiveCoinSessionForUser(data.username)) {
+            const pesos = reverseCalcPesos(secondsAdded, s.coinRates || []);
+            if (pesos > 0) {
+              const minutesAdded = Math.round(secondsAdded / 60);
+              try {
+                const log = coinLogs.appendLog({
+                  username: data.username,
+                  amount: pesos,
+                  timeAdded: minutesAdded + ' min',
+                  ip: data.ip || '',
+                  mac: data.mac || '',
+                  source: 'vendo'
+                }, s.pointRates || []);
+                console.log('[AutoLog] Detected time increase for', data.username, '- seconds:', secondsAdded, 'pesos:', pesos, 'points:', log.points);
+                syncCoinLog({ username: data.username, amount: pesos, timeAdded: minutesAdded + ' min', ip: data.ip || '', mac: data.mac || '', source: 'vendo' });
+                autoLogCooldowns.set(userCooldownKey, now + 15000);
+                lastAutoLoggedTime.set(data.username, newTime);
+              } catch (e) {
+                console.log('[AutoLog] Error:', e.message);
+              }
             }
           }
+        } else if (!lastAutoLoggedTime.has(data.username)) {
+          lastAutoLoggedTime.set(data.username, newTime);
         }
       }
 
@@ -1462,6 +1473,7 @@ async function pollHotspotForWs() {
     broadcast({ type: 'status', data });
 
     if (wasLoggedIn && !data.isLogin) {
+      if (prevUser) lastAutoLoggedTime.delete(prevUser);
       broadcast({ type: 'logged-out' });
     }
 
