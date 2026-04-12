@@ -1,6 +1,6 @@
-# Denfi Auto Shutdown (Pisonet App)
+# Ramses Auto Shutdown (Pisonet App)
 
-A lightweight Electron desktop app for pisonet member login. Connects to a MikroTik RB4011 hotspot portal at `pisonet.app` which returns JSON responses, and provides a custom login UI with session countdown timer and JuanFi-compatible Insert Coin functionality. Includes an admin panel for kiosk configuration. Branded as "Denfi Auto Shutdown" with custom logo icon.
+A lightweight Electron desktop app for pisonet member login. Connects to a MikroTik RB4011 hotspot portal at `pisonet.app` which returns JSON responses, and provides a custom login UI with session countdown timer and JuanFi-compatible Insert Coin functionality. Includes an admin panel for kiosk configuration. Branded as "Ramses Auto Shutdown" with custom logo icon.
 
 ## How It Works
 - On load, fetches `http://pisonet.app/login` to get CHAP challenge data
@@ -14,7 +14,7 @@ A lightweight Electron desktop app for pisonet member login. Connects to a Mikro
 
 ## Architecture
 - **main.js** — Electron main process; single instance lock (app.exit on duplicate), manages login window (fullscreen kiosk, frameless, skipTaskbar, dark bg #0a0a0a) and session window (260x80, bottom-right, always-on-top with screen-saver priority, focusable:false, 2s re-assert interval); blocks Alt+Tab/Alt+F4/Win keys in login view only; auto-logout on quit; IPC for instant shutdown (/t 0); focus guard starts after page loads (2s interval) to prevent renderer freeze; `showLoginWindow(afterLogout)` appends `?afterLogout=1` URL param to suppress stale MikroTik session detection on fresh window after logout; `handleStateChange('logged-in')` immediately hides loginToDestroy (opacity 0, kiosk off) and unconditionally destroys it in callback to prevent orphaned windows
-- **build/icon.ico, build/icon.png** — App icon (Denfi logo) used for .exe, installer, and window icon
+- **build/icon.ico, build/icon.png** — App icon (Ramses logo) used for .exe, installer, and window icon
 - **server.js** — Express server + WebSocket server; proxies requests to `pisonet.app` hotspot (avoids CORS), handles CHAP hashing, JuanFi pisonet API proxy (register/avail/done), broadcasts session status via WebSocket; admin API endpoints; ad management CRUD + image upload endpoints; no-cache headers on HTML
 - **src/settings-store.js** — JSON file settings storage in `./data/`; scrypt password hashing; manages computer name, auto-shutdown timer, background image metadata, login panel image metadata, theme colors (loginColor/registerColor with hex validation), curfew hours (curfewEnabled/curfewStart/curfewEnd with HH:mm validation, overnight window support via `isWithinCurfew()`), advertisements (slides with images + rich HTML content); HTML sanitizer allows formatting, links, images, lists, blockquotes, headings
 - **public/index.html** — Login UI (two-column split layout: form left, admin-uploadable image right) + session view + insert coin modal + admin panel (centered modal 860px max-width, 85vh scrollable, 2-col grid; auth popup 380px); dust particle background animation; scramble text computer name, auto-shutdown countdown with horizontal progress bar, secret "zxc1" admin trigger; black & orange theme; login auto-prepends `mem-` prefix; registration validates no special chars/spaces; ad carousel below login panel with configurable interval (1-60s), dot navigation; full MyBB-style rich text editor (bold/italic/underline/strikethrough/font size/font family/colors/alignment/lists/links/images/subscript/superscript/undo/redo/clear formatting)
@@ -200,12 +200,12 @@ npm run electron     # Electron mode
 
 ## Building .exe
 ```
-npm run build          # Denfi Auto Shutdown (full app) — installer in dist/
-npm run build:points   # Denfi Points (server-only, no window) — installer in dist/
+npm run build          # Ramses Auto Shutdown (full app) — installer in dist/
+npm run build:points   # Ramses Points (server-only, no window) — installer in dist/
 npm run build:all      # Build both installers
 ```
 
-## Denfi Points (Server-Only App)
+## Ramses Points (Server-Only App)
 - Separate lightweight Electron app for the diskless server
 - **No window** — runs as a system tray icon only
 - Listens on `0.0.0.0:5000` so all client PCs can sync coin logs to it
@@ -217,19 +217,19 @@ npm run build:all      # Build both installers
 
 ## Diskless / Deep Freeze Setup
 For diskless (CCBoot, iCafe) or Deep Freeze environments where local changes are wiped on reboot:
-- Create a file `denfi-data-path.txt` next to the Denfi .exe (included in installer, baked into game disk image)
+- Create a file `ramses-data-path.txt` next to the Ramses .exe (included in installer, baked into game disk image)
 - Supports two modes:
-  - **HTTP Sync (recommended for diskless)**: Put an HTTP URL like `http://10.10.10.29:5000` — each client sends coin logs to a central Denfi server instance via HTTP. No shared folders needed.
-  - **Shared folder**: Put a network path like `\\SERVER\DenfiData` — all units read/write to the same file (requires Windows file sharing/SMB)
-- **HTTP Sync setup**: Run `node server.js` on the diskless server machine (it listens on 0.0.0.0:5000 when not in Electron); each client's `denfi-data-path.txt` points to `http://SERVER_IP:5000`; clients auto-send coin logs via `POST /api/sync/coin-log`; server stores all data locally in `./data/`
-- Priority: `DENFI_SYNC_SERVER` env var > `DENFI_DATA_DIR` env var > `denfi-data-path.txt` > default portable `data/` folder
+  - **HTTP Sync (recommended for diskless)**: Put an HTTP URL like `http://10.10.10.29:5000` — each client sends coin logs to a central Ramses server instance via HTTP. No shared folders needed.
+  - **Shared folder**: Put a network path like `\\SERVER\RamsesData` — all units read/write to the same file (requires Windows file sharing/SMB)
+- **HTTP Sync setup**: Run `node server.js` on the diskless server machine (it listens on 0.0.0.0:5000 when not in Electron); each client's `ramses-data-path.txt` points to `http://SERVER_IP:5000`; clients auto-send coin logs via `POST /api/sync/coin-log`; server stores all data locally in `./data/`
+- Priority: `RAMSES_SYNC_SERVER` env var > `RAMSES_DATA_DIR` env var > `ramses-data-path.txt` > default portable `data/` folder
 - Sync endpoints: `POST /api/sync/coin-log` (receive coin log from client), `GET /api/sync/member-points/:username` (query points)
-- Server listens on `0.0.0.0` in standalone mode (node), `127.0.0.1` in Electron mode (override with `DENFI_LISTEN_HOST`)
+- Server listens on `0.0.0.0` in standalone mode (node), `127.0.0.1` in Electron mode (override with `RAMSES_LISTEN_HOST`)
 
 ## App Role System
-- **DENFI_APP_ROLE env var**: Set by Electron entry points to distinguish runtime mode
-  - `main.js` sets `DENFI_APP_ROLE=auto-shutdown` (Denfi Auto Shutdown.exe)
-  - `main-server.js` sets `DENFI_APP_ROLE=points` (Denfi Points.exe)
+- **RAMSES_APP_ROLE env var**: Set by Electron entry points to distinguish runtime mode
+  - `main.js` sets `RAMSES_APP_ROLE=auto-shutdown` (Ramses Auto Shutdown.exe)
+  - `main-server.js` sets `RAMSES_APP_ROLE=points` (Ramses Points.exe)
   - Standalone `node server.js` defaults to `auto-shutdown`
 - **Coin Logs Read-Only Mode**: When running as auto-shutdown, the zxc2 coin logs panel is view-only:
   - All add/delete UI controls are hidden via CSS class `.coin-logs-read-only .coin-logs-edit-only { display:none !important }`

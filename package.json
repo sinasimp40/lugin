@@ -1,7 +1,7 @@
 {
-  "name": "denfi-auto-shutdown",
+  "name": "ramses-auto-shutdown",
   "version": "1.0.0",
-  "description": "Denfi Auto Shutdown",
+  "description": "Ramses Auto Shutdown",
   "main": "main.js",
   "scripts": {
     "start": "node server.js",
@@ -12,8 +12,8 @@
     "build:all": "npm run build && npm run build:points"
   },
   "build": {
-    "appId": "com.denfi.autoshutdown",
-    "productName": "Denfi Auto Shutdown",
+    "appId": "com.ramses.autoshutdown",
+    "productName": "Ramses Auto Shutdown",
     "icon": "icon.ico",
     "directories": {
       "buildResources": "build"
@@ -23,16 +23,16 @@
       "target": "nsis",
       "requestedExecutionLevel": "asInvoker",
       "icon": "icon.ico",
-      "executableName": "denfi-auto-shutdown"
+      "executableName": "ramses-auto-shutdown"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": true,
       "deleteAppDataOnUninstall": true,
-      "artifactName": "Denfi Auto Shutdown Setup.${ext}",
-      "shortcutName": "Denfi Auto Shutdown",
-      "uninstallDisplayName": "Denfi Auto Shutdown",
+      "artifactName": "Ramses Auto Shutdown Setup.${ext}",
+      "shortcutName": "Ramses Auto Shutdown",
+      "uninstallDisplayName": "Ramses Auto Shutdown",
       "installerIcon": "icon.ico",
       "uninstallerIcon": "icon.ico"
     },
@@ -57,16 +57,16 @@
       { "from": "kiosk-disable.bat", "to": "kiosk-disable.bat" }
     ],
     "extraFiles": [
-      { "from": "denfi-data-path.txt", "to": "denfi-data-path.txt" }
+      { "from": "ramses-data-path.txt", "to": "ramses-data-path.txt" }
     ]
   },
   "keywords": [
-    "denfi",
+    "ramses",
     "auto-shutdown",
     "hotspot",
     "mikrotik"
   ],
-  "author": "Denfi",
+  "author": "Ramses",
   "license": "MIT",
   "dependencies": {
     "express": "^5.2.1",
