@@ -345,6 +345,7 @@ app.whenReady().then(() => {
     console.log('[Electron] Cannot create data dir:', e.message);
   }
 
+  settings.setAppRole('auto-shutdown');
   settings.setDataDir(dataDir);
   coinLogs.setDataDir(dataDir);
   console.log('[Electron] Data dir:', dataDir);

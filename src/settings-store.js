@@ -9,7 +9,10 @@ let uploadsDir = path.join(dataDir, 'uploads');
 
 const HMAC_KEY = 'denfi-settings-integrity-v1';
 
-function setAppRole(role) {
+let appRoleSet = false;
+function setAppRole(role, force) {
+  if (appRoleSet && !force) return;
+  appRoleSet = true;
   if (role === 'points') {
     settingsFilename = 'settings-server.json';
   } else {
@@ -27,10 +30,11 @@ function setDataDir(dir) {
   migrateIfNeeded();
 }
 
-let migrationDone = false;
+const migratedKeys = new Set();
 function migrateIfNeeded() {
-  if (migrationDone) return;
-  migrationDone = true;
+  const key = dataDir + '|' + settingsFilename;
+  if (migratedKeys.has(key)) return;
+  migratedKeys.add(key);
   const legacyPath = path.join(dataDir, 'settings.json');
   if (!fs.existsSync(settingsPath) && fs.existsSync(legacyPath)) {
     try {
