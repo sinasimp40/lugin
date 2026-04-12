@@ -1525,6 +1525,24 @@ const LISTEN_HOST = process.env.DENFI_LISTEN_HOST || (isElectron ? '127.0.0.1' :
 server.listen(PORT, LISTEN_HOST, () => {
   console.log(`Denfi Auto Shutdown running at http://${LISTEN_HOST}:${PORT}`);
   if (typeof process.send === 'function') process.send('server-ready');
+
+  if (!syncServerUrl && appRole === 'auto-shutdown') {
+    const detectUrl = 'http://127.0.0.1:5000';
+    (async () => {
+      try {
+        const resp = await fetch(detectUrl + '/api/admin/status', { signal: AbortSignal.timeout(3000) });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.appRole === 'points') {
+            console.log('[Sync] Auto-detected Denfi Points on', detectUrl);
+            setSyncServer(detectUrl);
+          }
+        }
+      } catch (e) {
+        console.log('[Sync] No Denfi Points detected on localhost:5000');
+      }
+    })();
+  }
 });
 
 module.exports = { setSyncServer };
