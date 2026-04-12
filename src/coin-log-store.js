@@ -5,7 +5,7 @@ const crypto = require('crypto');
 let dataDir = path.join(__dirname, '..', 'data');
 let logsPath = path.join(dataDir, 'coin-logs.json');
 
-const HMAC_KEY = 'ramses-coinlog-integrity-v1';
+const HMAC_KEY = 'denfi-coinlog-integrity-v1';
 
 function setDataDir(dir) {
   dataDir = dir;

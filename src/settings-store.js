@@ -6,7 +6,7 @@ let dataDir = path.join(__dirname, '..', 'data');
 let settingsPath = path.join(dataDir, 'settings.json');
 let uploadsDir = path.join(dataDir, 'uploads');
 
-const HMAC_KEY = 'ramses-settings-integrity-v1';
+const HMAC_KEY = 'denfi-settings-integrity-v1';
 
 function setDataDir(dir) {
   dataDir = dir;
