@@ -3,16 +3,46 @@ const path = require('path');
 const crypto = require('crypto');
 
 let dataDir = path.join(__dirname, '..', 'data');
-let settingsPath = path.join(dataDir, 'settings.json');
+let settingsFilename = 'settings.json';
+let settingsPath = path.join(dataDir, settingsFilename);
 let uploadsDir = path.join(dataDir, 'uploads');
 
 const HMAC_KEY = 'denfi-settings-integrity-v1';
 
+function setAppRole(role) {
+  if (role === 'points') {
+    settingsFilename = 'settings-server.json';
+  } else {
+    settingsFilename = 'settings.json';
+  }
+  settingsPath = path.join(dataDir, settingsFilename);
+  console.log('[Settings] App role:', role, '→', settingsFilename);
+}
+
 function setDataDir(dir) {
   dataDir = dir;
-  settingsPath = path.join(dataDir, 'settings.json');
+  settingsPath = path.join(dataDir, settingsFilename);
   uploadsDir = path.join(dataDir, 'uploads');
   ensureDirs();
+  migrateIfNeeded();
+}
+
+let migrationDone = false;
+function migrateIfNeeded() {
+  if (migrationDone) return;
+  migrationDone = true;
+  if (settingsFilename === 'settings-server.json') {
+    const serverPath = path.join(dataDir, 'settings-server.json');
+    const clientPath = path.join(dataDir, 'settings.json');
+    if (!fs.existsSync(serverPath) && fs.existsSync(clientPath)) {
+      try {
+        fs.copyFileSync(clientPath, serverPath);
+        console.log('[Settings] Migrated settings.json → settings-server.json for Denfi Points');
+      } catch (e) {
+        console.log('[Settings] Migration failed:', e.message);
+      }
+    }
+  }
 }
 
 function ensureDirs() {
@@ -28,6 +58,7 @@ function computeHmac(data) {
 
 function load() {
   ensureDirs();
+  migrateIfNeeded();
   try {
     const raw = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
     if (raw._sig) {
@@ -461,6 +492,7 @@ function saveAdImage(adId, fileBuffer, originalName, mimeType) {
 }
 
 module.exports = {
+  setAppRole,
   setDataDir,
   isAdminRegistered,
   registerAdmin,

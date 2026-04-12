@@ -21,6 +21,7 @@ app.on('ready', () => {
 
   const settings = require('./src/settings-store');
   const coinLogs = require('./src/coin-log-store');
+  settings.setAppRole('points');
   settings.setDataDir(dataDir);
   coinLogs.setDataDir(dataDir);
 

@@ -231,6 +231,12 @@ For diskless (CCBoot, iCafe) or Deep Freeze environments where local changes are
   - `main.js` sets `DENFI_APP_ROLE=auto-shutdown` (Denfi Auto Shutdown.exe)
   - `main-server.js` sets `DENFI_APP_ROLE=points` (Denfi Points.exe)
   - Standalone `node server.js` defaults to `auto-shutdown`
+- **Separate Settings Files**: Each app uses its own settings file to prevent conflicts
+  - Denfi Auto Shutdown.exe → `data/settings.json` (backward compatible)
+  - Denfi Points.exe → `data/settings-server.json` (separate admin password, UI settings, etc.)
+  - `settings-store.js` `setAppRole(role)` sets the filename before `setDataDir()`
+  - First-time migration: if `settings-server.json` doesn't exist, copies from `settings.json`
+  - Coin/point rates are kept in sync via the existing sync mechanism (not shared file)
 - **Coin Logs Read-Only Mode**: When running as auto-shutdown, the zxc2 coin logs panel is view-only:
   - All add/delete UI controls are hidden via CSS class `.coin-logs-read-only .coin-logs-edit-only { display:none !important }`
   - Server-side `blockIfReadOnly` middleware returns 403 on all coin-log/rate write endpoints

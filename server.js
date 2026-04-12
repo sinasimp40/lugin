@@ -7,6 +7,9 @@ const http = require('http');
 const settings = require('./src/settings-store');
 const coinLogs = require('./src/coin-log-store');
 
+const appRoleInit = process.env.DENFI_APP_ROLE || 'auto-shutdown';
+settings.setAppRole(appRoleInit);
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
