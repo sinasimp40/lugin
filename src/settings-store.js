@@ -13,7 +13,7 @@ function setAppRole(role) {
   if (role === 'points') {
     settingsFilename = 'settings-server.json';
   } else {
-    settingsFilename = 'settings.json';
+    settingsFilename = 'settings-client.json';
   }
   settingsPath = path.join(dataDir, settingsFilename);
   console.log('[Settings] App role:', role, '→', settingsFilename);
@@ -31,16 +31,13 @@ let migrationDone = false;
 function migrateIfNeeded() {
   if (migrationDone) return;
   migrationDone = true;
-  if (settingsFilename === 'settings-server.json') {
-    const serverPath = path.join(dataDir, 'settings-server.json');
-    const clientPath = path.join(dataDir, 'settings.json');
-    if (!fs.existsSync(serverPath) && fs.existsSync(clientPath)) {
-      try {
-        fs.copyFileSync(clientPath, serverPath);
-        console.log('[Settings] Migrated settings.json → settings-server.json for Denfi Points');
-      } catch (e) {
-        console.log('[Settings] Migration failed:', e.message);
-      }
+  const legacyPath = path.join(dataDir, 'settings.json');
+  if (!fs.existsSync(settingsPath) && fs.existsSync(legacyPath)) {
+    try {
+      fs.copyFileSync(legacyPath, settingsPath);
+      console.log('[Settings] Migrated settings.json →', settingsFilename);
+    } catch (e) {
+      console.log('[Settings] Migration failed:', e.message);
     }
   }
 }

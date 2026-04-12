@@ -1,0 +1,57 @@
+{
+  "adminPasswordHash": "445b86d130e68d3b4eac3d6a5461c4e0179d3cf16cfc35b50a778292484ca5ca52668378bdd377e42857b278a85a56a832e4cb9c1a5b591a338317be08c01deb",
+  "adminSalt": "5cc084b73b6c582470f89bde2a75b176",
+  "ads": [
+    {
+      "id": "2a75f8c012ce88aa",
+      "content": "<div><font color=\"#ff4242\">hahaha </font><font color=\"#f2f2f2\">qweqw</font></div>",
+      "image": null,
+      "order": 0
+    }
+  ],
+  "backgroundImage": {
+    "filename": "background.png",
+    "mimeType": "image/png",
+    "size": 2270006
+  },
+  "fullscreenBypass": [
+    "valorant.exe",
+    "league of legends.exe",
+    "leagueclient.exe",
+    "qwq.exe",
+    "qweqwe.exe",
+    "qweqweqweqwe.exe",
+    "qweasd.exe",
+    "qweqwea.exe"
+  ],
+  "loginImage": {
+    "filename": "loginimage.jpg",
+    "mimeType": "image/jpeg",
+    "size": 195110
+  },
+  "computerName": "COMPUTER SHOP",
+  "registerImage": {
+    "filename": "registerimage.jpg",
+    "mimeType": "image/jpeg",
+    "size": 144922
+  },
+  "curfewEnabled": false,
+  "curfewStart": "22:00",
+  "curfewEnd": "06:00",
+  "coinRates": [
+    {
+      "id": "mnky68x5my80",
+      "pesos": 1,
+      "minutes": 5
+    }
+  ],
+  "pointRates": [
+    {
+      "id": "mnky6cwmnagp",
+      "pesos": 10,
+      "points": 1
+    }
+  ],
+  "_sig": "0686b0d661e6f6e487c104b5cdae96e19e4d7842cdaef0df2b489553d914fa92",
+  "adSlideSeconds": 5
+}
