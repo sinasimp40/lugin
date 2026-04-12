@@ -408,22 +408,7 @@ app.whenReady().then(() => {
   }
 
   waitForServer(40).then(async () => {
-    if (!syncServerUrl && serverModule.setSyncServer) {
-      try {
-        const detectUrl = 'http://127.0.0.1:5000';
-        const resp = await fetch(detectUrl + '/api/admin/status', { signal: AbortSignal.timeout(3000) });
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.appRole === 'points') {
-            console.log('[Electron] Auto-detected Denfi Points on', detectUrl);
-            syncServerUrl = detectUrl;
-            serverModule.setSyncServer(detectUrl);
-          }
-        }
-      } catch (e) {
-        console.log('[Electron] No Denfi Points detected on localhost:5000');
-      }
-    }
+    
     showLoginWindow();
   }).catch((err) => {
     console.error('[Electron] Server startup failed:', err.message);

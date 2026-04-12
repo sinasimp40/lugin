@@ -1681,6 +1681,20 @@
             <button class="btn-admin" onclick="saveComputerName()">Save</button>
           </div>
 
+          <div class="admin-section" id="sync-server-section">
+            <h3>&#9670; Denfi Points Server</h3>
+            <div id="sync-server-status" style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;margin-bottom:8px;color:#888">checking...</div>
+            <div class="form-group">
+              <label>// Server Address (e.g. 10.10.10.29:5000)</label>
+              <input type="text" id="admin-sync-url" placeholder="e.g. 10.10.10.29:5000" />
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="btn-admin" style="flex:1" onclick="saveSyncServer()">Connect</button>
+              <button class="btn-admin" style="flex:1" onclick="autoDetectSync()">Auto-Detect</button>
+            </div>
+            <button class="btn-admin danger" style="margin-top:6px;width:100%" onclick="disconnectSync()">Disconnect</button>
+          </div>
+
           <div class="admin-section">
             <h3>&#9670; Auto Shutdown Timer</h3>
             <div class="form-group">
@@ -3258,6 +3272,7 @@
 
     async function openAdmin() {
       const resp = await fetch('/api/admin/status').then(r => r.json()).catch(() => ({}));
+      window._appRole = resp.appRole || '';
       const modal = document.getElementById('admin-modal');
       document.getElementById('admin-auth-view').style.display = 'block';
       document.getElementById('admin-panel-view').style.display = 'none';
@@ -3334,6 +3349,7 @@
         document.getElementById('admin-curfew-start').value = resp.settings.curfewStart || '22:00';
         document.getElementById('admin-curfew-end').value = resp.settings.curfewEnd || '06:00';
       }
+      loadSyncServerStatus();
     }
 
     function updateBgPreview(bgInfo) {
@@ -3346,6 +3362,59 @@
       const name = document.getElementById('admin-computer-name').value.trim();
       const resp = await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify({ computerName: name }) }).then(r => r.json()).catch(() => ({ success: false }));
       if (resp.success) { showAdminMsg('admin-panel-msg', 'Saved', 'success'); applySettings(resp.settings); }
+      else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
+    }
+
+    async function loadSyncServerStatus() {
+      const section = document.getElementById('sync-server-section');
+      if (!section) return;
+      if (window._appRole === 'points') { section.style.display = 'none'; return; }
+      try {
+        const resp = await fetch('/api/admin/sync-server', { headers: { 'x-admin-token': adminToken } }).then(r => r.json());
+        const el = document.getElementById('sync-server-status');
+        const input = document.getElementById('admin-sync-url');
+        if (resp.connected && resp.syncServerUrl) {
+          el.innerHTML = '&#9679; CONNECTED: <span style="color:#ff8c00">' + resp.syncServerUrl + '</span>';
+          el.style.color = '#4CAF50';
+          input.value = resp.syncServerUrl.replace(/^https?:\/\//, '');
+        } else if (resp.saved) {
+          el.innerHTML = '&#9679; SAVED (not connected)';
+          el.style.color = '#ff8c00';
+          input.value = resp.saved.replace(/^https?:\/\//, '');
+        } else {
+          el.textContent = '● NOT CONNECTED';
+          el.style.color = '#f44336';
+        }
+      } catch (e) {}
+    }
+
+    async function saveSyncServer() {
+      const url = document.getElementById('admin-sync-url').value.trim();
+      if (!url) { showAdminMsg('admin-panel-msg', 'Enter server address', 'error'); return; }
+      showAdminMsg('admin-panel-msg', 'Connecting...', 'success');
+      const resp = await fetch('/api/admin/sync-server', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify({ url }) }).then(r => r.json()).catch(() => ({ success: false, error: 'Request failed' }));
+      if (resp.success) { showAdminMsg('admin-panel-msg', 'Connected to Denfi Points!', 'success'); loadSyncServerStatus(); }
+      else showAdminMsg('admin-panel-msg', resp.error || 'Connection failed', 'error');
+    }
+
+    async function autoDetectSync() {
+      showAdminMsg('admin-panel-msg', 'Scanning network for Denfi Points...', 'success');
+      document.getElementById('sync-server-status').textContent = '● SCANNING...';
+      document.getElementById('sync-server-status').style.color = '#ff8c00';
+      const resp = await fetch('/api/admin/sync-server/detect', { method: 'POST', headers: { 'x-admin-token': adminToken } }).then(r => r.json()).catch(() => ({ success: false, error: 'Request failed' }));
+      if (resp.success) {
+        showAdminMsg('admin-panel-msg', 'Found Denfi Points at ' + resp.syncServerUrl, 'success');
+        document.getElementById('admin-sync-url').value = resp.syncServerUrl.replace(/^https?:\/\//, '');
+        loadSyncServerStatus();
+      } else {
+        showAdminMsg('admin-panel-msg', resp.error || 'Not found on network', 'error');
+        loadSyncServerStatus();
+      }
+    }
+
+    async function disconnectSync() {
+      const resp = await fetch('/api/admin/sync-server', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify({ url: '' }) }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) { showAdminMsg('admin-panel-msg', 'Disconnected', 'success'); document.getElementById('admin-sync-url').value = ''; loadSyncServerStatus(); }
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
     }
 

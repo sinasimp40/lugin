@@ -246,7 +246,10 @@ For diskless (CCBoot, iCafe) or Deep Freeze environments where local changes are
   - `server.js` uses `process.env.PORT || 5000`; each Electron entry sets the env var
   - On `EADDRINUSE`, `server.js` calls `process.exit(1)` instead of silently continuing
   - Auto Shutdown `waitForServer` checks `appRole === 'auto-shutdown'` to reject wrong server
-  - Auto Shutdown auto-detects Denfi Points on `localhost:5000` at startup if no `syncServerUrl` configured
+  - Auto Shutdown auto-discovers Denfi Points on network at startup: checks saved URL → gateway IP → common subnet IPs → localhost
+  - Admin panel has "Denfi Points Server" section with manual address input, Connect, Auto-Detect, and Disconnect buttons
+  - Server URL is persisted in `syncServerUrl` field of settings-client.json
+  - Discovery function `discoverPointsServer()` probes candidates via `/api/admin/status` checking `appRole === 'points'`
 - **Coin Logs Read-Only Mode**: When running as auto-shutdown, the zxc2 coin logs panel is view-only:
   - All add/delete UI controls are hidden via CSS class `.coin-logs-read-only .coin-logs-edit-only { display:none !important }`
   - Server-side `blockIfReadOnly` middleware returns 403 on all coin-log/rate write endpoints

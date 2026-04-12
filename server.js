@@ -1128,15 +1128,140 @@ function broadcastSettings() {
 let syncServerUrl = '';
 let syncRatesInterval = null;
 
-function setSyncServer(url) {
+function setSyncServer(url, persist) {
   syncServerUrl = (url || '').trim().replace(/\/+$/, '');
   if (syncRatesInterval) { clearInterval(syncRatesInterval); syncRatesInterval = null; }
   if (syncServerUrl) {
     console.log('[Sync] Data server URL:', syncServerUrl);
     syncRatesFromServer();
     syncRatesInterval = setInterval(syncRatesFromServer, 5 * 60 * 1000);
+    if (persist) {
+      settings.updateSettings({ syncServerUrl });
+    }
   }
 }
+
+async function getDefaultGateway() {
+  const { exec } = require('child_process');
+  return new Promise((resolve) => {
+    const isWin = process.platform === 'win32';
+    const cmd = isWin
+      ? 'route print 0.0.0.0 | findstr /R "0\\.0\\.0\\.0.*[0-9]"'
+      : "ip route show default 2>/dev/null || route -n 2>/dev/null | grep '^0.0.0.0'";
+    exec(cmd, { timeout: 5000 }, (err, stdout) => {
+      if (err || !stdout) return resolve(null);
+      const ipMatch = stdout.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/g);
+      if (isWin && ipMatch && ipMatch.length >= 3) {
+        return resolve(ipMatch[2]);
+      }
+      if (!isWin && ipMatch && ipMatch.length >= 1) {
+        for (const ip of ipMatch) {
+          if (ip !== '0.0.0.0') return resolve(ip);
+        }
+      }
+      resolve(null);
+    });
+  });
+}
+
+async function probePointsServer(ip) {
+  const url = `http://${ip}:5000`;
+  try {
+    const resp = await fetch(url + '/api/admin/status', { signal: AbortSignal.timeout(2000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.appRole === 'points') return url;
+    }
+  } catch (e) {}
+  return null;
+}
+
+async function discoverPointsServer() {
+  const savedUrl = settings.getSettings().syncServerUrl;
+  if (savedUrl) {
+    const ok = await probePointsServer(new URL(savedUrl).hostname);
+    if (ok) return savedUrl;
+  }
+
+  const gateway = await getDefaultGateway();
+  if (gateway) {
+    console.log('[Sync] Trying gateway:', gateway);
+    const found = await probePointsServer(gateway);
+    if (found) return found;
+  }
+
+  const os = require('os');
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal) {
+        const parts = net.address.split('.');
+        const baseIp = parts.slice(0, 3).join('.');
+        const myLast = parseInt(parts[3]);
+        const candidates = [1, 254, 2, 100];
+        for (const c of candidates) {
+          if (c === myLast) continue;
+          const ip = baseIp + '.' + c;
+          if (gateway && ip === gateway) continue;
+          const found = await probePointsServer(ip);
+          if (found) return found;
+        }
+      }
+    }
+  }
+
+  const localhost = await probePointsServer('127.0.0.1');
+  if (localhost) return localhost;
+
+  return null;
+}
+
+app.get('/api/admin/sync-server', verifyToken, (req, res) => {
+  res.json({
+    success: true,
+    syncServerUrl: syncServerUrl || '',
+    saved: settings.getSettings().syncServerUrl || '',
+    connected: !!syncServerUrl
+  });
+});
+
+app.post('/api/admin/sync-server', verifyToken, express.json(), async (req, res) => {
+  let url = (req.body.url || '').trim().replace(/\/+$/, '');
+  if (!url) {
+    syncServerUrl = '';
+    if (syncRatesInterval) { clearInterval(syncRatesInterval); syncRatesInterval = null; }
+    settings.updateSettings({ syncServerUrl: '' });
+    return res.json({ success: true, syncServerUrl: '', connected: false });
+  }
+  if (!/^https?:\/\//i.test(url)) url = 'http://' + url;
+  try {
+    const resp = await fetch(url + '/api/admin/status', { signal: AbortSignal.timeout(3000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.appRole === 'points') {
+        setSyncServer(url, true);
+        return res.json({ success: true, syncServerUrl: url, connected: true });
+      }
+      return res.json({ success: false, error: 'Server found but it is not Denfi Points (appRole: ' + data.appRole + ')' });
+    }
+    return res.json({ success: false, error: 'Server responded with status ' + resp.status });
+  } catch (e) {
+    return res.json({ success: false, error: 'Cannot connect: ' + e.message });
+  }
+});
+
+app.post('/api/admin/sync-server/detect', verifyToken, async (req, res) => {
+  try {
+    const found = await discoverPointsServer();
+    if (found) {
+      setSyncServer(found, true);
+      return res.json({ success: true, syncServerUrl: found, connected: true });
+    }
+    return res.json({ success: false, error: 'No Denfi Points server found on network' });
+  } catch (e) {
+    return res.json({ success: false, error: e.message });
+  }
+});
 
 async function syncRatesFromServer() {
   if (!syncServerUrl) return;
@@ -1526,22 +1651,23 @@ server.listen(PORT, LISTEN_HOST, () => {
   console.log(`Denfi Auto Shutdown running at http://${LISTEN_HOST}:${PORT}`);
   if (typeof process.send === 'function') process.send('server-ready');
 
-  if (!syncServerUrl && appRole === 'auto-shutdown') {
-    const detectUrl = 'http://127.0.0.1:5000';
-    (async () => {
-      try {
-        const resp = await fetch(detectUrl + '/api/admin/status', { signal: AbortSignal.timeout(3000) });
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.appRole === 'points') {
-            console.log('[Sync] Auto-detected Denfi Points on', detectUrl);
-            setSyncServer(detectUrl);
-          }
+  if (appRole === 'auto-shutdown') {
+    const savedSync = settings.getSettings().syncServerUrl;
+    if (!syncServerUrl && savedSync) {
+      console.log('[Sync] Loading saved server URL:', savedSync);
+      setSyncServer(savedSync);
+    }
+    if (!syncServerUrl) {
+      (async () => {
+        const found = await discoverPointsServer();
+        if (found) {
+          console.log('[Sync] Auto-detected Denfi Points on', found);
+          setSyncServer(found, true);
+        } else {
+          console.log('[Sync] No Denfi Points server found on network');
         }
-      } catch (e) {
-        console.log('[Sync] No Denfi Points detected on localhost:5000');
-      }
-    })();
+      })();
+    }
   }
 });
 
