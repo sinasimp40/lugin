@@ -1177,7 +1177,7 @@ async function getMemberPointsAuto(username) {
   const local = coinLogs.getMemberPoints(username, s.pointRates || []);
   if (syncServerUrl) {
     const remote = await fetchRemotePoints(username);
-    if (remote !== null && remote > local) return remote;
+    if (remote !== null) return remote;
   }
   return local;
 }
@@ -1459,7 +1459,7 @@ async function pollHotspotForWs() {
       data.memberPoints = coinLogs.getMemberPoints(data.username, s.pointRates || []);
       if (syncServerUrl) {
         const remote = await fetchRemotePoints(data.username);
-        if (remote !== null && remote > data.memberPoints) data.memberPoints = remote;
+        if (remote !== null) data.memberPoints = remote;
       }
     }
 
