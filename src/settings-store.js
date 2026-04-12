@@ -119,8 +119,30 @@ function changeAdminPassword(oldPassword, newPassword) {
   return true;
 }
 
+function getSharedRates() {
+  if (settingsFilename === 'settings-server.json') return null;
+  const serverSettingsPath = path.join(dataDir, 'settings-server.json');
+  try {
+    if (fs.existsSync(serverSettingsPath)) {
+      const raw = JSON.parse(fs.readFileSync(serverSettingsPath, 'utf8'));
+      return {
+        coinRates: Array.isArray(raw.coinRates) ? raw.coinRates : null,
+        pointRates: Array.isArray(raw.pointRates) ? raw.pointRates : null,
+      };
+    }
+  } catch (e) {}
+  return null;
+}
+
 function getSettings() {
   const s = load();
+  const shared = getSharedRates();
+  let coinRates = Array.isArray(s.coinRates) && s.coinRates.length > 0 ? s.coinRates : [];
+  let pointRates = Array.isArray(s.pointRates) && s.pointRates.length > 0 ? s.pointRates : [];
+  if (shared) {
+    if (shared.coinRates && shared.coinRates.length > 0) coinRates = shared.coinRates;
+    if (shared.pointRates && shared.pointRates.length > 0) pointRates = shared.pointRates;
+  }
   return {
     computerName: s.computerName !== undefined ? s.computerName : 'COMPUTER SHOP',
     autoShutdownSeconds: s.autoShutdownSeconds !== undefined ? s.autoShutdownSeconds : 180,
@@ -136,8 +158,8 @@ function getSettings() {
     curfewEnabled: !!s.curfewEnabled,
     curfewStart: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.curfewStart) ? s.curfewStart : '22:00',
     curfewEnd: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.curfewEnd) ? s.curfewEnd : '06:00',
-    coinRates: Array.isArray(s.coinRates) ? s.coinRates : [],
-    pointRates: Array.isArray(s.pointRates) ? s.pointRates : [],
+    coinRates,
+    pointRates,
   };
 }
 

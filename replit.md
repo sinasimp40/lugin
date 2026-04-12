@@ -237,7 +237,9 @@ For diskless (CCBoot, iCafe) or Deep Freeze environments where local changes are
   - `data/settings.json` is the legacy shared file (no longer used by either app)
   - `settings-store.js` `setAppRole(role)` sets the filename before `setDataDir()`
   - No migration from legacy files — each app starts fresh with its own setup
-  - Coin/point rates are kept in sync via the existing sync mechanism (not shared file)
+  - Coin/point rates: Auto Shutdown reads rates from `settings-server.json` (Denfi Points) when in same folder
+  - `coin-logs.json` is shared between both apps (NOT role-separated)
+  - Admin password, UI settings, and other config stay separate per app
 - **Port Separation**: Each app uses a different port to prevent conflicts on the same machine
   - Denfi Points.exe → port 5000 (set in `main-server.js`, no `PORT` env override)
   - Denfi Auto Shutdown.exe → port 5001 (set in `main.js` as `const PORT = 5001`)
