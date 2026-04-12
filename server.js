@@ -7,7 +7,7 @@ const http = require('http');
 const settings = require('./src/settings-store');
 const coinLogs = require('./src/coin-log-store');
 
-const appRoleInit = process.env.DENFI_APP_ROLE || 'auto-shutdown';
+const appRoleInit = process.env.RAMSES_APP_ROLE || 'auto-shutdown';
 settings.setAppRole(appRoleInit);
 
 const app = express();
@@ -773,7 +773,7 @@ app.get('/api/session/poll', (req, res) => {
   res.json({ event: evt });
 });
 
-const appRole = process.env.DENFI_APP_ROLE || 'auto-shutdown';
+const appRole = process.env.RAMSES_APP_ROLE || 'auto-shutdown';
 const coinLogsReadOnly = appRole !== 'points';
 
 app.get('/api/admin/status', (req, res) => {
@@ -1055,7 +1055,7 @@ app.get('/api/admin/coin-logs', verifyToken, async (req, res) => {
 });
 
 function blockIfReadOnly(req, res, next) {
-  if (coinLogsReadOnly) return res.status(403).json({ success: false, error: 'Read-only mode. Use Denfi Points to manage coin logs.' });
+  if (coinLogsReadOnly) return res.status(403).json({ success: false, error: 'Read-only mode. Use Ramses Points to manage coin logs.' });
   next();
 }
 
@@ -1242,7 +1242,7 @@ app.post('/api/admin/sync-server', verifyToken, express.json(), async (req, res)
         setSyncServer(url, true);
         return res.json({ success: true, syncServerUrl: url, connected: true });
       }
-      return res.json({ success: false, error: 'Server found but it is not Denfi Points (appRole: ' + data.appRole + ')' });
+      return res.json({ success: false, error: 'Server found but it is not Ramses Points (appRole: ' + data.appRole + ')' });
     }
     return res.json({ success: false, error: 'Server responded with status ' + resp.status });
   } catch (e) {
@@ -1257,7 +1257,7 @@ app.post('/api/admin/sync-server/detect', verifyToken, async (req, res) => {
       setSyncServer(found, true);
       return res.json({ success: true, syncServerUrl: found, connected: true });
     }
-    return res.json({ success: false, error: 'No Denfi Points server found on network' });
+    return res.json({ success: false, error: 'No Ramses Points server found on network' });
   } catch (e) {
     return res.json({ success: false, error: e.message });
   }
@@ -1646,9 +1646,9 @@ server.on('error', (err) => {
 });
 
 const isElectron = typeof process.versions.electron !== 'undefined';
-const LISTEN_HOST = process.env.DENFI_LISTEN_HOST || (isElectron ? '127.0.0.1' : '0.0.0.0');
+const LISTEN_HOST = process.env.RAMSES_LISTEN_HOST || (isElectron ? '127.0.0.1' : '0.0.0.0');
 server.listen(PORT, LISTEN_HOST, () => {
-  console.log(`Denfi Auto Shutdown running at http://${LISTEN_HOST}:${PORT}`);
+  console.log(`Ramses Auto Shutdown running at http://${LISTEN_HOST}:${PORT}`);
   if (typeof process.send === 'function') process.send('server-ready');
 
   if (appRole === 'auto-shutdown') {
@@ -1661,10 +1661,10 @@ server.listen(PORT, LISTEN_HOST, () => {
       (async () => {
         const found = await discoverPointsServer();
         if (found) {
-          console.log('[Sync] Auto-detected Denfi Points on', found);
+          console.log('[Sync] Auto-detected Ramses Points on', found);
           setSyncServer(found, true);
         } else {
-          console.log('[Sync] No Denfi Points server found on network');
+          console.log('[Sync] No Ramses Points server found on network');
         }
       })();
     }

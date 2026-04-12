@@ -2,7 +2,7 @@ const { app, BrowserWindow, Menu, ipcMain, globalShortcut } = require('electron'
 const { exec, spawn } = require('child_process');
 const path = require('path');
 
-process.env.DENFI_APP_ROLE = 'auto-shutdown';
+process.env.RAMSES_APP_ROLE = 'auto-shutdown';
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
@@ -298,7 +298,7 @@ app.whenReady().then(() => {
 
   let syncServerUrl = '';
 
-  const dataPathFile = path.join(path.dirname(app.getPath('exe')), 'denfi-data-path.txt');
+  const dataPathFile = path.join(path.dirname(app.getPath('exe')), 'ramses-data-path.txt');
   try {
     if (fs.existsSync(dataPathFile)) {
       const raw = fs.readFileSync(dataPathFile, 'utf8').trim();
@@ -309,21 +309,21 @@ app.whenReady().then(() => {
           console.log('[Electron] Using HTTP sync server:', syncServerUrl);
         } else {
           dataDir = customPath;
-          console.log('[Electron] Using custom data path from denfi-data-path.txt:', dataDir);
+          console.log('[Electron] Using custom data path from ramses-data-path.txt:', dataDir);
         }
       }
     }
   } catch (e) {
-    console.log('[Electron] Error reading denfi-data-path.txt:', e.message);
+    console.log('[Electron] Error reading ramses-data-path.txt:', e.message);
   }
 
-  if (process.env.DENFI_DATA_DIR) {
-    dataDir = process.env.DENFI_DATA_DIR;
-    console.log('[Electron] Using data path from DENFI_DATA_DIR env:', dataDir);
+  if (process.env.RAMSES_DATA_DIR) {
+    dataDir = process.env.RAMSES_DATA_DIR;
+    console.log('[Electron] Using data path from RAMSES_DATA_DIR env:', dataDir);
   }
 
-  if (process.env.DENFI_SYNC_SERVER) {
-    syncServerUrl = process.env.DENFI_SYNC_SERVER.replace(/\/+$/, '');
+  if (process.env.RAMSES_SYNC_SERVER) {
+    syncServerUrl = process.env.RAMSES_SYNC_SERVER.replace(/\/+$/, '');
     console.log('[Electron] Using sync server from env:', syncServerUrl);
   }
 
@@ -363,7 +363,7 @@ app.whenReady().then(() => {
               if (data.registered !== undefined && data.appRole === 'auto-shutdown') {
                 resolve();
               } else if (data.registered !== undefined && data.appRole && data.appRole !== 'auto-shutdown') {
-                reject(new Error('Port ' + PORT + ' is being used by Denfi Points. Both apps cannot run on the same port.'));
+                reject(new Error('Port ' + PORT + ' is being used by Ramses Points. Both apps cannot run on the same port.'));
               } else {
                 retry();
               }
@@ -389,7 +389,7 @@ app.whenReady().then(() => {
   }
 
   if (!syncServerUrl) {
-    process.env.DENFI_LISTEN_HOST = '0.0.0.0';
+    process.env.RAMSES_LISTEN_HOST = '0.0.0.0';
     console.log('[Electron] Server mode: listening on all interfaces (0.0.0.0)');
   }
 
@@ -402,7 +402,7 @@ app.whenReady().then(() => {
   } catch (err) {
     console.error('[Electron] Failed to start server:', err);
     const { dialog } = require('electron');
-    dialog.showErrorBox('Denfi Auto Shutdown', 'Server failed to start:\n' + err.message);
+    dialog.showErrorBox('Ramses Auto Shutdown', 'Server failed to start:\n' + err.message);
     app.quit();
     return;
   }
@@ -413,7 +413,7 @@ app.whenReady().then(() => {
   }).catch((err) => {
     console.error('[Electron] Server startup failed:', err.message);
     const { dialog } = require('electron');
-    dialog.showErrorBox('Denfi Auto Shutdown', 'Server did not respond.\nPort ' + PORT + ' may be in use by another program.\n\nClose any other instances and try again.\n\n' + err.message);
+    dialog.showErrorBox('Ramses Auto Shutdown', 'Server did not respond.\nPort ' + PORT + ' may be in use by another program.\n\nClose any other instances and try again.\n\n' + err.message);
     app.quit();
   });
 });
@@ -428,7 +428,7 @@ function showLoginWindow(onReady) {
 
   loginWindow = new BrowserWindow({
     x, y, width, height,
-    title: 'Denfi Auto Shutdown',
+    title: 'Ramses Auto Shutdown',
     show: false,
     frame: false,
     resizable: false,
@@ -549,7 +549,7 @@ function showSessionWindow(onShown) {
     height: SESSION_HEIGHT,
     x: sessionX,
     y: sessionY,
-    title: 'Denfi Auto Shutdown Session',
+    title: 'Ramses Auto Shutdown Session',
     frame: false,
     resizable: false,
     maximizable: false,

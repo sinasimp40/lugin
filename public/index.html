@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Denfi Auto Shutdown</title>
+  <title>Ramses Auto Shutdown</title>
   <style>
     @font-face {
       font-family: 'Orbitron';
@@ -1682,7 +1682,7 @@
           </div>
 
           <div class="admin-section" id="sync-server-section">
-            <h3>&#9670; Denfi Points Server</h3>
+            <h3>&#9670; Ramses Points Server</h3>
             <div id="sync-server-status" style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;margin-bottom:8px;color:#888">checking...</div>
             <div class="form-group">
               <label>// Server Address (e.g. 10.10.10.29:5000)</label>
@@ -3393,17 +3393,17 @@
       if (!url) { showAdminMsg('admin-panel-msg', 'Enter server address', 'error'); return; }
       showAdminMsg('admin-panel-msg', 'Connecting...', 'success');
       const resp = await fetch('/api/admin/sync-server', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify({ url }) }).then(r => r.json()).catch(() => ({ success: false, error: 'Request failed' }));
-      if (resp.success) { showAdminMsg('admin-panel-msg', 'Connected to Denfi Points!', 'success'); loadSyncServerStatus(); }
+      if (resp.success) { showAdminMsg('admin-panel-msg', 'Connected to Ramses Points!', 'success'); loadSyncServerStatus(); }
       else showAdminMsg('admin-panel-msg', resp.error || 'Connection failed', 'error');
     }
 
     async function autoDetectSync() {
-      showAdminMsg('admin-panel-msg', 'Scanning network for Denfi Points...', 'success');
+      showAdminMsg('admin-panel-msg', 'Scanning network for Ramses Points...', 'success');
       document.getElementById('sync-server-status').textContent = '● SCANNING...';
       document.getElementById('sync-server-status').style.color = '#ff8c00';
       const resp = await fetch('/api/admin/sync-server/detect', { method: 'POST', headers: { 'x-admin-token': adminToken } }).then(r => r.json()).catch(() => ({ success: false, error: 'Request failed' }));
       if (resp.success) {
-        showAdminMsg('admin-panel-msg', 'Found Denfi Points at ' + resp.syncServerUrl, 'success');
+        showAdminMsg('admin-panel-msg', 'Found Ramses Points at ' + resp.syncServerUrl, 'success');
         document.getElementById('admin-sync-url').value = resp.syncServerUrl.replace(/^https?:\/\//, '');
         loadSyncServerStatus();
       } else {

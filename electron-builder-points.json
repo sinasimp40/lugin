@@ -1,6 +1,6 @@
 {
-  "appId": "com.denfi.points",
-  "productName": "Denfi Points",
+  "appId": "com.ramses.points",
+  "productName": "Ramses Points",
   "icon": "icon.ico",
   "directories": {
     "buildResources": "build"
@@ -13,16 +13,16 @@
     "target": "nsis",
     "requestedExecutionLevel": "asInvoker",
     "icon": "icon.ico",
-    "executableName": "denfi-points"
+    "executableName": "ramses-points"
   },
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
     "perMachine": true,
     "deleteAppDataOnUninstall": true,
-    "artifactName": "Denfi Points Setup.${ext}",
-    "shortcutName": "Denfi Points",
-    "uninstallDisplayName": "Denfi Points",
+    "artifactName": "Ramses Points Setup.${ext}",
+    "shortcutName": "Ramses Points",
+    "uninstallDisplayName": "Ramses Points",
     "installerIcon": "icon.ico",
     "uninstallerIcon": "icon.ico"
   },

@@ -7,7 +7,7 @@ let settingsFilename = 'settings.json';
 let settingsPath = path.join(dataDir, settingsFilename);
 let uploadsDir = path.join(dataDir, 'uploads');
 
-const HMAC_KEY = 'denfi-settings-integrity-v1';
+const HMAC_KEY = 'ramses-settings-integrity-v1';
 
 let appRoleSet = false;
 function setAppRole(role, force) {

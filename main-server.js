@@ -1,13 +1,13 @@
 const { app, Tray, Menu, nativeImage, BrowserWindow } = require('electron');
 const path = require('path');
 
-process.env.DENFI_APP_ROLE = 'points';
+process.env.RAMSES_APP_ROLE = 'points';
 
 let tray = null;
 let serverModule = null;
 
 app.on('ready', () => {
-  process.env.DENFI_LISTEN_HOST = '0.0.0.0';
+  process.env.RAMSES_LISTEN_HOST = '0.0.0.0';
 
   const fs = require('fs');
   const exeDir = path.dirname(app.getPath('exe'));
@@ -16,7 +16,7 @@ app.on('ready', () => {
   try {
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
   } catch (e) {
-    console.error('[Denfi Points] Cannot create data dir:', e.message);
+    console.error('[Ramses Points] Cannot create data dir:', e.message);
   }
 
   const settings = require('./src/settings-store');
@@ -28,9 +28,9 @@ app.on('ready', () => {
   try {
     serverModule = require('./server');
   } catch (err) {
-    console.error('[Denfi Points] Failed to start server:', err);
+    console.error('[Ramses Points] Failed to start server:', err);
     const { dialog } = require('electron');
-    dialog.showErrorBox('Denfi Points', 'Server failed to start:\n' + err.message);
+    dialog.showErrorBox('Ramses Points', 'Server failed to start:\n' + err.message);
     app.quit();
     return;
   }
@@ -46,10 +46,10 @@ app.on('ready', () => {
   }
 
   tray = new Tray(trayIcon);
-  tray.setToolTip('Denfi Points Server — Running on port 5000');
+  tray.setToolTip('Ramses Points Server — Running on port 5000');
 
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'Denfi Points Server', enabled: false },
+    { label: 'Ramses Points Server', enabled: false },
     { label: 'Port: 5000 (0.0.0.0)', enabled: false },
     { label: 'Data: ' + dataDir, enabled: false },
     { type: 'separator' },
@@ -59,7 +59,7 @@ app.on('ready', () => {
         const win = new BrowserWindow({
           width: 900,
           height: 700,
-          title: 'Denfi Points — Coin Logs',
+          title: 'Ramses Points — Coin Logs',
           icon: fs.existsSync(iconPath) ? iconPath : undefined,
           webPreferences: { nodeIntegration: false, contextIsolation: true }
         });
@@ -89,9 +89,9 @@ app.on('ready', () => {
     contextMenu.items[4].click();
   });
 
-  console.log('[Denfi Points] Server running on 0.0.0.0:5000');
-  console.log('[Denfi Points] Data directory:', dataDir);
-  console.log('[Denfi Points] Right-click tray icon for options');
+  console.log('[Ramses Points] Server running on 0.0.0.0:5000');
+  console.log('[Ramses Points] Data directory:', dataDir);
+  console.log('[Ramses Points] Right-click tray icon for options');
 });
 
 app.on('window-all-closed', (e) => {
