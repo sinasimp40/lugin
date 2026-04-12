@@ -1515,7 +1515,8 @@ function stopWsPolling() {
 server.on('error', (err) => {
   console.error('[Server] Listen error:', err.message);
   if (err.code === 'EADDRINUSE') {
-    console.error('[Server] Port', PORT, 'is already in use');
+    console.error('[Server] Port', PORT, 'is already in use. Exiting.');
+    process.exit(1);
   }
 });
 

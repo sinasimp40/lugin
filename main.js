@@ -6,7 +6,7 @@ process.env.DENFI_APP_ROLE = 'auto-shutdown';
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
-const PORT = 5000;
+const PORT = 5001;
 const APP_URL = `http://127.0.0.1:${PORT}`;
 
 let kioskHookProcess = null;
@@ -360,8 +360,10 @@ app.whenReady().then(() => {
           res.on('end', () => {
             try {
               const data = JSON.parse(body);
-              if (data.registered !== undefined) {
+              if (data.registered !== undefined && data.appRole === 'auto-shutdown') {
                 resolve();
+              } else if (data.registered !== undefined && data.appRole && data.appRole !== 'auto-shutdown') {
+                reject(new Error('Port ' + PORT + ' is being used by Denfi Points. Both apps cannot run on the same port.'));
               } else {
                 retry();
               }
@@ -409,7 +411,7 @@ app.whenReady().then(() => {
   }).catch((err) => {
     console.error('[Electron] Server startup failed:', err.message);
     const { dialog } = require('electron');
-    dialog.showErrorBox('Denfi Auto Shutdown', 'Server did not respond.\nPort 5000 may be in use by another program.\n\nClose any other instances and try again.');
+    dialog.showErrorBox('Denfi Auto Shutdown', 'Server did not respond.\nPort ' + PORT + ' may be in use by another program.\n\nClose any other instances and try again.\n\n' + err.message);
     app.quit();
   });
 });

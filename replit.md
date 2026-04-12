@@ -194,7 +194,7 @@ When `isLogin: true` is detected → auto-shows the session (auto-connect).
 
 ## Running
 ```
-node server.js       # Web mode (port 5000)
+node server.js       # Web mode (port 5000 by default, or PORT env var)
 npm run electron     # Electron mode
 ```
 
@@ -236,8 +236,14 @@ For diskless (CCBoot, iCafe) or Deep Freeze environments where local changes are
   - Denfi Points.exe → `data/settings-server.json`
   - `data/settings.json` is the legacy shared file (no longer used by either app)
   - `settings-store.js` `setAppRole(role)` sets the filename before `setDataDir()`
-  - First-time migration: if role-specific file doesn't exist, copies from legacy `settings.json`
+  - No migration from legacy files — each app starts fresh with its own setup
   - Coin/point rates are kept in sync via the existing sync mechanism (not shared file)
+- **Port Separation**: Each app uses a different port to prevent conflicts on the same machine
+  - Denfi Points.exe → port 5000 (set in `main-server.js`, no `PORT` env override)
+  - Denfi Auto Shutdown.exe → port 5001 (set in `main.js` as `const PORT = 5001`)
+  - `server.js` uses `process.env.PORT || 5000`; each Electron entry sets the env var
+  - On `EADDRINUSE`, `server.js` calls `process.exit(1)` instead of silently continuing
+  - Auto Shutdown `waitForServer` checks `appRole === 'auto-shutdown'` to reject wrong server
 - **Coin Logs Read-Only Mode**: When running as auto-shutdown, the zxc2 coin logs panel is view-only:
   - All add/delete UI controls are hidden via CSS class `.coin-logs-read-only .coin-logs-edit-only { display:none !important }`
   - Server-side `blockIfReadOnly` middleware returns 403 on all coin-log/rate write endpoints
