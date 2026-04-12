@@ -27,23 +27,6 @@ function setDataDir(dir) {
   settingsPath = path.join(dataDir, settingsFilename);
   uploadsDir = path.join(dataDir, 'uploads');
   ensureDirs();
-  migrateIfNeeded();
-}
-
-const migratedKeys = new Set();
-function migrateIfNeeded() {
-  const key = dataDir + '|' + settingsFilename;
-  if (migratedKeys.has(key)) return;
-  migratedKeys.add(key);
-  const legacyPath = path.join(dataDir, 'settings.json');
-  if (!fs.existsSync(settingsPath) && fs.existsSync(legacyPath)) {
-    try {
-      fs.copyFileSync(legacyPath, settingsPath);
-      console.log('[Settings] Migrated settings.json →', settingsFilename);
-    } catch (e) {
-      console.log('[Settings] Migration failed:', e.message);
-    }
-  }
 }
 
 function ensureDirs() {
@@ -59,7 +42,6 @@ function computeHmac(data) {
 
 function load() {
   ensureDirs();
-  migrateIfNeeded();
   try {
     const raw = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
     if (raw._sig) {
