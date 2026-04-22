@@ -1,0 +1,10 @@
+[Settings] App role: auto-shutdown → settings-client.json
+Ramses Auto Shutdown running at http://0.0.0.0:5000
+[Settings] WARNING: Data integrity mismatch — re-signing file (data preserved).
+[WS] Client connected, total: [33m1[39m
+[WS] Starting server-side polling
+[Sync] No Ramses Points server found on network
+[WS] Client connected, total: [33m2[39m
+[WS] Client disconnected, total: [33m1[39m
+[WS] Client connected, total: [33m2[39m
+[WS] Client disconnected, total: [33m1[39m
