@@ -53,11 +53,20 @@
       "!node_modules/electron-builder"
     ],
     "extraResources": [
-      { "from": "kiosk-setup.bat", "to": "kiosk-setup.bat" },
-      { "from": "kiosk-disable.bat", "to": "kiosk-disable.bat" }
+      {
+        "from": "kiosk-setup.bat",
+        "to": "kiosk-setup.bat"
+      },
+      {
+        "from": "kiosk-disable.bat",
+        "to": "kiosk-disable.bat"
+      }
     ],
     "extraFiles": [
-      { "from": "ramses-data-path.txt", "to": "ramses-data-path.txt" }
+      {
+        "from": "ramses-data-path.txt",
+        "to": "ramses-data-path.txt"
+      }
     ]
   },
   "keywords": [
@@ -70,7 +79,7 @@
   "license": "MIT",
   "dependencies": {
     "express": "^5.2.1",
-    "ws": "^8.20.0"
+    "ws": "^8.20.1"
   },
   "devDependencies": {
     "electron": "^41.0.4",
