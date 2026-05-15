@@ -727,6 +727,11 @@ function showLoginWindow(onReady) {
 
     focusGuardInterval = setInterval(() => {
       if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
+        // Defensive: re-apply skipTaskbar every tick. Windows clears this
+        // flag when explorer.exe restarts (it broadcasts TaskbarCreated and
+        // re-enumerates top-level windows), which would otherwise make our
+        // kiosk window appear on the taskbar.
+        try { loginWindow.setSkipTaskbar(true); } catch (_) {}
         if (!loginWindow.isFocused()) {
           loginWindow.moveTop();
           loginWindow.focus();
@@ -831,6 +836,11 @@ function showSessionWindow(onShown) {
 
   function checkForegroundAndManage() {
     if (!sessionWindow || sessionWindow.isDestroyed()) return;
+    // Defensive: re-apply skipTaskbar every tick. If explorer.exe crashes and
+    // restarts, Windows broadcasts TaskbarCreated and re-enumerates top-level
+    // windows, which would otherwise make the session overlay appear on the
+    // taskbar. Re-applying here restores the hidden state within ~2s.
+    try { sessionWindow.setSkipTaskbar(true); } catch (_) {}
     if (process.platform !== 'win32') {
       sessionWindow.setAlwaysOnTop(true, 'screen-saver');
       return;
