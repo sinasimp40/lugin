@@ -1,12 +1,36 @@
 const { app, Tray, Menu, nativeImage, BrowserWindow } = require('electron');
 const path = require('path');
+const appLock = require('./src/app-lock');
 
 process.env.RAMSES_APP_ROLE = 'points';
 
 let tray = null;
 let serverModule = null;
 
-app.on('ready', () => {
+const gotPointsLock = app.requestSingleInstanceLock();
+if (!gotPointsLock) {
+  app.exit(0);
+}
+
+app.on('ready', async () => {
+  // Cross-app exclusion: don't run if Auto-Shutdown is up on this PC.
+  const lockResult = await appLock.acquireLock('points');
+  if (!lockResult.acquired) {
+    const holder = lockResult.holder && lockResult.holder.role ? lockResult.holder.role : 'another Ramses app';
+    const friendly = holder === 'auto-shutdown' ? 'Ramses Auto Shutdown' : holder;
+    try {
+      const { dialog } = require('electron');
+      dialog.showErrorBox(
+        'Ramses Points',
+        `Cannot start: ${friendly} is already running on this PC.\n\n` +
+        `Auto-Shutdown and Ramses Points cannot run at the same time.\n` +
+        `Please close ${friendly} first, then try again.`
+      );
+    } catch (_) {}
+    app.exit(1);
+    return;
+  }
+
   process.env.RAMSES_LISTEN_HOST = '0.0.0.0';
 
   const fs = require('fs');
@@ -96,4 +120,8 @@ app.on('ready', () => {
 
 app.on('window-all-closed', (e) => {
   e.preventDefault();
+});
+
+app.on('before-quit', () => {
+  try { appLock.releaseLock(); } catch (_) {}
 });

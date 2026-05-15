@@ -1,8 +1,179 @@
 const { app, BrowserWindow, Menu, ipcMain, globalShortcut } = require('electron');
 const { exec, spawn } = require('child_process');
 const path = require('path');
+const appLock = require('./src/app-lock');
 
 process.env.RAMSES_APP_ROLE = 'auto-shutdown';
+
+const WATCHDOG_SCRIPT = `
+param(
+  [Parameter(Mandatory=$$true)][string]$$TargetExe,
+  [Parameter(Mandatory=$$true)][string]$$SentinelFile,
+  [Parameter(Mandatory=$$true)][string]$$LockFile,
+  [int]$$PollSeconds = 5,
+  [string]$$LogFile = ""
+)
+$$ErrorActionPreference = "Continue"
+function Write-Log($$msg) {
+  if ($$LogFile -ne "") {
+    try {
+      $$dir = Split-Path -Parent $$LogFile
+      if ($$dir -and -not (Test-Path $$dir)) { New-Item -ItemType Directory -Path $$dir -Force | Out-Null }
+      Add-Content -Path $$LogFile -Value ("[{0}] {1}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $$msg) -EA SilentlyContinue
+    } catch {}
+  }
+}
+if (Test-Path $$LockFile) {
+  try {
+    $$otherPid = (Get-Content $$LockFile -EA SilentlyContinue | Select-Object -First 1)
+    if ($$otherPid) { $$otherPid = "$$otherPid".Trim() }
+    if ($$otherPid -and (Get-Process -Id $$otherPid -EA SilentlyContinue)) {
+      Write-Log "Another watchdog (PID=$$otherPid) is already running. Exiting."
+      exit 0
+    }
+  } catch {}
+}
+try { Set-Content -Path $$LockFile -Value $$PID -EA Stop } catch { Write-Log "Lockfile write failed: $$($$_.Exception.Message)" }
+if ($$LogFile -ne "" -and (Test-Path $$LogFile)) {
+  try {
+    $$size = (Get-Item $$LogFile).Length
+    if ($$size -gt 524288) { $$tail = Get-Content $$LogFile -Tail 200; Set-Content -Path $$LogFile -Value $$tail }
+  } catch {}
+}
+$$ExeName = [System.IO.Path]::GetFileNameWithoutExtension($$TargetExe)
+Write-Log "Watchdog started PID=$$PID Target=$$ExeName Sentinel=$$SentinelFile"
+try {
+  while ($$true) {
+    if (Test-Path $$SentinelFile) {
+      Write-Log "Sentinel detected -- admin stop. Removing sentinel and exiting."
+      try { Remove-Item $$SentinelFile -Force -EA SilentlyContinue } catch {}
+      break
+    }
+    $$proc = Get-Process -Name $$ExeName -EA SilentlyContinue
+    if (-not $$proc) {
+      # Grace window: an admin-stop may have just been issued and the app
+      # exited before its sentinel write was observed. Wait, then re-check
+      # the sentinel before deciding to relaunch.
+      Start-Sleep -Seconds 3
+      if (Test-Path $$SentinelFile) {
+        Write-Log "Sentinel appeared during grace period -- admin stop. Exiting."
+        try { Remove-Item $$SentinelFile -Force -EA SilentlyContinue } catch {}
+        break
+      }
+      Write-Log "Target '$$ExeName' not running. Relaunching: $$TargetExe"
+      try { Start-Process -FilePath $$TargetExe -EA Stop; Write-Log "Relaunch issued." }
+      catch { Write-Log "Relaunch FAILED: $$($$_.Exception.Message)" }
+      Start-Sleep -Seconds 10
+      continue
+    }
+    Start-Sleep -Seconds $$PollSeconds
+  }
+} finally {
+  try { Remove-Item $$LockFile -Force -EA SilentlyContinue } catch {}
+  Write-Log "Watchdog process exiting."
+}
+`.replace(/\$\$/g, '$');
+
+let watchdogScriptPath = null;
+let activeSentinelFile = null;
+
+function writeAdminStopSentinel() {
+  if (!activeSentinelFile) return;
+  try {
+    require('fs').writeFileSync(activeSentinelFile, String(Date.now()));
+    console.log('[Watchdog] Sentinel written:', activeSentinelFile);
+  } catch (e) {
+    console.log('[Watchdog] Failed to write sentinel:', e.message);
+  }
+}
+
+function startWatchdog(dataDir) {
+  if (process.platform !== 'win32') return;
+  if (!app.isPackaged) {
+    console.log('[Watchdog] Skipped (app not packaged / dev mode).');
+    return;
+  }
+  const fs = require('fs');
+  const os = require('os');
+  const crypto = require('crypto');
+
+  try {
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+
+    const exePath = app.getPath('exe');
+    const sentinelFile = path.join(dataDir, 'admin-stopped.flag');
+    const lockFile = path.join(dataDir, 'watchdog.lock');
+    const logFile = path.join(dataDir, 'watchdog.log');
+    activeSentinelFile = sentinelFile;
+
+    // NOTE: we intentionally do NOT delete a pre-existing sentinel here.
+    // Sentinels are consumed only by a running watchdog. If one is present at
+    // startup it means a previous admin-stop has not yet been honored, and
+    // the next watchdog poll should consume it cleanly.
+
+    // Clean up orphaned watchdog scripts from previous launches.
+    try {
+      const tmpDir = os.tmpdir();
+      for (const f of fs.readdirSync(tmpDir)) {
+        if (/^ramses-watchdog-[0-9a-f]+\.ps1$/i.test(f)) {
+          try { fs.unlinkSync(path.join(tmpDir, f)); } catch (_) {}
+        }
+      }
+    } catch (_) {}
+
+    const wid = crypto.randomBytes(8).toString('hex');
+    const wpath = path.join(os.tmpdir(), `ramses-watchdog-${wid}.ps1`);
+    fs.writeFileSync(wpath, WATCHDOG_SCRIPT, { encoding: 'utf8', mode: 0o600 });
+    watchdogScriptPath = wpath;
+
+    const args = [
+      '-ExecutionPolicy', 'Bypass',
+      '-WindowStyle', 'Hidden',
+      '-NoProfile',
+      '-File', wpath,
+      '-TargetExe', exePath,
+      '-SentinelFile', sentinelFile,
+      '-LockFile', lockFile,
+      '-LogFile', logFile,
+    ];
+
+    const child = spawn('powershell.exe', args, {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+    child.on('error', (err) => console.log('[Watchdog] spawn error:', err.message));
+    child.unref();
+    console.log('[Watchdog] Spawned detached PID:', child.pid, 'log:', logFile);
+  } catch (e) {
+    console.log('[Watchdog] Failed to start:', e.message);
+  }
+}
+
+function ensureLogonScheduledTask() {
+  if (process.platform !== 'win32') return;
+  if (!app.isPackaged) return;
+  const { execSync } = require('child_process');
+  const taskName = 'RamsesAutoShutdownLaunch';
+  const exePath = app.getPath('exe');
+  try {
+    try {
+      const out = execSync(`schtasks /Query /TN "${taskName}" /FO LIST /V`, { encoding: 'utf8', windowsHide: true });
+      if (out && out.toLowerCase().includes(exePath.toLowerCase())) {
+        console.log('[Watchdog] Logon task already installed.');
+        return;
+      }
+      execSync(`schtasks /Delete /TN "${taskName}" /F`, { stdio: 'ignore', windowsHide: true });
+    } catch (_) {}
+    execSync(
+      `schtasks /Create /TN "${taskName}" /TR "\\"${exePath}\\"" /SC ONLOGON /F`,
+      { stdio: 'ignore', windowsHide: true }
+    );
+    console.log('[Watchdog] Logon task installed:', taskName);
+  } catch (e) {
+    console.log('[Watchdog] Logon task install skipped:', e.message);
+  }
+}
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
@@ -157,6 +328,8 @@ process.on('exit', () => {
 
 process.on('admin-stop-app', () => {
   console.log('[Electron] Admin stop-app received, cleaning up...');
+  try { writeAdminStopSentinel(); } catch (e) {}
+  try { appLock.releaseLock(); } catch (e) {}
   try { stopKeyboardHook(); } catch (e) {}
   try { cleanupHookScript(); } catch (e) {}
   try { unregisterKeyBlocks(); } catch (e) {}
@@ -264,6 +437,7 @@ app.on('before-quit', (event) => {
     isQuitting = true;
     event.preventDefault();
     console.log('[Electron] App closing, performing logout...');
+    try { appLock.releaseLock(); } catch (_) {}
     unregisterKeyBlocks();
     disableKioskLockdown();
     if (focusGuardInterval) {
@@ -285,7 +459,27 @@ app.on('second-instance', () => {
   }
 });
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Cross-app mutual exclusion MUST be the first awaited step so no startup
+  // side effects (server boot, window creation, watchdog spawn, task install)
+  // happen if the lock is denied.
+  const lockResult = await appLock.acquireLock('auto-shutdown');
+  if (!lockResult.acquired) {
+    const holder = lockResult.holder && lockResult.holder.role ? lockResult.holder.role : 'another Ramses app';
+    const friendly = holder === 'points' ? 'Ramses Points' : holder;
+    try {
+      const { dialog } = require('electron');
+      dialog.showErrorBox(
+        'Ramses Auto Shutdown',
+        `Cannot start: ${friendly} is already running on this PC.\n\n` +
+        `Auto-Shutdown and Ramses Points cannot run at the same time.\n` +
+        `Please close ${friendly} first, then try again.`
+      );
+    } catch (_) {}
+    app.exit(1);
+    return;
+  }
+
   process.env.PORT = String(PORT);
 
   const path = require('path');
@@ -349,6 +543,11 @@ app.whenReady().then(() => {
   settings.setDataDir(dataDir);
   coinLogs.setDataDir(dataDir);
   console.log('[Electron] Data dir:', dataDir);
+
+  // Self-arm protection: spawn detached watchdog + register logon task.
+  // Both are no-ops on non-Windows and in dev mode.
+  try { startWatchdog(dataDir); } catch (e) { console.log('[Watchdog] start error:', e.message); }
+  try { ensureLogonScheduledTask(); } catch (e) { console.log('[Watchdog] task error:', e.message); }
 
   function waitForServer(retries) {
     const http = require('http');
