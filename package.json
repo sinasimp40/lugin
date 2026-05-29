@@ -60,10 +60,6 @@
       {
         "from": "kiosk-disable.bat",
         "to": "kiosk-disable.bat"
-      },
-      {
-        "from": "watchdog.ps1",
-        "to": "watchdog.ps1"
       }
     ],
     "extraFiles": [

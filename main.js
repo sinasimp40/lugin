@@ -6,7 +6,6 @@ const appLock = require('./src/app-lock');
 process.env.DENFI_APP_ROLE = 'auto-shutdown';
 
 
-let watchdogScriptPath = null;
 let activeSentinelFile = null;
 
 function writeAdminStopSentinel() {
@@ -19,114 +18,6 @@ function writeAdminStopSentinel() {
   }
 }
 
-const WATCHDOG_TASK_NAME = 'DenfiAutoShutdownLaunch';
-
-// Resolve the standalone watchdog.ps1 that ships with the build. It is copied
-// into the app's resources directory via electron-builder "extraResources".
-function resolveWatchdogScript() {
-  const fs = require('fs');
-  const candidates = [
-    path.join(process.resourcesPath || '', 'watchdog.ps1'),
-    path.join(__dirname, 'watchdog.ps1'),
-  ];
-  for (const c of candidates) {
-    try { if (c && fs.existsSync(c)) return c; } catch (_) {}
-  }
-  return null;
-}
-
-// Build the PowerShell command line used as the scheduled-task action.
-function buildWatchdogAction(watchdogPs1, dataDir) {
-  // schtasks /TR wraps the whole action in double quotes, so every inner quote
-  // must be escaped as \" (here \\" in the JS template literal).
-  return `powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -NoProfile -File \\"${watchdogPs1}\\" -DataDir \\"${dataDir}\\"`;
-}
-
-// Register (or refresh) the ONLOGON scheduled task whose action runs the
-// standalone watchdog. Running under Task Scheduler is the whole point: the
-// watchdog then lives OUTSIDE the app's process job-object, so ending the app
-// in Task Manager cannot kill it.
-function installWatchdogTask(watchdogPs1, dataDir) {
-  if (process.platform !== 'win32') return false;
-  const { execSync } = require('child_process');
-  const action = buildWatchdogAction(watchdogPs1, dataDir);
-  try {
-    try {
-      const out = execSync(`schtasks /Query /TN "${WATCHDOG_TASK_NAME}" /FO LIST /V`, { encoding: 'utf8', windowsHide: true });
-      // Reinstall if the existing task does not already point at the watchdog
-      // script (e.g. upgraded from an older build that launched the exe).
-      if (out && out.toLowerCase().includes(watchdogPs1.toLowerCase())) {
-        console.log('[Watchdog] Logon task already up to date.');
-        return true;
-      }
-      execSync(`schtasks /Delete /TN "${WATCHDOG_TASK_NAME}" /F`, { stdio: 'ignore', windowsHide: true });
-    } catch (_) {}
-    execSync(
-      `schtasks /Create /TN "${WATCHDOG_TASK_NAME}" /TR "${action}" /SC ONLOGON /F`,
-      { stdio: 'ignore', windowsHide: true }
-    );
-    console.log('[Watchdog] Logon task installed:', WATCHDOG_TASK_NAME);
-    return true;
-  } catch (e) {
-    console.log('[Watchdog] Logon task install skipped:', e.message);
-    return false;
-  }
-}
-
-function startWatchdog(dataDir) {
-  if (process.platform !== 'win32') return;
-  if (!app.isPackaged) {
-    console.log('[Watchdog] Skipped (app not packaged / dev mode).');
-    return;
-  }
-  const fs = require('fs');
-  const os = require('os');
-  const { execSync } = require('child_process');
-
-  try {
-    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-
-    const sentinelFile = path.join(dataDir, 'admin-stopped.flag');
-    activeSentinelFile = sentinelFile;
-
-    // NOTE: we intentionally do NOT delete a pre-existing sentinel here.
-    // Sentinels are consumed only by a running watchdog. If one is present at
-    // startup it means a previous admin-stop has not yet been honored, and
-    // the next watchdog poll should consume it cleanly.
-
-    // Clean up orphaned temp watchdog scripts written by older builds.
-    try {
-      const tmpDir = os.tmpdir();
-      for (const f of fs.readdirSync(tmpDir)) {
-        if (/^denfi-watchdog-[0-9a-f]+\.ps1$/i.test(f)) {
-          try { fs.unlinkSync(path.join(tmpDir, f)); } catch (_) {}
-        }
-      }
-    } catch (_) {}
-
-    const watchdogPs1 = resolveWatchdogScript();
-    if (!watchdogPs1) {
-      console.log('[Watchdog] watchdog.ps1 not found in resources; cannot start.');
-      return;
-    }
-    watchdogScriptPath = watchdogPs1;
-
-    // 1) Ensure the watchdog runs at every logon.
-    installWatchdogTask(watchdogPs1, dataDir);
-
-    // 2) Start it NOW (without waiting for a re-logon). Launching via the
-    //    scheduler detaches it from this app's job-object so an "End task"
-    //    on the app can never take the watchdog down with it.
-    try {
-      execSync(`schtasks /Run /TN "${WATCHDOG_TASK_NAME}"`, { stdio: 'ignore', windowsHide: true });
-      console.log('[Watchdog] Started via scheduled task. Script:', watchdogPs1);
-    } catch (e) {
-      console.log('[Watchdog] schtasks /Run failed:', e.message);
-    }
-  } catch (e) {
-    console.log('[Watchdog] Failed to start:', e.message);
-  }
-}
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
@@ -614,9 +505,12 @@ app.whenReady().then(async () => {
   coinLogs.setDataDir(dataDir);
   console.log('[Electron] Data dir:', dataDir);
 
-  // Self-arm protection: spawn detached watchdog + register logon task.
-  // Both are no-ops on non-Windows and in dev mode.
-  try { startWatchdog(dataDir); } catch (e) { console.log('[Watchdog] start error:', e.message); }
+  // The watchdog is no longer baked into the app. It is now a standalone
+  // PowerShell script (denfi-watchdog.ps1) that the operator installs ONCE per
+  // PC and which runs independently under Task Scheduler. The app only records
+  // where the admin-stop sentinel lives so "Stop App" can tell the external
+  // watchdog to stand down.
+  try { activeSentinelFile = path.join(dataDir, 'admin-stopped.flag'); } catch (_) {}
 
   function waitForServer(retries) {
     const http = require('http');
