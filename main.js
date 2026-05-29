@@ -682,6 +682,24 @@ function showLoginWindow(onReady) {
 
   loginWindow.webContents.on('context-menu', (e) => e.preventDefault());
 
+  // Force the lock screen back into view if anything minimizes or hides it
+  // (e.g. Win+D / "Show desktop", Win+M, or a script calling ShowWindow).
+  function forceLoginVisible() {
+    if (!loginWindow || loginWindow.isDestroyed()) return;
+    if (currentState !== 'logged-out') return;
+    try {
+      if (loginWindow.isMinimized()) loginWindow.restore();
+      if (!loginWindow.isVisible()) loginWindow.show();
+      loginWindow.setKiosk(true);
+      loginWindow.setAlwaysOnTop(true, 'screen-saver');
+      loginWindow.moveTop();
+      loginWindow.focus();
+    } catch (_) {}
+  }
+  loginWindow.on('minimize', (e) => { e.preventDefault(); setImmediate(forceLoginVisible); });
+  loginWindow.on('hide', () => setImmediate(forceLoginVisible));
+  loginWindow.on('restore', () => setImmediate(forceLoginVisible));
+
   let windowShown = false;
   let readyCalled = false;
 
@@ -748,7 +766,10 @@ function showLoginWindow(onReady) {
         // re-enumerates top-level windows), which would otherwise make our
         // kiosk window appear on the taskbar.
         try { loginWindow.setSkipTaskbar(true); } catch (_) {}
-        if (!loginWindow.isFocused()) {
+        // Re-show if anything managed to minimize or hide the lock screen.
+        if (loginWindow.isMinimized() || !loginWindow.isVisible()) {
+          forceLoginVisible();
+        } else if (!loginWindow.isFocused()) {
           loginWindow.moveTop();
           loginWindow.focus();
         }
