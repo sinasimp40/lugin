@@ -3,7 +3,7 @@ const { exec, spawn } = require('child_process');
 const path = require('path');
 const appLock = require('./src/app-lock');
 
-process.env.RAMSES_APP_ROLE = 'auto-shutdown';
+process.env.DENFI_APP_ROLE = 'auto-shutdown';
 
 const WATCHDOG_SCRIPT = `
 param(
@@ -115,14 +115,14 @@ function startWatchdog(dataDir) {
     try {
       const tmpDir = os.tmpdir();
       for (const f of fs.readdirSync(tmpDir)) {
-        if (/^ramses-watchdog-[0-9a-f]+\.ps1$/i.test(f)) {
+        if (/^denfi-watchdog-[0-9a-f]+\.ps1$/i.test(f)) {
           try { fs.unlinkSync(path.join(tmpDir, f)); } catch (_) {}
         }
       }
     } catch (_) {}
 
     const wid = crypto.randomBytes(8).toString('hex');
-    const wpath = path.join(os.tmpdir(), `ramses-watchdog-${wid}.ps1`);
+    const wpath = path.join(os.tmpdir(), `denfi-watchdog-${wid}.ps1`);
     fs.writeFileSync(wpath, WATCHDOG_SCRIPT, { encoding: 'utf8', mode: 0o600 });
     watchdogScriptPath = wpath;
 
@@ -154,7 +154,7 @@ function ensureLogonScheduledTask() {
   if (process.platform !== 'win32') return;
   if (!app.isPackaged) return;
   const { execSync } = require('child_process');
-  const taskName = 'RamsesAutoShutdownLaunch';
+  const taskName = 'DenfiAutoShutdownLaunch';
   const exePath = app.getPath('exe');
   try {
     try {
@@ -256,7 +256,7 @@ function startLockEnforcement() {
   const fs = require('fs');
   const crypto = require('crypto');
   const uniqueId = crypto.randomBytes(8).toString('hex');
-  const guardPath = path.join(os.tmpdir(), `ramses-lock-guard-${uniqueId}.ps1`);
+  const guardPath = path.join(os.tmpdir(), `denfi-lock-guard-${uniqueId}.ps1`);
   try {
     fs.writeFileSync(guardPath, LOCK_GUARD_SCRIPT, { encoding: 'utf8', mode: 0o600 });
     lockGuardScriptPath = guardPath;
@@ -582,14 +582,14 @@ app.whenReady().then(async () => {
   // happen if the lock is denied.
   const lockResult = await appLock.acquireLock('auto-shutdown');
   if (!lockResult.acquired) {
-    const holder = lockResult.holder && lockResult.holder.role ? lockResult.holder.role : 'another Ramses app';
-    const friendly = holder === 'points' ? 'Ramses Points' : holder;
+    const holder = lockResult.holder && lockResult.holder.role ? lockResult.holder.role : 'another Denfi app';
+    const friendly = holder === 'points' ? 'Denfi Points' : holder;
     try {
       const { dialog } = require('electron');
       dialog.showErrorBox(
-        'Ramses Auto Shutdown',
+        'Denfi Auto Shutdown',
         `Cannot start: ${friendly} is already running on this PC.\n\n` +
-        `Auto-Shutdown and Ramses Points cannot run at the same time.\n` +
+        `Auto-Shutdown and Denfi Points cannot run at the same time.\n` +
         `Please close ${friendly} first, then try again.`
       );
     } catch (_) {}
@@ -609,7 +609,7 @@ app.whenReady().then(async () => {
 
   let syncServerUrl = '';
 
-  const dataPathFile = path.join(path.dirname(app.getPath('exe')), 'ramses-data-path.txt');
+  const dataPathFile = path.join(path.dirname(app.getPath('exe')), 'denfi-data-path.txt');
   try {
     if (fs.existsSync(dataPathFile)) {
       const raw = fs.readFileSync(dataPathFile, 'utf8').trim();
@@ -620,21 +620,21 @@ app.whenReady().then(async () => {
           console.log('[Electron] Using HTTP sync server:', syncServerUrl);
         } else {
           dataDir = customPath;
-          console.log('[Electron] Using custom data path from ramses-data-path.txt:', dataDir);
+          console.log('[Electron] Using custom data path from denfi-data-path.txt:', dataDir);
         }
       }
     }
   } catch (e) {
-    console.log('[Electron] Error reading ramses-data-path.txt:', e.message);
+    console.log('[Electron] Error reading denfi-data-path.txt:', e.message);
   }
 
-  if (process.env.RAMSES_DATA_DIR) {
-    dataDir = process.env.RAMSES_DATA_DIR;
-    console.log('[Electron] Using data path from RAMSES_DATA_DIR env:', dataDir);
+  if (process.env.DENFI_DATA_DIR) {
+    dataDir = process.env.DENFI_DATA_DIR;
+    console.log('[Electron] Using data path from DENFI_DATA_DIR env:', dataDir);
   }
 
-  if (process.env.RAMSES_SYNC_SERVER) {
-    syncServerUrl = process.env.RAMSES_SYNC_SERVER.replace(/\/+$/, '');
+  if (process.env.DENFI_SYNC_SERVER) {
+    syncServerUrl = process.env.DENFI_SYNC_SERVER.replace(/\/+$/, '');
     console.log('[Electron] Using sync server from env:', syncServerUrl);
   }
 
@@ -679,7 +679,7 @@ app.whenReady().then(async () => {
               if (data.registered !== undefined && data.appRole === 'auto-shutdown') {
                 resolve();
               } else if (data.registered !== undefined && data.appRole && data.appRole !== 'auto-shutdown') {
-                reject(new Error('Port ' + PORT + ' is being used by Ramses Points. Both apps cannot run on the same port.'));
+                reject(new Error('Port ' + PORT + ' is being used by Denfi Points. Both apps cannot run on the same port.'));
               } else {
                 retry();
               }
@@ -705,7 +705,7 @@ app.whenReady().then(async () => {
   }
 
   if (!syncServerUrl) {
-    process.env.RAMSES_LISTEN_HOST = '0.0.0.0';
+    process.env.DENFI_LISTEN_HOST = '0.0.0.0';
     console.log('[Electron] Server mode: listening on all interfaces (0.0.0.0)');
   }
 
@@ -718,7 +718,7 @@ app.whenReady().then(async () => {
   } catch (err) {
     console.error('[Electron] Failed to start server:', err);
     const { dialog } = require('electron');
-    dialog.showErrorBox('Ramses Auto Shutdown', 'Server failed to start:\n' + err.message);
+    dialog.showErrorBox('Denfi Auto Shutdown', 'Server failed to start:\n' + err.message);
     app.quit();
     return;
   }
@@ -728,7 +728,7 @@ app.whenReady().then(async () => {
   }).catch((err) => {
     console.error('[Electron] Server startup failed:', err.message);
     const { dialog } = require('electron');
-    dialog.showErrorBox('Ramses Auto Shutdown', 'Server did not respond.\nPort ' + PORT + ' may be in use by another program.\n\nClose any other instances and try again.\n\n' + err.message);
+    dialog.showErrorBox('Denfi Auto Shutdown', 'Server did not respond.\nPort ' + PORT + ' may be in use by another program.\n\nClose any other instances and try again.\n\n' + err.message);
     app.quit();
   });
 });
@@ -788,7 +788,7 @@ function showLoginWindow(onReady) {
 
   loginWindow = new BrowserWindow({
     x, y, width, height,
-    title: 'Ramses Auto Shutdown',
+    title: 'Denfi Auto Shutdown',
     show: false,
     frame: false,
     resizable: false,
@@ -914,7 +914,7 @@ function showSessionWindow(onShown) {
     height: SESSION_HEIGHT,
     x: sessionX,
     y: sessionY,
-    title: 'Ramses Auto Shutdown Session',
+    title: 'Denfi Auto Shutdown Session',
     frame: false,
     resizable: false,
     maximizable: false,

@@ -1,6 +1,6 @@
 const http = require('http');
 
-const LOCK_PORT = parseInt(process.env.RAMSES_LOCK_PORT || '47318', 10);
+const LOCK_PORT = parseInt(process.env.DENFI_LOCK_PORT || '47318', 10);
 const LOCK_HOST = '127.0.0.1';
 
 let lockServer = null;
@@ -9,7 +9,7 @@ let heldRole = null;
 function acquireLock(role) {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
-      if (req.url === '/ramses-role') {
+      if (req.url === '/denfi-role') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ role: heldRole, pid: process.pid }));
         return;
@@ -38,7 +38,7 @@ function acquireLock(role) {
 function queryHolder() {
   return new Promise((resolve) => {
     const req = http.get(
-      { host: LOCK_HOST, port: LOCK_PORT, path: '/ramses-role', timeout: 1500 },
+      { host: LOCK_HOST, port: LOCK_PORT, path: '/denfi-role', timeout: 1500 },
       (res) => {
         let body = '';
         res.on('data', (c) => (body += c));

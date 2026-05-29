@@ -2,7 +2,7 @@ const { app, Tray, Menu, nativeImage, BrowserWindow } = require('electron');
 const path = require('path');
 const appLock = require('./src/app-lock');
 
-process.env.RAMSES_APP_ROLE = 'points';
+process.env.DENFI_APP_ROLE = 'points';
 
 let tray = null;
 let serverModule = null;
@@ -16,14 +16,14 @@ app.on('ready', async () => {
   // Cross-app exclusion: don't run if Auto-Shutdown is up on this PC.
   const lockResult = await appLock.acquireLock('points');
   if (!lockResult.acquired) {
-    const holder = lockResult.holder && lockResult.holder.role ? lockResult.holder.role : 'another Ramses app';
-    const friendly = holder === 'auto-shutdown' ? 'Ramses Auto Shutdown' : holder;
+    const holder = lockResult.holder && lockResult.holder.role ? lockResult.holder.role : 'another Denfi app';
+    const friendly = holder === 'auto-shutdown' ? 'Denfi Auto Shutdown' : holder;
     try {
       const { dialog } = require('electron');
       dialog.showErrorBox(
-        'Ramses Points',
+        'Denfi Points',
         `Cannot start: ${friendly} is already running on this PC.\n\n` +
-        `Auto-Shutdown and Ramses Points cannot run at the same time.\n` +
+        `Auto-Shutdown and Denfi Points cannot run at the same time.\n` +
         `Please close ${friendly} first, then try again.`
       );
     } catch (_) {}
@@ -31,7 +31,7 @@ app.on('ready', async () => {
     return;
   }
 
-  process.env.RAMSES_LISTEN_HOST = '0.0.0.0';
+  process.env.DENFI_LISTEN_HOST = '0.0.0.0';
 
   const fs = require('fs');
   const exeDir = path.dirname(app.getPath('exe'));
@@ -40,7 +40,7 @@ app.on('ready', async () => {
   try {
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
   } catch (e) {
-    console.error('[Ramses Points] Cannot create data dir:', e.message);
+    console.error('[Denfi Points] Cannot create data dir:', e.message);
   }
 
   const settings = require('./src/settings-store');
@@ -52,9 +52,9 @@ app.on('ready', async () => {
   try {
     serverModule = require('./server');
   } catch (err) {
-    console.error('[Ramses Points] Failed to start server:', err);
+    console.error('[Denfi Points] Failed to start server:', err);
     const { dialog } = require('electron');
-    dialog.showErrorBox('Ramses Points', 'Server failed to start:\n' + err.message);
+    dialog.showErrorBox('Denfi Points', 'Server failed to start:\n' + err.message);
     app.quit();
     return;
   }
@@ -70,10 +70,10 @@ app.on('ready', async () => {
   }
 
   tray = new Tray(trayIcon);
-  tray.setToolTip('Ramses Points Server — Running on port 5000');
+  tray.setToolTip('Denfi Points Server — Running on port 5000');
 
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'Ramses Points Server', enabled: false },
+    { label: 'Denfi Points Server', enabled: false },
     { label: 'Port: 5000 (0.0.0.0)', enabled: false },
     { label: 'Data: ' + dataDir, enabled: false },
     { type: 'separator' },
@@ -83,7 +83,7 @@ app.on('ready', async () => {
         const win = new BrowserWindow({
           width: 900,
           height: 700,
-          title: 'Ramses Points — Coin Logs',
+          title: 'Denfi Points — Coin Logs',
           icon: fs.existsSync(iconPath) ? iconPath : undefined,
           webPreferences: { nodeIntegration: false, contextIsolation: true }
         });
@@ -113,9 +113,9 @@ app.on('ready', async () => {
     contextMenu.items[4].click();
   });
 
-  console.log('[Ramses Points] Server running on 0.0.0.0:5000');
-  console.log('[Ramses Points] Data directory:', dataDir);
-  console.log('[Ramses Points] Right-click tray icon for options');
+  console.log('[Denfi Points] Server running on 0.0.0.0:5000');
+  console.log('[Denfi Points] Data directory:', dataDir);
+  console.log('[Denfi Points] Right-click tray icon for options');
 });
 
 app.on('window-all-closed', (e) => {
