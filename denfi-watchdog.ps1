@@ -41,13 +41,34 @@ $ExeBaseName = "denfi-auto-shutdown"
 function Find-TargetExe {
   param([string]$hint)
   if ($hint -ne "" -and (Test-Path $hint)) { return (Resolve-Path $hint).Path }
+
+  # Folder this script is running from (portable builds usually sit next to it).
+  $scriptDir = ""
+  if ($PSScriptRoot) { $scriptDir = $PSScriptRoot }
+  elseif ($PSCommandPath) { $scriptDir = Split-Path -Parent $PSCommandPath }
+
   $candidates = @(
     (Join-Path ${env:ProgramFiles} "Denfi Auto Shutdown\$ExeBaseName.exe"),
     (Join-Path ${env:ProgramFiles(x86)} "Denfi Auto Shutdown\$ExeBaseName.exe"),
     (Join-Path $env:LOCALAPPDATA "Programs\denfi-auto-shutdown\$ExeBaseName.exe"),
     (Join-Path $env:LOCALAPPDATA "Programs\Denfi Auto Shutdown\$ExeBaseName.exe")
   )
-  foreach ($c in $candidates) { if ($c -and (Test-Path $c)) { return $c } }
+  if ($scriptDir -ne "") {
+    $candidates += (Join-Path $scriptDir "$ExeBaseName.exe")
+    $candidates += (Join-Path $scriptDir "Denfi Auto Shutdown\$ExeBaseName.exe")
+    $candidates += (Join-Path $scriptDir "win-unpacked\$ExeBaseName.exe")
+  }
+  foreach ($c in $candidates) { if ($c -and (Test-Path $c)) { return (Resolve-Path $c).Path } }
+
+  # Last resort: recursively search the script's folder (handles unknown
+  # sub-folder layouts of portable/unpacked builds).
+  if ($scriptDir -ne "" -and (Test-Path $scriptDir)) {
+    try {
+      $found = Get-ChildItem -Path $scriptDir -Filter "$ExeBaseName.exe" -Recurse -File -EA SilentlyContinue |
+               Select-Object -First 1
+      if ($found) { return $found.FullName }
+    } catch {}
+  }
   return ""
 }
 
