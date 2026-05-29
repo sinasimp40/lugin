@@ -187,6 +187,7 @@ function enableKioskLockdown() {
   console.log('[Kiosk] Enabling lockdown...');
 
   startKeyboardHook();
+  startLockEnforcement();
 }
 
 function disableKioskLockdown() {
@@ -194,6 +195,120 @@ function disableKioskLockdown() {
   console.log('[Kiosk] Disabling lockdown...');
 
   stopKeyboardHook();
+  stopLockEnforcement();
+}
+
+// While the lock screen is active, no other application may hold the
+// foreground. Exclusive-fullscreen games (e.g. GTA) can render ABOVE an
+// always-on-top "screen-saver" level window, visually bypassing the lock.
+// To defeat that, a single persistent PowerShell guard continuously
+// force-minimizes any foreground window whose owning process is not OUR app.
+//
+// Trust is decided by the full executable PATH (not the process name) so it
+// (a) cannot be spoofed by simply renaming an exe, and (b) correctly trusts
+// every Electron helper process (gpu/renderer) which all share our exe path.
+const LOCK_GUARD_SCRIPT = `
+param(
+  [Parameter(Mandatory=$$true)][string]$$SelfPath,
+  [int]$$PollMs = 1000
+)
+$$ErrorActionPreference = "Continue"
+Add-Type -MemberDefinition @"
+[DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
+[DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmd);
+"@ -Name W -Namespace LG
+$$self = $$SelfPath.ToLower()
+while ($$true) {
+  try {
+    $$h = [LG.W]::GetForegroundWindow()
+    if ($$h -ne [IntPtr]::Zero) {
+      $$fpid = 0
+      [LG.W]::GetWindowThreadProcessId($$h, [ref]$$fpid) | Out-Null
+      $$p = Get-Process -Id $$fpid -EA SilentlyContinue
+      $$path = ""
+      if ($$p) { try { $$path = $$p.Path } catch { $$path = "" } }
+      if ($$path -and $$path.ToLower() -ne $$self) {
+        [LG.W]::ShowWindowAsync($$h, 11) | Out-Null
+        [Console]::Out.WriteLine("MINIMIZED " + $$p.ProcessName)
+        [Console]::Out.Flush()
+      }
+    }
+  } catch {}
+  Start-Sleep -Milliseconds $$PollMs
+}
+`.replace(/\$\$/g, '$');
+
+let lockGuardProcess = null;
+let lockGuardScriptPath = null;
+
+function cleanupLockGuardScript() {
+  if (lockGuardScriptPath) {
+    try { require('fs').unlinkSync(lockGuardScriptPath); } catch (e) {}
+    lockGuardScriptPath = null;
+  }
+}
+
+function startLockEnforcement() {
+  if (process.platform !== 'win32') return;
+  if (lockGuardProcess) return;
+  const os = require('os');
+  const fs = require('fs');
+  const crypto = require('crypto');
+  const uniqueId = crypto.randomBytes(8).toString('hex');
+  const guardPath = path.join(os.tmpdir(), `ramses-lock-guard-${uniqueId}.ps1`);
+  try {
+    fs.writeFileSync(guardPath, LOCK_GUARD_SCRIPT, { encoding: 'utf8', mode: 0o600 });
+    lockGuardScriptPath = guardPath;
+
+    lockGuardProcess = spawn('powershell.exe', [
+      '-ExecutionPolicy', 'Bypass',
+      '-WindowStyle', 'Hidden',
+      '-NoProfile',
+      '-File', guardPath,
+      '-SelfPath', app.getPath('exe'),
+    ], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+
+    lockGuardProcess.stdout.on('data', (data) => {
+      const line = data.toString().trim();
+      if (line) {
+        console.log('[Lock]', line, '- reclaiming lock focus');
+        reclaimFocus();
+      }
+    });
+    lockGuardProcess.stderr.on('data', (data) => {
+      console.log('[Lock Guard Error]', data.toString().trim());
+    });
+    lockGuardProcess.on('error', (err) => {
+      console.log('[Lock Guard] spawn error:', err.message);
+      lockGuardProcess = null;
+      cleanupLockGuardScript();
+    });
+    lockGuardProcess.on('exit', (code) => {
+      console.log('[Lock Guard] exited with code', code);
+      lockGuardProcess = null;
+      cleanupLockGuardScript();
+    });
+    console.log('[Lock] Foreground enforcement started.');
+  } catch (e) {
+    console.log('[Lock] Failed to start foreground enforcement:', e.message);
+    cleanupLockGuardScript();
+  }
+}
+
+function stopLockEnforcement() {
+  if (lockGuardProcess) {
+    const pid = lockGuardProcess.pid;
+    try { lockGuardProcess.kill('SIGKILL'); } catch (_) {}
+    lockGuardProcess = null;
+    cleanupLockGuardScript();
+    if (process.platform === 'win32' && pid) {
+      try {
+        require('child_process').execSync(`taskkill /F /PID ${pid} /T`, { stdio: 'ignore' });
+      } catch (_) {}
+    }
+    console.log('[Lock] Foreground enforcement stopped.');
+  }
 }
 
 const HOOK_SCRIPT = `
@@ -324,6 +439,7 @@ process.on('unhandledRejection', (err) => {
 process.on('exit', () => {
   try { stopKeyboardHook(); } catch (e) {}
   try { cleanupHookScript(); } catch (e) {}
+  try { stopLockEnforcement(); } catch (e) {}
 });
 
 process.on('admin-stop-app', () => {
@@ -332,6 +448,7 @@ process.on('admin-stop-app', () => {
   try { appLock.releaseLock(); } catch (e) {}
   try { stopKeyboardHook(); } catch (e) {}
   try { cleanupHookScript(); } catch (e) {}
+  try { stopLockEnforcement(); } catch (e) {}
   try { unregisterKeyBlocks(); } catch (e) {}
   if (focusGuardInterval) {
     clearInterval(focusGuardInterval);
@@ -607,8 +724,7 @@ app.whenReady().then(async () => {
   }
 
   waitForServer(40).then(async () => {
-    
-    showLoginWindow();
+    await bootInitialWindow();
   }).catch((err) => {
     console.error('[Electron] Server startup failed:', err.message);
     const { dialog } = require('electron');
@@ -616,6 +732,51 @@ app.whenReady().then(async () => {
     app.quit();
   });
 });
+
+function fetchSessionStatus() {
+  return new Promise((resolve) => {
+    const http = require('http');
+    const req = http.get(`${APP_URL}/api/hotspot/status`, (res) => {
+      let body = '';
+      res.on('data', (c) => body += c);
+      res.on('end', () => {
+        try { resolve(JSON.parse(body)); } catch (_) { resolve(null); }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.setTimeout(6000, () => { try { req.destroy(); } catch (_) {} resolve(null); });
+  });
+}
+
+// Decide which UI to show at startup. The watchdog relaunches this app whenever
+// it is killed/end-tasked. If that happens mid-session we must RESTORE the
+// running session instead of dumping the user to the lock screen. If there is
+// no active session (or time is up, or the hotspot is unreachable) we fail
+// SAFE and show the lock screen so a paid game can never be played for free.
+async function bootInitialWindow() {
+  let restore = false;
+  try {
+    const status = await fetchSessionStatus();
+    if (status && status.success && status.data && status.data.isLogin) {
+      const timeLeft = parseInt(status.data.sessionTimeLeft) || 0;
+      if (timeLeft > 0) restore = true;
+    }
+  } catch (_) {}
+
+  if (restore) {
+    console.log('[Electron] Active session detected on boot — restoring session mode.');
+    currentState = 'logged-in';
+    if (sessionWindow && !sessionWindow.isDestroyed()) {
+      sessionWindow.destroy();
+      sessionWindow = null;
+    }
+    showSessionWindow(() => {});
+    startPolling();
+  } else {
+    console.log('[Electron] No active session on boot — showing lock screen.');
+    showLoginWindow();
+  }
+}
 
 function showLoginWindow(onReady) {
   const { screen } = require('electron');
