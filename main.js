@@ -288,6 +288,7 @@ process.on('exit', () => {
 
 process.on('admin-stop-app', () => {
   console.log('[Electron] Admin stop-app received, cleaning up...');
+  isQuitting = true;
   try { writeAdminStopSentinel(); } catch (e) {}
   try { appLock.releaseLock(); } catch (e) {}
   try { stopKeyboardHook(); } catch (e) {}
@@ -418,6 +419,32 @@ app.on('second-instance', () => {
   } else if (sessionWindow && !sessionWindow.isDestroyed()) {
     sessionWindow.focus();
   }
+});
+
+// Self-heal: an Electron app is several OS processes (main + GPU + renderer +
+// utility helpers) — all show as "Denfi Auto Shutdown" in Task Manager. The
+// external watchdog only relaunches when ALL of them are gone (i.e. the main
+// process is killed). If someone instead ends a single child process (e.g. the
+// window's renderer or the GPU process), the main process survives, so the
+// watchdog stays idle and the app is left broken with no visible window. Catch
+// those child deaths here and relaunch the whole app cleanly so it always
+// comes back. The single-instance lock makes any race with the watchdog safe.
+let isSelfHealing = false;
+function selfHealRelaunch(tag, reason) {
+  if (isQuitting || isSelfHealing) return;
+  if (reason === 'clean-exit') return; // normal window teardown, not a kill
+  isSelfHealing = true;
+  console.error(`[Electron] ${tag} (reason=${reason}) — relaunching app to recover.`);
+  try { app.relaunch(); } catch (_) {}
+  app.exit(0);
+}
+
+app.on('render-process-gone', (_event, _webContents, details) => {
+  selfHealRelaunch('render-process-gone', details && details.reason);
+});
+
+app.on('child-process-gone', (_event, details) => {
+  selfHealRelaunch('child-process-gone', details && details.reason);
 });
 
 app.whenReady().then(async () => {
