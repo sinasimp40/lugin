@@ -818,6 +818,21 @@ function showSessionWindow(onShown) {
   // or otherwise tamper with the always-on-top session widget.
   sessionWindow.webContents.on('context-menu', (e) => e.preventDefault());
 
+  // Suppress the native Windows system menu (Restore/Move/Size/Minimize/Close)
+  // that pops up when right-clicking a frameless window's drag region. There is
+  // no public API to remove WS_SYSMENU, so we intercept WM_INITMENU and cancel
+  // the menu by toggling the window's enabled state (well-known Electron trick).
+  if (process.platform === 'win32') {
+    const WM_INITMENU = 0x0116;
+    try {
+      sessionWindow.hookWindowMessage(WM_INITMENU, () => {
+        if (!sessionWindow || sessionWindow.isDestroyed()) return;
+        sessionWindow.setEnabled(false);
+        sessionWindow.setEnabled(true);
+      });
+    } catch (_) {}
+  }
+
   let sessionReady = false;
 
   sessionWindow.on('will-move', (event, newBounds) => {
