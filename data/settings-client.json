@@ -9,11 +9,7 @@
       "order": 0
     }
   ],
-  "backgroundImage": {
-    "filename": "background.png",
-    "mimeType": "image/png",
-    "size": 2270006
-  },
+  "backgroundImage": null,
   "fullscreenBypass": [
     "valorant.exe",
     "league of legends.exe",
@@ -52,6 +48,6 @@
       "points": 1
     }
   ],
-  "_sig": "5922746f3449181546a53668abcc86130465c8ff484d6b74ff5b1b49eef989e1",
+  "_sig": "818b1fbe8aed79d182e05c97369e54dd5a85fb61cd189e11c52545c8971a8bf9",
   "adSlideSeconds": 5
 }
