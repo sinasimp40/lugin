@@ -138,6 +138,78 @@
       overflow-y: auto;
     }
     .login-panel.hidden { display: none; }
+    .login-panel.form-collapsed { display: none; }
+    #login-panel:not(.hidden):not(.form-collapsed) {
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(7px);
+      animation: form-fade-in 0.4s ease;
+    }
+    @keyframes form-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+    /* ===== Tap-to-login launcher ===== */
+    #login-launcher {
+      position: fixed; inset: 0; z-index: 3;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 32px; padding: 24px;
+      opacity: 1; transition: opacity 0.4s ease;
+    }
+    #login-launcher.hidden { opacity: 0; pointer-events: none; visibility: hidden; }
+    .launcher-name {
+      font-family: 'Orbitron', sans-serif; font-weight: 700;
+      font-size: clamp(22px, 4vw, 44px); letter-spacing: 4px;
+      color: var(--login-color, #ff8c00);
+      text-shadow: 0 0 18px var(--login-color-50, rgba(255,140,0,0.5)), 0 2px 8px rgba(0,0,0,0.8);
+      text-align: center;
+    }
+    .launcher-btn {
+      position: relative; cursor: pointer; -webkit-app-region: no-drag;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+      width: 200px; height: 200px; border-radius: 50%;
+      background: rgba(12,12,20,0.55);
+      border: 2px solid var(--login-color-50, rgba(255,140,0,0.5));
+      color: var(--login-color, #ff8c00);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 30px var(--login-color-25, rgba(255,140,0,0.25)), inset 0 0 30px rgba(0,0,0,0.4);
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+      animation: launcher-pulse 2.4s ease-in-out infinite;
+    }
+    .launcher-btn:hover {
+      transform: scale(1.06);
+      border-color: var(--login-color, #ff8c00);
+      box-shadow: 0 0 50px var(--login-color-50, rgba(255,140,0,0.5)), inset 0 0 30px rgba(0,0,0,0.4);
+    }
+    .launcher-btn:active { transform: scale(0.98); }
+    @keyframes launcher-pulse {
+      0%, 100% { box-shadow: 0 0 30px var(--login-color-25, rgba(255,140,0,0.25)), inset 0 0 30px rgba(0,0,0,0.4); }
+      50% { box-shadow: 0 0 55px var(--login-color-50, rgba(255,140,0,0.5)), inset 0 0 30px rgba(0,0,0,0.4); }
+    }
+    .launcher-btn-icon { font-size: 58px; line-height: 1; filter: drop-shadow(0 0 12px var(--login-color-50, rgba(255,140,0,0.5))); }
+    .launcher-btn-label { font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: 3px; }
+    .launcher-hint {
+      font-family: 'Share Tech Mono', monospace; font-size: 12px; letter-spacing: 2px;
+      color: var(--login-color-50, rgba(255,140,0,0.5)); text-transform: uppercase;
+    }
+    .launcher-shutdown {
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+      padding: 12px 26px; border-radius: 6px;
+      background: rgba(0,0,0,0.45); border: 1px solid var(--login-color-15, rgba(255,140,0,0.15));
+      backdrop-filter: blur(6px);
+    }
+    .launcher-shutdown.hidden { display: none; }
+    .launcher-shutdown-label { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--login-color-50, rgba(255,140,0,0.5)); text-transform: uppercase; }
+    .launcher-shutdown-time { font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: 2px; color: var(--login-color, #ff8c00); text-shadow: 0 0 12px var(--login-color-50, rgba(255,140,0,0.5)); }
+    .launcher-shutdown-time.danger { color: #ff4040; text-shadow: 0 0 14px rgba(255,64,64,0.6); }
+
+    .form-close-btn {
+      position: absolute; top: 10px; right: 12px; z-index: 5;
+      width: 34px; height: 34px; border-radius: 50%;
+      background: rgba(0,0,0,0.4); border: 1px solid var(--login-color-25, rgba(255,140,0,0.25));
+      color: var(--login-color, #ff8c00); font-size: 16px; line-height: 1; cursor: pointer;
+      -webkit-app-region: no-drag;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s, border-color 0.2s, transform 0.2s;
+    }
+    .form-close-btn:hover { background: rgba(0,0,0,0.7); border-color: var(--login-color, #ff8c00); transform: scale(1.08); }
 
     .login-split-wrap {
       position: relative;
@@ -1380,7 +1452,20 @@
   <div class="corner-deco corner-bl"></div>
   <div class="corner-deco corner-br"></div>
 
-  <div id="login-panel" class="login-panel">
+  <div id="login-launcher">
+    <div class="launcher-name" id="launcher-name"></div>
+    <button type="button" class="launcher-btn" onclick="openLoginForm()">
+      <span class="launcher-btn-icon">&#9654;</span>
+      <span class="launcher-btn-label">LOGIN</span>
+    </button>
+    <div class="launcher-hint">tap to log in or register</div>
+    <div id="launcher-shutdown" class="launcher-shutdown hidden">
+      <div class="launcher-shutdown-label">&#9888; auto shutdown in</div>
+      <div class="launcher-shutdown-time" id="launcher-shutdown-timer">--:--</div>
+    </div>
+  </div>
+
+  <div id="login-panel" class="login-panel form-collapsed">
     <div id="curfew-overlay">
       <div class="curfew-icon">&#9888;</div>
       <div class="curfew-title">CURFEW HOURS</div>
@@ -1409,6 +1494,7 @@
     <div class="login-split-wrap">
     <div class="login-split-glow"></div>
     <div class="login-split-pulse"></div>
+    <button type="button" class="form-close-btn" onclick="closeLoginForm()" title="Back">&#10005;</button>
     <div class="login-split">
       <div class="login-left">
         <div class="glitch-container">
@@ -2033,6 +2119,8 @@
         nameEl.textContent = '';
         nameEl.setAttribute('data-text', '');
       }
+      const launcherNameEl = document.getElementById('launcher-name');
+      if (launcherNameEl) launcherNameEl.textContent = s.computerName ? s.computerName.toUpperCase() : '';
       applyBackground(s.backgroundImage);
       applyLoginImage(s.loginImage);
       appSettings.registerImage = s.registerImage || null;
@@ -2249,6 +2337,8 @@
       if (totalSeconds <= 0 || sessionData) {
         area.classList.add('hidden');
         if (curfewArea) curfewArea.classList.add('hidden');
+        var lsHide = document.getElementById('launcher-shutdown');
+        if (lsHide) lsHide.classList.add('hidden');
         if (shutdownInterval) { clearInterval(shutdownInterval); shutdownInterval = null; }
         shutdownLeft = 0;
         return;
@@ -2256,6 +2346,8 @@
       shutdownTotal = totalSeconds;
       shutdownLeft = totalSeconds;
       area.classList.remove('hidden');
+      var lsShow = document.getElementById('launcher-shutdown');
+      if (lsShow) lsShow.classList.remove('hidden');
       updateShutdownDisplay();
       if (shutdownInterval) clearInterval(shutdownInterval);
       shutdownInterval = setInterval(() => {
@@ -2267,6 +2359,22 @@
           }
         }
       }, 1000);
+    }
+
+    function openLoginForm() {
+      const panel = document.getElementById('login-panel');
+      const launcher = document.getElementById('login-launcher');
+      if (panel) panel.classList.remove('form-collapsed');
+      if (launcher) launcher.classList.add('hidden');
+      setTimeout(() => { try { document.getElementById('username').focus(); } catch (e) {} }, 60);
+    }
+    function closeLoginForm() {
+      const panel = document.getElementById('login-panel');
+      const launcher = document.getElementById('login-launcher');
+      if (panel) panel.classList.add('form-collapsed');
+      if (launcher) launcher.classList.remove('hidden');
+      try { switchTab('login'); } catch (e) {}
+      try { document.getElementById('password').value = ''; } catch (e) {}
     }
 
     const shutdownTickAudio = new Audio('sounds/tick.wav');
@@ -2325,6 +2433,12 @@
 
       const pct = shutdownTotal > 0 ? (shutdownLeft / shutdownTotal) * 100 : 0;
       bar.style.width = pct + '%';
+
+      const launcherTimerEl = document.getElementById('launcher-shutdown-timer');
+      if (launcherTimerEl) {
+        launcherTimerEl.textContent = timeStr;
+        launcherTimerEl.classList.toggle('danger', shutdownLeft <= 60);
+      }
 
       const curfewEl = document.getElementById('curfew-shutdown-timer');
       const curfewBar = document.getElementById('curfew-shutdown-bar');
@@ -2535,6 +2649,8 @@
       }
 
       document.getElementById('login-panel').classList.add('hidden');
+      var launcherEl0 = document.getElementById('login-launcher');
+      if (launcherEl0) launcherEl0.classList.add('hidden');
       document.getElementById('session-panel').classList.add('active');
       document.getElementById('session-username').textContent = data.username || 'User';
       if (data.memberPoints !== undefined) updateSessionPoints(data.memberPoints);
@@ -2652,6 +2768,7 @@
       updateSessionPoints(null);
       document.getElementById('session-panel').classList.remove('active');
       document.getElementById('login-panel').classList.remove('hidden');
+      try { closeLoginForm(); } catch (e) {}
       document.getElementById('password').value = '';
       document.getElementById('username').disabled = false;
       document.getElementById('password').disabled = false;
@@ -3458,6 +3575,7 @@
     }
 
     let curfewCheckInterval = null;
+    let lastCurfewState = null;
     function updateCurfewUI(s) {
       const overlay = document.getElementById('curfew-overlay');
       const splitWrap = document.querySelector('.login-split-wrap');
@@ -3465,6 +3583,16 @@
       const inCurfew = isClientWithinCurfew(s);
       overlay.classList.toggle('active', inCurfew);
       if (splitWrap) splitWrap.style.display = inCurfew ? 'none' : '';
+      const curfewPanel = document.getElementById('login-panel');
+      const curfewLauncher = document.getElementById('login-launcher');
+      if (inCurfew) {
+        if (curfewPanel) curfewPanel.classList.remove('form-collapsed');
+        if (curfewLauncher) curfewLauncher.classList.add('hidden');
+      } else if (lastCurfewState === true && !sessionData) {
+        if (curfewPanel) curfewPanel.classList.add('form-collapsed');
+        if (curfewLauncher) curfewLauncher.classList.remove('hidden');
+      }
+      lastCurfewState = inCurfew;
       const adCarousel = document.querySelector('.ad-carousel');
       if (adCarousel) adCarousel.style.display = inCurfew ? 'none' : '';
       const curfewArea = document.getElementById('curfew-shutdown-area');

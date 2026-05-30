@@ -12,7 +12,7 @@
   "backgroundImage": {
     "filename": "background.webp",
     "mimeType": "image/webp",
-    "size": 9392120
+    "size": 6804612
   },
   "fullscreenBypass": [
     "valorant.exe",
@@ -36,8 +36,8 @@
     "size": 144922
   },
   "curfewEnabled": false,
-  "curfewStart": "22:00",
-  "curfewEnd": "06:00",
+  "curfewStart": "12:00",
+  "curfewEnd": "00:00",
   "coinRates": [
     {
       "id": "mnky68x5my80",
@@ -52,6 +52,6 @@
       "points": 1
     }
   ],
-  "_sig": "0d9bc401d65e1b601b97c2fa85605bdb0d513ec8f4211d1e25637bcbf428a7b2",
+  "_sig": "43a5d184cd6bd631619c0dbdfd202df0d039bba5cde91e3e438a02a331374dc2",
   "adSlideSeconds": 5
 }
