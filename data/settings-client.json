@@ -10,9 +10,9 @@
     }
   ],
   "backgroundImage": {
-    "filename": "background.webp",
-    "mimeType": "image/webp",
-    "size": 28980114
+    "filename": "background.mp4",
+    "mimeType": "video/mp4",
+    "size": 8954317
   },
   "fullscreenBypass": [
     "valorant.exe",
@@ -52,6 +52,6 @@
       "points": 1
     }
   ],
-  "_sig": "f14145267b70334589e294d69e58fcc51d0178f4ed4a7bda840fd6ddbf95060a",
+  "_sig": "7304e56736ed7e598aab2ca49cc958cc234d3d64dd4160de864325171e56f0c4",
   "adSlideSeconds": 5
 }
