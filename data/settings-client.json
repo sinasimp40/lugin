@@ -1,6 +1,6 @@
 {
-  "adminPasswordHash": "445b86d130e68d3b4eac3d6a5461c4e0179d3cf16cfc35b50a778292484ca5ca52668378bdd377e42857b278a85a56a832e4cb9c1a5b591a338317be08c01deb",
-  "adminSalt": "5cc084b73b6c582470f89bde2a75b176",
+  "adminPasswordHash": "ccca443111e7325e83cb06b3673cf85a2098a6c86a62385df11051e2d87aa4e8ebe88663d840f093786e001a9176c80e97bcbfe8c23d186890c5721b05e9faf1",
+  "adminSalt": "7ae559709e84b15b90fe47f9db941f2c",
   "ads": [
     {
       "id": "2a75f8c012ce88aa",
@@ -52,6 +52,6 @@
       "points": 1
     }
   ],
-  "_sig": "0686b0d661e6f6e487c104b5cdae96e19e4d7842cdaef0df2b489553d914fa92",
+  "_sig": "5922746f3449181546a53668abcc86130465c8ff484d6b74ff5b1b49eef989e1",
   "adSlideSeconds": 5
 }
