@@ -227,7 +227,8 @@ function updateSettings(updates) {
 
 function saveBackgroundImage(fileBuffer, originalName, mimeType) {
   ensureDirs();
-  const ext = path.extname(originalName).toLowerCase() || '.png';
+  const extMap = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp', 'video/mp4': '.mp4', 'video/webm': '.webm' };
+  const ext = extMap[mimeType] || '.png';
   const filename = 'background' + ext;
   const filepath = path.join(uploadsDir, filename);
 

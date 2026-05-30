@@ -70,6 +70,11 @@
       background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
       pointer-events: none;
     }
+    #bg-video {
+      position: fixed; inset: 0; z-index: 0;
+      width: 100%; height: 100%; object-fit: cover;
+      pointer-events: none; background: #0a0a0a;
+    }
 
     .scanlines {
       position: fixed; inset: 0; z-index: 1; pointer-events: none;
@@ -1443,6 +1448,7 @@
 </head>
 <body>
   <div id="bg-layer"></div>
+  <video id="bg-video" autoplay loop muted playsinline style="display:none"></video>
   <canvas id="dust-particles" style="position:fixed;inset:0;z-index:1;pointer-events:none;"></canvas>
   <div class="scanlines"></div>
   <div class="grid-bg"></div>
@@ -1818,9 +1824,9 @@
             <div class="bg-preview" id="admin-bg-preview">[ no background ]</div>
             <div class="file-input-wrap">
               <button class="btn-admin" style="width:100%">Choose Image</button>
-              <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange="uploadBackground(this)" />
+              <input type="file" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" onchange="uploadBackground(this)" />
             </div>
-            <div class="file-size-hint">PNG, JPEG, GIF, WebP (max 50MB)</div>
+            <div class="file-size-hint">PNG, JPEG, GIF, WebP, MP4, WebM (max 50MB)</div>
             <div class="gif-warning" id="gif-warning">&#9888; GIF animations may use more memory</div>
             <button class="btn-admin danger" style="margin-top:8px;width:100%" onclick="removeBackground()">Remove Background</button>
           </div>
@@ -2198,14 +2204,34 @@
     let _currentBgFilename = null;
     function applyBackground(bgInfo, force) {
       const bgLayer = document.getElementById('bg-layer');
+      const bgVideo = document.getElementById('bg-video');
       const dustCanvas = document.getElementById('dust-particles');
       const corners = document.querySelectorAll('.corner-deco');
       const scanlines = document.querySelector('.scanlines');
       const gridBg = document.querySelector('.grid-bg');
       const newFilename = (bgInfo && bgInfo.filename) ? bgInfo.filename : null;
+      const isVideo = !!(bgInfo && bgInfo.mimeType && bgInfo.mimeType.indexOf('video') === 0);
       if (newFilename) {
-        if (force || newFilename !== _currentBgFilename) {
-          bgLayer.style.backgroundImage = 'url(/uploads/' + newFilename + '?t=' + Date.now() + ')';
+        if (isVideo) {
+          if (force || newFilename !== _currentBgFilename) {
+            bgVideo.onerror = function () {
+              bgVideo.style.display = 'none';
+              if (dustCanvas) dustCanvas.style.display = '';
+              corners.forEach(function (c) { c.style.display = ''; });
+              if (scanlines) scanlines.style.display = '';
+              if (gridBg) gridBg.style.display = '';
+            };
+            bgVideo.src = '/uploads/' + encodeURIComponent(newFilename) + '?t=' + Date.now();
+            bgVideo.muted = true;
+            bgVideo.play().catch(function () {});
+          }
+          if (bgVideo) bgVideo.style.display = '';
+          bgLayer.style.backgroundImage = '';
+        } else {
+          if (force || newFilename !== _currentBgFilename) {
+            bgLayer.style.backgroundImage = 'url(/uploads/' + encodeURIComponent(newFilename) + '?t=' + Date.now() + ')';
+          }
+          if (bgVideo) { bgVideo.onerror = null; bgVideo.style.display = 'none'; bgVideo.removeAttribute('src'); bgVideo.load(); }
         }
         _currentBgFilename = newFilename;
         if (dustCanvas) dustCanvas.style.display = 'none';
@@ -2215,6 +2241,7 @@
       } else {
         _currentBgFilename = null;
         bgLayer.style.backgroundImage = '';
+        if (bgVideo) { bgVideo.onerror = null; bgVideo.style.display = 'none'; bgVideo.removeAttribute('src'); bgVideo.load(); }
         if (dustCanvas) dustCanvas.style.display = '';
         corners.forEach(c => c.style.display = '');
         if (scanlines) scanlines.style.display = '';
@@ -3477,8 +3504,21 @@
 
     function updateBgPreview(bgInfo) {
       const el = document.getElementById('admin-bg-preview');
-      if (bgInfo && bgInfo.filename) { el.style.backgroundImage = 'url(/uploads/' + bgInfo.filename + '?t=' + Date.now() + ')'; el.textContent = ''; }
-      else { el.style.backgroundImage = ''; el.textContent = '[ no background ]'; }
+      const isVideo = !!(bgInfo && bgInfo.mimeType && bgInfo.mimeType.indexOf('video') === 0);
+      el.innerHTML = '';
+      el.style.backgroundImage = '';
+      el.textContent = '';
+      if (bgInfo && bgInfo.filename && isVideo) {
+        const v = document.createElement('video');
+        v.src = '/uploads/' + encodeURIComponent(bgInfo.filename) + '?t=' + Date.now();
+        v.autoplay = true; v.loop = true; v.muted = true; v.playsInline = true;
+        v.style.width = '100%'; v.style.height = '100%'; v.style.objectFit = 'cover';
+        el.appendChild(v);
+      } else if (bgInfo && bgInfo.filename) {
+        el.style.backgroundImage = 'url(/uploads/' + encodeURIComponent(bgInfo.filename) + '?t=' + Date.now() + ')';
+      } else {
+        el.textContent = '[ no background ]';
+      }
     }
 
     async function saveComputerName() {
@@ -3617,9 +3657,12 @@
       const file = input.files[0];
       if (!file) return;
       if (file.size > 50 * 1024 * 1024) { showAdminMsg('admin-panel-msg', 'File too large (max 50MB)', 'error'); return; }
-      const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
-      if (!allowed.includes(file.type)) { showAdminMsg('admin-panel-msg', 'Only PNG, JPEG, GIF, WebP', 'error'); return; }
-      document.getElementById('gif-warning').style.display = file.type === 'image/gif' ? 'block' : 'none';
+      const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'video/mp4', 'video/webm'];
+      if (!allowed.includes(file.type)) { showAdminMsg('admin-panel-msg', 'Only PNG, JPEG, GIF, WebP, MP4, WebM', 'error'); return; }
+      const isVid = file.type.indexOf('video') === 0;
+      const gifWarn = document.getElementById('gif-warning');
+      gifWarn.style.display = (file.type === 'image/gif' || isVid) ? 'block' : 'none';
+      gifWarn.textContent = isVid ? '\u26A0 Video backgrounds use more memory \u2014 keep clips short & compressed' : '\u26A0 GIF animations may use more memory';
       showAdminMsg('admin-panel-msg', 'Uploading...', 'success');
       const buffer = await file.arrayBuffer();
       const resp = await fetch('/api/admin/background', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'x-admin-token': adminToken, 'x-filename': file.name, 'x-mime-type': file.type }, body: buffer }).then(r => r.json()).catch(e => ({ success: false, error: 'Upload failed: ' + e.message }));

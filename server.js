@@ -834,13 +834,13 @@ app.post('/api/admin/settings', verifyToken, (req, res) => {
 
 app.post('/api/admin/background', verifyToken, (req, res) => {
   const contentType = req.headers['content-type'] || '';
-  if (!contentType.startsWith('application/octet-stream') && !contentType.startsWith('image/')) {
+  if (!contentType.startsWith('application/octet-stream') && !contentType.startsWith('image/') && !contentType.startsWith('video/')) {
     return res.status(400).json({ success: false, error: 'Invalid content type' });
   }
   const filename = req.headers['x-filename'] || 'background.png';
   const mime = req.headers['x-mime-type'] || 'image/png';
-  const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
-  if (!allowed.includes(mime)) return res.status(400).json({ success: false, error: 'Only PNG, JPEG, GIF, WebP allowed' });
+  const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'video/mp4', 'video/webm'];
+  if (!allowed.includes(mime)) return res.status(400).json({ success: false, error: 'Only PNG, JPEG, GIF, WebP, MP4, WebM allowed' });
 
   const chunks = [];
   let totalSize = 0;

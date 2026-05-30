@@ -12,7 +12,7 @@
   "backgroundImage": {
     "filename": "background.webp",
     "mimeType": "image/webp",
-    "size": 6804612
+    "size": 28980114
   },
   "fullscreenBypass": [
     "valorant.exe",
@@ -52,6 +52,6 @@
       "points": 1
     }
   ],
-  "_sig": "43a5d184cd6bd631619c0dbdfd202df0d039bba5cde91e3e438a02a331374dc2",
+  "_sig": "f14145267b70334589e294d69e58fcc51d0178f4ed4a7bda840fd6ddbf95060a",
   "adSlideSeconds": 5
 }
