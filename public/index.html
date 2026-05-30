@@ -149,17 +149,23 @@
     /* ===== Tap-to-login launcher ===== */
     #login-launcher {
       position: fixed; inset: 0; z-index: 3;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 32px; padding: 24px;
+      display: flex; align-items: flex-end; justify-content: center;
       opacity: 1; transition: opacity 0.4s ease;
     }
     #login-launcher.hidden { opacity: 0; pointer-events: none; visibility: hidden; }
+    .launcher-bar {
+      width: 100%; box-sizing: border-box;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 16px 28px; padding: 22px 44px 26px;
+      background: linear-gradient(to top, rgba(0,0,0,0.74) 0%, rgba(0,0,0,0.34) 55%, rgba(0,0,0,0) 100%);
+    }
+    .launcher-cta { display: flex; flex-direction: row; align-items: center; gap: 16px; }
     .launcher-name {
       font-family: 'Orbitron', sans-serif; font-weight: 700;
-      font-size: clamp(22px, 4vw, 44px); letter-spacing: 4px;
+      font-size: clamp(18px, 2.6vw, 30px); letter-spacing: 4px;
       color: var(--login-color, #ff8c00);
       text-shadow: 0 0 18px var(--login-color-50, rgba(255,140,0,0.5)), 0 2px 8px rgba(0,0,0,0.8);
-      text-align: center;
+      text-align: left;
     }
     .launcher-btn {
       position: relative; cursor: pointer; -webkit-app-region: no-drag;
@@ -185,10 +191,9 @@
       color: var(--login-color-50, rgba(255,140,0,0.5)); text-transform: uppercase;
     }
     .launcher-shutdown {
-      display: flex; flex-direction: column; align-items: center; gap: 5px;
-      padding: 12px 26px; border-radius: 6px;
+      display: flex; flex-direction: row; align-items: center; gap: 12px;
+      padding: 9px 18px; border-radius: 6px;
       background: rgba(0,0,0,0.45); border: 1px solid var(--login-color-15, rgba(255,140,0,0.15));
-      backdrop-filter: blur(6px);
     }
     .launcher-shutdown.hidden { display: none; }
     .launcher-shutdown-label { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--login-color-50, rgba(255,140,0,0.5)); text-transform: uppercase; }
@@ -1448,15 +1453,19 @@
   <div class="corner-deco corner-br"></div>
 
   <div id="login-launcher">
-    <div class="launcher-name" id="launcher-name"></div>
-    <button type="button" class="launcher-btn" onclick="openLoginForm()">
-      <span class="launcher-btn-icon">&#9654;</span>
-      <span class="launcher-btn-label">LOGIN</span>
-    </button>
-    <div class="launcher-hint">tap to log in or register</div>
-    <div id="launcher-shutdown" class="launcher-shutdown hidden">
-      <div class="launcher-shutdown-label">&#9888; auto shutdown in</div>
-      <div class="launcher-shutdown-time" id="launcher-shutdown-timer">--:--</div>
+    <div class="launcher-bar">
+      <div class="launcher-name" id="launcher-name"></div>
+      <div class="launcher-cta">
+        <button type="button" class="launcher-btn" onclick="openLoginForm()">
+          <span class="launcher-btn-icon">&#9654;</span>
+          <span class="launcher-btn-label">LOGIN</span>
+        </button>
+        <div class="launcher-hint">tap to log in or register</div>
+      </div>
+      <div id="launcher-shutdown" class="launcher-shutdown hidden">
+        <div class="launcher-shutdown-label">&#9888; auto shutdown in</div>
+        <div class="launcher-shutdown-time" id="launcher-shutdown-timer">--:--</div>
+      </div>
     </div>
   </div>
 
