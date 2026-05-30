@@ -65,6 +65,11 @@
       position: fixed; inset: 0; z-index: 0;
       background-size: cover; background-position: center; background-repeat: no-repeat;
     }
+    #bg-video {
+      position: fixed; inset: 0; z-index: 0;
+      width: 100%; height: 100%; object-fit: cover;
+      display: none;
+    }
     #bg-layer::after {
       content: ''; position: absolute; inset: 0;
       background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
@@ -1443,6 +1448,7 @@
 </head>
 <body>
   <div id="bg-layer"></div>
+  <video id="bg-video" autoplay loop muted playsinline></video>
   <canvas id="dust-particles" style="position:fixed;inset:0;z-index:1;pointer-events:none;"></canvas>
   <div class="scanlines"></div>
   <div class="grid-bg"></div>
@@ -1817,11 +1823,11 @@
             <h3>&#9670; Background Image</h3>
             <div class="bg-preview" id="admin-bg-preview">[ no background ]</div>
             <div class="file-input-wrap">
-              <button class="btn-admin" style="width:100%">Choose Image</button>
-              <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange="uploadBackground(this)" />
+              <button class="btn-admin" style="width:100%">Choose Image / Video</button>
+              <input type="file" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4" onchange="uploadBackground(this)" />
             </div>
-            <div class="file-size-hint">PNG, JPEG, GIF, WebP (max 50MB)</div>
-            <div class="gif-warning" id="gif-warning">&#9888; GIF animations may use more memory</div>
+            <div class="file-size-hint">PNG, JPEG, GIF, WebP, MP4 (max 50MB)</div>
+            <div class="gif-warning" id="gif-warning">&#9888; GIF / MP4 backgrounds may use more memory</div>
             <button class="btn-admin danger" style="margin-top:8px;width:100%" onclick="removeBackground()">Remove Background</button>
           </div>
 
@@ -2198,14 +2204,25 @@
     let _currentBgFilename = null;
     function applyBackground(bgInfo, force) {
       const bgLayer = document.getElementById('bg-layer');
+      const bgVideo = document.getElementById('bg-video');
       const dustCanvas = document.getElementById('dust-particles');
       const corners = document.querySelectorAll('.corner-deco');
       const scanlines = document.querySelector('.scanlines');
       const gridBg = document.querySelector('.grid-bg');
       const newFilename = (bgInfo && bgInfo.filename) ? bgInfo.filename : null;
+      const isVideo = !!(bgInfo && ((bgInfo.mimeType && bgInfo.mimeType.indexOf('video/') === 0) || /\.mp4$/i.test(newFilename || '')));
       if (newFilename) {
-        if (force || newFilename !== _currentBgFilename) {
-          bgLayer.style.backgroundImage = 'url(/uploads/' + newFilename + '?t=' + Date.now() + ')';
+        if (isVideo) {
+          if (force || newFilename !== _currentBgFilename) {
+            if (bgVideo) { bgVideo.src = '/uploads/' + newFilename + '?t=' + Date.now(); bgVideo.play().catch(function(){}); }
+          }
+          bgLayer.style.backgroundImage = '';
+          if (bgVideo) bgVideo.style.display = 'block';
+        } else {
+          if (force || newFilename !== _currentBgFilename) {
+            bgLayer.style.backgroundImage = 'url(/uploads/' + newFilename + '?t=' + Date.now() + ')';
+          }
+          if (bgVideo) { bgVideo.style.display = 'none'; bgVideo.removeAttribute('src'); bgVideo.load(); }
         }
         _currentBgFilename = newFilename;
         if (dustCanvas) dustCanvas.style.display = 'none';
@@ -2215,6 +2232,7 @@
       } else {
         _currentBgFilename = null;
         bgLayer.style.backgroundImage = '';
+        if (bgVideo) { bgVideo.style.display = 'none'; bgVideo.removeAttribute('src'); bgVideo.load(); }
         if (dustCanvas) dustCanvas.style.display = '';
         corners.forEach(c => c.style.display = '');
         if (scanlines) scanlines.style.display = '';
@@ -3477,7 +3495,9 @@
 
     function updateBgPreview(bgInfo) {
       const el = document.getElementById('admin-bg-preview');
-      if (bgInfo && bgInfo.filename) { el.style.backgroundImage = 'url(/uploads/' + bgInfo.filename + '?t=' + Date.now() + ')'; el.textContent = ''; }
+      const isVideo = !!(bgInfo && ((bgInfo.mimeType && bgInfo.mimeType.indexOf('video/') === 0) || (bgInfo.filename && /\.mp4$/i.test(bgInfo.filename))));
+      if (bgInfo && bgInfo.filename && isVideo) { el.style.backgroundImage = ''; el.textContent = '[ video background ]'; }
+      else if (bgInfo && bgInfo.filename) { el.style.backgroundImage = 'url(/uploads/' + bgInfo.filename + '?t=' + Date.now() + ')'; el.textContent = ''; }
       else { el.style.backgroundImage = ''; el.textContent = '[ no background ]'; }
     }
 
@@ -3617,9 +3637,9 @@
       const file = input.files[0];
       if (!file) return;
       if (file.size > 50 * 1024 * 1024) { showAdminMsg('admin-panel-msg', 'File too large (max 50MB)', 'error'); return; }
-      const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
-      if (!allowed.includes(file.type)) { showAdminMsg('admin-panel-msg', 'Only PNG, JPEG, GIF, WebP', 'error'); return; }
-      document.getElementById('gif-warning').style.display = file.type === 'image/gif' ? 'block' : 'none';
+      const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'video/mp4'];
+      if (!allowed.includes(file.type)) { showAdminMsg('admin-panel-msg', 'Only PNG, JPEG, GIF, WebP, MP4', 'error'); return; }
+      document.getElementById('gif-warning').style.display = (file.type === 'image/gif' || file.type === 'video/mp4') ? 'block' : 'none';
       showAdminMsg('admin-panel-msg', 'Uploading...', 'success');
       const buffer = await file.arrayBuffer();
       const resp = await fetch('/api/admin/background', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'x-admin-token': adminToken, 'x-filename': file.name, 'x-mime-type': file.type }, body: buffer }).then(r => r.json()).catch(e => ({ success: false, error: 'Upload failed: ' + e.message }));

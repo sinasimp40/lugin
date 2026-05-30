@@ -839,8 +839,8 @@ app.post('/api/admin/background', verifyToken, (req, res) => {
   }
   const filename = req.headers['x-filename'] || 'background.png';
   const mime = req.headers['x-mime-type'] || 'image/png';
-  const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
-  if (!allowed.includes(mime)) return res.status(400).json({ success: false, error: 'Only PNG, JPEG, GIF, WebP allowed' });
+  const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'video/mp4'];
+  if (!allowed.includes(mime)) return res.status(400).json({ success: false, error: 'Only PNG, JPEG, GIF, WebP, MP4 allowed' });
 
   const chunks = [];
   let totalSize = 0;
