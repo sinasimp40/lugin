@@ -2293,6 +2293,9 @@
       const el = document.getElementById('shutdown-timer');
       const bar = document.getElementById('shutdown-bar');
       const panel = document.getElementById('shutdown-area');
+      if (!el || !bar || !panel) {
+        return;
+      }
       const h = Math.floor(shutdownLeft / 3600);
       const m = Math.floor((shutdownLeft % 3600) / 60);
       const s = shutdownLeft % 60;
