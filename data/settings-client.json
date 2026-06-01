@@ -12,7 +12,7 @@
   "backgroundImage": {
     "filename": "background.mp4",
     "mimeType": "video/mp4",
-    "size": 6626728
+    "size": 28263600
   },
   "fullscreenBypass": [
     "valorant.exe",
@@ -52,6 +52,6 @@
       "points": 1
     }
   ],
-  "_sig": "f833cf8f26e25e237331f7dd5a2e572599709712b32f6ce395a0e2ec13ce4b37",
+  "_sig": "90134774e014e03095d2af437ce54da8d845e24ecccb5fdb25187beb53622dca",
   "adSlideSeconds": 5
 }
