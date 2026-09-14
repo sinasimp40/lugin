@@ -1804,16 +1804,6 @@
           </div>
 
           <div class="admin-section">
-            <h3>&#9670; Close Apps on Lock / Shutdown</h3>
-            <p style="font-size:11px;color:#888;margin-bottom:8px">These Windows programs are force-closed when a session ends and the login screen returns, or before auto shutdown.</p>
-            <div id="admin-close-app-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <input type="text" id="admin-close-app-input" placeholder="e.g. game.exe" style="flex:1" />
-              <button class="btn-admin" onclick="addCloseApp()">Add</button>
-            </div>
-          </div>
-
-          <div class="admin-section">
             <h3>&#9670; Curfew Hours</h3>
             <div class="curfew-toggle-wrap">
               <label class="curfew-toggle">
@@ -1867,6 +1857,16 @@
             <div style="display:flex;gap:8px;align-items:center">
               <input type="text" id="admin-bypass-input" placeholder="e.g. valorant.exe" style="flex:1" />
               <button class="btn-admin" onclick="addBypassGame()">Add</button>
+            </div>
+          </div>
+
+          <div class="admin-section">
+            <h3>&#9670; Close Apps on Session End</h3>
+            <p style="font-size:11px;color:#888;margin-bottom:8px">Force-close these .exe programs when the login lock screen returns and before auto shutdown.</p>
+            <div id="admin-close-app-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="text" id="admin-close-app-input" placeholder="e.g. game.exe" style="flex:1" />
+              <button class="btn-admin" onclick="addCloseApp()">Add</button>
             </div>
           </div>
 
