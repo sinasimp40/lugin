@@ -52,6 +52,9 @@
       "points": 1
     }
   ],
-  "_sig": "90134774e014e03095d2af437ce54da8d845e24ecccb5fdb25187beb53622dca",
-  "adSlideSeconds": 5
+  "_sig": "2719242050628b29ba144e6afbe0bbc29296070b9998b2a08d23ab9eff231adb",
+  "adSlideSeconds": 5,
+  "closeOnLock": [
+    "roblox.exe"
+  ]
 }
