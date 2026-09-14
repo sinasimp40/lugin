@@ -325,7 +325,11 @@ function closeConfiguredPrograms(reason) {
   const names = settingsStore.getSettings().closeOnLock || [];
   if (!names.length) return;
   console.log(`[Electron] Closing configured programs before ${reason}:`, names.join(', '));
-  for (const name of names) {
+  const aliases = {
+    'roblox.exe': ['RobloxPlayerBeta.exe', 'RobloxPlayerLauncher.exe', 'RobloxCrashHandler.exe']
+  };
+  const processNames = [...new Set(names.flatMap(name => aliases[name.toLowerCase()] || [name]))];
+  for (const name of processNames) {
     try {
       execFileSync('taskkill', ['/F', '/T', '/IM', name], { windowsHide: true, stdio: 'ignore' });
     } catch (_) {

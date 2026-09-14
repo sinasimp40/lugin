@@ -4143,18 +4143,32 @@
     let currentCloseAppList = [];
 
     function renderCloseAppList(apps) {
-      currentCloseAppList = apps;
+      currentCloseAppList = Array.isArray(apps) ? [...apps] : [];
       const el = document.getElementById('admin-close-app-list');
-      if (!apps.length) {
+      if (!currentCloseAppList.length) {
         el.innerHTML = '<div style="color:#666;font-size:11px">No programs added</div>';
         return;
       }
-      el.innerHTML = apps.map(name =>
-        '<div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,140,0,0.05);border:1px solid rgba(255,140,0,0.15);border-radius:4px;padding:6px 10px">' +
-          '<span style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--neon-cyan)">' + escapeHtml(name) + '</span>' +
-          '<button class="btn-admin danger" style="padding:2px 8px;font-size:10px;min-width:0" onclick="removeCloseApp(' + JSON.stringify(name) + ')">&#10005;</button>' +
-        '</div>'
-      ).join('');
+      el.innerHTML = '';
+      currentCloseAppList.forEach((name, index) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:rgba(255,140,0,0.05);border:1px solid rgba(255,140,0,0.15);border-radius:4px;padding:6px 10px';
+
+        const label = document.createElement('span');
+        label.style.cssText = 'font-family:Share Tech Mono,monospace;font-size:12px;color:var(--neon-cyan)';
+        label.textContent = name;
+
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'btn-admin danger';
+        removeButton.style.cssText = 'padding:2px 8px;font-size:10px;min-width:0';
+        removeButton.setAttribute('aria-label', 'Remove ' + name);
+        removeButton.textContent = '\u00d7';
+        removeButton.addEventListener('click', () => removeCloseApp(index));
+
+        row.append(label, removeButton);
+        el.appendChild(row);
+      });
     }
 
     async function addCloseApp() {
@@ -4173,8 +4187,9 @@
       document.getElementById('admin-close-app-input').value = '';
     }
 
-    async function removeCloseApp(name) {
-      await saveCloseAppList(currentCloseAppList.filter(app => app !== name), 'Program removed');
+    async function removeCloseApp(index) {
+      if (!Number.isInteger(index) || index < 0 || index >= currentCloseAppList.length) return;
+      await saveCloseAppList(currentCloseAppList.filter((_, appIndex) => appIndex !== index), 'Program removed');
     }
 
     async function saveCloseAppList(updated, successMessage) {
