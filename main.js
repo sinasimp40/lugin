@@ -1,7 +1,8 @@
 const { app, BrowserWindow, Menu, ipcMain, globalShortcut } = require('electron');
-const { exec, spawn } = require('child_process');
+const { exec, execFileSync, spawn } = require('child_process');
 const path = require('path');
 const appLock = require('./src/app-lock');
+const settingsStore = require('./src/settings-store');
 
 process.env.DENFI_APP_ROLE = 'auto-shutdown';
 
@@ -318,6 +319,20 @@ let sessionWindow;
 let isQuitting = false;
 let currentState = 'logged-out';
 let focusGuardInterval = null;
+
+function closeConfiguredPrograms(reason) {
+  if (process.platform !== 'win32') return;
+  const names = settingsStore.getSettings().closeOnLock || [];
+  if (!names.length) return;
+  console.log(`[Electron] Closing configured programs before ${reason}:`, names.join(', '));
+  for (const name of names) {
+    try {
+      execFileSync('taskkill', ['/F', '/T', '/IM', name], { windowsHide: true, stdio: 'ignore' });
+    } catch (_) {
+      // taskkill returns a failure code when the configured program is not running.
+    }
+  }
+}
 
 const SESSION_WIDTH = 250;
 const SESSION_HEIGHT = 50;
@@ -986,6 +1001,7 @@ ipcMain.on('session-state', (event, state) => {
 
 ipcMain.on('trigger-shutdown', () => {
   console.log('[Electron] Shutdown triggered from renderer');
+  closeConfiguredPrograms('shutdown');
   const { exec } = require('child_process');
   exec('shutdown /s /t 0 /f', (err) => {
     if (err) {
@@ -1057,6 +1073,7 @@ function handleStateChange(state) {
   } else if (state === 'logged-out') {
     if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) return;
     currentState = 'logged-out';
+    closeConfiguredPrograms('login lock screen');
     transitionLock = true;
     if (transitionLockTimer) clearTimeout(transitionLockTimer);
     transitionLockTimer = setTimeout(() => { unlockTransition(); }, 5000);

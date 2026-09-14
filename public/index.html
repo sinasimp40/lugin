@@ -1804,6 +1804,16 @@
           </div>
 
           <div class="admin-section">
+            <h3>&#9670; Close Apps on Lock / Shutdown</h3>
+            <p style="font-size:11px;color:#888;margin-bottom:8px">These Windows programs are force-closed when a session ends and the login screen returns, or before auto shutdown.</p>
+            <div id="admin-close-app-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="text" id="admin-close-app-input" placeholder="e.g. game.exe" style="flex:1" />
+              <button class="btn-admin" onclick="addCloseApp()">Add</button>
+            </div>
+          </div>
+
+          <div class="admin-section">
             <h3>&#9670; Curfew Hours</h3>
             <div class="curfew-toggle-wrap">
               <label class="curfew-toggle">
@@ -3498,6 +3508,7 @@
         document.getElementById('admin-register-color').value = rc;
         document.getElementById('admin-register-color-hex').value = rc;
         renderBypassList(resp.settings.fullscreenBypass || []);
+        renderCloseAppList(resp.settings.closeOnLock || []);
         renderAdminAds(resp.settings.ads || []);
         document.getElementById('admin-curfew-enabled').checked = !!resp.settings.curfewEnabled;
         document.getElementById('admin-curfew-start').value = resp.settings.curfewStart || '22:00';
@@ -4182,6 +4193,57 @@
       if (resp.success) {
         renderBypassList(resp.settings.fullscreenBypass || updated);
         showAdminMsg('admin-panel-msg', 'Game removed', 'success');
+      }
+    }
+
+    let currentCloseAppList = [];
+
+    function renderCloseAppList(apps) {
+      currentCloseAppList = apps;
+      const el = document.getElementById('admin-close-app-list');
+      if (!apps.length) {
+        el.innerHTML = '<div style="color:#666;font-size:11px">No programs added</div>';
+        return;
+      }
+      el.innerHTML = apps.map(name =>
+        '<div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,140,0,0.05);border:1px solid rgba(255,140,0,0.15);border-radius:4px;padding:6px 10px">' +
+          '<span style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--neon-cyan)">' + escapeHtml(name) + '</span>' +
+          '<button class="btn-admin danger" style="padding:2px 8px;font-size:10px;min-width:0" onclick="removeCloseApp(' + JSON.stringify(name) + ')">&#10005;</button>' +
+        '</div>'
+      ).join('');
+    }
+
+    async function addCloseApp() {
+      let name = document.getElementById('admin-close-app-input').value.trim().toLowerCase();
+      if (!name) return;
+      if (!name.endsWith('.exe')) name += '.exe';
+      if (!/^[a-z0-9][a-z0-9._ -]{0,199}\.exe$/i.test(name)) {
+        showAdminMsg('admin-panel-msg', 'Enter a valid .exe filename only', 'error');
+        return;
+      }
+      if (currentCloseAppList.includes(name)) {
+        showAdminMsg('admin-panel-msg', 'Already in list', 'error');
+        return;
+      }
+      await saveCloseAppList([...currentCloseAppList, name], 'Program added');
+      document.getElementById('admin-close-app-input').value = '';
+    }
+
+    async function removeCloseApp(name) {
+      await saveCloseAppList(currentCloseAppList.filter(app => app !== name), 'Program removed');
+    }
+
+    async function saveCloseAppList(updated, successMessage) {
+      const resp = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+        body: JSON.stringify({ closeOnLock: updated })
+      }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) {
+        renderCloseAppList(resp.settings.closeOnLock || updated);
+        showAdminMsg('admin-panel-msg', successMessage, 'success');
+      } else {
+        showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
       }
     }
 

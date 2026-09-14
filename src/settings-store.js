@@ -155,6 +155,7 @@ function getSettings() {
     ads: s.ads || [],
     adSlideSeconds: s.adSlideSeconds !== undefined ? s.adSlideSeconds : 5,
     fullscreenBypass: s.fullscreenBypass || ['valorant.exe', 'league of legends.exe', 'leagueclient.exe'],
+    closeOnLock: Array.isArray(s.closeOnLock) ? s.closeOnLock : [],
     curfewEnabled: !!s.curfewEnabled,
     curfewStart: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.curfewStart) ? s.curfewStart : '22:00',
     curfewEnd: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.curfewEnd) ? s.curfewEnd : '06:00',
@@ -177,6 +178,7 @@ function getPublicSettings() {
     ads: s.ads || [],
     adSlideSeconds: s.adSlideSeconds !== undefined ? s.adSlideSeconds : 5,
     fullscreenBypass: s.fullscreenBypass,
+    closeOnLock: s.closeOnLock,
     curfewEnabled: s.curfewEnabled,
     curfewStart: s.curfewStart,
     curfewEnd: s.curfewEnd,
@@ -214,6 +216,11 @@ function updateSettings(updates) {
         .map(g => g.trim().toLowerCase())
         .filter(g => g.length > 0 && g.endsWith('.exe'));
     }
+  }
+  if (updates.closeOnLock !== undefined && Array.isArray(updates.closeOnLock)) {
+    s.closeOnLock = [...new Set(updates.closeOnLock
+      .map(name => String(name).trim().toLowerCase())
+      .filter(name => /^[a-z0-9][a-z0-9._ -]{0,199}\.exe$/i.test(name)))];
   }
   if (updates.curfewEnabled !== undefined) s.curfewEnabled = !!updates.curfewEnabled;
   if (updates.curfewStart !== undefined && /^([01]\d|2[0-3]):[0-5]\d$/.test(updates.curfewStart)) s.curfewStart = updates.curfewStart;
