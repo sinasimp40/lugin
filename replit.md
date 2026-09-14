@@ -54,3 +54,9 @@ The application is built using Electron for the desktop client, with a Node.js (
 - **Express:** Node.js web application framework.
 - **ws:** WebSocket library for Node.js.
 - **electron-builder:** For creating executable installers.
+
+## Running on Replit
+- Run the browser version with the **Start application** workflow (`node server.js`).
+- The server listens on `0.0.0.0` and uses Replit's assigned `PORT` (default `5000`).
+- Electron kiosk features and Windows system controls only work in the packaged Windows desktop app.
+- MikroTik and JuanFi features require network access to the pisonet hardware and will not work from Replit unless those services are made securely reachable.
