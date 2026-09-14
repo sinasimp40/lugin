@@ -1,0 +1,76 @@
+
+
+> denfi-auto-shutdown@1.0.1 prebuild
+> node -e "const fs=require('fs'),p=require('path');const bd=p.join(__dirname,'build');if(!fs.existsSync(bd))fs.mkdirSync(bd);['icon.ico','icon.png'].forEach(f=>{const src=p.join(__dirname,'public',f),dst=p.join(bd,f);if(fs.existsSync(src)&&!fs.existsSync(dst))fs.copyFileSync(src,dst);const rootDst=p.join(__dirname,f);if(fs.existsSync(src)&&!fs.existsSync(rootDst))fs.copyFileSync(src,rootDst)});console.log('Icons ready:',fs.readdirSync(bd))"
+
+Icons ready: [ 'icon.ico', 'icon.png' ]
+  • electron-builder  version=26.8.1 os=10.0.26200
+  • loaded configuration  file=package.json ("build" field)
+  • writing effective config  file=dist\builder-effective-config.yaml
+  • executing @electron/rebuild  electronVersion=41.0.4 arch=x64 buildFromSource=false workspaceRoot=C:\Users\MyPC\Desktop\lugin projectDir=./ appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=win32 arch=x64 electron=41.0.4 appOutDir=dist\win-unpacked
+  ⨯ zip: not a valid zip file
+github.com/develar/app-builder/pkg/archive/zipx.(*Extractor).extractAndWriteFile
+        /Users/runner/work/app-builder/app-builder/pkg/archive/zipx/unzip.go:234
+github.com/develar/app-builder/pkg/archive/zipx.Unzip.func1.1
+        /Users/runner/work/app-builder/app-builder/pkg/archive/zipx/unzip.go:104
+github.com/develar/app-builder/pkg/util.MapAsyncConcurrency.func2
+        /Users/runner/work/app-builder/app-builder/pkg/util/async.go:68
+runtime.goexit
+        /Users/runner/hostedtoolcache/go/1.21.13/arm64/src/runtime/asm_amd64.s:1650
+  ⨯ C:\Users\MyPC\Desktop\lugin\node_modules\app-builder-bin\win\x64\app-builder.exe process failed ERR_ELECTRON_BUILDER_CANNOT_EXECUTE
+Exit code:
+1  failedTask=build stackTrace=Error: C:\Users\MyPC\Desktop\lugin\node_modules\app-builder-bin\win\x64\app-builder.exe process failed ERR_ELECTRON_BUILDER_CANNOT_EXECUTE
+Exit code:
+1
+    at ChildProcess.<anonymous> (C:\Users\MyPC\Desktop\lugin\node_modules\builder-util\src\util.ts:272:14)
+    at Object.onceWrapper (node:events:631:26)
+    at ChildProcess.emit (node:events:509:28)
+    at ChildProcess.cp.emit (C:\Users\MyPC\Desktop\lugin\node_modules\cross-spawn\lib\enoent.js:34:29)
+    at maybeClose (node:internal/child_process:1141:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:306:5)
+
+C:\Users\MyPC\Desktop\lugin>npm run build
+
+> denfi-auto-shutdown@1.0.1 prebuild
+> node -e "const fs=require('fs'),p=require('path');const bd=p.join(__dirname,'build');if(!fs.existsSync(bd))fs.mkdirSync(bd);['icon.ico','icon.png'].forEach(f=>{const src=p.join(__dirname,'public',f),dst=p.join(bd,f);if(fs.existsSync(src)&&!fs.existsSync(dst))fs.copyFileSync(src,dst);const rootDst=p.join(__dirname,f);if(fs.existsSync(src)&&!fs.existsSync(rootDst))fs.copyFileSync(src,rootDst)});console.log('Icons ready:',fs.readdirSync(bd))"
+
+Icons ready: [ 'icon.ico', 'icon.png' ]
+
+> denfi-auto-shutdown@1.0.1 build
+> npm run prebuild && electron-builder --win --x64
+
+
+> denfi-auto-shutdown@1.0.1 prebuild
+> node -e "const fs=require('fs'),p=require('path');const bd=p.join(__dirname,'build');if(!fs.existsSync(bd))fs.mkdirSync(bd);['icon.ico','icon.png'].forEach(f=>{const src=p.join(__dirname,'public',f),dst=p.join(bd,f);if(fs.existsSync(src)&&!fs.existsSync(dst))fs.copyFileSync(src,dst);const rootDst=p.join(__dirname,f);if(fs.existsSync(src)&&!fs.existsSync(rootDst))fs.copyFileSync(src,rootDst)});console.log('Icons ready:',fs.readdirSync(bd))"
+
+Icons ready: [ 'icon.ico', 'icon.png' ]
+  • electron-builder  version=26.8.1 os=10.0.26200
+  • loaded configuration  file=package.json ("build" field)
+  • writing effective config  file=dist\builder-effective-config.yaml
+  • executing @electron/rebuild  electronVersion=41.0.4 arch=x64 buildFromSource=false workspaceRoot=C:\Users\MyPC\Desktop\lugin projectDir=./ appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=win32 arch=x64 electron=41.0.4 appOutDir=dist\win-unpacked
+  ⨯ zip: not a valid zip file
+github.com/develar/app-builder/pkg/archive/zipx.(*Extractor).extractAndWriteFile
+        /Users/runner/work/app-builder/app-builder/pkg/archive/zipx/unzip.go:234
+github.com/develar/app-builder/pkg/archive/zipx.Unzip.func1.1
+        /Users/runner/work/app-builder/app-builder/pkg/archive/zipx/unzip.go:104
+github.com/develar/app-builder/pkg/util.MapAsyncConcurrency.func2
+        /Users/runner/work/app-builder/app-builder/pkg/util/async.go:68
+runtime.goexit
+        /Users/runner/hostedtoolcache/go/1.21.13/arm64/src/runtime/asm_amd64.s:1650
+  ⨯ C:\Users\MyPC\Desktop\lugin\node_modules\app-builder-bin\win\x64\app-builder.exe process failed ERR_ELECTRON_BUILDER_CANNOT_EXECUTE
+Exit code:
+1  failedTask=build stackTrace=Error: C:\Users\MyPC\Desktop\lugin\node_modules\app-builder-bin\win\x64\app-builder.exe process failed ERR_ELECTRON_BUILDER_CANNOT_EXECUTE
+Exit code:
+1
+    at ChildProcess.<anonymous> (C:\Users\MyPC\Desktop\lugin\node_modules\builder-util\src\util.ts:272:14)
+    at Object.onceWrapper (node:events:631:26)
+    at ChildProcess.emit (node:events:509:28)
+    at ChildProcess.cp.emit (C:\Users\MyPC\Desktop\lugin\node_modules\cross-spawn\lib\enoent.js:34:29)
+    at maybeClose (node:internal/child_process:1141:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:306:5)
