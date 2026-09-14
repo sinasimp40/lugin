@@ -1448,6 +1448,68 @@
       background: rgba(255,40,40,0.25); border-color: rgba(255,40,40,0.5);
       box-shadow: 0 0 10px rgba(255,40,40,0.2);
     }
+
+    /* ===== Denfi admin workspace ===== */
+    #admin-modal { background: rgba(4,5,7,.82); backdrop-filter: blur(14px); }
+    #admin-modal .admin-box {
+      width: min(1120px, 94vw); height: min(790px, 92vh); max-width: none; max-height: none;
+      padding: 0; overflow: hidden; border: 1px solid rgba(255,140,0,.22);
+      border-radius: 14px; background: #111315; box-shadow: 0 30px 90px rgba(0,0,0,.65), 0 0 0 1px rgba(255,140,0,.04);
+    }
+    #admin-modal .admin-box::before { height: 3px; background: linear-gradient(90deg,#ff6b00,#ffb347 48%,#ff6b00); }
+    #admin-modal .admin-box.auth-mode { width: min(420px,94vw); height: auto; padding: 36px; border-radius: 14px; }
+    #admin-panel-view { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+    #admin-panel-view[style*="display: block"] { display: flex !important; }
+    .admin-shell-head { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:24px 30px 20px; border-bottom:1px solid #292d31; background:linear-gradient(135deg,#171a1d,#111315); }
+    .admin-brand { display:flex; align-items:center; gap:13px; }
+    .admin-brand-mark { width:38px; height:38px; border-radius:10px; display:grid; place-items:center; background:#ff7800; color:#15100b; font:900 17px 'Orbitron',sans-serif; box-shadow:0 7px 22px rgba(255,120,0,.25); }
+    .admin-brand-title { color:#f5f2ed; font:700 18px 'Orbitron',sans-serif; letter-spacing:2px; }
+    .admin-brand-sub { color:#858b91; font:11px 'Share Tech Mono',monospace; letter-spacing:1px; margin-top:4px; }
+    .admin-head-actions { display:flex; align-items:center; gap:10px; }
+    .admin-head-actions .btn-admin { width:auto; margin:0; }
+    .admin-layout { flex:1; display:grid; grid-template-columns:215px minmax(0,1fr); min-height:0; }
+    .admin-nav { padding:18px 12px; background:#0e1012; border-right:1px solid #292d31; }
+    .admin-nav-label { padding:3px 12px 10px; color:#666d74; font:10px 'Share Tech Mono',monospace; letter-spacing:1.6px; text-transform:uppercase; }
+    .admin-tab { display:flex; align-items:center; width:100%; gap:11px; padding:11px 12px; margin:3px 0; color:#8d949a; background:transparent; border:1px solid transparent; border-radius:8px; cursor:pointer; text-align:left; font:12px 'Share Tech Mono',monospace; letter-spacing:.6px; transition:background .2s,color .2s,border-color .2s,transform .2s; }
+    .admin-tab:hover { color:#f0ece6; background:#191c1f; transform:translateX(2px); }
+    .admin-tab.active { color:#ff9a3d; background:rgba(255,120,0,.11); border-color:rgba(255,140,0,.2); }
+    .admin-tab-mark { width:7px; height:7px; border:1px solid currentColor; border-radius:2px; opacity:.8; }
+    .admin-workspace { min-width:0; overflow:auto; padding:25px 28px 30px; scrollbar-color:#454a4f transparent; }
+    .admin-page { display:none; animation:admin-page-in .22s ease both; }
+    .admin-page.active { display:block; }
+    @keyframes admin-page-in { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
+    .admin-page-intro { display:flex; align-items:flex-end; justify-content:space-between; gap:15px; margin-bottom:20px; }
+    .admin-page-intro h2 { margin:0 !important; padding:0 !important; text-align:left !important; color:#f4f0ea !important; font-size:20px !important; letter-spacing:1px !important; text-shadow:none !important; }
+    .admin-page-intro p { color:#777e84; font:11px 'Share Tech Mono',monospace; margin-top:6px; }
+    .admin-section { border:1px solid #2a2e32; border-radius:10px; padding:17px; background:linear-gradient(145deg,#191c1f,#151719); box-shadow:0 6px 20px rgba(0,0,0,.12); }
+    .admin-section h3 { display:flex; align-items:center; gap:8px; margin:0 0 14px; color:#ff9842; font:11px 'Share Tech Mono',monospace; letter-spacing:1.4px; }
+    .admin-section h3::before { content:''; width:5px; height:5px; border-radius:50%; background:#ff7800; box-shadow:0 0 9px rgba(255,120,0,.7); }
+    .admin-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .admin-grid .admin-section.full-width { grid-column:1/-1; }
+    .admin-section .form-group { margin-bottom:12px; }
+    .admin-section input:not([type="color"]):not([type="file"]), .admin-box input:not([type="color"]):not([type="file"]) { border:1px solid #343a3f; border-radius:6px; background:#0f1113; padding:10px 11px; color:#eee; transition:border-color .2s,box-shadow .2s,background .2s; }
+    .admin-section input:focus { border-color:#ff8c24 !important; background:#131619 !important; box-shadow:0 0 0 3px rgba(255,128,0,.11) !important; }
+    .admin-section label, #admin-auth-view label { color:#8c9399; font-size:10px; letter-spacing:1.1px; }
+    .admin-msg { border-radius:7px; margin:0 28px 0; padding:10px 13px; }
+    #admin-panel-msg { margin:14px 28px 0; }
+    .btn-admin { border-radius:6px; padding:9px 14px; color:#ff9b46; background:rgba(255,120,0,.1); border:1px solid rgba(255,140,0,.34); font-size:10px; letter-spacing:1px; transition:background .2s,border-color .2s,transform .2s,box-shadow .2s; }
+    .btn-admin:hover { background:rgba(255,120,0,.19); border-color:#ff9b46; box-shadow:0 5px 16px rgba(255,120,0,.13); transform:translateY(-1px); }
+    .btn-admin.danger { color:#ff7070; background:rgba(220,50,50,.09); border-color:rgba(220,80,80,.3); }
+    .btn-admin.danger:hover { background:rgba(220,50,50,.18); border-color:#ff7070; }
+    .admin-footer { display:flex; justify-content:space-between; align-items:center; padding:15px 28px; border-top:1px solid #292d31; background:#101214; }
+    .admin-footer-note { color:#686f75; font:10px 'Share Tech Mono',monospace; letter-spacing:.7px; }
+    .admin-auth-kicker { color:#ff9238; font:10px 'Share Tech Mono',monospace; letter-spacing:2px; text-transform:uppercase; margin-bottom:13px; }
+    #admin-auth-view h2 { text-align:left; color:#f3eee7; font-size:23px; letter-spacing:1px; text-shadow:none; margin-bottom:7px; }
+    #admin-auth-view::after { content:'Protected operator controls'; display:block; color:#777e84; font:11px 'Share Tech Mono',monospace; margin-bottom:24px; }
+    #admin-auth-view .btn-group { margin-top:20px; }
+    #admin-auth-view .btn-group .btn-admin { flex:1; }
+    .admin-media-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .admin-media-card { min-width:0; }
+    .admin-media-card > div:first-child { color:#aeb4b8 !important; text-align:left !important; margin-bottom:8px !important; }
+    .bg-preview { border-radius:7px; border-color:#343a3f; }
+    .admin-ads-list { display:grid; gap:12px; }
+    @media (max-width:850px) { .admin-layout { grid-template-columns:1fr; } .admin-nav { display:flex; overflow:auto; gap:5px; padding:10px 14px; border-right:0; border-bottom:1px solid #292d31; } .admin-nav-label { display:none; } .admin-tab { white-space:nowrap; width:auto; } .admin-workspace { padding:18px; } }
+    @media (max-width:620px) { #admin-modal .admin-box { width:96vw; height:94vh; } .admin-shell-head { padding:20px 18px 16px; } .admin-brand-title { font-size:14px; } .admin-grid,.admin-media-grid { grid-template-columns:1fr; } .admin-footer { padding:13px 18px; } #admin-panel-msg { margin-left:18px; margin-right:18px; } }
   </style>
 </head>
 <body>
@@ -1747,202 +1809,84 @@
   </div>
 
   <div id="admin-modal" class="admin-modal">
-    <div class="admin-box" id="admin-box">
+    <div class="admin-box auth-mode" id="admin-box">
       <div id="admin-auth-view">
+        <div class="admin-auth-kicker">DENFI / CONTROL ROOM</div>
         <h2 id="admin-title">Admin Access</h2>
         <div id="admin-auth-msg" class="admin-msg"></div>
         <form onsubmit="event.preventDefault(); adminAuth();" autocomplete="off">
-          <div class="form-group">
-            <label id="admin-pw-label">// Password</label>
-            <input type="password" id="admin-pw-input" placeholder="enter admin password" />
-          </div>
-          <div id="admin-pw-confirm-group" class="form-group" style="display:none">
-            <label>// Confirm Password</label>
-            <input type="password" id="admin-pw-confirm" placeholder="confirm password" />
-          </div>
-          <div class="btn-group">
-            <button type="button" class="btn-admin" onclick="closeAdmin()">Cancel</button>
-            <button type="submit" class="btn-admin" id="admin-auth-btn">Login</button>
-          </div>
+          <div class="form-group"><label id="admin-pw-label">Password</label><input type="password" id="admin-pw-input" placeholder="Enter admin password" /></div>
+          <div id="admin-pw-confirm-group" class="form-group" style="display:none"><label>Confirm Password</label><input type="password" id="admin-pw-confirm" placeholder="Confirm password" /></div>
+          <div class="btn-group"><button type="button" class="btn-admin" onclick="closeAdmin()">Cancel</button><button type="submit" class="btn-admin" id="admin-auth-btn">Login</button></div>
         </form>
       </div>
-
       <div id="admin-panel-view" style="display:none">
-        <h2>Admin Panel</h2>
+        <header class="admin-shell-head">
+          <div class="admin-brand"><div class="admin-brand-mark">D</div><div><div class="admin-brand-title">DENFI CONTROL</div><div class="admin-brand-sub">KIOSK CONFIGURATION / OPERATOR MODE</div></div></div>
+          <div class="admin-head-actions"><button class="btn-admin" onclick="closeAdmin()">Close</button></div>
+        </header>
         <div id="admin-panel-msg" class="admin-msg"></div>
-
-        <div class="admin-grid">
-          <div class="admin-section">
-            <h3>&#9670; Computer Name</h3>
-            <div class="form-group">
-              <input type="text" id="admin-computer-name" placeholder="Enter computer name" maxlength="30" />
-            </div>
-            <button class="btn-admin" onclick="saveComputerName()">Save</button>
-          </div>
-
-          <div class="admin-section" id="sync-server-section">
-            <h3>&#9670; Denfi Points Server</h3>
-            <div id="sync-server-status" style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;margin-bottom:8px;color:#888">checking...</div>
-            <div class="form-group">
-              <label>// Server Address (e.g. 10.10.10.29:5000)</label>
-              <input type="text" id="admin-sync-url" placeholder="e.g. 10.10.10.29:5000" />
-            </div>
-            <div style="display:flex;gap:6px">
-              <button class="btn-admin" style="flex:1" onclick="saveSyncServer()">Connect</button>
-              <button class="btn-admin" style="flex:1" onclick="autoDetectSync()">Auto-Detect</button>
-            </div>
-            <button class="btn-admin danger" style="margin-top:6px;width:100%" onclick="disconnectSync()">Disconnect</button>
-          </div>
-
-          <div class="admin-section">
-            <h3>&#9670; Auto Shutdown Timer</h3>
-            <div class="form-group">
-              <label>// Minutes until shutdown (0 = disabled)</label>
-              <input type="number" id="admin-shutdown-time" placeholder="0" min="0" max="1440" />
-            </div>
-            <button class="btn-admin" onclick="saveShutdownTime()">Save</button>
-          </div>
-
-          <div class="admin-section">
-            <h3>&#9670; Curfew Hours</h3>
-            <div class="curfew-toggle-wrap">
-              <label class="curfew-toggle">
-                <input type="checkbox" id="admin-curfew-enabled" />
-                <span class="slider"></span>
-              </label>
-              <span style="font-family:'Share Tech Mono',monospace;font-size:11px;color:#e0e0e0;letter-spacing:1px">Enable Curfew</span>
-            </div>
-            <div class="form-group">
-              <label>// Start Time</label>
-              <input type="time" id="admin-curfew-start" value="22:00" style="color-scheme:dark" />
-            </div>
-            <div class="form-group">
-              <label>// End Time</label>
-              <input type="time" id="admin-curfew-end" value="06:00" style="color-scheme:dark" />
-            </div>
-            <button class="btn-admin" onclick="saveCurfewSettings()">Save Curfew</button>
-          </div>
-
-          <div class="admin-section">
-            <h3>&#9670; Background Image</h3>
-            <div class="bg-preview" id="admin-bg-preview">[ no background ]</div>
-            <div class="file-input-wrap">
-              <button class="btn-admin" style="width:100%">Choose Image</button>
-              <input type="file" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" onchange="uploadBackground(this)" />
-            </div>
-            <div class="file-size-hint">PNG, JPEG, GIF, WebP, MP4, WebM (max 50MB)</div>
-            <div class="gif-warning" id="gif-warning">&#9888; GIF animations may use more memory</div>
-            <button class="btn-admin danger" style="margin-top:8px;width:100%" onclick="removeBackground()">Remove Background</button>
-          </div>
-
-          <div class="admin-section">
-            <h3>&#9670; Change Admin Password</h3>
-            <form onsubmit="event.preventDefault(); changeAdminPassword();" autocomplete="off">
-              <div class="form-group">
-                <label>// Current Password</label>
-                <input type="password" id="admin-old-pw" placeholder="current password" />
+        <div class="admin-layout">
+          <nav class="admin-nav" aria-label="Admin settings">
+            <div class="admin-nav-label">Settings</div>
+            <button class="admin-tab active" onclick="switchAdminView('runtime',this)"><span class="admin-tab-mark"></span>Runtime</button>
+            <button class="admin-tab" onclick="switchAdminView('appearance',this)"><span class="admin-tab-mark"></span>Appearance</button>
+            <button class="admin-tab" onclick="switchAdminView('behavior',this)"><span class="admin-tab-mark"></span>Applications</button>
+            <button class="admin-tab" onclick="switchAdminView('advertising',this)"><span class="admin-tab-mark"></span>Advertising</button>
+            <button class="admin-tab" onclick="switchAdminView('security',this)"><span class="admin-tab-mark"></span>Security</button>
+          </nav>
+          <main class="admin-workspace">
+            <section class="admin-page active" id="admin-page-runtime">
+              <div class="admin-page-intro"><div><h2>Runtime</h2><p>Machine identity, timing and shop-hours controls.</p></div></div>
+              <div class="admin-grid">
+                <div class="admin-section"><h3>Computer identity</h3><div class="form-group"><input type="text" id="admin-computer-name" placeholder="Enter computer name" maxlength="30" /></div><button class="btn-admin" onclick="saveComputerName()">Save name</button></div>
+                <div class="admin-section" id="sync-server-section"><h3>Denfi Points server</h3><div id="sync-server-status" style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;margin-bottom:8px;color:#888">checking...</div><div class="form-group"><label>Server address</label><input type="text" id="admin-sync-url" placeholder="e.g. 10.10.10.29:5000" /></div><div style="display:flex;gap:6px"><button class="btn-admin" style="flex:1" onclick="saveSyncServer()">Connect</button><button class="btn-admin" style="flex:1" onclick="autoDetectSync()">Auto-Detect</button></div><button class="btn-admin danger" style="margin-top:8px;width:100%" onclick="disconnectSync()">Disconnect</button></div>
+                <div class="admin-section"><h3>Auto shutdown timer</h3><div class="form-group"><label>Minutes until shutdown (0 = disabled)</label><input type="number" id="admin-shutdown-time" placeholder="0" min="0" max="1440" /></div><button class="btn-admin" onclick="saveShutdownTime()">Save timer</button></div>
+                <div class="admin-section"><h3>Curfew hours</h3><div class="curfew-toggle-wrap"><label class="curfew-toggle"><input type="checkbox" id="admin-curfew-enabled" /><span class="slider"></span></label><span style="font-family:'Share Tech Mono',monospace;font-size:11px;color:#e0e0e0;letter-spacing:1px">Enable curfew</span></div><div class="form-group"><label>Start time</label><input type="time" id="admin-curfew-start" value="22:00" style="color-scheme:dark" /></div><div class="form-group"><label>End time</label><input type="time" id="admin-curfew-end" value="06:00" style="color-scheme:dark" /></div><button class="btn-admin" onclick="saveCurfewSettings()">Save curfew</button></div>
               </div>
-              <div class="form-group">
-                <label>// New Password</label>
-                <input type="password" id="admin-new-pw" placeholder="new password" />
+            </section>
+            <section class="admin-page" id="admin-page-appearance">
+              <div class="admin-page-intro"><div><h2>Appearance</h2><p>Shape the lock screen without touching the customer flow.</p></div></div>
+              <div class="admin-grid">
+                <div class="admin-section"><h3>Background media</h3><div class="bg-preview" id="admin-bg-preview">[ no background ]</div><div class="file-input-wrap"><button class="btn-admin" style="width:100%">Choose image or video</button><input type="file" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" onchange="uploadBackground(this)" /></div><div class="file-size-hint">PNG, JPEG, GIF, WebP, MP4, WebM (max 50MB)</div><div class="gif-warning" id="gif-warning">Animation may use more memory</div><button class="btn-admin danger" style="margin-top:8px;width:100%" onclick="removeBackground()">Remove background</button></div>
+                <div class="admin-section"><h3>Theme colors</h3><div style="display:flex;gap:12px"><div style="flex:1"><label>Login color</label><div style="display:flex;gap:6px;margin-top:5px"><input type="color" id="admin-login-color" value="#ff8c00" style="width:38px;height:34px" /><input type="text" id="admin-login-color-hex" value="#ff8c00" maxlength="7" style="width:78px" /></div></div><div style="flex:1"><label>Register color</label><div style="display:flex;gap:6px;margin-top:5px"><input type="color" id="admin-register-color" value="#ffd700" style="width:38px;height:34px" /><input type="text" id="admin-register-color-hex" value="#ffd700" maxlength="7" style="width:78px" /></div></div></div><button class="btn-admin" style="width:100%;margin-top:16px" onclick="saveThemeColors()">Save colors</button></div>
+                <div class="admin-section full-width"><h3>Panel images</h3><div class="admin-media-grid"><div class="admin-media-card"><div>Login image</div><div class="bg-preview" id="admin-login-img-preview" style="height:120px">[ no image ]</div><div class="file-input-wrap" style="margin-top:6px"><button class="btn-admin" style="width:100%">Upload</button><input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange="uploadLoginImage(this)" /></div><button class="btn-admin danger" style="margin-top:5px;width:100%" onclick="removeLoginImage()">Remove</button></div><div class="admin-media-card"><div>Register image</div><div class="bg-preview" id="admin-register-img-preview" style="height:120px">[ no image ]</div><div class="file-input-wrap" style="margin-top:6px"><button class="btn-admin" style="width:100%">Upload</button><input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange="uploadRegisterImage(this)" /></div><button class="btn-admin danger" style="margin-top:5px;width:100%" onclick="removeRegisterImage()">Remove</button></div></div><button class="btn-admin" onclick="swapLoginRegisterImages()" style="margin-top:14px">Swap login and register images</button><div class="file-size-hint" style="margin-top:10px">PNG, JPEG, GIF, WebP (max 50MB). Empty register image uses login image.</div></div>
               </div>
-              <button type="submit" class="btn-admin">Change Password</button>
-            </form>
-          </div>
-
-          <div class="admin-section">
-            <h3>&#9670; Fullscreen Game Bypass</h3>
-            <p style="font-size:11px;color:#888;margin-bottom:8px">Games where session strip hides to avoid conflicts. Enter .exe names.</p>
-            <div id="admin-bypass-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <input type="text" id="admin-bypass-input" placeholder="e.g. valorant.exe" style="flex:1" />
-              <button class="btn-admin" onclick="addBypassGame()">Add</button>
-            </div>
-          </div>
-
-          <div class="admin-section">
-            <h3>&#9670; Close Apps on Session End</h3>
-            <p style="font-size:11px;color:#888;margin-bottom:8px">Force-close these .exe programs when the login lock screen returns and before auto shutdown.</p>
-            <div id="admin-close-app-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <input type="text" id="admin-close-app-input" placeholder="e.g. game.exe" style="flex:1" />
-              <button class="btn-admin" onclick="addCloseApp()">Add</button>
-            </div>
-          </div>
-
-          <div class="admin-section full-width">
-            <h3>&#9670; Panel Images (Login / Register)</h3>
-            <div style="display:flex;gap:16px;margin-bottom:10px">
-              <div style="flex:1">
-                <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#ff8c00;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;text-align:center">Login Image</div>
-                <div class="bg-preview" id="admin-login-img-preview" style="height:120px">[ no image ]</div>
-                <div class="file-input-wrap" style="margin-top:6px">
-                  <button class="btn-admin" style="width:100%;font-size:10px;padding:6px">Upload</button>
-                  <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange="uploadLoginImage(this)" />
-                </div>
-                <button class="btn-admin danger" style="margin-top:4px;width:100%;font-size:10px;padding:4px" onclick="removeLoginImage()">Remove</button>
+            </section>
+            <section class="admin-page" id="admin-page-behavior">
+              <div class="admin-page-intro"><div><h2>Applications</h2><p>Keep game sessions stable and close cleanly on lock.</p></div></div>
+              <div class="admin-grid">
+                <div class="admin-section"><h3>Fullscreen game bypass</h3><p style="font-size:11px;color:#888;margin-bottom:8px">Games where the session strip hides to avoid conflicts. Enter .exe names.</p><div id="admin-bypass-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div><div style="display:flex;gap:8px;align-items:center"><input type="text" id="admin-bypass-input" placeholder="e.g. valorant.exe" style="flex:1" /><button class="btn-admin" onclick="addBypassGame()">Add</button></div></div>
+                <div class="admin-section"><h3>Close apps on session end</h3><p style="font-size:11px;color:#888;margin-bottom:8px">Force-close these .exe programs when the login lock screen returns.</p><div id="admin-close-app-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div><div style="display:flex;gap:8px;align-items:center"><input type="text" id="admin-close-app-input" placeholder="e.g. game.exe" style="flex:1" /><button class="btn-admin" onclick="addCloseApp()">Add</button></div></div>
               </div>
-              <div style="display:flex;align-items:center">
-                <button class="btn-admin" onclick="swapLoginRegisterImages()" style="padding:8px 10px;font-size:16px" title="Swap images">&#8646;</button>
-              </div>
-              <div style="flex:1">
-                <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#ffd700;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;text-align:center">Register Image</div>
-                <div class="bg-preview" id="admin-register-img-preview" style="height:120px">[ no image ]</div>
-                <div class="file-input-wrap" style="margin-top:6px">
-                  <button class="btn-admin" style="width:100%;font-size:10px;padding:6px">Upload</button>
-                  <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange="uploadRegisterImage(this)" />
-                </div>
-                <button class="btn-admin danger" style="margin-top:4px;width:100%;font-size:10px;padding:4px" onclick="removeRegisterImage()">Remove</button>
-              </div>
-            </div>
-            <div class="file-size-hint">PNG, JPEG, GIF, WebP (max 50MB) &bull; <span style="color:#ffd700">If register is empty, login image is used for both</span></div>
-
-            <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--dark-border)">
-              <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(255,140,0,0.6);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;text-align:center">Theme Colors</div>
-              <div style="display:flex;gap:16px;align-items:center;justify-content:center">
-                <div style="flex:1;text-align:center">
-                  <label style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#888;display:block;margin-bottom:4px">Login Color</label>
-                  <div style="display:flex;align-items:center;gap:6px;justify-content:center">
-                    <input type="color" id="admin-login-color" value="#ff8c00" style="width:36px;height:28px;border:1px solid var(--dark-border);background:var(--dark-bg);cursor:pointer;border-radius:3px;padding:1px" />
-                    <input type="text" id="admin-login-color-hex" value="#ff8c00" maxlength="7" style="width:72px;font-family:'Share Tech Mono',monospace;font-size:11px;text-align:center;background:var(--dark-bg);border:1px solid var(--dark-border);color:#e0e0e0;border-radius:3px;padding:4px" />
-                  </div>
-                </div>
-                <div style="flex:1;text-align:center">
-                  <label style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#888;display:block;margin-bottom:4px">Register Color</label>
-                  <div style="display:flex;align-items:center;gap:6px;justify-content:center">
-                    <input type="color" id="admin-register-color" value="#ffd700" style="width:36px;height:28px;border:1px solid var(--dark-border);background:var(--dark-bg);cursor:pointer;border-radius:3px;padding:1px" />
-                    <input type="text" id="admin-register-color-hex" value="#ffd700" maxlength="7" style="width:72px;font-family:'Share Tech Mono',monospace;font-size:11px;text-align:center;background:var(--dark-bg);border:1px solid var(--dark-border);color:#e0e0e0;border-radius:3px;padding:4px" />
-                  </div>
-                </div>
-              </div>
-              <button class="btn-admin" style="width:100%;margin-top:8px" onclick="saveThemeColors()">Save Colors</button>
-            </div>
-          </div>
-
-          <div class="admin-section full-width">
-            <h3>&#9670; Advertisements</h3>
-            <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(255,140,0,0.5);margin-bottom:8px;letter-spacing:0.5px">[ ideal image size: 820 x 140 px ]</div>
-            <div class="form-group">
-              <label>// Slide Interval (seconds)</label>
-              <div style="display:flex;gap:8px;align-items:center">
-                <input type="number" id="admin-ad-interval" placeholder="5" min="1" max="60" style="width:80px" />
-                <button class="btn-admin" onclick="saveAdInterval()">Save</button>
-              </div>
-            </div>
-            <div class="admin-ads-list" id="admin-ads-list"></div>
-            <button class="btn-admin" style="width:100%" id="btn-add-slide">+ Add Slide</button>
-          </div>
+            </section>
+            <section class="admin-page" id="admin-page-advertising">
+              <div class="admin-page-intro"><div><h2>Advertising</h2><p>Manage the message shown while customers are waiting.</p></div></div>
+              <div class="admin-section"><h3>Carousel settings</h3><div style="display:flex;gap:8px;align-items:center;margin-bottom:18px"><label>Slide interval (seconds)</label><input type="number" id="admin-ad-interval" placeholder="5" min="1" max="60" style="width:86px" /><button class="btn-admin" onclick="saveAdInterval()">Save interval</button></div><div class="admin-ads-list" id="admin-ads-list"></div><button class="btn-admin" style="width:100%;margin-top:14px" id="btn-add-slide">Add slide</button></div>
+            </section>
+            <section class="admin-page" id="admin-page-security">
+              <div class="admin-page-intro"><div><h2>Security</h2><p>Change the operator password for this kiosk.</p></div></div>
+              <div class="admin-section" style="max-width:520px"><h3>Change admin password</h3><form onsubmit="event.preventDefault(); changeAdminPassword();" autocomplete="off"><div class="form-group"><label>Current password</label><input type="password" id="admin-old-pw" placeholder="Current password" /></div><div class="form-group"><label>New password</label><input type="password" id="admin-new-pw" placeholder="New password" /></div><button type="submit" class="btn-admin">Change password</button></form></div>
+            </section>
+          </main>
         </div>
-
-        <div style="display:flex;gap:12px;justify-content:center;margin-top:24px;padding-top:16px;border-top:1px solid var(--dark-border)">
-          <button class="btn-admin" onclick="closeAdmin()">Close Panel</button>
-          <button class="btn-admin danger" onclick="stopApp()">Stop App</button>
-        </div>
+        <footer class="admin-footer"><span class="admin-footer-note">Changes apply to this kiosk immediately</span><button class="btn-admin danger" onclick="stopApp()">Stop application</button></footer>
       </div>
     </div>
   </div>
 
   <script>
+    function switchAdminView(view, button) {
+      document.querySelectorAll('.admin-page').forEach(function(page) {
+        page.classList.toggle('active', page.id === 'admin-page-' + view);
+      });
+      document.querySelectorAll('.admin-tab').forEach(function(tab) {
+        tab.classList.toggle('active', tab === button);
+      });
+      var workspace = document.querySelector('.admin-workspace');
+      if (workspace) workspace.scrollTop = 0;
+    }
+
     var _confirmPending = false;
     function customConfirm(title, message, isDanger, okLabel) {
       if (_confirmPending) return Promise.resolve(false);
