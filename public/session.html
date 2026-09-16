@@ -287,7 +287,7 @@
   .strip { position:absolute; left:0; right:0; bottom:0; height:70px; }
   .drawer {
     display:none; position:absolute; left:0; right:0; bottom:70px; height:auto;
-    max-height:calc(100% - 70px);
+    max-height:none;
     background:linear-gradient(160deg,#111216,#090a0c); border:1px solid rgba(255,140,0,.4);
     border-top:2px solid #ff8c00; box-shadow:0 -8px 30px rgba(0,0,0,.7); overflow:hidden;
     font-family:'Share Tech Mono',monospace; color:#eee; -webkit-app-region:no-drag;
@@ -299,17 +299,11 @@
   .drawer-title { font:800 16px 'Orbitron',monospace; letter-spacing:1px; color:#ffb13d; }
   .drawer-close { border:0; background:transparent; color:#a98a68; font-size:22px; cursor:pointer; padding:0 4px; }
   .drawer-body {
-    flex:0 1 auto;
+    flex:0 0 auto;
     min-height:0;
-    overflow-y:auto;
-    overflow-x:hidden;
+    overflow:visible;
     padding:12px 14px;
-    scrollbar-width:thin;
-    scrollbar-color:rgba(255,140,0,.45) rgba(255,255,255,.03);
   }
-  .drawer-body::-webkit-scrollbar { width:5px; }
-  .drawer-body::-webkit-scrollbar-track { background:rgba(255,255,255,.03); }
-  .drawer-body::-webkit-scrollbar-thumb { background:rgba(255,140,0,.45); border-radius:5px; }
   .product-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
   .product {
     display:flex; align-items:center; justify-content:space-between; gap:6px; min-width:0;
@@ -754,7 +748,6 @@
       document.getElementById('cart-bar').style.display = view === 'shop' ? 'flex' : 'none';
       document.getElementById('rank-note').style.display = view === 'rank' ? '' : 'none';
       document.getElementById('drawer-title').textContent = view === 'shop' ? 'QUICK ORDER' : 'TOP 5 REGULARS';
-      setOverlayExpanded(true);
       resizeDrawerToContent();
       if (view === 'shop') loadProducts();
       else loadLeaderboard();

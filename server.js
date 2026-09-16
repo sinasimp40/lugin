@@ -207,9 +207,25 @@ async function fetchLoginData() {
   return parseHotspotResponse(buffer);
 }
 
+let hotspotReadQueue = Promise.resolve();
+function queueHotspotRead(readOperation) {
+  const pending = hotspotReadQueue.then(readOperation, readOperation);
+  hotspotReadQueue = pending.catch(() => {});
+  return pending;
+}
+
+let loginDataReadInFlight = null;
+function fetchLoginDataForRead() {
+  if (loginDataReadInFlight) return loginDataReadInFlight;
+  loginDataReadInFlight = queueHotspotRead(fetchLoginData).finally(() => {
+    loginDataReadInFlight = null;
+  });
+  return loginDataReadInFlight;
+}
+
 app.get('/api/hotspot/login-data', async (req, res) => {
   try {
-    const data = await fetchLoginData();
+    const data = await fetchLoginDataForRead();
     const chapAvailable = data.chapIdHex && data.chapIdHex.length > 0;
     console.log('[Login Data] CHAP:', chapAvailable, 'loginLink:', data.loginLink, 'error:', data.error);
     res.json({ success: true, data });
@@ -332,11 +348,22 @@ async function tryChapLogin(username, password) {
   }
 }
 
-app.get('/api/hotspot/status', async (req, res) => {
-  try {
+let statusReadInFlight = null;
+function fetchStatusForRead() {
+  if (statusReadInFlight) return statusReadInFlight;
+  statusReadInFlight = queueHotspotRead(async () => {
     const resp = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(5000) });
     const buffer = Buffer.from(await resp.arrayBuffer());
-    const data = parseHotspotResponse(buffer);
+    return parseHotspotResponse(buffer);
+  }).finally(() => {
+    statusReadInFlight = null;
+  });
+  return statusReadInFlight;
+}
+
+app.get('/api/hotspot/status', async (req, res) => {
+  try {
+    const data = await fetchStatusForRead();
     if (data.isLogin && data.username && data.username.startsWith('mem-')) {
       data.memberPoints = await getMemberPointsAuto(data.username);
     }
@@ -1803,9 +1830,7 @@ async function pollHotspotForWs() {
   if (pollInFlight) return;
   pollInFlight = true;
   try {
-    const resp = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(5000) });
-    const buffer = Buffer.from(await resp.arrayBuffer());
-    const data = parseHotspotResponse(buffer);
+    const data = await fetchStatusForRead();
 
     const wasLoggedIn = lastSessionData?.isLogin;
     const prevTime = lastSessionData?.sessionTimeLeft;

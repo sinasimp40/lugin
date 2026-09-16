@@ -320,6 +320,76 @@ let sessionWindow;
 let isQuitting = false;
 let currentState = 'logged-out';
 let focusGuardInterval = null;
+let idleShutdownTimer = null;
+let idleShutdownConfiguredSeconds = 0;
+let idleShutdownDeadline = 0;
+let shutdownIssued = false;
+
+function isLockState() {
+  return currentState === 'logged-out' || currentState === 'restoring-session';
+}
+
+function issueSystemShutdown(reason) {
+  if (shutdownIssued) return;
+  shutdownIssued = true;
+  if (idleShutdownTimer) clearTimeout(idleShutdownTimer);
+  idleShutdownTimer = null;
+  idleShutdownDeadline = 0;
+  console.log('[Electron] System shutdown requested:', reason);
+
+  if (process.platform === 'win32') {
+    try {
+      const child = spawn('shutdown', ['/s', '/t', '0', '/f'], {
+        detached: true,
+        windowsHide: true,
+        stdio: 'ignore',
+      });
+      child.unref();
+    } catch (error) {
+      console.error('[Electron] Could not issue Windows shutdown:', error.message);
+      shutdownIssued = false;
+      return;
+    }
+  } else {
+    exec('shutdown -h now', (error) => {
+      if (error) {
+        console.log('[Electron] Non-Windows shutdown failed:', error.message);
+        shutdownIssued = false;
+      }
+    });
+  }
+
+  // Cleanup is best-effort and must never delay the shutdown command.
+  setImmediate(() => {
+    try { closeConfiguredPrograms('shutdown'); } catch (_) {}
+  });
+}
+
+function syncIdleShutdownTimer(force) {
+  if (currentState !== 'logged-out' || idleShutdownConfiguredSeconds <= 0) {
+    if (idleShutdownTimer) clearTimeout(idleShutdownTimer);
+    idleShutdownTimer = null;
+    idleShutdownDeadline = 0;
+    return;
+  }
+
+  if (shutdownIssued) return;
+  if (!force && idleShutdownTimer) return;
+  if (idleShutdownTimer) clearTimeout(idleShutdownTimer);
+  idleShutdownDeadline = Date.now() + (idleShutdownConfiguredSeconds * 1000);
+  idleShutdownTimer = setTimeout(() => {
+    idleShutdownTimer = null;
+    issueSystemShutdown('idle lock-screen timer expired');
+  }, idleShutdownConfiguredSeconds * 1000);
+  console.log(`[Electron] Main-process idle shutdown armed for ${idleShutdownConfiguredSeconds}s`);
+}
+
+function setIdleShutdownConfig(seconds) {
+  const nextSeconds = Math.max(0, Number(seconds) || 0);
+  if (nextSeconds === idleShutdownConfiguredSeconds) return;
+  idleShutdownConfiguredSeconds = nextSeconds;
+  syncIdleShutdownTimer(true);
+}
 
 function closeConfiguredPrograms(reason) {
   if (process.platform !== 'win32') return;
@@ -575,6 +645,8 @@ app.whenReady().then(async () => {
   settings.setDataDir(dataDir);
   coinLogs.setDataDir(dataDir);
   orderStore.setDataDir(dataDir);
+  currentState = 'restoring-session';
+  setIdleShutdownConfig(settingsStore.getSettings().autoShutdownSeconds);
   console.log('[Electron] Data dir:', dataDir);
 
   // The watchdog is no longer baked into the app. It is now a standalone
@@ -588,7 +660,7 @@ app.whenReady().then(async () => {
     const http = require('http');
     return new Promise((resolve, reject) => {
       function check() {
-        http.get(`${APP_URL}/api/admin/status`, (res) => {
+        const req = http.get(`${APP_URL}/api/admin/status`, (res) => {
           let body = '';
           res.on('data', c => body += c);
           res.on('end', () => {
@@ -605,8 +677,12 @@ app.whenReady().then(async () => {
               retry();
             }
           });
-        }).on('error', () => {
+        });
+        req.on('error', () => {
           retry();
+        });
+        req.setTimeout(1000, () => {
+          try { req.destroy(); } catch (_) {}
         });
 
         function retry() {
@@ -671,45 +747,50 @@ function fetchSessionStatus() {
 // running session instead of dumping the user to the lock screen. If there is
 // no active session (or time is up, or the hotspot is unreachable) we fail
 // SAFE and show the lock screen so a paid game can never be played for free.
-async function bootInitialWindow() {
-  let restore = false;
+function bootInitialWindow() {
+  // Fail safe immediately: display the protected lock screen before any
+  // hotspot request. A slow or offline portal must not look like an app freeze.
+  currentState = 'restoring-session';
+  showLoginWindow();
+
+  void (async () => {
   // The hotspot portal can be briefly unreachable right after a relaunch/boot.
   // Retry a few times so a slow portal does not wrongly drop an active session
   // to the lock screen. A definitive answer (portal reachable) breaks early.
   const maxAttempts = 4;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (currentState !== 'restoring-session') return;
     const status = await fetchSessionStatus();
     if (status && status.success && status.data) {
       const timeLeft = parseInt(status.data.sessionTimeLeft) || 0;
-      if (status.data.isLogin && timeLeft > 0) restore = true;
-      break; // portal answered definitively — trust it
+      if (status.data.isLogin && timeLeft > 0 && currentState === 'restoring-session') {
+        console.log('[Electron] Active session detected after startup — restoring session mode.');
+        handleStateChange('logged-in');
+      } else if (currentState === 'restoring-session') {
+        currentState = 'logged-out';
+        shutdownIssued = false;
+        syncIdleShutdownTimer(true);
+      }
+      return; // portal answered definitively — trust it
     }
     if (attempt < maxAttempts) {
       console.log(`[Electron] Session status not ready (attempt ${attempt}/${maxAttempts}), retrying...`);
       await new Promise((r) => setTimeout(r, 1500));
     }
   }
-
-  if (restore) {
-    console.log('[Electron] Active session detected on boot — restoring session mode.');
-    currentState = 'logged-in';
-    if (sessionWindow && !sessionWindow.isDestroyed()) {
-      sessionWindow.destroy();
-      sessionWindow = null;
-    }
-    showSessionWindow(() => {});
-    startPolling();
-  } else {
-    console.log('[Electron] No active session on boot — showing lock screen.');
-    showLoginWindow();
+  if (currentState === 'restoring-session') {
+    currentState = 'logged-out';
+    shutdownIssued = false;
+    syncIdleShutdownTimer(true);
   }
+  console.log('[Electron] Session status unavailable at startup — keeping lock screen active.');
+  })();
 }
 
 function showLoginWindow(onReady) {
   const { screen } = require('electron');
   const initialBounds = screen.getPrimaryDisplay().bounds;
 
-  currentState = 'logged-out';
   registerKeyBlocks();
   enableKioskLockdown();
 
@@ -744,7 +825,7 @@ function showLoginWindow(onReady) {
   Menu.setApplicationMenu(null);
 
   function enforceLoginKiosk() {
-    if (!loginWindow || loginWindow.isDestroyed() || currentState !== 'logged-out') return;
+    if (!loginWindow || loginWindow.isDestroyed() || !isLockState()) return;
     try {
       const bounds = screen.getPrimaryDisplay().bounds;
       if (loginWindow.isMinimized()) loginWindow.restore();
@@ -781,7 +862,7 @@ function showLoginWindow(onReady) {
   // (e.g. Win+D / "Show desktop", Win+M, or a script calling ShowWindow).
   function forceLoginVisible() {
     if (!loginWindow || loginWindow.isDestroyed()) return;
-    if (currentState !== 'logged-out') return;
+    if (!isLockState()) return;
     try {
       if (loginWindow.isMinimized()) loginWindow.restore();
       if (!loginWindow.isVisible()) loginWindow.show();
@@ -826,7 +907,7 @@ function showLoginWindow(onReady) {
     // focus repeatedly during the fullscreen transition, not only once.
     let focusAttempts = 0;
     const focusRecovery = setInterval(() => {
-      if (!loginWindow || loginWindow.isDestroyed() || currentState !== 'logged-out' || focusAttempts++ >= 20) {
+      if (!loginWindow || loginWindow.isDestroyed() || !isLockState() || focusAttempts++ >= 20) {
         clearInterval(focusRecovery);
         return;
       }
@@ -870,14 +951,14 @@ function showLoginWindow(onReady) {
     if (focusGuardInterval) return;
 
     loginWindow.on('blur', () => {
-      if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
+      if (isLockState() && loginWindow && !loginWindow.isDestroyed()) {
         loginWindow.moveTop();
         loginWindow.focus();
       }
     });
 
     focusGuardInterval = setInterval(() => {
-      if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) {
+      if (isLockState() && loginWindow && !loginWindow.isDestroyed()) {
         // Defensive: re-apply skipTaskbar every tick. Windows clears this
         // flag when explorer.exe restarts (it broadcasts TaskbarCreated and
         // re-enumerates top-level windows), which would otherwise make our
@@ -1155,18 +1236,19 @@ ipcMain.handle('session-overlay-placement', (event) => {
   return currentSessionPlacement;
 });
 
-ipcMain.on('trigger-shutdown', () => {
+ipcMain.on('trigger-shutdown', (event) => {
+  if (!loginWindow || loginWindow.isDestroyed() || event.sender !== loginWindow.webContents || currentState !== 'logged-out') return;
+  if (!idleShutdownDeadline || Date.now() < idleShutdownDeadline) {
+    console.log('[Electron] Ignored early renderer shutdown request; main-process deadline is authoritative.');
+    return;
+  }
   console.log('[Electron] Shutdown triggered from renderer');
-  closeConfiguredPrograms('shutdown');
-  const { exec } = require('child_process');
-  exec('shutdown /s /t 0 /f', (err) => {
-    if (err) {
-      console.log('[Electron] Shutdown command failed (non-Windows?):', err.message);
-      exec('shutdown -h now', (err2) => {
-        if (err2) console.log('[Electron] Linux shutdown also failed:', err2.message);
-      });
-    }
-  });
+  issueSystemShutdown('renderer countdown expired');
+});
+
+ipcMain.on('idle-shutdown-config', (event, seconds) => {
+  if (!loginWindow || loginWindow.isDestroyed() || event.sender !== loginWindow.webContents || !isLockState()) return;
+  setIdleShutdownConfig(seconds);
 });
 
 let transitionLock = false;
@@ -1194,6 +1276,7 @@ function handleStateChange(state) {
   if (state === 'logged-in') {
     if (currentState === 'logged-in' && sessionWindow && !sessionWindow.isDestroyed()) return;
     currentState = 'logged-in';
+    syncIdleShutdownTimer(true);
     transitionLock = true;
     if (transitionLockTimer) clearTimeout(transitionLockTimer);
     transitionLockTimer = setTimeout(() => { unlockTransition(); }, 5000);
@@ -1229,6 +1312,8 @@ function handleStateChange(state) {
   } else if (state === 'logged-out') {
     if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) return;
     currentState = 'logged-out';
+    shutdownIssued = false;
+    syncIdleShutdownTimer(true);
     transitionLock = true;
     if (transitionLockTimer) clearTimeout(transitionLockTimer);
     transitionLockTimer = setTimeout(() => { unlockTransition(); }, 5000);

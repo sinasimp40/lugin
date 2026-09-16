@@ -362,7 +362,7 @@ function saveLoginImage(fileBuffer, originalName, mimeType) {
   }
   fs.writeFileSync(filepath, fileBuffer);
   const s = load();
-  s.loginImage = { filename, mimeType, size: fileBuffer.length };
+  s.loginImage = { filename, mimeType, size: fileBuffer.length, version: Date.now() };
   save(s);
   return s.loginImage;
 }
@@ -389,7 +389,7 @@ function saveRegisterImage(fileBuffer, originalName, mimeType) {
   }
   fs.writeFileSync(filepath, fileBuffer);
   const s = load();
-  s.registerImage = { filename, mimeType, size: fileBuffer.length };
+  s.registerImage = { filename, mimeType, size: fileBuffer.length, version: Date.now() };
   save(s);
   return s.registerImage;
 }
@@ -433,17 +433,18 @@ function swapPanelImages() {
   }
 
   if (loginMeta && registerMeta) {
+    const swapVersion = Date.now();
     const newLoginFilename = registerMeta.filename.replace('registerimage', 'loginimage');
     const newRegisterFilename = loginMeta.filename.replace('loginimage', 'registerimage');
-    s.loginImage = { filename: newLoginFilename, mimeType: registerMeta.mimeType, size: registerMeta.size };
-    s.registerImage = { filename: newRegisterFilename, mimeType: loginMeta.mimeType, size: loginMeta.size };
+    s.loginImage = { filename: newLoginFilename, mimeType: registerMeta.mimeType, size: registerMeta.size, version: swapVersion };
+    s.registerImage = { filename: newRegisterFilename, mimeType: loginMeta.mimeType, size: loginMeta.size, version: swapVersion };
   } else if (loginMeta && !registerMeta) {
     const newRegisterFilename = loginMeta.filename.replace('loginimage', 'registerimage');
-    s.registerImage = { filename: newRegisterFilename, mimeType: loginMeta.mimeType, size: loginMeta.size };
+    s.registerImage = { filename: newRegisterFilename, mimeType: loginMeta.mimeType, size: loginMeta.size, version: Date.now() };
     s.loginImage = null;
   } else if (!loginMeta && registerMeta) {
     const newLoginFilename = registerMeta.filename.replace('registerimage', 'loginimage');
-    s.loginImage = { filename: newLoginFilename, mimeType: registerMeta.mimeType, size: registerMeta.size };
+    s.loginImage = { filename: newLoginFilename, mimeType: registerMeta.mimeType, size: registerMeta.size, version: Date.now() };
     s.registerImage = null;
   }
 
@@ -582,7 +583,7 @@ function saveAdImage(adId, fileBuffer, originalName, mimeType) {
     try { fs.unlinkSync(path.join(uploadsDir, f)); } catch (e) {}
   }
   fs.writeFileSync(filepath, fileBuffer);
-  return { filename, mimeType, size: fileBuffer.length };
+  return { filename, mimeType, size: fileBuffer.length, version: Date.now() };
 }
 
 module.exports = {

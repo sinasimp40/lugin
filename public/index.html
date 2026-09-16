@@ -2098,6 +2098,9 @@
       if (s.adSlideSeconds) adSlideMs = s.adSlideSeconds * 1000;
       renderAdCarousel(s.ads || []);
       updateShutdownConfig(s.autoShutdownSeconds || 0);
+      if (window.electronAPI && window.electronAPI.setIdleShutdownConfig) {
+        window.electronAPI.setIdleShutdownConfig(s.autoShutdownSeconds || 0);
+      }
       updateCurfewUI(s);
     }
 
@@ -2106,13 +2109,15 @@
       const placeholder = document.getElementById('login-right-placeholder');
       let loginImg = document.getElementById('login-right-img-login');
       if (imgInfo && imgInfo.filename) {
-        const src = '/uploads/' + imgInfo.filename + '?t=' + Date.now();
+        const version = imgInfo.version || imgInfo.size || '1';
+        const src = '/uploads/' + encodeURIComponent(imgInfo.filename) + '?v=' + encodeURIComponent(version);
         if (loginImg) {
-          loginImg.src = src;
+          if (loginImg.getAttribute('src') !== src) loginImg.src = src;
         } else {
           loginImg = document.createElement('img');
           loginImg.id = 'login-right-img-login';
           loginImg.className = 'login-right-img';
+          loginImg.decoding = 'async';
           loginImg.src = src;
           loginImg.alt = 'Login image';
           rightPanel.appendChild(loginImg);
@@ -2130,13 +2135,16 @@
       const rightPanel = document.getElementById('login-right');
       let regImg = document.getElementById('login-right-img-register');
       if (imgInfo && imgInfo.filename) {
-        const src = '/uploads/' + imgInfo.filename + '?t=' + Date.now();
+        const version = imgInfo.version || imgInfo.size || '1';
+        const src = '/uploads/' + encodeURIComponent(imgInfo.filename) + '?v=' + encodeURIComponent(version);
         if (regImg) {
-          regImg.src = src;
+          if (regImg.getAttribute('src') !== src) regImg.src = src;
         } else {
           regImg = document.createElement('img');
           regImg.id = 'login-right-img-register';
           regImg.className = 'login-right-img';
+          regImg.decoding = 'async';
+          regImg.loading = 'lazy';
           regImg.src = src;
           regImg.alt = 'Register image';
           regImg.style.display = 'none';
@@ -2473,9 +2481,20 @@
       }
     }
 
+    async function fetchJsonWithTimeout(url, options, timeoutMs) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs || 2500);
+      try {
+        const response = await fetch(url, { ...(options || {}), signal: controller.signal });
+        return await response.json();
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
     async function loadSettings() {
       try {
-        const resp = await fetch('/api/admin/status').then(r => r.json());
+        const resp = await fetchJsonWithTimeout('/api/admin/status', null, 2000);
         if (resp.settings) applySettings(resp.settings);
       } catch (e) {}
     }
@@ -2516,12 +2535,23 @@
     }
 
     let loginPollTimer = null;
+    let loginPollInFlight = false;
+    let initPromise = null;
     let logoutPending = false;
     let logoutPendingTimer = null;
 
-    async function init() {
-      const resp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => ({ success: false }));
+    function init() {
+      if (initPromise) return initPromise;
+      initPromise = runInit().finally(() => { initPromise = null; });
+      return initPromise;
+    }
+
+    async function runInit() {
       const statusEl = document.getElementById('hotspot-status');
+      statusEl.textContent = '[ connecting to hotspot... ]';
+      statusEl.className = 'hotspot-status';
+      const resp = await fetchJsonWithTimeout('/api/hotspot/login-data', null, 1800)
+        .catch(() => ({ success: false, error: 'unreachable' }));
       if (!resp.success) {
         statusEl.textContent = '[ hotspot offline: ' + (resp.error || 'unreachable') + ' ]';
         statusEl.className = 'hotspot-status offline';
@@ -2553,8 +2583,10 @@
       stopLoginPolling();
       loginPollTimer = setInterval(async () => {
         if (sessionData) { stopLoginPolling(); return; }
+        if (loginPollInFlight) return;
+        loginPollInFlight = true;
         try {
-          const resp = await fetch('/api/hotspot/login-data').then(r => r.json()).catch(() => null);
+          const resp = await fetchJsonWithTimeout('/api/hotspot/login-data', null, 2000).catch(() => null);
           if (resp && resp.success && resp.data && resp.data.isLogin) {
             if (logoutPending) {
               console.log('[poll] logoutPending active, ignoring stale session for:', resp.data.username);
@@ -2574,7 +2606,10 @@
               statusEl.className = 'hotspot-status online';
             }
           }
-        } catch (_) {}
+        } catch (_) {
+        } finally {
+          loginPollInFlight = false;
+        }
       }, 3000);
     }
 
@@ -3827,6 +3862,8 @@
     let adSlideInterval = null;
     let currentAds = [];
     let adSlideMs = 5000;
+    let renderedAdsSignature = null;
+    let renderedAdsSlideMs = null;
 
     function renderAdCarousel(ads) {
       const carousel = document.getElementById('ad-carousel');
@@ -3837,6 +3874,25 @@
         const hasContent = ad.content && ad.content.replace(/<[^>]*>/g, '').trim().length > 0;
         return hasImage || hasContent;
       });
+      const signature = JSON.stringify(visibleAds.map(ad => ({
+        id: ad.id,
+        order: ad.order,
+        content: ad.content || '',
+        image: ad.image ? {
+          filename: ad.image.filename || '',
+          version: ad.image.version || ad.image.size || '1'
+        } : null
+      })));
+      if (signature === renderedAdsSignature) {
+        currentAds = visibleAds;
+        if (renderedAdsSlideMs !== adSlideMs) {
+          renderedAdsSlideMs = adSlideMs;
+          startAdAutoSlide();
+        }
+        return;
+      }
+      renderedAdsSignature = signature;
+      renderedAdsSlideMs = adSlideMs;
       currentAds = visibleAds;
       if (visibleAds.length === 0) {
         carousel.classList.add('empty');
@@ -3847,11 +3903,15 @@
       }
       carousel.classList.remove('empty');
       slidesEl.innerHTML = visibleAds.map(ad => {
-        const imgSrc = ad.image && ad.image.filename ? '/uploads/' + ad.image.filename + '?t=' + Date.now() : '';
+        const imageVersion = ad.image ? (ad.image.version || ad.image.size || '1') : '1';
+        const imgSrc = ad.image && ad.image.filename
+          ? '/uploads/' + encodeURIComponent(ad.image.filename) + '?v=' + encodeURIComponent(imageVersion)
+          : '';
         const content = ad.content || '';
         const hasText = content.replace(/<[^>]*>/g, '').trim().length > 0;
+        const imageIndex = visibleAds.indexOf(ad);
         return '<div class="ad-slide">' +
-          (imgSrc ? '<img class="ad-slide-img" src="' + imgSrc + '" alt="Ad">' : '') +
+          (imgSrc ? '<img class="ad-slide-img" src="' + imgSrc + '" alt="Ad" decoding="async" loading="' + (imageIndex === 0 ? 'eager' : 'lazy') + '">' : '') +
           (hasText ? '<div class="ad-slide-content">' + content + '</div>' : '') +
           '</div>';
       }).join('');
@@ -4455,11 +4515,14 @@
       });
       if (visibleAds.length === 0) return;
       slidesEl.innerHTML = visibleAds.map(ad => {
-        const imgSrc = ad.image && ad.image.filename ? '/uploads/' + ad.image.filename + '?t=' + Date.now() : '';
+        const imageVersion = ad.image ? (ad.image.version || ad.image.size || '1') : '1';
+        const imgSrc = ad.image && ad.image.filename
+          ? '/uploads/' + encodeURIComponent(ad.image.filename) + '?v=' + encodeURIComponent(imageVersion)
+          : '';
         const content = ad.content || '';
         const hasText = content.replace(/<[^>]*>/g, '').trim().length > 0;
         return '<div class="ad-slide">' +
-          (imgSrc ? '<img class="ad-slide-img" src="' + imgSrc + '" alt="Ad">' : '') +
+          (imgSrc ? '<img class="ad-slide-img" src="' + imgSrc + '" alt="Ad" decoding="async" loading="lazy">' : '') +
           (hasText ? '<div class="ad-slide-content">' + content + '</div>' : '') +
           '</div>';
       }).join('');

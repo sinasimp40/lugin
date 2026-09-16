@@ -7,4 +7,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   resizeSessionOverlayWidth: (width) => ipcRenderer.send('session-overlay-size', { width }),
   getSessionOverlayPlacement: () => ipcRenderer.invoke('session-overlay-placement'),
   triggerShutdown: () => ipcRenderer.send('trigger-shutdown'),
+  setIdleShutdownConfig: (seconds) => ipcRenderer.send('idle-shutdown-config', seconds),
 });
