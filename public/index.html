@@ -2537,7 +2537,7 @@
     let loginPollTimer = null;
     let loginPollInFlight = false;
     let initPromise = null;
-    let logoutPending = false;
+    let logoutPending = new URLSearchParams(window.location.search).get('logoutPending') === '1';
     let logoutPendingTimer = null;
 
     function init() {

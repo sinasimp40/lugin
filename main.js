@@ -787,7 +787,7 @@ function bootInitialWindow() {
   })();
 }
 
-function showLoginWindow(onReady) {
+function showLoginWindow(onReady, options = {}) {
   const { screen } = require('electron');
   const initialBounds = screen.getPrimaryDisplay().bounds;
 
@@ -917,7 +917,10 @@ function showLoginWindow(onReady) {
     fireReady();
   }
 
-  loginWindow.loadURL(APP_URL);
+  const loginUrl = options.waitForLogoutConfirmation
+    ? `${APP_URL}/?logoutPending=1`
+    : APP_URL;
+  loginWindow.loadURL(loginUrl);
   // Cover the desktop immediately during logout instead of waiting for the
   // renderer to finish loading and briefly exposing the Windows taskbar.
   setImmediate(showWindow);
@@ -1347,7 +1350,7 @@ function handleStateChange(state) {
         }, 100);
       }
       unlockTransition();
-    });
+    }, { waitForLogoutConfirmation: true });
   }
 }
 
