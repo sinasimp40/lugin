@@ -783,6 +783,7 @@ function showLoginWindow(onReady) {
   loginWindow.on('hide', () => setImmediate(forceLoginVisible));
   loginWindow.on('restore', () => setImmediate(forceLoginVisible));
   loginWindow.on('leave-full-screen', () => setImmediate(forceLoginVisible));
+  loginWindow.on('enter-full-screen', () => setImmediate(forceLoginVisible));
 
   let windowShown = false;
   let readyCalled = false;
@@ -803,6 +804,9 @@ function showLoginWindow(onReady) {
     loginWindow.setSkipTaskbar(true);
     loginWindow.setAlwaysOnTop(true, 'screen-saver');
     loginWindow.show();
+    // Windows can apply the fullscreen style asynchronously. Re-run the
+    // complete kiosk sequence after showing the window, not only before it.
+    forceLoginVisible();
     loginWindow.moveTop();
     loginWindow.focus();
     // Closing a game can make Windows activate another application. Reclaim
@@ -813,7 +817,7 @@ function showLoginWindow(onReady) {
         clearInterval(focusRecovery);
         return;
       }
-      reclaimFocus();
+      forceLoginVisible();
     }, 100);
     console.log('[Electron] Login window shown');
     fireReady();
@@ -864,7 +868,7 @@ function showLoginWindow(onReady) {
         // kiosk window appear on the taskbar.
         try { loginWindow.setSkipTaskbar(true); } catch (_) {}
         // Re-show if anything managed to minimize or hide the lock screen.
-        if (loginWindow.isMinimized() || !loginWindow.isVisible()) {
+        if (loginWindow.isMinimized() || !loginWindow.isVisible() || !loginWindow.isFullScreen()) {
           forceLoginVisible();
         } else if (!loginWindow.isFocused()) {
           loginWindow.moveTop();
@@ -898,7 +902,7 @@ function showSessionWindow(onShown) {
     fullscreen: false,
     fullscreenable: false,
     skipTaskbar: true,
-    alwaysOnTop: false,
+    alwaysOnTop: true,
     transparent: true,
     hasShadow: false,
     show: false,

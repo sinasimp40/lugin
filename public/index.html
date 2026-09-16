@@ -2197,7 +2197,21 @@
             preload.onload = function () {
               if (_currentBgFilename === newFilename && _currentBgVersion === newVersion) {
                 bgLayer.style.backgroundImage = 'url("' + mediaUrl + '")';
+                if (dustCanvas) dustCanvas.style.display = 'none';
+                corners.forEach(c => c.style.display = 'none');
+                if (scanlines) scanlines.style.display = 'none';
+                if (gridBg) gridBg.style.display = 'none';
               }
+            };
+            preload.onerror = function () {
+              if (_currentBgFilename !== newFilename || _currentBgVersion !== newVersion) return;
+              _currentBgFilename = null;
+              _currentBgVersion = null;
+              bgLayer.style.backgroundImage = '';
+              if (dustCanvas) dustCanvas.style.display = '';
+              corners.forEach(c => c.style.display = '');
+              if (scanlines) scanlines.style.display = '';
+              if (gridBg) gridBg.style.display = '';
             };
             preload.src = mediaUrl;
           }
@@ -2205,10 +2219,6 @@
         }
         _currentBgFilename = newFilename;
         _currentBgVersion = newVersion;
-        if (dustCanvas) dustCanvas.style.display = 'none';
-        corners.forEach(c => c.style.display = 'none');
-        if (scanlines) scanlines.style.display = 'none';
-        if (gridBg) gridBg.style.display = 'none';
       } else {
         _currentBgFilename = null;
         _currentBgVersion = null;
