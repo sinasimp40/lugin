@@ -183,7 +183,6 @@ public class KioskHook {
         if (nCode >= 0) {
             int vkCode = Marshal.ReadInt32(lParam);
             if (vkCode == 91 || vkCode == 92) return (IntPtr)1;
-            if (vkCode == 162 || vkCode == 163) return (IntPtr)1;
             if (vkCode == 164 || vkCode == 165) return (IntPtr)1;
             if (vkCode == 46) return (IntPtr)1;
             if ((int)wParam == WM_SYSKEYDOWN || (int)wParam == WM_KEYDOWN) {
@@ -730,7 +729,12 @@ function showLoginWindow(onReady) {
     }
   });
 
-  loginWindow.webContents.on('context-menu', (e) => e.preventDefault());
+  // Keep the kiosk context menu disabled everywhere except editable fields.
+  // Editable fields need the native Paste action because operators may enter
+  // long Telegram credentials from the clipboard.
+  loginWindow.webContents.on('context-menu', (e, params) => {
+    if (!params.isEditable) e.preventDefault();
+  });
 
   // Force the lock screen back into view if anything minimizes or hides it
   // (e.g. Win+D / "Show desktop", Win+M, or a script calling ShowWindow).

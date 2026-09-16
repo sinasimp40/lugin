@@ -4708,8 +4708,12 @@
 
     document.addEventListener('keydown', (e) => {
       if (sessionData) return;
-      const active = document.activeElement;
-      const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+      const active = e.target || document.activeElement;
+      const isInput = active && (
+        active.tagName === 'INPUT' ||
+        active.tagName === 'TEXTAREA' ||
+        active.isContentEditable
+      );
       if (e.altKey || e.metaKey || e.key === 'Meta' || e.key === 'OS') {
         e.preventDefault();
         e.stopPropagation();
