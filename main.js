@@ -337,9 +337,11 @@ function closeConfiguredPrograms(reason) {
   }
 }
 
-const SESSION_WIDTH = 460;
-const SESSION_HEIGHT = 70;
-const SESSION_EXPANDED_HEIGHT = 352;
+// Keep the session overlay compact on top of fullscreen games. The HTML
+// renders at its original logical size and scales itself to these bounds.
+const SESSION_WIDTH = 276;
+const SESSION_HEIGHT = 42;
+const SESSION_EXPANDED_HEIGHT = 211;
 let currentSessionHeight = SESSION_HEIGHT;
 
 function performLogout() {
