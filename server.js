@@ -1029,23 +1029,64 @@ async function sendTelegramMessage(text) {
   }
 }
 
+function leaderboardFromLogs(logs, limit) {
+  const totals = {};
+  for (const log of Array.isArray(logs) ? logs : []) {
+    const username = String(log.username || '').trim();
+    const amount = Number(log.amount) || 0;
+    if (!username || amount <= 0) continue;
+    totals[username] = (totals[username] || 0) + amount;
+  }
+  return Object.entries(totals)
+    .map(([username, coins]) => ({ username, coins: Math.round(coins * 100) / 100 }))
+    .sort((a, b) => b.coins - a.coins || a.username.localeCompare(b.username))
+    .slice(0, limit);
+}
+
 async function getSessionLeaderboard() {
+  let syncError = '';
   if (syncServerUrl) {
     try {
       const response = await fetch(syncServerUrl + '/api/sync/leaderboard', { signal: AbortSignal.timeout(5000) });
       if (response.ok) {
         const data = await response.json();
-        if (Array.isArray(data.leaderboard)) return data.leaderboard.slice(0, 5);
+        if (Array.isArray(data.leaderboard)) {
+          return { leaderboard: data.leaderboard.slice(0, 5), source: 'denfi-points' };
+        }
+        syncError = 'Denfi Points returned no leaderboard';
+      } else {
+        syncError = `Denfi Points returned HTTP ${response.status}`;
       }
     } catch (error) {
+      syncError = error.message;
       console.log('[Sync] Failed to fetch leaderboard:', error.message);
     }
+
+    // Support older Denfi Points builds that expose the raw coin log endpoint
+    // but do not yet expose /api/sync/leaderboard.
+    try {
+      const response = await fetch(syncServerUrl + '/api/sync/coin-logs', { signal: AbortSignal.timeout(5000) });
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data.logs)) {
+          return { leaderboard: leaderboardFromLogs(data.logs, 5), source: 'denfi-points-coin-logs' };
+        }
+      }
+    } catch (error) {
+      console.log('[Sync] Failed to fetch remote coin logs for ranking:', error.message);
+    }
   }
-  return coinLogs.getLeaderboard(5);
+  return {
+    leaderboard: coinLogs.getLeaderboard(5),
+    source: syncServerUrl ? 'local-fallback' : 'local',
+    syncConnected: !!syncServerUrl,
+    syncError
+  };
 }
 
 app.get('/api/session/leaderboard', async (req, res) => {
-  res.json({ success: true, leaderboard: await getSessionLeaderboard() });
+  const result = await getSessionLeaderboard();
+  res.json({ success: true, ...result });
 });
 
 app.post('/api/admin/background', verifyToken, (req, res) => {

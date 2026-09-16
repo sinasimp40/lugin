@@ -25,9 +25,9 @@
   body { position: relative; }
   .overlay-shell {
     position: absolute; right: 0; bottom: 0;
-    width: 166.6667%; height: 166.6667%;
+    width: 138.8889%; height: 138.8889%;
     overflow: hidden;
-    transform: scale(0.6);
+    transform: scale(0.72);
     transform-origin: bottom right;
   }
 
@@ -728,17 +728,23 @@
         const response = await fetch('/api/session/leaderboard');
         const data = await response.json();
         const leaderboard = Array.isArray(data.leaderboard) ? data.leaderboard : [];
-        renderLeaderboard(leaderboard);
+        renderLeaderboard(leaderboard, data);
       } catch (_) {
         list.innerHTML = '<div class="empty-state">Ranking is temporarily unavailable.</div>';
       }
     }
 
-    function renderLeaderboard(leaderboard) {
+    function renderLeaderboard(leaderboard, meta) {
       const list = document.getElementById('rank-list');
       list.innerHTML = '';
       if (!leaderboard.length) {
-        list.innerHTML = '<div class="empty-state">No coin activity recorded yet.</div>';
+        if (meta && meta.syncConnected === false) {
+          list.innerHTML = '<div class="empty-state">No ranking data yet.<br>Connect the Denfi Points server in Admin &gt; Runtime.</div>';
+        } else if (meta && meta.source === 'local-fallback') {
+          list.innerHTML = '<div class="empty-state">Denfi Points did not return ranking data.<br>Showing local ranking.</div>';
+        } else {
+          list.innerHTML = '<div class="empty-state">No coin activity recorded yet.</div>';
+        }
         return;
       }
       leaderboard.forEach((member, index) => {
