@@ -444,10 +444,14 @@
     let storeProducts = [];
     let cart = {};
     let activeDrawer = null;
+    const previewMode = new URLSearchParams(location.search).get('preview') === '1';
 
     function setOverlayExpanded(expanded) {
       if (window.electronAPI && window.electronAPI.resizeSessionOverlay) {
         window.electronAPI.resizeSessionOverlay(expanded);
+      }
+      if (previewMode && window.parent !== window) {
+        window.parent.postMessage({ type: 'denfi-overlay-resize', expanded }, location.origin);
       }
     }
 
@@ -481,6 +485,18 @@
     }
 
     async function loadProducts() {
+      if (previewMode) {
+        storeProducts = [
+          { id: 'preview-coke', name: 'Coke', price: 35 },
+          { id: 'preview-water', name: 'Bottled Water', price: 20 },
+          { id: 'preview-noodles', name: 'Cup Noodles', price: 45 },
+          { id: 'preview-chips', name: 'Potato Chips', price: 30 },
+          { id: 'preview-coffee', name: 'Iced Coffee', price: 55 },
+          { id: 'preview-sandwich', name: 'Ham Sandwich', price: 65 }
+        ];
+        renderProducts();
+        return;
+      }
       try {
         const response = await fetch('/api/session/store');
         const data = await response.json();
@@ -537,6 +553,14 @@
       const button = document.getElementById('place-order');
       button.disabled = true;
       button.textContent = 'SENDING...';
+      if (previewMode) {
+        await new Promise(resolve => setTimeout(resolve, 450));
+        cart = {};
+        renderCart();
+        showOrderToast('DEMO ORDER SENT — PLEASE WAIT AT YOUR PC');
+        button.textContent = 'PLACE ORDER';
+        return;
+      }
       try {
         const response = await fetch('/api/session/orders', {
           method: 'POST',
@@ -569,16 +593,34 @@
     async function loadLeaderboard() {
       const list = document.getElementById('rank-list');
       list.innerHTML = '<div class="empty-state">Loading coin ranking...</div>';
+      if (previewMode) {
+        renderLeaderboard([
+          { username: 'mem-carlo', coins: 340 },
+          { username: 'mem-alice', coins: 280 },
+          { username: 'mem-gina', coins: 275 },
+          { username: 'mem-player-one', coins: 250 },
+          { username: 'mem-diana', coins: 225 }
+        ]);
+        return;
+      }
       try {
         const response = await fetch('/api/session/leaderboard');
         const data = await response.json();
         const leaderboard = Array.isArray(data.leaderboard) ? data.leaderboard : [];
-        list.innerHTML = '';
-        if (!leaderboard.length) {
-          list.innerHTML = '<div class="empty-state">No coin activity recorded yet.</div>';
-          return;
-        }
-        leaderboard.forEach((member, index) => {
+        renderLeaderboard(leaderboard);
+      } catch (_) {
+        list.innerHTML = '<div class="empty-state">Ranking is temporarily unavailable.</div>';
+      }
+    }
+
+    function renderLeaderboard(leaderboard) {
+      const list = document.getElementById('rank-list');
+      list.innerHTML = '';
+      if (!leaderboard.length) {
+        list.innerHTML = '<div class="empty-state">No coin activity recorded yet.</div>';
+        return;
+      }
+      leaderboard.forEach((member, index) => {
           const row = document.createElement('div');
           row.className = 'rank-row' + (member.username.toLowerCase() === sessionUsername.toLowerCase() ? ' me' : '');
           const rank = document.createElement('div');
@@ -595,10 +637,7 @@
           coins.appendChild(label);
           row.append(rank, user, coins);
           list.appendChild(row);
-        });
-      } catch (_) {
-        list.innerHTML = '<div class="empty-state">Ranking is temporarily unavailable.</div>';
-      }
+      });
     }
 
     async function checkExpiryLogout() {
@@ -694,6 +733,15 @@
     }
 
     async function loadStatus() {
+      if (previewMode) {
+        sessionUsername = 'mem-player-one';
+        timeLeft = 5278;
+        document.getElementById('username').textContent = sessionUsername;
+        setPcLabel('PC-07');
+        setPoints(86.5);
+        updateTimer();
+        return;
+      }
       try {
         const resp = await fetch('/api/hotspot/status');
         const data = await resp.json();
@@ -766,6 +814,14 @@
     async function doLogout() {
       document.getElementById('logout-btn').disabled = true;
       document.getElementById('logout-btn').textContent = '...';
+      if (previewMode) {
+        showOrderToast('DEMO: LOGOUT WOULD RETURN TO THE LOCK SCREEN');
+        setTimeout(() => {
+          document.getElementById('logout-btn').disabled = false;
+          document.getElementById('logout-btn').textContent = 'LOGOUT';
+        }, 1200);
+        return;
+      }
       const isMember = sessionUsername && sessionUsername.startsWith('mem-');
 
       try {
@@ -799,7 +855,7 @@
     document.getElementById('place-order').addEventListener('click', placeOrder);
 
     loadStatus();
-    connectWs();
+    if (!previewMode) connectWs();
     interval = setInterval(() => {
       if (timeLeft > 0) {
         timeLeft--;
