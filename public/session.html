@@ -579,6 +579,28 @@
       }
     }
 
+    function resizeDrawerToContent() {
+      if (!activeDrawer) return;
+      requestAnimationFrame(() => {
+        const drawer = document.getElementById('drawer');
+        const strip = document.getElementById('strip');
+        if (!drawer || !strip || !drawer.classList.contains('active')) return;
+        const targetHeight = Math.ceil(
+          drawer.getBoundingClientRect().height + strip.getBoundingClientRect().height
+        );
+        if (window.electronAPI && window.electronAPI.resizeSessionOverlayHeight) {
+          window.electronAPI.resizeSessionOverlayHeight(targetHeight);
+        }
+        if (previewMode && window.parent !== window) {
+          window.parent.postMessage({
+            type: 'denfi-overlay-resize',
+            expanded: true,
+            height: targetHeight
+          }, location.origin);
+        }
+      });
+    }
+
     function closeDrawer() {
       activeDrawer = null;
       document.getElementById('drawer').classList.remove('active');
@@ -606,6 +628,7 @@
       document.getElementById('rank-note').style.display = view === 'rank' ? '' : 'none';
       document.getElementById('drawer-title').textContent = view === 'shop' ? 'QUICK ORDER' : 'TOP 5 REGULARS';
       setOverlayExpanded(true);
+      resizeDrawerToContent();
       if (view === 'shop') loadProducts();
       else loadLeaderboard();
     }
@@ -641,6 +664,7 @@
       grid.innerHTML = '';
       if (!storeProducts.length) {
         grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">No products are available.<br>Ask the administrator to add products.</div>';
+        resizeDrawerToContent();
         return;
       }
       storeProducts.forEach(product => {
@@ -667,6 +691,7 @@
         row.append(info, add);
         grid.appendChild(row);
       });
+      resizeDrawerToContent();
     }
 
     function renderCart() {
@@ -741,6 +766,7 @@
         renderLeaderboard(leaderboard, data);
       } catch (_) {
         list.innerHTML = '<div class="empty-state">Ranking is temporarily unavailable.</div>';
+        resizeDrawerToContent();
       }
     }
 
@@ -757,6 +783,7 @@
         } else {
           list.innerHTML = '<div class="empty-state">No points recorded this month yet.</div>';
         }
+        resizeDrawerToContent();
         return;
       }
       leaderboard.forEach((member, index) => {
@@ -778,6 +805,7 @@
           row.append(rank, user, points);
           list.appendChild(row);
       });
+      resizeDrawerToContent();
     }
 
     async function checkExpiryLogout() {

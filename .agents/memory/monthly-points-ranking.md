@@ -7,4 +7,4 @@ The monthly leaderboard is a view over timestamped coin logs, not a destructive 
 
 **Why:** Admin history and audit records should remain available after a ranking reset, while players need a clean monthly competition and the owner needs a rollover record.
 
-**How to apply:** Any future ranking, session-points, or sync-server changes must preserve the current-month filter and converted `points` values. Do not clear the underlying coin log file as part of a monthly reset.
+**How to apply:** Any future ranking, session-points, or sync-server changes must preserve the current-month filter and converted `points` values. Do not clear the underlying coin log file as part of a monthly reset. Session order and ranking drawers should size to their rendered content rather than introducing an internal scrollbar.

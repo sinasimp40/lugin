@@ -1019,10 +1019,18 @@ ipcMain.on('session-state', (event, state) => {
 
 ipcMain.on('session-overlay-size', (event, mode) => {
   if (!sessionWindow || sessionWindow.isDestroyed() || event.sender !== sessionWindow.webContents) return;
+  const requestedHeight = mode && typeof mode === 'object' ? Number(mode.height) : NaN;
   const expanded = mode === 'expanded';
-  const nextHeight = expanded ? SESSION_EXPANDED_HEIGHT : SESSION_HEIGHT;
   const bounds = sessionWindow.getBounds();
   const workArea = require('electron').screen.getDisplayMatching(bounds).workArea;
+  const desiredHeight = expanded
+    ? SESSION_EXPANDED_HEIGHT
+    : mode === 'collapsed'
+      ? SESSION_HEIGHT
+      : Number.isFinite(requestedHeight)
+        ? Math.ceil(requestedHeight)
+        : SESSION_EXPANDED_HEIGHT;
+  const nextHeight = Math.max(SESSION_HEIGHT, Math.min(desiredHeight, workArea.height));
   const direction = bounds.y <= workArea.y + 12 ? 'below' : 'above';
   if (currentSessionHeight === nextHeight) {
     sessionWindow.webContents.send('session-overlay-placement', direction);
