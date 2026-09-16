@@ -41,6 +41,7 @@
     border-left: 2px solid #ff8c00;
     border-right: 2px solid #ff8c00;
     -webkit-app-region: drag; cursor: move;
+    user-select: none;
     position: relative; overflow: hidden;
     transition: border-color 0.3s;
   }
@@ -286,7 +287,7 @@
   .strip { position:absolute; left:0; right:0; bottom:0; height:70px; }
   .drawer {
     display:none; position:absolute; left:0; right:0; bottom:70px; height:auto;
-    max-height:calc(138.8889vh - 70px);
+    max-height:calc(100% - 70px);
     background:linear-gradient(160deg,#111216,#090a0c); border:1px solid rgba(255,140,0,.4);
     border-top:2px solid #ff8c00; box-shadow:0 -8px 30px rgba(0,0,0,.7); overflow:hidden;
     font-family:'Share Tech Mono',monospace; color:#eee; -webkit-app-region:no-drag;
@@ -303,6 +304,8 @@
     overflow-y:auto;
     overflow-x:hidden;
     padding:12px 14px;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(255,140,0,.45) rgba(255,255,255,.03);
   }
   .drawer-body::-webkit-scrollbar { width:5px; }
   .drawer-body::-webkit-scrollbar-track { background:rgba(255,255,255,.03); }
@@ -342,7 +345,9 @@
     border-right:1px solid rgba(255,140,0,.65);
     border-radius:2px;
   }
-  .points-zone,
+  .points-zone {
+    display:none;
+  }
   .points-zone.active {
     display:flex;
     flex:0 0 92px;
@@ -412,6 +417,11 @@
     padding:5px 10px 5px 0;
     position:relative;
     z-index:3;
+    -webkit-app-region:no-drag;
+  }
+  .action-area *,
+  .drawer,
+  .drawer * {
     -webkit-app-region:no-drag;
   }
   .quick-actions {
@@ -703,7 +713,7 @@
         const strip = document.getElementById('strip');
         if (!drawer || !strip || !drawer.classList.contains('active')) return;
         const targetHeight = Math.ceil(
-          drawer.getBoundingClientRect().height + strip.getBoundingClientRect().height
+          (drawer.offsetHeight + strip.offsetHeight) * OVERLAY_SCALE
         );
         if (window.electronAPI && window.electronAPI.resizeSessionOverlayHeight) {
           window.electronAPI.resizeSessionOverlayHeight(targetHeight);
@@ -1018,7 +1028,8 @@
 
     function setPoints(pts) {
       const el = document.getElementById('points-zone');
-      if (pts === undefined || pts === null) {
+      const isMember = sessionUsername && sessionUsername.toLowerCase().startsWith('mem-');
+      if (!isMember || pts === undefined || pts === null) {
         el.classList.remove('active');
         el.innerHTML = '';
         resizeOverlayToContent();

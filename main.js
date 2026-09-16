@@ -362,6 +362,7 @@ const SESSION_HEIGHT = 50;
 const SESSION_EXPANDED_HEIGHT = 253;
 let currentSessionWidth = SESSION_WIDTH;
 let currentSessionHeight = SESSION_HEIGHT;
+let currentSessionPlacement = 'above';
 
 function performLogout() {
   return new Promise((resolve) => {
@@ -706,14 +707,14 @@ async function bootInitialWindow() {
 
 function showLoginWindow(onReady) {
   const { screen } = require('electron');
-  const { x, y, width, height } = screen.getPrimaryDisplay().bounds;
+  const initialBounds = screen.getPrimaryDisplay().bounds;
 
   currentState = 'logged-out';
   registerKeyBlocks();
   enableKioskLockdown();
 
   loginWindow = new BrowserWindow({
-    x, y, width, height,
+    ...initialBounds,
     title: 'Denfi Auto Shutdown',
     show: false,
     frame: false,
@@ -741,6 +742,20 @@ function showLoginWindow(onReady) {
   });
 
   Menu.setApplicationMenu(null);
+
+  function enforceLoginKiosk() {
+    if (!loginWindow || loginWindow.isDestroyed() || currentState !== 'logged-out') return;
+    try {
+      const bounds = screen.getPrimaryDisplay().bounds;
+      if (loginWindow.isMinimized()) loginWindow.restore();
+      loginWindow.setSkipTaskbar(true);
+      loginWindow.setAlwaysOnTop(true, 'screen-saver');
+      if (!loginWindow.isKiosk()) loginWindow.setKiosk(true);
+      if (!loginWindow.isFullScreen()) loginWindow.setFullScreen(true);
+      loginWindow.setBounds(bounds, false);
+      loginWindow.moveTop();
+    } catch (_) {}
+  }
 
   loginWindow.webContents.on('before-input-event', (event, input) => {
     if (input.alt || input.meta || input.key === 'Meta' || input.key === 'OS') {
@@ -771,11 +786,7 @@ function showLoginWindow(onReady) {
       if (loginWindow.isMinimized()) loginWindow.restore();
       if (!loginWindow.isVisible()) loginWindow.show();
       try { app.focus({ steal: true }); } catch (_) {}
-      loginWindow.setFullScreen(true);
-      loginWindow.setKiosk(true);
-      loginWindow.setSkipTaskbar(true);
-      loginWindow.setAlwaysOnTop(true, 'screen-saver');
-      loginWindow.moveTop();
+      enforceLoginKiosk();
       loginWindow.focus();
     } catch (_) {}
   }
@@ -783,6 +794,15 @@ function showLoginWindow(onReady) {
   loginWindow.on('hide', () => setImmediate(forceLoginVisible));
   loginWindow.on('restore', () => setImmediate(forceLoginVisible));
   loginWindow.on('leave-full-screen', () => setImmediate(forceLoginVisible));
+  loginWindow.on('show', () => setImmediate(enforceLoginKiosk));
+  loginWindow.on('focus', () => setImmediate(enforceLoginKiosk));
+  loginWindow.webContents.on('focus', () => setImmediate(enforceLoginKiosk));
+
+  const handleDisplayMetricsChanged = () => setImmediate(enforceLoginKiosk);
+  screen.on('display-metrics-changed', handleDisplayMetricsChanged);
+  loginWindow.once('closed', () => {
+    screen.removeListener('display-metrics-changed', handleDisplayMetricsChanged);
+  });
 
   let windowShown = false;
   let readyCalled = false;
@@ -796,13 +816,10 @@ function showLoginWindow(onReady) {
   function showWindow() {
     if (windowShown || !loginWindow || loginWindow.isDestroyed()) return;
     windowShown = true;
-    loginWindow.setBounds({ x, y, width, height });
     try { app.focus({ steal: true }); } catch (_) {}
-    loginWindow.setFullScreen(true);
-    loginWindow.setKiosk(true);
-    loginWindow.setSkipTaskbar(true);
-    loginWindow.setAlwaysOnTop(true, 'screen-saver');
+    enforceLoginKiosk();
     loginWindow.show();
+    enforceLoginKiosk();
     loginWindow.moveTop();
     loginWindow.focus();
     // Closing a game can make Windows activate another application. Reclaim
@@ -820,6 +837,9 @@ function showLoginWindow(onReady) {
   }
 
   loginWindow.loadURL(APP_URL);
+  // Cover the desktop immediately during logout instead of waiting for the
+  // renderer to finish loading and briefly exposing the Windows taskbar.
+  setImmediate(showWindow);
 
   loginWindow.once('ready-to-show', () => {
     console.log('[Electron] ready-to-show fired');
@@ -862,7 +882,7 @@ function showLoginWindow(onReady) {
         // flag when explorer.exe restarts (it broadcasts TaskbarCreated and
         // re-enumerates top-level windows), which would otherwise make our
         // kiosk window appear on the taskbar.
-        try { loginWindow.setSkipTaskbar(true); } catch (_) {}
+        enforceLoginKiosk();
         // Re-show if anything managed to minimize or hide the lock screen.
         if (loginWindow.isMinimized() || !loginWindow.isVisible()) {
           forceLoginVisible();
@@ -871,7 +891,7 @@ function showLoginWindow(onReady) {
           loginWindow.focus();
         }
       }
-    }, 2000);
+    }, 500);
   }
 }
 
@@ -934,13 +954,29 @@ function showSessionWindow(onShown) {
 
   let sessionReady = false;
 
-  sessionWindow.on('will-move', (event, newBounds) => {
+  let clampMoveTimer = null;
+  sessionWindow.on('move', () => {
     if (!sessionReady) return;
-    event.preventDefault();
-    const workArea = require('electron').screen.getDisplayMatching(newBounds).workArea;
-    const clampedX = Math.max(workArea.x, Math.min(newBounds.x, workArea.x + workArea.width - currentSessionWidth));
-    const clampedY = Math.max(workArea.y, Math.min(newBounds.y, workArea.y + workArea.height - currentSessionHeight));
-    sessionWindow.setBounds({ x: clampedX, y: clampedY, width: currentSessionWidth, height: currentSessionHeight });
+    if (clampMoveTimer) clearTimeout(clampMoveTimer);
+    clampMoveTimer = setTimeout(() => {
+      if (!sessionWindow || sessionWindow.isDestroyed()) return;
+      const bounds = sessionWindow.getBounds();
+      const workArea = require('electron').screen.getDisplayMatching(bounds).workArea;
+      const clampedX = Math.max(workArea.x, Math.min(bounds.x, workArea.x + workArea.width - bounds.width));
+      const stripY = currentSessionHeight > SESSION_HEIGHT && currentSessionPlacement === 'above'
+        ? bounds.y + bounds.height - SESSION_HEIGHT
+        : bounds.y;
+      const clampedStripY = Math.max(
+        workArea.y,
+        Math.min(stripY, workArea.y + workArea.height - SESSION_HEIGHT)
+      );
+      const clampedY = currentSessionHeight > SESSION_HEIGHT && currentSessionPlacement === 'above'
+        ? clampedStripY - (bounds.height - SESSION_HEIGHT)
+        : clampedStripY;
+      if (clampedX !== bounds.x || clampedY !== bounds.y) {
+        sessionWindow.setPosition(clampedX, clampedY, false);
+      }
+    }, 30);
   });
 
   sessionWindow.webContents.once('did-finish-load', () => {
@@ -983,6 +1019,7 @@ function showSessionWindow(onShown) {
   }
 
   sessionWindow.on('closed', () => {
+    if (clampMoveTimer) { clearTimeout(clampMoveTimer); clampMoveTimer = null; }
     if (bypassRefreshInterval) { clearInterval(bypassRefreshInterval); bypassRefreshInterval = null; }
     if (foregroundCheckInterval) { clearInterval(foregroundCheckInterval); foregroundCheckInterval = null; }
     if (sessionVisibilityGuardInterval) { clearInterval(sessionVisibilityGuardInterval); sessionVisibilityGuardInterval = null; }
@@ -1069,8 +1106,9 @@ ipcMain.on('session-state', (event, state) => {
 
 ipcMain.on('session-overlay-size', (event, mode) => {
   if (!sessionWindow || sessionWindow.isDestroyed() || event.sender !== sessionWindow.webContents) return;
-  const requestedWidth = mode && typeof mode === 'object' ? Number(mode.width) : NaN;
-  const requestedHeight = mode && typeof mode === 'object' ? Number(mode.height) : NaN;
+  const isObjectRequest = mode && typeof mode === 'object';
+  const requestedWidth = isObjectRequest ? Number(mode.width) : NaN;
+  const requestedHeight = isObjectRequest ? Number(mode.height) : NaN;
   const expanded = mode === 'expanded';
   const bounds = sessionWindow.getBounds();
   const workArea = require('electron').screen.getDisplayMatching(bounds).workArea;
@@ -1083,18 +1121,26 @@ ipcMain.on('session-overlay-size', (event, mode) => {
       ? SESSION_HEIGHT
       : Number.isFinite(requestedHeight)
         ? Math.ceil(requestedHeight)
-        : SESSION_EXPANDED_HEIGHT;
+        : currentSessionHeight;
   const nextHeight = Math.max(SESSION_HEIGHT, Math.min(desiredHeight, workArea.height));
-  const direction = bounds.y <= workArea.y + 12 ? 'below' : 'above';
+  const direction = currentSessionPlacement;
   if (currentSessionWidth === nextWidth && currentSessionHeight === nextHeight) {
     sessionWindow.webContents.send('session-overlay-placement', direction);
     return;
   }
+  const currentStripY = bounds.height > SESSION_HEIGHT && direction === 'above'
+    ? bounds.y + bounds.height - SESSION_HEIGHT
+    : bounds.y;
+  const clampedStripY = Math.max(
+    workArea.y,
+    Math.min(currentStripY, workArea.y + workArea.height - SESSION_HEIGHT)
+  );
   currentSessionWidth = nextWidth;
   currentSessionHeight = nextHeight;
   const x = Math.max(workArea.x, Math.min(bounds.x, workArea.x + workArea.width - nextWidth));
-  const preferredY = direction === 'below' ? bounds.y : bounds.y + bounds.height - nextHeight;
-  const y = Math.max(workArea.y, Math.min(preferredY, workArea.y + workArea.height - nextHeight));
+  const y = nextHeight > SESSION_HEIGHT && direction === 'above'
+    ? clampedStripY - (nextHeight - SESSION_HEIGHT)
+    : clampedStripY;
   sessionWindow.setBounds({ x, y, width: nextWidth, height: nextHeight }, true);
   sessionWindow.webContents.send('session-overlay-placement', direction);
 });
@@ -1103,7 +1149,10 @@ ipcMain.handle('session-overlay-placement', (event) => {
   if (!sessionWindow || sessionWindow.isDestroyed() || event.sender !== sessionWindow.webContents) return 'above';
   const bounds = sessionWindow.getBounds();
   const workArea = require('electron').screen.getDisplayMatching(bounds).workArea;
-  return bounds.y <= workArea.y + 12 ? 'below' : 'above';
+  const spaceAbove = bounds.y - workArea.y;
+  const spaceBelow = workArea.y + workArea.height - (bounds.y + bounds.height);
+  currentSessionPlacement = spaceBelow > spaceAbove ? 'below' : 'above';
+  return currentSessionPlacement;
 });
 
 ipcMain.on('trigger-shutdown', () => {

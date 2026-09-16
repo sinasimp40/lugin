@@ -60,3 +60,10 @@ The application is built using Electron for the desktop client, with a Node.js (
 - The server listens on `0.0.0.0` and uses Replit's assigned `PORT` (default `5000`).
 - Electron kiosk features and Windows system controls only work in the packaged Windows desktop app.
 - MikroTik and JuanFi features require network access to the pisonet hardware and will not work from Replit unless those services are made securely reachable.
+
+## Building the Windows App
+- Install Node.js 22.12 or newer.
+- Run `npm install`.
+- Run `npm run build`.
+- The installer is written to `dist/Denfi Auto Shutdown Setup.exe`.
+- Do not delete `package-lock.json` or change the npm registry manually. The committed npm configuration and lockfile are portable outside Replit.
