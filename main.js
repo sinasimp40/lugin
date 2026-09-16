@@ -327,7 +327,9 @@ function closeConfiguredPrograms(reason) {
   if (!names.length) return;
   console.log(`[Electron] Closing configured programs before ${reason}:`, names.join(', '));
   const aliases = {
-    'roblox.exe': ['RobloxPlayerBeta.exe', 'RobloxPlayerLauncher.exe', 'RobloxCrashHandler.exe']
+    'gta5.exe': ['GTA5.exe', 'GTA5_Enhanced.exe', 'PlayGTAV.exe', 'GTAVLauncher.exe'],
+    'gta5_enhanced.exe': ['GTA5.exe', 'GTA5_Enhanced.exe', 'PlayGTAV.exe', 'GTAVLauncher.exe'],
+    'roblox.exe': ['RobloxPlayerBeta.exe', 'RobloxPlayerLauncher.exe', 'RobloxCrashHandler.exe'],
   };
   const processNames = [...new Set(names.flatMap(name => aliases[name.toLowerCase()] || [name]))];
   for (const name of processNames) {
@@ -335,6 +337,19 @@ function closeConfiguredPrograms(reason) {
       execFileSync('taskkill', ['/F', '/T', '/IM', name], { windowsHide: true, stdio: 'ignore' });
     } catch (_) {
       // taskkill returns a failure code when the configured program is not running.
+    }
+  }
+  // Some launchers briefly respawn a child process after the first kill pass.
+  // Run a second pass so the lock screen does not leave a memory-heavy game
+  // alive behind it.
+  if (processNames.length) {
+    try {
+      execFileSync('timeout', ['/T', '1', '/NOBREAK'], { windowsHide: true, stdio: 'ignore' });
+    } catch (_) {}
+    for (const name of processNames) {
+      try {
+        execFileSync('taskkill', ['/F', '/T', '/IM', name], { windowsHide: true, stdio: 'ignore' });
+      } catch (_) {}
     }
   }
 }
@@ -380,6 +395,7 @@ function performLogout() {
 
 function reclaimFocus() {
   if (loginWindow && !loginWindow.isDestroyed()) {
+    try { app.focus({ steal: true }); } catch (_) {}
     loginWindow.moveTop();
     loginWindow.focus();
   }
@@ -754,6 +770,7 @@ function showLoginWindow(onReady) {
     try {
       if (loginWindow.isMinimized()) loginWindow.restore();
       if (!loginWindow.isVisible()) loginWindow.show();
+      try { app.focus({ steal: true }); } catch (_) {}
       loginWindow.setFullScreen(true);
       loginWindow.setKiosk(true);
       loginWindow.setSkipTaskbar(true);
@@ -780,6 +797,7 @@ function showLoginWindow(onReady) {
     if (windowShown || !loginWindow || loginWindow.isDestroyed()) return;
     windowShown = true;
     loginWindow.setBounds({ x, y, width, height });
+    try { app.focus({ steal: true }); } catch (_) {}
     loginWindow.setFullScreen(true);
     loginWindow.setKiosk(true);
     loginWindow.setSkipTaskbar(true);
@@ -787,6 +805,16 @@ function showLoginWindow(onReady) {
     loginWindow.show();
     loginWindow.moveTop();
     loginWindow.focus();
+    // Closing a game can make Windows activate another application. Reclaim
+    // focus repeatedly during the fullscreen transition, not only once.
+    let focusAttempts = 0;
+    const focusRecovery = setInterval(() => {
+      if (!loginWindow || loginWindow.isDestroyed() || currentState !== 'logged-out' || focusAttempts++ >= 20) {
+        clearInterval(focusRecovery);
+        return;
+      }
+      reclaimFocus();
+    }, 100);
     console.log('[Electron] Login window shown');
     fireReady();
   }
@@ -1141,12 +1169,15 @@ function handleStateChange(state) {
   } else if (state === 'logged-out') {
     if (currentState === 'logged-out' && loginWindow && !loginWindow.isDestroyed()) return;
     currentState = 'logged-out';
-    closeConfiguredPrograms('login lock screen');
     transitionLock = true;
     if (transitionLockTimer) clearTimeout(transitionLockTimer);
     transitionLockTimer = setTimeout(() => { unlockTransition(); }, 5000);
     stopPolling();
+    // Block Alt+Tab and other escape paths before terminating any game.
+    // This closes the race where Windows activates another app while the
+    // configured game is being force-killed.
     enableKioskLockdown();
+    closeConfiguredPrograms('login lock screen');
 
     if (focusGuardInterval) {
       clearInterval(focusGuardInterval);
