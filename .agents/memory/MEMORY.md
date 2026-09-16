@@ -1,0 +1,1 @@
+- [Monthly points ranking](monthly-points-ranking.md) — keep historical coin logs, but calculate session rankings and member points from the current local calendar month.

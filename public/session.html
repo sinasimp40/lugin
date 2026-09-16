@@ -266,34 +266,36 @@
     font-family:'Share Tech Mono',monospace; color:#eee; -webkit-app-region:no-drag;
   }
   .drawer.active { display:flex; flex-direction:column; }
+  .overlay-shell.drawer-below .strip { top:0; bottom:auto; }
+  .overlay-shell.drawer-below .drawer { top:70px; bottom:auto; }
   .drawer-head { display:flex; justify-content:space-between; align-items:center; padding:11px 13px; border-bottom:1px solid rgba(255,140,0,.18); }
-  .drawer-title { font:800 12px 'Orbitron',monospace; letter-spacing:1px; color:#ffb13d; }
-  .drawer-close { border:0; background:transparent; color:#a98a68; font-size:18px; cursor:pointer; padding:0 3px; }
-  .drawer-body { flex:1; min-height:0; overflow:auto; padding:10px 12px; }
-  .product-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .drawer-title { font:800 16px 'Orbitron',monospace; letter-spacing:1px; color:#ffb13d; }
+  .drawer-close { border:0; background:transparent; color:#a98a68; font-size:22px; cursor:pointer; padding:0 4px; }
+  .drawer-body { flex:1; min-height:0; overflow:auto; padding:12px 14px; }
+  .product-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
   .product {
     display:flex; align-items:center; justify-content:space-between; gap:6px; min-width:0;
-    border:1px solid rgba(255,140,0,.17); background:rgba(255,140,0,.045); padding:8px;
+    border:1px solid rgba(255,140,0,.17); background:rgba(255,140,0,.045); padding:10px;
   }
-  .product-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; color:#f0dfca; }
-  .product-price { color:#ffb13d; font-size:10px; margin-top:2px; }
-  .add-btn { flex:0 0 24px; height:24px; border:1px solid #ff8c00; background:#ff8c00; color:#171009; font-size:16px; cursor:pointer; }
-  .empty-state { color:#806e5c; text-align:center; padding:35px 10px; font-size:10px; line-height:1.6; }
-  .cart-bar { display:flex; align-items:center; gap:8px; padding:9px 12px; border-top:1px solid rgba(255,140,0,.22); background:#171109; }
-  .cart-summary { flex:1; min-width:0; font-size:9px; color:#9b8268; }
-  .cart-summary strong { display:block; color:#ffd08a; font-size:11px; }
-  .clear-cart { border:0; background:transparent; color:#986b45; font:9px 'Share Tech Mono'; cursor:pointer; }
-  .order-btn { border:1px solid #ff9b1a; background:#ff8c00; color:#171009; padding:8px 12px; font:800 8px 'Orbitron'; letter-spacing:1px; cursor:pointer; }
+  .product-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; color:#f0dfca; }
+  .product-price { color:#ffb13d; font-size:12px; margin-top:3px; }
+  .add-btn { flex:0 0 30px; height:30px; border:1px solid #ff8c00; background:#ff8c00; color:#171009; font-size:20px; cursor:pointer; }
+  .empty-state { color:#806e5c; text-align:center; padding:35px 10px; font-size:12px; line-height:1.6; }
+  .cart-bar { display:flex; align-items:center; gap:10px; padding:11px 14px; border-top:1px solid rgba(255,140,0,.22); background:#171109; }
+  .cart-summary { flex:1; min-width:0; font-size:11px; color:#9b8268; }
+  .cart-summary strong { display:block; color:#ffd08a; font-size:13px; }
+  .clear-cart { border:0; background:transparent; color:#986b45; font:11px 'Share Tech Mono'; cursor:pointer; }
+  .order-btn { border:1px solid #ff9b1a; background:#ff8c00; color:#171009; padding:10px 14px; font:800 11px 'Orbitron'; letter-spacing:1px; cursor:pointer; }
   .order-btn:disabled { opacity:.35; cursor:not-allowed; }
   .rank-list { display:flex; flex-direction:column; gap:5px; }
-  .rank-row { display:grid; grid-template-columns:28px 1fr auto; gap:7px; align-items:center; padding:7px 9px; border:1px solid rgba(255,140,0,.12); background:rgba(255,255,255,.018); }
+  .rank-row { display:grid; grid-template-columns:34px 1fr auto; gap:9px; align-items:center; padding:9px 11px; border:1px solid rgba(255,140,0,.12); background:rgba(255,255,255,.018); }
   .rank-row.me { border-color:#ff8c00; background:rgba(255,140,0,.11); }
-  .rank-no { font:800 12px 'Orbitron'; color:#ffb13d; }
-  .rank-user { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; }
-   .rank-points { text-align:right; color:#ffd08a; font-size:10px; }
-   .rank-points span { display:block; color:#74614e; font-size:7px; letter-spacing:1px; }
-  .drawer-note { font-size:8px; color:#6e5d4b; padding:8px 12px; border-top:1px solid rgba(255,140,0,.12); }
-  .toast { display:none; position:absolute; left:12px; right:12px; bottom:10px; padding:9px; background:#172318; border:1px solid #3d8b48; color:#8cdf97; font-size:10px; text-align:center; z-index:8; }
+  .rank-no { font:800 15px 'Orbitron'; color:#ffb13d; }
+  .rank-user { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; }
+   .rank-points { text-align:right; color:#ffd08a; font-size:13px; }
+   .rank-points span { display:block; color:#74614e; font-size:9px; letter-spacing:1px; }
+  .drawer-note { font-size:10px; color:#6e5d4b; padding:10px 14px; border-top:1px solid rgba(255,140,0,.12); }
+  .toast { display:none; position:absolute; left:12px; right:12px; bottom:10px; padding:10px; background:#172318; border:1px solid #3d8b48; color:#8cdf97; font-size:12px; text-align:center; z-index:8; }
   .toast.active { display:block; }
 
   /* Reference-inspired three-zone session bar:
@@ -359,7 +361,7 @@
     letter-spacing:.8px;
   }
   .action-area {
-    flex:0 0 118px;
+    flex:0 0 132px;
     display:flex;
     flex-direction:column;
     justify-content:center;
@@ -380,13 +382,14 @@
   .quick-btn {
     -webkit-app-region:no-drag;
     width:100%;
-    min-height:16px;
-    padding:1px 2px;
+    min-height:22px;
+    padding:2px 2px;
     border:0;
     background:transparent;
     color:#f1f1f1;
-    font-size:10px;
-    letter-spacing:.4px;
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:.5px;
     white-space:nowrap;
   }
   .quick-btn:hover,
@@ -399,12 +402,12 @@
   .logout-btn {
     align-self:stretch;
     min-width:0;
-    min-height:16px;
+    min-height:20px;
     margin:0;
-    padding:1px 8px;
+    padding:2px 8px;
     border:0;
     color:#dedede;
-    font-size:10px;
+    font-size:12px;
     letter-spacing:.5px;
   }
   .logout-btn:hover {
@@ -465,7 +468,7 @@
       <button class="clear-cart" id="clear-cart" type="button">CLEAR</button>
       <button class="order-btn" id="place-order" type="button" disabled>PLACE ORDER</button>
     </div>
-    <div class="drawer-note" id="rank-note" style="display:none">ALL-TIME RANKING FROM COIN LOGS</div>
+    <div class="drawer-note" id="rank-note" style="display:none">CURRENT MONTH POINTS • RESETS MONTHLY</div>
     <div class="toast" id="order-toast"></div>
   </section>
   </div>
@@ -579,14 +582,21 @@
     function closeDrawer() {
       activeDrawer = null;
       document.getElementById('drawer').classList.remove('active');
+      document.querySelector('.overlay-shell').classList.remove('drawer-below');
       document.getElementById('shop-btn').classList.remove('active');
       document.getElementById('rank-btn').classList.remove('active');
       setOverlayExpanded(false);
     }
 
-    function openDrawer(view) {
+    async function openDrawer(view) {
       if (activeDrawer === view) { closeDrawer(); return; }
       activeDrawer = view;
+      let placement = 'above';
+      if (!previewMode && window.electronAPI && window.electronAPI.getSessionOverlayPlacement) {
+        try { placement = await window.electronAPI.getSessionOverlayPlacement(); } catch (_) {}
+      }
+      if (activeDrawer !== view) return;
+      document.querySelector('.overlay-shell').classList.toggle('drawer-below', placement === 'below');
       document.getElementById('drawer').classList.add('active');
       document.getElementById('shop-btn').classList.toggle('active', view === 'shop');
       document.getElementById('rank-btn').classList.toggle('active', view === 'rank');
@@ -736,6 +746,8 @@
 
     function renderLeaderboard(leaderboard, meta) {
       const list = document.getElementById('rank-list');
+      const note = document.getElementById('rank-note');
+      if (meta && meta.period) note.textContent = 'CURRENT MONTH POINTS • ' + meta.period + ' • RESETS MONTHLY';
       list.innerHTML = '';
       if (!leaderboard.length) {
         if (meta && meta.syncConnected === false) {
@@ -743,7 +755,7 @@
         } else if (meta && meta.source === 'local-fallback') {
           list.innerHTML = '<div class="empty-state">Denfi Points did not return ranking data.<br>Showing local ranking.</div>';
         } else {
-          list.innerHTML = '<div class="empty-state">No coin activity recorded yet.</div>';
+          list.innerHTML = '<div class="empty-state">No points recorded this month yet.</div>';
         }
         return;
       }

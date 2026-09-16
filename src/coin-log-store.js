@@ -93,6 +93,27 @@ function calcPoints(amount, pointRates) {
   return best;
 }
 
+function getPeriodKey(value) {
+  const date = value instanceof Date
+    ? value
+    : (typeof value === 'number' || /^\d+$/.test(String(value || '')))
+      ? new Date(Number(value))
+      : new Date(value || Date.now());
+  if (Number.isNaN(date.getTime())) return getPeriodKey(Date.now());
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getCurrentPeriodKey() {
+  return getPeriodKey(Date.now());
+}
+
+function getPreviousPeriodKey(periodKey) {
+  const match = /^(\d{4})-(\d{2})$/.exec(String(periodKey || getCurrentPeriodKey()));
+  if (!match) return getPreviousPeriodKey(getCurrentPeriodKey());
+  const date = new Date(Number(match[1]), Number(match[2]) - 2, 1);
+  return getPeriodKey(date);
+}
+
 const DEDUP_WINDOW_MS = 10000;
 
 function appendLog(entry, pointRates) {
@@ -215,19 +236,24 @@ function getLogs(filters, pointRates) {
   };
 }
 
-function getMemberPoints(username, pointRates) {
+function getMemberPoints(username, pointRates, periodKey) {
   if (pointRates) ensurePointsSync(pointRates);
   const data = load();
-  return (data.memberPoints || {})[username] || 0;
+  const targetPeriod = periodKey || getCurrentPeriodKey();
+  const total = (data.logs || [])
+    .filter(log => getPeriodKey(log.timestamp) === targetPeriod && log.username === username)
+    .reduce((sum, log) => sum + (Number(log.points) || 0), 0);
+  return Math.round(total * 100) / 100;
 }
 
-function getLeaderboard(limit, pointRates) {
+function getLeaderboard(limit, pointRates, periodKey) {
   if (pointRates) ensurePointsSync(pointRates);
+  const targetPeriod = periodKey || getCurrentPeriodKey();
   const totals = {};
   for (const log of load().logs || []) {
     const username = String(log.username || '').trim();
     const points = Number(log.points) || 0;
-    if (!username || points <= 0) continue;
+    if (!username || points <= 0 || getPeriodKey(log.timestamp) !== targetPeriod) continue;
     totals[username] = (totals[username] || 0) + points;
   }
   return Object.entries(totals)
@@ -248,4 +274,18 @@ function deleteMemberLogs(username) {
   return found;
 }
 
-module.exports = { setDataDir, appendLog, deleteLog, deleteMemberLogs, clearAllLogs, recalcAllPoints, ensurePointsSync, getLogs, getMemberPoints, getLeaderboard };
+module.exports = {
+  setDataDir,
+  appendLog,
+  deleteLog,
+  deleteMemberLogs,
+  clearAllLogs,
+  recalcAllPoints,
+  ensurePointsSync,
+  getLogs,
+  getMemberPoints,
+  getLeaderboard,
+  getPeriodKey,
+  getCurrentPeriodKey,
+  getPreviousPeriodKey
+};

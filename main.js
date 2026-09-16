@@ -1021,13 +1021,26 @@ ipcMain.on('session-overlay-size', (event, mode) => {
   if (!sessionWindow || sessionWindow.isDestroyed() || event.sender !== sessionWindow.webContents) return;
   const expanded = mode === 'expanded';
   const nextHeight = expanded ? SESSION_EXPANDED_HEIGHT : SESSION_HEIGHT;
-  if (currentSessionHeight === nextHeight) return;
   const bounds = sessionWindow.getBounds();
   const workArea = require('electron').screen.getDisplayMatching(bounds).workArea;
+  const direction = bounds.y <= workArea.y + 12 ? 'below' : 'above';
+  if (currentSessionHeight === nextHeight) {
+    sessionWindow.webContents.send('session-overlay-placement', direction);
+    return;
+  }
   currentSessionHeight = nextHeight;
   const x = Math.max(workArea.x, Math.min(bounds.x, workArea.x + workArea.width - SESSION_WIDTH));
-  const y = Math.max(workArea.y, Math.min(bounds.y + bounds.height - nextHeight, workArea.y + workArea.height - nextHeight));
+  const preferredY = direction === 'below' ? bounds.y : bounds.y + bounds.height - nextHeight;
+  const y = Math.max(workArea.y, Math.min(preferredY, workArea.y + workArea.height - nextHeight));
   sessionWindow.setBounds({ x, y, width: SESSION_WIDTH, height: nextHeight }, true);
+  sessionWindow.webContents.send('session-overlay-placement', direction);
+});
+
+ipcMain.handle('session-overlay-placement', (event) => {
+  if (!sessionWindow || sessionWindow.isDestroyed() || event.sender !== sessionWindow.webContents) return 'above';
+  const bounds = sessionWindow.getBounds();
+  const workArea = require('electron').screen.getDisplayMatching(bounds).workArea;
+  return bounds.y <= workArea.y + 12 ? 'below' : 'above';
 });
 
 ipcMain.on('trigger-shutdown', () => {

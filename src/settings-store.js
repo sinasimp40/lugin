@@ -228,6 +228,7 @@ function getSettings() {
     curfewEnd: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.curfewEnd) ? s.curfewEnd : '06:00',
     coinRates,
     pointRates,
+    monthlyLeaderboardReportedPeriod: String(s.monthlyLeaderboardReportedPeriod || ''),
     syncServerUrl: s.syncServerUrl || '',
   };
 }
@@ -302,6 +303,9 @@ function updateSettings(updates) {
   if (updates.curfewEnd !== undefined && /^([01]\d|2[0-3]):[0-5]\d$/.test(updates.curfewEnd)) s.curfewEnd = updates.curfewEnd;
   if (updates.coinRates !== undefined && Array.isArray(updates.coinRates)) s.coinRates = updates.coinRates;
   if (updates.pointRates !== undefined && Array.isArray(updates.pointRates)) s.pointRates = updates.pointRates;
+  if (updates.monthlyLeaderboardReportedPeriod !== undefined) {
+    s.monthlyLeaderboardReportedPeriod = String(updates.monthlyLeaderboardReportedPeriod || '').slice(0, 7);
+  }
   if (updates.syncServerUrl !== undefined) s.syncServerUrl = updates.syncServerUrl;
   save(s);
   return getSettings();

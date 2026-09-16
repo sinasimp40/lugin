@@ -19,6 +19,7 @@ const VENDO_IP = '10.0.0.5:8989';
 
 const activeCoinSessions = new Map();
 const recentOrderRequests = new Map();
+let monthlyReportAttemptedPeriod = '';
 const COIN_SESSION_TTL = 600000;
 setInterval(() => {
   const now = Date.now();
@@ -872,6 +873,8 @@ app.post('/api/admin/telegram', verifyToken, (req, res) => {
       channelId: req.body.channelId,
       clearToken: !!req.body.clearToken,
     });
+    monthlyReportAttemptedPeriod = '';
+    ensureMonthlyLeaderboardReport();
     res.json({ success: true, telegram });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -1029,12 +1032,50 @@ async function sendTelegramMessage(text) {
   }
 }
 
-function leaderboardFromLogs(logs, limit) {
+async function ensureMonthlyLeaderboardReport() {
+  const currentPeriod = coinLogs.getCurrentPeriodKey();
+  const currentSettings = settings.getSettings();
+  if (currentSettings.monthlyLeaderboardReportedPeriod === currentPeriod) {
+    monthlyReportAttemptedPeriod = currentPeriod;
+    return;
+  }
+  if (monthlyReportAttemptedPeriod === currentPeriod) return;
+  monthlyReportAttemptedPeriod = currentPeriod;
+
+  const previousPeriod = coinLogs.getPreviousPeriodKey(currentPeriod);
+  const topFive = coinLogs.getLeaderboard(5, currentSettings.pointRates || [], previousPeriod);
+  if (!topFive.length) {
+    settings.updateSettings({ monthlyLeaderboardReportedPeriod: currentPeriod });
+    return;
+  }
+
+  const lines = topFive.map((member, index) =>
+    `${index + 1}. ${member.username} — ${Number(member.points).toFixed(2)} POINTS`
+  );
+  const text = [
+    'DENFI MONTHLY POINTS RESET',
+    '',
+    `FINAL TOP 5 — ${previousPeriod}`,
+    ...lines,
+    '',
+    `NEW MONTH STARTED — ${currentPeriod}`,
+    `RESET TIME: ${new Date().toLocaleString()}`,
+  ].join('\n');
+  const result = await sendTelegramMessage(text);
+  if (result.sent) {
+    settings.updateSettings({ monthlyLeaderboardReportedPeriod: currentPeriod });
+    console.log('[Telegram] Monthly points report sent for', previousPeriod);
+  } else {
+    console.log('[Telegram] Monthly points report pending:', result.error);
+  }
+}
+
+function leaderboardFromLogs(logs, limit, periodKey) {
   const totals = {};
   for (const log of Array.isArray(logs) ? logs : []) {
     const username = String(log.username || '').trim();
     const points = Number(log.points) || 0;
-    if (!username || points <= 0) continue;
+    if (!username || points <= 0 || coinLogs.getPeriodKey(log.timestamp) !== periodKey) continue;
     totals[username] = (totals[username] || 0) + points;
   }
   return Object.entries(totals)
@@ -1044,6 +1085,7 @@ function leaderboardFromLogs(logs, limit) {
 }
 
 async function getSessionLeaderboard() {
+  const period = coinLogs.getCurrentPeriodKey();
   let syncError = '';
   if (syncServerUrl) {
     try {
@@ -1052,7 +1094,7 @@ async function getSessionLeaderboard() {
         const data = await response.json();
         if (Array.isArray(data.leaderboard) &&
             data.leaderboard.every(entry => entry && entry.points !== undefined)) {
-          return { leaderboard: data.leaderboard.slice(0, 5), source: 'denfi-points' };
+          return { leaderboard: data.leaderboard.slice(0, 5), source: 'denfi-points', period };
         }
         syncError = 'Denfi Points returned a leaderboard without converted points';
       } else {
@@ -1070,7 +1112,7 @@ async function getSessionLeaderboard() {
       if (response.ok) {
         const data = await response.json();
         if (Array.isArray(data.logs)) {
-          return { leaderboard: leaderboardFromLogs(data.logs, 5), source: 'denfi-points-coin-logs' };
+           return { leaderboard: leaderboardFromLogs(data.logs, 5, period), source: 'denfi-points-coin-logs', period };
         }
       }
     } catch (error) {
@@ -1078,8 +1120,9 @@ async function getSessionLeaderboard() {
     }
   }
   return {
-    leaderboard: coinLogs.getLeaderboard(5, settings.getSettings().pointRates || []),
+    leaderboard: coinLogs.getLeaderboard(5, settings.getSettings().pointRates || [], period),
     source: syncServerUrl ? 'local-fallback' : 'local',
+    period,
     syncConnected: !!syncServerUrl,
     syncError
   };
@@ -1648,8 +1691,9 @@ app.get('/api/sync/coin-logs', (req, res) => {
 app.get('/api/sync/member-points/:username', (req, res) => {
   try {
     const s = settings.getSettings();
-    const points = coinLogs.getMemberPoints(req.params.username, s.pointRates || []);
-    res.json({ points });
+    const period = coinLogs.getCurrentPeriodKey();
+    const points = coinLogs.getMemberPoints(req.params.username, s.pointRates || [], period);
+    res.json({ points, period });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -1658,7 +1702,8 @@ app.get('/api/sync/member-points/:username', (req, res) => {
 app.get('/api/sync/leaderboard', (req, res) => {
   try {
     const s = settings.getSettings();
-    res.json({ success: true, leaderboard: coinLogs.getLeaderboard(5, s.pointRates || []) });
+    const period = coinLogs.getCurrentPeriodKey();
+    res.json({ success: true, leaderboard: coinLogs.getLeaderboard(5, s.pointRates || [], period), period });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
@@ -1917,6 +1962,7 @@ const LISTEN_HOST = process.env.DENFI_LISTEN_HOST || (isElectron ? '127.0.0.1' :
 server.listen(PORT, LISTEN_HOST, () => {
   console.log(`Denfi Auto Shutdown running at http://${LISTEN_HOST}:${PORT}`);
   if (typeof process.send === 'function') process.send('server-ready');
+  ensureMonthlyLeaderboardReport();
 
   if (appRole === 'auto-shutdown') {
     const savedSync = settings.getSettings().syncServerUrl;
@@ -1937,5 +1983,11 @@ server.listen(PORT, LISTEN_HOST, () => {
     }
   }
 });
+
+setInterval(() => {
+  ensureMonthlyLeaderboardReport().catch(error => {
+    console.log('[Telegram] Monthly points report check failed:', error.message);
+  });
+}, 60000).unref();
 
 module.exports = { setSyncServer };
