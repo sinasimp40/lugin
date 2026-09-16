@@ -179,15 +179,30 @@
     text-shadow: 0 0 4px rgba(255,140,0,0.2);
   }
   .pc-label {
-    font-family: 'Orbitron', monospace;
-    font-size: 6px; font-weight: 700;
-    color: rgba(255,140,0,0.5);
-    letter-spacing: 1px;
-    text-shadow: 0 0 4px rgba(255,140,0,0.15);
-    white-space: nowrap;
-    display: none;
+    display:none;
+    align-items:center;
+    gap:5px;
+    padding:3px 8px;
+    border:1px solid rgba(244,239,18,.62);
+    border-radius:4px;
+    background:linear-gradient(180deg,rgba(244,239,18,.2),rgba(244,239,18,.06));
+    color:#fff89a;
+    font-family:'Orbitron',monospace;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:1px;
+    line-height:1;
+    text-shadow:0 1px 3px rgba(0,0,0,.65);
+    white-space:nowrap;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 0 7px rgba(244,239,18,.12);
   }
-  .pc-label.active { display: block; }
+  .pc-label::before {
+    content:'▦';
+    color:#f4ef12;
+    font-size:12px;
+    line-height:1;
+  }
+  .pc-label.active { display:flex; }
 
   .logout-btn {
     -webkit-app-region: no-drag;
@@ -356,10 +371,17 @@
     text-shadow:none;
   }
   .pc-label {
-    color:#a9a9a9;
-    font-size:8px;
-    letter-spacing:.8px;
+    color:#fff89a;
+    font-size:11px;
+    letter-spacing:1px;
   }
+  .strip.danger-mode .pc-label {
+    border-color:rgba(255,70,45,.65);
+    background:linear-gradient(180deg,rgba(255,70,45,.2),rgba(255,70,45,.06));
+    color:#ffb0a4;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 0 7px rgba(255,70,45,.14);
+  }
+  .strip.danger-mode .pc-label::before { color:#ff604c; }
   .action-area {
     flex:0 0 132px;
     display:flex;
@@ -906,7 +928,13 @@
     function setPcLabel(name) {
       if (!name) return;
       const el = document.getElementById('pc-label');
-      el.textContent = '[ ' + name + ' ]';
+      const rawName = String(name).trim();
+      const numberMatch = rawName.match(/(?:pc|station)\s*[-#:]?\s*(\d+)/i);
+      const label = numberMatch
+        ? 'PC ' + String(numberMatch[1]).padStart(2, '0')
+        : rawName;
+      el.textContent = label;
+      el.title = 'Current station: ' + label;
       el.classList.add('active');
     }
 
