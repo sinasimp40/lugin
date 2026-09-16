@@ -338,9 +338,9 @@ function closeConfiguredPrograms(reason) {
   }
 }
 
-const SESSION_WIDTH = 360;
-const SESSION_HEIGHT = 58;
-const SESSION_EXPANDED_HEIGHT = 340;
+const SESSION_WIDTH = 460;
+const SESSION_HEIGHT = 70;
+const SESSION_EXPANDED_HEIGHT = 352;
 let currentSessionHeight = SESSION_HEIGHT;
 
 function performLogout() {

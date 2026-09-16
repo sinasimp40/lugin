@@ -250,19 +250,9 @@
     background: linear-gradient(90deg, transparent, rgba(255,34,0,0.03), rgba(255,34,0,0.06), rgba(255,34,0,0.03), transparent);
   }
 
-  .strip { position:absolute; left:0; right:0; bottom:0; height:58px; }
-  .main-section { padding: 4px 8px; }
-  .timer { font-size: 13px; }
-  .points-zone { min-width: 58px; padding: 0 8px; }
-  .quick-actions { display:flex; gap:4px; margin-left:6px; -webkit-app-region:no-drag; }
-  .quick-btn {
-    background:rgba(255,140,0,.08); border:1px solid rgba(255,140,0,.28); color:#ffad32;
-    font:700 7px 'Orbitron',monospace; letter-spacing:.8px; padding:4px 6px; cursor:pointer;
-  }
-  .quick-btn:hover,.quick-btn.active { background:#ff8c00; color:#130c04; border-color:#ffb13d; }
-  .logout-btn { padding:4px 6px; margin-left:0; }
+  .strip { position:absolute; left:0; right:0; bottom:0; height:70px; }
   .drawer {
-    display:none; position:absolute; left:0; right:0; bottom:58px; height:282px;
+    display:none; position:absolute; left:0; right:0; bottom:70px; height:282px;
     background:linear-gradient(160deg,#111216,#090a0c); border:1px solid rgba(255,140,0,.4);
     border-top:2px solid #ff8c00; box-shadow:0 -8px 30px rgba(0,0,0,.7); overflow:hidden;
     font-family:'Share Tech Mono',monospace; color:#eee; -webkit-app-region:no-drag;
@@ -297,6 +287,119 @@
   .drawer-note { font-size:8px; color:#6e5d4b; padding:8px 12px; border-top:1px solid rgba(255,140,0,.12); }
   .toast { display:none; position:absolute; left:12px; right:12px; bottom:10px; padding:9px; background:#172318; border:1px solid #3d8b48; color:#8cdf97; font-size:10px; text-align:center; z-index:8; }
   .toast.active { display:block; }
+
+  /* Reference-inspired three-zone session bar:
+     points block | readable session details | dedicated action dock */
+  .strip {
+    height:70px;
+    background:linear-gradient(180deg,#1a1a1a 0%,#111 100%);
+    border-left:1px solid rgba(255,140,0,.65);
+    border-right:1px solid rgba(255,140,0,.65);
+    border-radius:2px;
+  }
+  .points-zone,
+  .points-zone.active {
+    display:flex;
+    flex:0 0 92px;
+    width:92px;
+    min-width:92px;
+    padding:0 8px;
+    background:#f4ef12;
+    border:0;
+    box-shadow:none;
+  }
+  .points-zone .pts-value {
+    color:#121212;
+    font-size:18px;
+    letter-spacing:.3px;
+    text-shadow:none;
+  }
+  .points-zone .pts-label {
+    color:#252500;
+    font-size:8px;
+    letter-spacing:1.4px;
+    margin-top:4px;
+  }
+  .main-section {
+    flex:1 1 auto;
+    padding:8px 16px;
+    gap:6px;
+  }
+  .top-row,
+  .bottom-row {
+    justify-content:flex-start;
+  }
+  .timer {
+    color:#f4f4f4;
+    font-size:18px;
+    font-weight:700;
+    letter-spacing:.6px;
+    text-shadow:0 1px 5px rgba(255,255,255,.16);
+  }
+  .user-row { gap:7px; }
+  .status-dot { width:6px; height:6px; }
+  .user {
+    max-width:190px;
+    color:#e7e7e7;
+    font-size:13px;
+    letter-spacing:.2px;
+    text-shadow:none;
+  }
+  .pc-label {
+    color:#a9a9a9;
+    font-size:8px;
+    letter-spacing:.8px;
+  }
+  .action-area {
+    flex:0 0 154px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:stretch;
+    gap:5px;
+    padding:7px 12px 7px 0;
+    position:relative;
+    z-index:3;
+  }
+  .quick-actions {
+    display:grid;
+    grid-template-columns:1fr 1.2fr;
+    gap:8px;
+    margin:0;
+  }
+  .quick-btn {
+    padding:2px 2px;
+    border:0;
+    background:transparent;
+    color:#f1f1f1;
+    font-size:11px;
+    letter-spacing:.4px;
+    white-space:nowrap;
+  }
+  .quick-btn:hover,
+  .quick-btn.active {
+    background:rgba(255,240,0,.1);
+    color:#fff719;
+    border:0;
+    box-shadow:none;
+  }
+  .logout-btn {
+    align-self:center;
+    min-width:92px;
+    margin:0;
+    padding:2px 8px;
+    border:0;
+    color:#dedede;
+    font-size:11px;
+    letter-spacing:.5px;
+  }
+  .logout-btn:hover {
+    background:rgba(255,70,45,.13);
+    border:0;
+    color:#ff9587;
+    box-shadow:none;
+  }
+  .logout-btn::before { display:none; }
 </style>
 </head>
 <body>
@@ -319,9 +422,11 @@
           <div class="user" id="username">User</div>
           <div class="pc-label" id="pc-label"></div>
         </div>
+      </div>
+      <div class="action-area">
         <div class="quick-actions">
           <button class="quick-btn" id="shop-btn" type="button">ORDER</button>
-          <button class="quick-btn" id="rank-btn" type="button">TOP 5</button>
+          <button class="quick-btn" id="rank-btn" type="button">RANKING</button>
         </div>
         <button class="logout-btn" id="logout-btn">LOGOUT</button>
       </div>
