@@ -167,6 +167,8 @@ function Invoke-WatchLoop {
   }
 
   Write-Log "Watchdog started PID=$PID Target=$exe DataDir=$data"
+  $healthFailures = 0
+  $healthFailureLimit = 6
 
   try {
     while ($true) {
@@ -203,7 +205,32 @@ function Invoke-WatchLoop {
         try { Start-Process -FilePath $exe -WorkingDirectory $exeDir -EA Stop; Write-Log "Relaunch issued." }
         catch { Write-Log "Relaunch FAILED: $($_.Exception.Message)" }
         Start-Sleep -Seconds 10
+        $healthFailures = 0
         continue
+      }
+
+      # A process can still exist after its Electron main loop freezes. The
+      # local API runs in that main process, so repeated health timeouts mean
+      # the app is no longer able to protect or control the PC.
+      $healthy = $false
+      try {
+        $health = Invoke-WebRequest -Uri "http://127.0.0.1:5001/api/admin/status" -UseBasicParsing -TimeoutSec 3 -EA Stop
+        if ($health.StatusCode -eq 200) { $healthy = $true }
+      } catch {}
+
+      if ($healthy) {
+        if ($healthFailures -gt 0) { Write-Log "Health check recovered." }
+        $healthFailures = 0
+      } else {
+        $healthFailures++
+        Write-Log "Health check failed ($healthFailures/$healthFailureLimit)."
+        if ($healthFailures -ge $healthFailureLimit) {
+          Write-Log "App remained unhealthy. Terminating it so the watchdog can relaunch it."
+          try { $proc | Stop-Process -Force -EA SilentlyContinue } catch {}
+          $healthFailures = 0
+          Start-Sleep -Seconds 3
+          continue
+        }
       }
       Start-Sleep -Seconds $poll
     }
@@ -281,7 +308,7 @@ function Invoke-Install {
   try {
     $action   = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $argLine
     $trigger  = New-ScheduledTaskTrigger -AtLogOn
-    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1)
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Force -RunLevel Limited | Out-Null
     Write-Host "Installed scheduled task '$TaskName' (runs at every logon)." -ForegroundColor Green
   } catch {

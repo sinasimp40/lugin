@@ -66,6 +66,10 @@
       {
         "from": "denfi-data-path.txt",
         "to": "denfi-data-path.txt"
+      },
+      {
+        "from": "denfi-watchdog.ps1",
+        "to": "denfi-watchdog.ps1"
       }
     ]
   },

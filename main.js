@@ -552,6 +552,26 @@ function selfHealRelaunch(tag, reason) {
   app.exit(0);
 }
 
+function attachRendererRecovery(window, label) {
+  if (!window || window.isDestroyed()) return;
+  let unresponsiveTimer = null;
+  const clearRecoveryTimer = () => {
+    if (unresponsiveTimer) clearTimeout(unresponsiveTimer);
+    unresponsiveTimer = null;
+  };
+
+  window.webContents.on('unresponsive', () => {
+    if (isQuitting || isSelfHealing || unresponsiveTimer) return;
+    console.error(`[Electron] ${label} renderer is unresponsive; waiting 10s before recovery.`);
+    unresponsiveTimer = setTimeout(() => {
+      unresponsiveTimer = null;
+      selfHealRelaunch(`${label} renderer remained unresponsive`, 'unresponsive');
+    }, 10000);
+  });
+  window.webContents.on('responsive', clearRecoveryTimer);
+  window.webContents.once('destroyed', clearRecoveryTimer);
+}
+
 app.on('render-process-gone', (_event, _webContents, details) => {
   selfHealRelaunch('render-process-gone', details && details.reason);
 });
@@ -821,6 +841,7 @@ function showLoginWindow(onReady, options = {}) {
       preload: require('path').join(__dirname, 'preload.js'),
     },
   });
+  attachRendererRecovery(loginWindow, 'login');
 
   Menu.setApplicationMenu(null);
 
@@ -1016,6 +1037,7 @@ function showSessionWindow(onShown) {
       preload: require('path').join(__dirname, 'preload.js'),
     },
   });
+  attachRendererRecovery(sessionWindow, 'session');
 
   // Block the right-click context menu so it cannot be used to hide/close
   // or otherwise tamper with the always-on-top session widget.
