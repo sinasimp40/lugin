@@ -67,15 +67,17 @@ $$self = $$SelfPath.ToLower()
 while ($$true) {
   try {
     $$h = [LG.W]::GetForegroundWindow()
-    if ($$h -ne [IntPtr]::Zero) {
+      if ($$h -ne [IntPtr]::Zero) {
       $$fpid = 0
       [LG.W]::GetWindowThreadProcessId($$h, [ref]$$fpid) | Out-Null
       $$p = Get-Process -Id $$fpid -EA SilentlyContinue
       $$path = ""
       if ($$p) { try { $$path = $$p.Path } catch { $$path = "" } }
-      if ($$path -and $$path.ToLower() -ne $$self) {
+        # Start menu and some Windows shell surfaces do not expose a normal
+        # executable path. Treat those foreground surfaces as untrusted too.
+        if (!$$path -or $$path.ToLower() -ne $$self) {
         [LG.W]::ShowWindowAsync($$h, 11) | Out-Null
-        [Console]::Out.WriteLine("MINIMIZED " + $$p.ProcessName)
+          [Console]::Out.WriteLine("RECLAIMING LOCK FOCUS")
         [Console]::Out.Flush()
       }
     }
@@ -722,6 +724,7 @@ function showLoginWindow(onReady) {
   loginWindow.webContents.on('before-input-event', (event, input) => {
     if (input.alt || input.meta || input.key === 'Meta' || input.key === 'OS') {
       event.preventDefault();
+      setImmediate(forceLoginVisible);
     }
     if (input.control && input.shift && input.key === 'I') {
       event.preventDefault();

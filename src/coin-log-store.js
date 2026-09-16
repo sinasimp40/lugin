@@ -221,17 +221,18 @@ function getMemberPoints(username, pointRates) {
   return (data.memberPoints || {})[username] || 0;
 }
 
-function getLeaderboard(limit) {
+function getLeaderboard(limit, pointRates) {
+  if (pointRates) ensurePointsSync(pointRates);
   const totals = {};
   for (const log of load().logs || []) {
     const username = String(log.username || '').trim();
-    const amount = Number(log.amount) || 0;
-    if (!username || amount <= 0) continue;
-    totals[username] = (totals[username] || 0) + amount;
+    const points = Number(log.points) || 0;
+    if (!username || points <= 0) continue;
+    totals[username] = (totals[username] || 0) + points;
   }
   return Object.entries(totals)
-    .map(([username, coins]) => ({ username, coins: Math.round(coins * 100) / 100 }))
-    .sort((a, b) => b.coins - a.coins || a.username.localeCompare(b.username))
+    .map(([username, points]) => ({ username, points: Math.round(points * 100) / 100 }))
+    .sort((a, b) => b.points - a.points || a.username.localeCompare(b.username))
     .slice(0, Math.max(1, Math.min(20, Number(limit) || 5)));
 }
 

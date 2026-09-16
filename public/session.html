@@ -290,8 +290,8 @@
   .rank-row.me { border-color:#ff8c00; background:rgba(255,140,0,.11); }
   .rank-no { font:800 12px 'Orbitron'; color:#ffb13d; }
   .rank-user { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; }
-  .rank-coins { text-align:right; color:#ffd08a; font-size:10px; }
-  .rank-coins span { display:block; color:#74614e; font-size:7px; letter-spacing:1px; }
+   .rank-points { text-align:right; color:#ffd08a; font-size:10px; }
+   .rank-points span { display:block; color:#74614e; font-size:7px; letter-spacing:1px; }
   .drawer-note { font-size:8px; color:#6e5d4b; padding:8px 12px; border-top:1px solid rgba(255,140,0,.12); }
   .toast { display:none; position:absolute; left:12px; right:12px; bottom:10px; padding:9px; background:#172318; border:1px solid #3d8b48; color:#8cdf97; font-size:10px; text-align:center; z-index:8; }
   .toast.active { display:block; }
@@ -713,14 +713,14 @@
 
     async function loadLeaderboard() {
       const list = document.getElementById('rank-list');
-      list.innerHTML = '<div class="empty-state">Loading coin ranking...</div>';
+       list.innerHTML = '<div class="empty-state">Loading points ranking...</div>';
       if (previewMode) {
         renderLeaderboard([
-          { username: 'mem-carlo', coins: 340 },
-          { username: 'mem-alice', coins: 280 },
-          { username: 'mem-gina', coins: 275 },
-          { username: 'mem-player-one', coins: 250 },
-          { username: 'mem-diana', coins: 225 }
+          { username: 'mem-carlo', points: 22.48 },
+          { username: 'mem-alice', points: 11.38 },
+          { username: 'mem-gina', points: 2.30 },
+          { username: 'mem-player-one', points: 2.00 },
+          { username: 'mem-diana', points: 1.50 }
         ]);
         return;
       }
@@ -756,13 +756,14 @@
           const user = document.createElement('div');
           user.className = 'rank-user';
           user.textContent = member.username;
-          const coins = document.createElement('div');
-          coins.className = 'rank-coins';
-          coins.textContent = String(member.coins);
+          const points = document.createElement('div');
+          points.className = 'rank-points';
+          const value = Number(member.points);
+          points.textContent = Number.isFinite(value) ? value.toFixed(2) : '0.00';
           const label = document.createElement('span');
-          label.textContent = 'COINS';
-          coins.appendChild(label);
-          row.append(rank, user, coins);
+          label.textContent = 'POINTS';
+          points.appendChild(label);
+          row.append(rank, user, points);
           list.appendChild(row);
       });
     }

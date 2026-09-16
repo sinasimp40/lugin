@@ -1033,13 +1033,13 @@ function leaderboardFromLogs(logs, limit) {
   const totals = {};
   for (const log of Array.isArray(logs) ? logs : []) {
     const username = String(log.username || '').trim();
-    const amount = Number(log.amount) || 0;
-    if (!username || amount <= 0) continue;
-    totals[username] = (totals[username] || 0) + amount;
+    const points = Number(log.points) || 0;
+    if (!username || points <= 0) continue;
+    totals[username] = (totals[username] || 0) + points;
   }
   return Object.entries(totals)
-    .map(([username, coins]) => ({ username, coins: Math.round(coins * 100) / 100 }))
-    .sort((a, b) => b.coins - a.coins || a.username.localeCompare(b.username))
+    .map(([username, points]) => ({ username, points: Math.round(points * 100) / 100 }))
+    .sort((a, b) => b.points - a.points || a.username.localeCompare(b.username))
     .slice(0, limit);
 }
 
@@ -1050,10 +1050,11 @@ async function getSessionLeaderboard() {
       const response = await fetch(syncServerUrl + '/api/sync/leaderboard', { signal: AbortSignal.timeout(5000) });
       if (response.ok) {
         const data = await response.json();
-        if (Array.isArray(data.leaderboard)) {
+        if (Array.isArray(data.leaderboard) &&
+            data.leaderboard.every(entry => entry && entry.points !== undefined)) {
           return { leaderboard: data.leaderboard.slice(0, 5), source: 'denfi-points' };
         }
-        syncError = 'Denfi Points returned no leaderboard';
+        syncError = 'Denfi Points returned a leaderboard without converted points';
       } else {
         syncError = `Denfi Points returned HTTP ${response.status}`;
       }
@@ -1077,7 +1078,7 @@ async function getSessionLeaderboard() {
     }
   }
   return {
-    leaderboard: coinLogs.getLeaderboard(5),
+    leaderboard: coinLogs.getLeaderboard(5, settings.getSettings().pointRates || []),
     source: syncServerUrl ? 'local-fallback' : 'local',
     syncConnected: !!syncServerUrl,
     syncError
@@ -1656,7 +1657,8 @@ app.get('/api/sync/member-points/:username', (req, res) => {
 
 app.get('/api/sync/leaderboard', (req, res) => {
   try {
-    res.json({ success: true, leaderboard: coinLogs.getLeaderboard(5) });
+    const s = settings.getSettings();
+    res.json({ success: true, leaderboard: coinLogs.getLeaderboard(5, s.pointRates || []) });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
