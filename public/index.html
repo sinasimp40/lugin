@@ -1859,7 +1859,7 @@
                 <div class="admin-section"><h3>Fullscreen game bypass</h3><p style="font-size:11px;color:#888;margin-bottom:8px">Games where the session strip hides to avoid conflicts. Enter .exe names.</p><div id="admin-bypass-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div><div style="display:flex;gap:8px;align-items:center"><input type="text" id="admin-bypass-input" placeholder="e.g. valorant.exe" style="flex:1" /><button class="btn-admin" onclick="addBypassGame()">Add</button></div></div>
                 <div class="admin-section"><h3>Close apps on session end</h3><p style="font-size:11px;color:#888;margin-bottom:8px">Force-close these .exe programs when the login lock screen returns.</p><div id="admin-close-app-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div><div style="display:flex;gap:8px;align-items:center"><input type="text" id="admin-close-app-input" placeholder="e.g. game.exe" style="flex:1" /><button class="btn-admin" onclick="addCloseApp()">Add</button></div></div>
                 <div class="admin-section"><h3>Session store products</h3><p style="font-size:11px;color:#888;margin-bottom:8px">Products customers can order from the small session overlay.</p><div id="admin-product-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div><div style="display:grid;grid-template-columns:1fr 90px auto;gap:8px;align-items:center"><input type="text" id="admin-product-name" placeholder="e.g. Coke" maxlength="60" /><input type="number" id="admin-product-price" placeholder="Price" min="0.01" max="100000" step="0.01" /><button class="btn-admin" onclick="addProduct()">Add</button></div></div>
-                <div class="admin-section"><h3>Telegram order notifications</h3><p style="font-size:11px;color:#888;margin-bottom:10px">Send each kiosk order to your Telegram channel. The bot token is encrypted when saved and never shown in full.</p><div class="form-group"><label>Telegram bot token</label><input type="password" id="admin-telegram-token" placeholder="123456789:AA..." autocomplete="new-password" /></div><div class="form-group"><label>Channel ID or @channelname</label><input type="text" id="admin-telegram-channel" placeholder="-1001234567890 or @mychannel" /></div><div id="admin-telegram-status" style="font-size:10px;color:#888;margin:4px 0 10px"></div><div style="display:flex;gap:8px"><button class="btn-admin" onclick="saveTelegramSettings()">Save Telegram settings</button><button class="btn-admin danger" onclick="disableTelegramSettings()">Disable</button></div></div>
+                <div class="admin-section"><h3>Telegram order notifications</h3><p style="font-size:11px;color:#888;margin-bottom:10px">Send each kiosk order to your Telegram channel. The bot token is encrypted when saved and never shown in full.</p><div class="form-group"><label>Telegram bot token</label><input type="password" id="admin-telegram-token" placeholder="123456789:AA..." autocomplete="new-password" /></div><div class="form-group"><label>Channel ID or @channelname</label><input type="text" id="admin-telegram-channel" placeholder="-1001234567890 or @mychannel" /></div><div id="admin-telegram-status" style="font-size:10px;color:#888;margin:4px 0 10px"></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-admin" onclick="saveTelegramSettings()">Save Telegram settings</button><button class="btn-admin" onclick="testTelegramSettings()">Send test message</button><button class="btn-admin danger" onclick="disableTelegramSettings()">Disable</button></div></div>
               </div>
             </section>
             <section class="admin-page" id="admin-page-advertising">
@@ -3561,6 +3561,16 @@
       } else {
         showAdminMsg('admin-panel-msg', resp.error || 'Could not disable Telegram', 'error');
       }
+    }
+
+    async function testTelegramSettings() {
+      showAdminMsg('admin-panel-msg', 'Sending Telegram test...', 'success');
+      const resp = await fetch('/api/admin/telegram/test', {
+        method: 'POST',
+        headers: { 'x-admin-token': adminToken }
+      }).then(r => r.json()).catch(() => ({ success: false }));
+      if (resp.success) showAdminMsg('admin-panel-msg', 'Test message sent to Telegram', 'success');
+      else showAdminMsg('admin-panel-msg', resp.error || 'Telegram test failed', 'error');
     }
 
     async function loadSyncServerStatus() {

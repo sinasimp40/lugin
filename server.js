@@ -878,6 +878,17 @@ app.post('/api/admin/telegram', verifyToken, (req, res) => {
   }
 });
 
+app.post('/api/admin/telegram/test', verifyToken, async (req, res) => {
+  const result = await sendTelegramMessage([
+    'DENFI TELEGRAM TEST',
+    '',
+    'Your kiosk order notifications are configured.',
+    `TIME: ${new Date().toLocaleString()}`,
+  ].join('\n'));
+  if (!result.sent) return res.status(400).json({ success: false, error: result.error });
+  res.json({ success: true });
+});
+
 app.get('/api/admin/orders', verifyToken, (req, res) => {
   res.json({ success: true, orders: orderStore.getOrders() });
 });
@@ -965,8 +976,6 @@ function formatSessionTime(seconds) {
 }
 
 async function sendTelegramOrderNotification(order, session) {
-  const telegram = settings.getTelegramSettings();
-  if (!telegram.botToken || !telegram.channelId) return false;
   const itemLines = order.items.map(item =>
     `- ${item.name} x${item.quantity} — ₱${(item.price * item.quantity).toFixed(2)}`
   );
@@ -982,6 +991,15 @@ async function sendTelegramOrderNotification(order, session) {
     '',
     `TOTAL: ₱${Number(order.total).toFixed(2)}`,
   ].join('\n');
+  const result = await sendTelegramMessage(text);
+  return result.sent;
+}
+
+async function sendTelegramMessage(text) {
+  const telegram = settings.getTelegramSettings();
+  if (!telegram.botToken || !telegram.channelId) {
+    return { sent: false, error: 'Telegram bot token and channel ID are not configured' };
+  }
   try {
     const response = await fetch(`https://api.telegram.org/bot${telegram.botToken}/sendMessage`, {
       method: 'POST',
@@ -990,19 +1008,24 @@ async function sendTelegramOrderNotification(order, session) {
       signal: AbortSignal.timeout(8000),
     });
     if (!response.ok) {
-      console.log('[Telegram] Order notification failed:', response.status);
-      return false;
+      let detail = `Telegram returned HTTP ${response.status}`;
+      try {
+        const failure = await response.json();
+        if (failure.description) detail += `: ${failure.description}`;
+      } catch (_) {}
+      console.log('[Telegram] Message failed:', detail);
+      return { sent: false, error: detail };
     }
     const result = await response.json();
     if (!result.ok) {
       console.log('[Telegram] Order notification rejected:', result.description || 'unknown error');
-      return false;
+      return { sent: false, error: result.description || 'Telegram rejected the message' };
     }
-    console.log('[Telegram] Order notification sent for', order.id);
-    return true;
+    console.log('[Telegram] Message sent');
+    return { sent: true };
   } catch (error) {
     console.log('[Telegram] Order notification error:', error.message);
-    return false;
+    return { sent: false, error: 'Could not reach Telegram: ' + error.message };
   }
 }
 

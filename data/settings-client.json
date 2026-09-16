@@ -52,9 +52,11 @@
       "points": 1
     }
   ],
-  "_sig": "2719242050628b29ba144e6afbe0bbc29296070b9998b2a08d23ab9eff231adb",
+  "_sig": "d6871e8c26cc209a6e02e67d61890553df7db8daa68f16ce5e06520364fbb239",
   "adSlideSeconds": 5,
   "closeOnLock": [
     "roblox.exe"
-  ]
+  ],
+  "telegramBotTokenEncrypted": "v1:1dfb9796ed78cba83c5464cb:a3bf2017de5d2ea8c407b3eecfb1e467:a624364755b4e70752b257063b4a7e1af6093f9b9ee0fe1367604f133bfd18fffe9c347297272e8f920aaa582df9",
+  "telegramChannelId": "-1003247750910"
 }
