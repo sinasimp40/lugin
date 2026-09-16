@@ -342,8 +342,10 @@ function closeConfiguredPrograms(reason) {
 // Keep the session overlay compact on top of fullscreen games. The HTML
 // renders at its original logical size and scales itself to these bounds.
 const SESSION_WIDTH = 331;
+const SESSION_MAX_WIDTH = 560;
 const SESSION_HEIGHT = 50;
 const SESSION_EXPANDED_HEIGHT = 253;
+let currentSessionWidth = SESSION_WIDTH;
 let currentSessionHeight = SESSION_HEIGHT;
 
 function performLogout() {
@@ -848,13 +850,14 @@ function showLoginWindow(onReady) {
 function showSessionWindow(onShown) {
   const { screen } = require('electron');
   const primaryWorkArea = screen.getPrimaryDisplay().workArea;
+  currentSessionWidth = SESSION_WIDTH;
   currentSessionHeight = SESSION_HEIGHT;
 
-  const sessionX = primaryWorkArea.x + primaryWorkArea.width - SESSION_WIDTH - 10;
+  const sessionX = primaryWorkArea.x + primaryWorkArea.width - currentSessionWidth - 10;
   const sessionY = primaryWorkArea.y + primaryWorkArea.height - SESSION_HEIGHT - 10;
 
   sessionWindow = new BrowserWindow({
-    width: SESSION_WIDTH,
+    width: currentSessionWidth,
     height: SESSION_HEIGHT,
     x: sessionX,
     y: sessionY,
@@ -907,16 +910,16 @@ function showSessionWindow(onShown) {
     if (!sessionReady) return;
     event.preventDefault();
     const workArea = require('electron').screen.getDisplayMatching(newBounds).workArea;
-    const clampedX = Math.max(workArea.x, Math.min(newBounds.x, workArea.x + workArea.width - SESSION_WIDTH));
+    const clampedX = Math.max(workArea.x, Math.min(newBounds.x, workArea.x + workArea.width - currentSessionWidth));
     const clampedY = Math.max(workArea.y, Math.min(newBounds.y, workArea.y + workArea.height - currentSessionHeight));
-    sessionWindow.setBounds({ x: clampedX, y: clampedY, width: SESSION_WIDTH, height: currentSessionHeight });
+    sessionWindow.setBounds({ x: clampedX, y: clampedY, width: currentSessionWidth, height: currentSessionHeight });
   });
 
   sessionWindow.webContents.once('did-finish-load', () => {
     if (!sessionWindow || sessionWindow.isDestroyed()) return;
     sessionWindow.setOpacity(0);
     sessionWindow.setBounds({
-      width: SESSION_WIDTH,
+      width: currentSessionWidth,
       height: SESSION_HEIGHT,
       x: sessionX,
       y: sessionY,
@@ -1027,10 +1030,14 @@ ipcMain.on('session-state', (event, state) => {
 
 ipcMain.on('session-overlay-size', (event, mode) => {
   if (!sessionWindow || sessionWindow.isDestroyed() || event.sender !== sessionWindow.webContents) return;
+  const requestedWidth = mode && typeof mode === 'object' ? Number(mode.width) : NaN;
   const requestedHeight = mode && typeof mode === 'object' ? Number(mode.height) : NaN;
   const expanded = mode === 'expanded';
   const bounds = sessionWindow.getBounds();
   const workArea = require('electron').screen.getDisplayMatching(bounds).workArea;
+  const maxWidth = Math.min(SESSION_MAX_WIDTH, workArea.width);
+  const desiredWidth = Number.isFinite(requestedWidth) ? requestedWidth : currentSessionWidth;
+  const nextWidth = Math.max(SESSION_WIDTH, Math.min(desiredWidth, maxWidth));
   const desiredHeight = expanded
     ? SESSION_EXPANDED_HEIGHT
     : mode === 'collapsed'
@@ -1040,15 +1047,16 @@ ipcMain.on('session-overlay-size', (event, mode) => {
         : SESSION_EXPANDED_HEIGHT;
   const nextHeight = Math.max(SESSION_HEIGHT, Math.min(desiredHeight, workArea.height));
   const direction = bounds.y <= workArea.y + 12 ? 'below' : 'above';
-  if (currentSessionHeight === nextHeight) {
+  if (currentSessionWidth === nextWidth && currentSessionHeight === nextHeight) {
     sessionWindow.webContents.send('session-overlay-placement', direction);
     return;
   }
+  currentSessionWidth = nextWidth;
   currentSessionHeight = nextHeight;
-  const x = Math.max(workArea.x, Math.min(bounds.x, workArea.x + workArea.width - SESSION_WIDTH));
+  const x = Math.max(workArea.x, Math.min(bounds.x, workArea.x + workArea.width - nextWidth));
   const preferredY = direction === 'below' ? bounds.y : bounds.y + bounds.height - nextHeight;
   const y = Math.max(workArea.y, Math.min(preferredY, workArea.y + workArea.height - nextHeight));
-  sessionWindow.setBounds({ x, y, width: SESSION_WIDTH, height: nextHeight }, true);
+  sessionWindow.setBounds({ x, y, width: nextWidth, height: nextHeight }, true);
   sessionWindow.webContents.send('session-overlay-placement', direction);
 });
 

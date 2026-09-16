@@ -156,7 +156,11 @@
   }
 
   .user-row {
-    display: flex; align-items: center; gap: 4px;
+    display:flex;
+    align-items:center;
+    gap:4px;
+    width:100%;
+    min-width:0;
   }
 
   .status-dot {
@@ -174,8 +178,13 @@
   .user {
     font-family: 'Share Tech Mono', monospace;
     font-size: 8px; color: rgba(255,140,0,0.7);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    max-width: 80px; letter-spacing: 0.5px;
+    flex:1 1 auto;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    max-width:none;
+    letter-spacing:0.5px;
     text-shadow: 0 0 4px rgba(255,140,0,0.2);
   }
   .pc-label {
@@ -194,6 +203,7 @@
     line-height:1;
     text-shadow:0 1px 3px rgba(0,0,0,.65);
     white-space:nowrap;
+    flex:0 0 auto;
     box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 0 7px rgba(244,239,18,.12);
   }
   .pc-label::before {
@@ -364,7 +374,7 @@
   .user-row { gap:7px; }
   .status-dot { width:6px; height:6px; }
   .user {
-    max-width:190px;
+    max-width:none;
     color:#e7e7e7;
     font-size:13px;
     letter-spacing:.2px;
@@ -609,6 +619,63 @@
     let cart = {};
     let activeDrawer = null;
     const previewMode = new URLSearchParams(location.search).get('preview') === '1';
+    const OVERLAY_SCALE = 0.72;
+    const MIN_OVERLAY_WIDTH = 331;
+    const MAX_OVERLAY_WIDTH = 560;
+
+    function measureIntrinsicWidth(element) {
+      if (!element || !element.classList.contains('active') && element.id === 'pc-label') return 0;
+      const clone = element.cloneNode(true);
+      clone.style.position = 'absolute';
+      clone.style.left = '-10000px';
+      clone.style.top = '-10000px';
+      clone.style.width = 'max-content';
+      clone.style.maxWidth = 'none';
+      clone.style.minWidth = '0';
+      clone.style.flex = '0 0 auto';
+      clone.style.overflow = 'visible';
+      document.body.appendChild(clone);
+      const width = clone.getBoundingClientRect().width;
+      clone.remove();
+      return width;
+    }
+
+    function resizeOverlayToContent() {
+      requestAnimationFrame(() => {
+        const points = document.getElementById('points-zone');
+        const main = document.querySelector('.main-section');
+        const action = document.querySelector('.action-area');
+        const user = document.getElementById('username');
+        const pc = document.getElementById('pc-label');
+        const status = document.getElementById('status-dot');
+        const userRow = document.querySelector('.user-row');
+        if (!main || !action || !user || !pc || !status || !userRow) return;
+
+        const mainStyle = getComputedStyle(main);
+        const rowStyle = getComputedStyle(userRow);
+        const pointsWidth = points && points.classList.contains('active')
+          ? parseFloat(getComputedStyle(points).width) || 0
+          : 0;
+        const actionWidth = parseFloat(getComputedStyle(action).flexBasis) || 132;
+        const mainPadding = (parseFloat(mainStyle.paddingLeft) || 0) + (parseFloat(mainStyle.paddingRight) || 0);
+        const statusWidth = parseFloat(getComputedStyle(status).width) || 0;
+        const rowGap = parseFloat(rowStyle.gap) || 0;
+        const userWidth = measureIntrinsicWidth(user);
+        const pcWidth = measureIntrinsicWidth(pc);
+        const logicalWidth = pointsWidth + mainPadding + statusWidth + userWidth + pcWidth + (rowGap * 2) + actionWidth + 4;
+        const targetWidth = Math.max(MIN_OVERLAY_WIDTH, Math.min(MAX_OVERLAY_WIDTH, Math.ceil(logicalWidth * OVERLAY_SCALE)));
+
+        if (window.electronAPI && window.electronAPI.resizeSessionOverlayWidth) {
+          window.electronAPI.resizeSessionOverlayWidth(targetWidth);
+        }
+        if (previewMode && window.parent !== window) {
+          window.parent.postMessage({
+            type:'denfi-overlay-resize',
+            width:targetWidth
+          }, location.origin);
+        }
+      });
+    }
 
     function setOverlayExpanded(expanded) {
       if (window.electronAPI && window.electronAPI.resizeSessionOverlay) {
@@ -936,14 +1003,21 @@
       el.textContent = label;
       el.title = 'Current station: ' + label;
       el.classList.add('active');
+      resizeOverlayToContent();
     }
 
     function setPoints(pts) {
       const el = document.getElementById('points-zone');
-      if (pts === undefined || pts === null) { el.classList.remove('active'); el.innerHTML = ''; return; }
+      if (pts === undefined || pts === null) {
+        el.classList.remove('active');
+        el.innerHTML = '';
+        resizeOverlayToContent();
+        return;
+      }
       const display = pts % 1 === 0 ? pts.toString() : pts.toFixed(2);
       el.innerHTML = '<span class="pts-value">' + display + '</span><span class="pts-label">POINTS</span>';
       el.classList.add('active');
+      resizeOverlayToContent();
     }
 
     async function loadStatus() {
@@ -972,6 +1046,7 @@
           if (data.data.username) sessionUsername = data.data.username;
           if (data.data.ip) sessionIp = data.data.ip;
           if (data.data.mac) sessionMac = data.data.mac;
+          document.getElementById('username').textContent = data.data.username || 'User';
           if (data.data.units && data.data.ip && data.data.units[data.data.ip]) {
             setPcLabel(data.data.units[data.data.ip]);
           }

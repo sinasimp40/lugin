@@ -64,6 +64,9 @@
     window.addEventListener('message', event => {
       if (event.origin !== location.origin || event.source !== frame.contentWindow) return;
       if (event.data && event.data.type === 'denfi-overlay-resize') {
+        if (Number.isFinite(Number(event.data.width))) {
+          frame.style.width = `${Math.min(Number(event.data.width), Math.max(331, window.innerWidth - 8))}px`;
+        }
         frame.style.height = event.data.expanded
           ? (Number.isFinite(Number(event.data.height)) ? `${event.data.height}px` : '253px')
           : '50px';
