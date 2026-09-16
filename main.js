@@ -966,10 +966,32 @@ function showSessionWindow(onShown) {
   let sessionHiddenForGame = false;
   let bypassRefreshInterval = null;
   let foregroundCheckInterval = null;
+  let sessionVisibilityGuardInterval = null;
+  let foregroundCheckSequence = 0;
+
+  function restoreSessionOverlay() {
+    if (!sessionWindow || sessionWindow.isDestroyed() || sessionHiddenForGame) return;
+    try {
+      sessionWindow.setSkipTaskbar(true);
+      sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+      if (!sessionWindow.isVisible() || sessionWindow.isMinimized()) {
+        sessionWindow.restore();
+        sessionWindow.showInactive();
+      }
+      sessionWindow.moveTop();
+    } catch (_) {}
+  }
 
   sessionWindow.on('closed', () => {
     if (bypassRefreshInterval) { clearInterval(bypassRefreshInterval); bypassRefreshInterval = null; }
     if (foregroundCheckInterval) { clearInterval(foregroundCheckInterval); foregroundCheckInterval = null; }
+    if (sessionVisibilityGuardInterval) { clearInterval(sessionVisibilityGuardInterval); sessionVisibilityGuardInterval = null; }
+  });
+  sessionWindow.on('hide', () => {
+    if (currentState === 'logged-in' && !sessionHiddenForGame) setImmediate(restoreSessionOverlay);
+  });
+  sessionWindow.on('minimize', () => {
+    if (currentState === 'logged-in' && !sessionHiddenForGame) setImmediate(restoreSessionOverlay);
   });
 
   function refreshBypassList() {
@@ -991,35 +1013,23 @@ function showSessionWindow(onShown) {
 
   function checkForegroundAndManage() {
     if (!sessionWindow || sessionWindow.isDestroyed()) return;
-    // Defensive: re-apply skipTaskbar every tick. If explorer.exe crashes and
-    // restarts, Windows broadcasts TaskbarCreated and re-enumerates top-level
-    // windows, which would otherwise make the session overlay appear on the
-    // taskbar. Re-applying here restores the hidden state within ~2s.
-    try { sessionWindow.setSkipTaskbar(true); } catch (_) {}
+    const checkSequence = ++foregroundCheckSequence;
     if (process.platform !== 'win32') {
-      sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+      restoreSessionOverlay();
       return;
     }
     if (fullscreenBypassList.length === 0) {
-      if (sessionHiddenForGame) {
-        sessionHiddenForGame = false;
-        sessionWindow.showInactive();
-      }
-      sessionWindow.setAlwaysOnTop(true, 'screen-saver');
-      if (!sessionWindow.isVisible()) {
-        sessionWindow.showInactive();
-      }
-      sessionWindow.moveTop();
+      sessionHiddenForGame = false;
+      restoreSessionOverlay();
       return;
     }
     exec('powershell -NoProfile -Command "[System.Diagnostics.Process]::GetProcessById((Add-Type -MemberDefinition \'[DllImport(\\\"user32.dll\\\")] public static extern IntPtr GetForegroundWindow(); [DllImport(\\\"user32.dll\\\")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);\' -Name W -Namespace W -PassThru)::GetWindowThreadProcessId([W.W]::GetForegroundWindow(), [ref]($p = 0)) | Out-Null; $p).ProcessName"', { timeout: 3000, windowsHide: true }, (err, stdout) => {
       if (!sessionWindow || sessionWindow.isDestroyed()) return;
+      if (checkSequence !== foregroundCheckSequence) return;
       if (err) {
-        if (sessionHiddenForGame) {
-          sessionHiddenForGame = false;
-          sessionWindow.showInactive();
-          sessionWindow.setAlwaysOnTop(true, 'screen-saver');
-        }
+        // A failed foreground probe must never leave the session hidden.
+        sessionHiddenForGame = false;
+        restoreSessionOverlay();
         return;
       }
       const procName = (stdout || '').trim().toLowerCase() + '.exe';
@@ -1032,21 +1042,22 @@ function showSessionWindow(onShown) {
           console.log('[Session] Hidden for fullscreen game:', procName);
         }
       } else {
-        if (sessionHiddenForGame) {
-          sessionHiddenForGame = false;
-          sessionWindow.showInactive();
-          console.log('[Session] Restored after game exit');
-        }
-        sessionWindow.setAlwaysOnTop(true, 'screen-saver');
-        if (!sessionWindow.isVisible()) {
-          sessionWindow.showInactive();
-        }
-        sessionWindow.moveTop();
+        const wasHidden = sessionHiddenForGame;
+        sessionHiddenForGame = false;
+        restoreSessionOverlay();
+        if (wasHidden) console.log('[Session] Restored after game exit');
       }
     });
   }
 
-  foregroundCheckInterval = setInterval(checkForegroundAndManage, 2000);
+  // Keep ordinary applications from covering the session strip even if
+  // Windows clears an always-on-top or taskbar flag after an Explorer change.
+  sessionVisibilityGuardInterval = setInterval(() => {
+    if (sessionWindow && !sessionWindow.isDestroyed() && !sessionHiddenForGame) {
+      restoreSessionOverlay();
+    }
+  }, 500);
+  foregroundCheckInterval = setInterval(checkForegroundAndManage, 1000);
 
   sessionWindow.loadURL(`${APP_URL}/session.html`);
 }
