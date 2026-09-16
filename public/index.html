@@ -2197,23 +2197,7 @@
             preload.onload = function () {
               if (_currentBgFilename === newFilename && _currentBgVersion === newVersion) {
                 bgLayer.style.backgroundImage = 'url("' + mediaUrl + '")';
-                if (dustCanvas) dustCanvas.style.display = 'none';
-                if (window._setDustActive) window._setDustActive(false);
-                corners.forEach(c => c.style.display = 'none');
-                if (scanlines) scanlines.style.display = 'none';
-                if (gridBg) gridBg.style.display = 'none';
               }
-            };
-            preload.onerror = function () {
-              if (_currentBgFilename !== newFilename || _currentBgVersion !== newVersion) return;
-              _currentBgFilename = null;
-              _currentBgVersion = null;
-              bgLayer.style.backgroundImage = '';
-              if (dustCanvas) dustCanvas.style.display = '';
-              if (window._setDustActive) window._setDustActive(true);
-              corners.forEach(c => c.style.display = '');
-              if (scanlines) scanlines.style.display = '';
-              if (gridBg) gridBg.style.display = '';
             };
             preload.src = mediaUrl;
           }
@@ -2221,11 +2205,14 @@
         }
         _currentBgFilename = newFilename;
         _currentBgVersion = newVersion;
+        if (dustCanvas) dustCanvas.style.display = 'none';
+        corners.forEach(c => c.style.display = 'none');
+        if (scanlines) scanlines.style.display = 'none';
+        if (gridBg) gridBg.style.display = 'none';
       } else {
         _currentBgFilename = null;
         _currentBgVersion = null;
         bgLayer.style.backgroundImage = '';
-        if (window._setDustActive) window._setDustActive(true);
         if (bgVideo) { bgVideo.onerror = null; bgVideo.style.display = 'none'; bgVideo.removeAttribute('src'); bgVideo.load(); }
         if (dustCanvas) dustCanvas.style.display = '';
         corners.forEach(c => c.style.display = '');
@@ -2238,9 +2225,7 @@
       const canvas = document.getElementById('dust-particles');
       const ctx = canvas.getContext('2d');
       const dustParticles = [];
-      const MAX_DUST = 48;
-      let dustActive = true;
-      let animationFrame = null;
+      const MAX_DUST = 120;
 
       function resize() {
         canvas.width = window.innerWidth;
@@ -2299,8 +2284,6 @@
       }
 
       function animate() {
-        animationFrame = null;
-        if (!dustActive) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         while (dustParticles.length < MAX_DUST) {
@@ -2345,20 +2328,8 @@
           ctx.fill();
         }
 
-        animationFrame = requestAnimationFrame(animate);
+        requestAnimationFrame(animate);
       }
-      window._setDustActive = function (active) {
-        dustActive = !!active;
-        if (dustActive) {
-          if (!animationFrame) animationFrame = requestAnimationFrame(animate);
-        } else {
-          if (animationFrame) {
-            cancelAnimationFrame(animationFrame);
-            animationFrame = null;
-          }
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-      };
       animate();
     })();
 
@@ -4782,14 +4753,9 @@
 
     document.getElementById('btn-add-slide').addEventListener('click', addNewAd);
 
+    loadSettings();
+    connectSettingsWs();
     init();
-    // Let the base lock screen paint first. Settings, uploaded media, ads,
-    // and the settings socket are optional enhancements and must not compete
-    // with the first frame on low-powered kiosk PCs.
-    setTimeout(() => {
-      loadSettings();
-      connectSettingsWs();
-    }, 250);
   </script>
 </body>
 </html>

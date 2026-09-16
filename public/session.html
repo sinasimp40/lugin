@@ -26,7 +26,7 @@
   .overlay-shell {
     position: absolute; right: 0; bottom: 0;
     width: 138.8889%; height: 138.8889%;
-    overflow: visible;
+    overflow: hidden;
     transform: scale(0.72);
     transform-origin: bottom right;
   }
@@ -692,17 +692,8 @@
         const drawer = document.getElementById('drawer');
         const strip = document.getElementById('strip');
         if (!drawer || !strip || !drawer.classList.contains('active')) return;
-        const shell = document.querySelector('.overlay-shell');
-        const shellStyle = shell ? getComputedStyle(shell) : null;
-        const shellScale = shellStyle && shellStyle.transform && shellStyle.transform !== 'none'
-          ? Number(shellStyle.transform.match(/^matrix\(([^,]+)/)?.[1]) || OVERLAY_SCALE
-          : OVERLAY_SCALE;
-        const measuredDrawerHeight = Math.max(
-          drawer.getBoundingClientRect().height,
-          drawer.scrollHeight * shellScale
-        );
         const targetHeight = Math.ceil(
-          measuredDrawerHeight + strip.getBoundingClientRect().height + 2
+          drawer.getBoundingClientRect().height + strip.getBoundingClientRect().height
         );
         if (window.electronAPI && window.electronAPI.resizeSessionOverlayHeight) {
           window.electronAPI.resizeSessionOverlayHeight(targetHeight);
@@ -715,13 +706,6 @@
           }, location.origin);
         }
       });
-    }
-
-    if (window.ResizeObserver) {
-      const drawerObserver = new ResizeObserver(() => resizeDrawerToContent());
-      drawerObserver.observe(document.getElementById('drawer'));
-      drawerObserver.observe(document.getElementById('product-grid'));
-      drawerObserver.observe(document.getElementById('rank-list'));
     }
 
     function closeDrawer() {
