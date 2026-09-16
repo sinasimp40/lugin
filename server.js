@@ -6,6 +6,7 @@ const { WebSocketServer } = require('ws');
 const http = require('http');
 const settings = require('./src/settings-store');
 const coinLogs = require('./src/coin-log-store');
+const orderStore = require('./src/order-store');
 
 const appRoleInit = process.env.DENFI_APP_ROLE || 'auto-shutdown';
 settings.setAppRole(appRoleInit);
@@ -17,6 +18,7 @@ const HOTSPOT_DNS = 'pisonet.app';
 const VENDO_IP = '10.0.0.5:8989';
 
 const activeCoinSessions = new Map();
+const recentOrderRequests = new Map();
 const COIN_SESSION_TTL = 600000;
 setInterval(() => {
   const now = Date.now();
@@ -79,6 +81,11 @@ app.get('/uploads/:filename', (req, res) => {
   const resolved = path.resolve(filepath);
   if (!resolved.startsWith(path.resolve(settings.getUploadsDir()))) return res.status(403).end();
   if (!fs.existsSync(resolved)) return res.status(404).end();
+  if (req.query.v) {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  } else {
+    res.setHeader('Cache-Control', 'public, max-age=300');
+  }
   res.sendFile(resolved);
 });
 
@@ -832,6 +839,116 @@ app.post('/api/admin/settings', verifyToken, (req, res) => {
   res.json({ success: true, settings: updated });
 });
 
+app.post('/api/admin/products', verifyToken, (req, res) => {
+  const name = String(req.body.name || '').trim();
+  const price = Math.round(Number(req.body.price) * 100) / 100;
+  if (!name || name.length > 60) return res.status(400).json({ success: false, error: 'Product name is required (max 60 characters)' });
+  if (!Number.isFinite(price) || price <= 0 || price > 100000) return res.status(400).json({ success: false, error: 'Enter a valid price' });
+  const current = settings.getSettings().products || [];
+  if (current.length >= 50) return res.status(400).json({ success: false, error: 'Maximum 50 products' });
+  const product = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), name, price };
+  const updated = settings.updateSettings({ products: [...current, product] });
+  broadcastSettings();
+  res.json({ success: true, products: updated.products });
+});
+
+app.delete('/api/admin/products/:id', verifyToken, (req, res) => {
+  const current = settings.getSettings().products || [];
+  const products = current.filter(product => product.id !== req.params.id);
+  if (products.length === current.length) return res.status(404).json({ success: false, error: 'Product not found' });
+  const updated = settings.updateSettings({ products });
+  broadcastSettings();
+  res.json({ success: true, products: updated.products });
+});
+
+app.get('/api/admin/orders', verifyToken, (req, res) => {
+  res.json({ success: true, orders: orderStore.getOrders() });
+});
+
+app.patch('/api/admin/orders/:id', verifyToken, (req, res) => {
+  const status = String(req.body.status || '');
+  if (!['pending', 'served', 'cancelled'].includes(status)) return res.status(400).json({ success: false, error: 'Invalid order status' });
+  const order = orderStore.updateOrderStatus(req.params.id, status);
+  if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
+  res.json({ success: true, order });
+});
+
+app.delete('/api/admin/orders/:id', verifyToken, (req, res) => {
+  if (!orderStore.deleteOrder(req.params.id)) return res.status(404).json({ success: false, error: 'Order not found' });
+  res.json({ success: true });
+});
+
+app.get('/api/session/store', (req, res) => {
+  res.json({ success: true, products: settings.getSettings().products || [] });
+});
+
+app.post('/api/session/orders', (req, res) => {
+  const remoteAddress = String(req.socket.remoteAddress || '');
+  const isLoopback = remoteAddress === '::1' || remoteAddress === '127.0.0.1' ||
+    remoteAddress.startsWith('127.') || remoteAddress.startsWith('::ffff:127.');
+  if (!isLoopback) return res.status(403).json({ success: false, error: 'Orders can only be placed from this kiosk' });
+  const requestKey = remoteAddress;
+  const now = Date.now();
+  if ((recentOrderRequests.get(requestKey) || 0) > now - 5000) {
+    return res.status(429).json({ success: false, error: 'Please wait before placing another order' });
+  }
+  recentOrderRequests.set(requestKey, now);
+  setTimeout(() => recentOrderRequests.delete(requestKey), 6000).unref();
+  resolveActiveHotspotSession().then(username => {
+    if (!username) return res.status(401).json({ success: false, error: 'No active paid session found' });
+  const requestedItems = Array.isArray(req.body.items) ? req.body.items : [];
+  const productMap = new Map((settings.getSettings().products || []).map(product => [product.id, product]));
+  const items = [];
+  let totalQuantity = 0;
+  for (const requested of requestedItems.slice(0, 20)) {
+    const product = productMap.get(String(requested.id || ''));
+    const quantity = Math.max(1, Math.min(10, parseInt(requested.quantity, 10) || 1));
+    if (!product) continue;
+    if (totalQuantity + quantity > 20) return res.status(400).json({ success: false, error: 'Maximum 20 items per order' });
+    totalQuantity += quantity;
+    items.push({ id: product.id, name: product.name, price: product.price, quantity });
+  }
+  if (!items.length) return res.status(400).json({ success: false, error: 'Your order is empty' });
+  const total = Math.round(items.reduce((sum, item) => sum + item.price * item.quantity, 0) * 100) / 100;
+  const order = orderStore.createOrder({
+    username,
+    station: settings.getSettings().computerName || 'PC',
+    items,
+    total,
+  });
+  res.json({ success: true, order });
+  }).catch(error => {
+    console.log('[Orders] Session validation failed:', error.message);
+    if (!res.headersSent) res.status(503).json({ success: false, error: 'Could not verify the active session' });
+  });
+});
+
+async function resolveActiveHotspotSession() {
+  const response = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(5000) });
+  const data = parseHotspotResponse(Buffer.from(await response.arrayBuffer()));
+  if (!data.isLogin) return '';
+  return String(data.username || '').trim().slice(0, 80);
+}
+
+async function getSessionLeaderboard() {
+  if (syncServerUrl) {
+    try {
+      const response = await fetch(syncServerUrl + '/api/sync/leaderboard', { signal: AbortSignal.timeout(5000) });
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data.leaderboard)) return data.leaderboard.slice(0, 5);
+      }
+    } catch (error) {
+      console.log('[Sync] Failed to fetch leaderboard:', error.message);
+    }
+  }
+  return coinLogs.getLeaderboard(5);
+}
+
+app.get('/api/session/leaderboard', async (req, res) => {
+  res.json({ success: true, leaderboard: await getSessionLeaderboard() });
+});
+
 app.post('/api/admin/background', verifyToken, (req, res) => {
   const contentType = req.headers['content-type'] || '';
   if (!contentType.startsWith('application/octet-stream') && !contentType.startsWith('image/') && !contentType.startsWith('video/')) {
@@ -1394,6 +1511,14 @@ app.get('/api/sync/member-points/:username', (req, res) => {
     res.json({ points });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/sync/leaderboard', (req, res) => {
+  try {
+    res.json({ success: true, leaderboard: coinLogs.getLeaderboard(5) });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
   }
 });
 

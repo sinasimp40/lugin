@@ -45,9 +45,11 @@ app.on('ready', async () => {
 
   const settings = require('./src/settings-store');
   const coinLogs = require('./src/coin-log-store');
+  const orderStore = require('./src/order-store');
   settings.setAppRole('points');
   settings.setDataDir(dataDir);
   coinLogs.setDataDir(dataDir);
+  orderStore.setDataDir(dataDir);
 
   try {
     serverModule = require('./server');

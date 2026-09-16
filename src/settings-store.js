@@ -156,6 +156,7 @@ function getSettings() {
     adSlideSeconds: s.adSlideSeconds !== undefined ? s.adSlideSeconds : 5,
     fullscreenBypass: s.fullscreenBypass || ['valorant.exe', 'league of legends.exe', 'leagueclient.exe'],
     closeOnLock: Array.isArray(s.closeOnLock) ? s.closeOnLock : [],
+    products: Array.isArray(s.products) ? s.products : [],
     curfewEnabled: !!s.curfewEnabled,
     curfewStart: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.curfewStart) ? s.curfewStart : '22:00',
     curfewEnd: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.curfewEnd) ? s.curfewEnd : '06:00',
@@ -179,6 +180,7 @@ function getPublicSettings() {
     adSlideSeconds: s.adSlideSeconds !== undefined ? s.adSlideSeconds : 5,
     fullscreenBypass: s.fullscreenBypass,
     closeOnLock: s.closeOnLock,
+    products: s.products,
     curfewEnabled: s.curfewEnabled,
     curfewStart: s.curfewStart,
     curfewEnd: s.curfewEnd,
@@ -222,6 +224,13 @@ function updateSettings(updates) {
       .map(name => String(name).trim().toLowerCase())
       .filter(name => /^[a-z0-9][a-z0-9._ -]{0,199}\.exe$/i.test(name)))];
   }
+  if (updates.products !== undefined && Array.isArray(updates.products)) {
+    s.products = updates.products.slice(0, 50).map(product => ({
+      id: String(product.id || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40),
+      name: String(product.name || '').trim().slice(0, 60),
+      price: Math.round(Number(product.price) * 100) / 100,
+    })).filter(product => product.id && product.name && Number.isFinite(product.price) && product.price > 0 && product.price <= 100000);
+  }
   if (updates.curfewEnabled !== undefined) s.curfewEnabled = !!updates.curfewEnabled;
   if (updates.curfewStart !== undefined && /^([01]\d|2[0-3]):[0-5]\d$/.test(updates.curfewStart)) s.curfewStart = updates.curfewStart;
   if (updates.curfewEnd !== undefined && /^([01]\d|2[0-3]):[0-5]\d$/.test(updates.curfewEnd)) s.curfewEnd = updates.curfewEnd;
@@ -247,7 +256,7 @@ function saveBackgroundImage(fileBuffer, originalName, mimeType) {
   fs.writeFileSync(filepath, fileBuffer);
 
   const s = load();
-  s.backgroundImage = { filename, mimeType, size: fileBuffer.length };
+  s.backgroundImage = { filename, mimeType, size: fileBuffer.length, version: Date.now() };
   save(s);
 
   return s.backgroundImage;

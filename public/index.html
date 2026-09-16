@@ -1858,6 +1858,8 @@
               <div class="admin-grid">
                 <div class="admin-section"><h3>Fullscreen game bypass</h3><p style="font-size:11px;color:#888;margin-bottom:8px">Games where the session strip hides to avoid conflicts. Enter .exe names.</p><div id="admin-bypass-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div><div style="display:flex;gap:8px;align-items:center"><input type="text" id="admin-bypass-input" placeholder="e.g. valorant.exe" style="flex:1" /><button class="btn-admin" onclick="addBypassGame()">Add</button></div></div>
                 <div class="admin-section"><h3>Close apps on session end</h3><p style="font-size:11px;color:#888;margin-bottom:8px">Force-close these .exe programs when the login lock screen returns.</p><div id="admin-close-app-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div><div style="display:flex;gap:8px;align-items:center"><input type="text" id="admin-close-app-input" placeholder="e.g. game.exe" style="flex:1" /><button class="btn-admin" onclick="addCloseApp()">Add</button></div></div>
+                <div class="admin-section"><h3>Session store products</h3><p style="font-size:11px;color:#888;margin-bottom:8px">Products customers can order from the small session overlay.</p><div id="admin-product-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div><div style="display:grid;grid-template-columns:1fr 90px auto;gap:8px;align-items:center"><input type="text" id="admin-product-name" placeholder="e.g. Coke" maxlength="60" /><input type="number" id="admin-product-price" placeholder="Price" min="0.01" max="100000" step="0.01" /><button class="btn-admin" onclick="addProduct()">Add</button></div></div>
+                <div class="admin-section"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><h3 style="margin-bottom:2px">Customer orders</h3><p style="font-size:11px;color:#888">Pending and recently completed orders.</p></div><button class="btn-admin" onclick="loadAdminOrders()" style="padding:5px 9px">Refresh</button></div><div id="admin-order-list" style="display:flex;flex-direction:column;gap:7px;max-height:260px;overflow:auto"></div></div>
               </div>
             </section>
             <section class="admin-page" id="admin-page-advertising">
@@ -2160,6 +2162,7 @@
     }
 
     let _currentBgFilename = null;
+    let _currentBgVersion = null;
     function applyBackground(bgInfo, force) {
       const bgLayer = document.getElementById('bg-layer');
       const bgVideo = document.getElementById('bg-video');
@@ -2168,10 +2171,12 @@
       const scanlines = document.querySelector('.scanlines');
       const gridBg = document.querySelector('.grid-bg');
       const newFilename = (bgInfo && bgInfo.filename) ? bgInfo.filename : null;
+      const newVersion = bgInfo ? (bgInfo.version || bgInfo.size || '1') : null;
       const isVideo = !!(bgInfo && bgInfo.mimeType && bgInfo.mimeType.indexOf('video') === 0);
+      const mediaUrl = newFilename ? '/uploads/' + encodeURIComponent(newFilename) + '?v=' + encodeURIComponent(newVersion) : '';
       if (newFilename) {
         if (isVideo) {
-          if (force || newFilename !== _currentBgFilename) {
+          if (force || newFilename !== _currentBgFilename || newVersion !== _currentBgVersion) {
             bgVideo.onerror = function () {
               bgVideo.style.display = 'none';
               if (dustCanvas) dustCanvas.style.display = '';
@@ -2179,25 +2184,34 @@
               if (scanlines) scanlines.style.display = '';
               if (gridBg) gridBg.style.display = '';
             };
-            bgVideo.src = '/uploads/' + encodeURIComponent(newFilename) + '?t=' + Date.now();
+            bgVideo.preload = 'auto';
+            bgVideo.src = mediaUrl;
             bgVideo.muted = true;
             bgVideo.play().catch(function () {});
           }
           if (bgVideo) bgVideo.style.display = '';
           bgLayer.style.backgroundImage = '';
         } else {
-          if (force || newFilename !== _currentBgFilename) {
-            bgLayer.style.backgroundImage = 'url(/uploads/' + encodeURIComponent(newFilename) + '?t=' + Date.now() + ')';
+          if (force || newFilename !== _currentBgFilename || newVersion !== _currentBgVersion) {
+            const preload = new Image();
+            preload.onload = function () {
+              if (_currentBgFilename === newFilename && _currentBgVersion === newVersion) {
+                bgLayer.style.backgroundImage = 'url("' + mediaUrl + '")';
+              }
+            };
+            preload.src = mediaUrl;
           }
           if (bgVideo) { bgVideo.onerror = null; bgVideo.style.display = 'none'; bgVideo.removeAttribute('src'); bgVideo.load(); }
         }
         _currentBgFilename = newFilename;
+        _currentBgVersion = newVersion;
         if (dustCanvas) dustCanvas.style.display = 'none';
         corners.forEach(c => c.style.display = 'none');
         if (scanlines) scanlines.style.display = 'none';
         if (gridBg) gridBg.style.display = 'none';
       } else {
         _currentBgFilename = null;
+        _currentBgVersion = null;
         bgLayer.style.backgroundImage = '';
         if (bgVideo) { bgVideo.onerror = null; bgVideo.style.display = 'none'; bgVideo.removeAttribute('src'); bgVideo.load(); }
         if (dustCanvas) dustCanvas.style.display = '';
@@ -3453,12 +3467,14 @@
         document.getElementById('admin-register-color-hex').value = rc;
         renderBypassList(resp.settings.fullscreenBypass || []);
         renderCloseAppList(resp.settings.closeOnLock || []);
+        renderProductList(resp.settings.products || []);
         renderAdminAds(resp.settings.ads || []);
         document.getElementById('admin-curfew-enabled').checked = !!resp.settings.curfewEnabled;
         document.getElementById('admin-curfew-start').value = resp.settings.curfewStart || '22:00';
         document.getElementById('admin-curfew-end').value = resp.settings.curfewEnd || '06:00';
       }
       loadSyncServerStatus();
+      loadAdminOrders();
     }
 
     function updateBgPreview(bgInfo) {
@@ -4204,6 +4220,147 @@
       } else {
         showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
       }
+    }
+
+    let currentProducts = [];
+
+    function renderProductList(products) {
+      currentProducts = Array.isArray(products) ? [...products] : [];
+      const el = document.getElementById('admin-product-list');
+      el.innerHTML = '';
+      if (!currentProducts.length) {
+        el.innerHTML = '<div style="color:#666;font-size:11px">No products added</div>';
+        return;
+      }
+      currentProducts.forEach(product => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(255,140,0,0.05);border:1px solid rgba(255,140,0,0.15);border-radius:4px;padding:7px 9px';
+        const details = document.createElement('div');
+        details.style.cssText = 'min-width:0;display:flex;gap:8px;align-items:center';
+        const name = document.createElement('span');
+        name.style.cssText = 'font-family:Share Tech Mono,monospace;font-size:12px;color:#eee;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+        name.textContent = product.name;
+        const price = document.createElement('strong');
+        price.style.cssText = 'font-family:Share Tech Mono,monospace;font-size:12px;color:#ffb13d;white-space:nowrap';
+        price.textContent = '\u20b1' + product.price;
+        const remove = document.createElement('button');
+        remove.className = 'btn-admin danger';
+        remove.type = 'button';
+        remove.style.cssText = 'padding:2px 8px;font-size:10px;min-width:0';
+        remove.textContent = '\u00d7';
+        remove.setAttribute('aria-label', 'Delete ' + product.name);
+        remove.addEventListener('click', () => deleteProduct(product.id));
+        details.append(name, price);
+        row.append(details, remove);
+        el.appendChild(row);
+      });
+    }
+
+    async function addProduct() {
+      const nameInput = document.getElementById('admin-product-name');
+      const priceInput = document.getElementById('admin-product-price');
+      const name = nameInput.value.trim();
+      const price = Number(priceInput.value);
+      if (!name || !Number.isFinite(price) || price <= 0) {
+        showAdminMsg('admin-panel-msg', 'Enter a product name and valid price', 'error');
+        return;
+      }
+      const resp = await fetch('/api/admin/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+        body: JSON.stringify({ name, price })
+      }).then(r => r.json()).catch(() => ({ success: false }));
+      if (!resp.success) {
+        showAdminMsg('admin-panel-msg', resp.error || 'Could not add product', 'error');
+        return;
+      }
+      nameInput.value = '';
+      priceInput.value = '';
+      renderProductList(resp.products || []);
+      showAdminMsg('admin-panel-msg', 'Product added', 'success');
+    }
+
+    async function deleteProduct(id) {
+      const resp = await fetch('/api/admin/products/' + encodeURIComponent(id), {
+        method: 'DELETE',
+        headers: { 'x-admin-token': adminToken }
+      }).then(r => r.json()).catch(() => ({ success: false }));
+      if (!resp.success) {
+        showAdminMsg('admin-panel-msg', resp.error || 'Could not delete product', 'error');
+        return;
+      }
+      renderProductList(resp.products || []);
+      showAdminMsg('admin-panel-msg', 'Product deleted', 'success');
+    }
+
+    async function loadAdminOrders() {
+      if (!adminToken) return;
+      const resp = await fetch('/api/admin/orders', {
+        headers: { 'x-admin-token': adminToken }
+      }).then(r => r.json()).catch(() => ({ success: false }));
+      const el = document.getElementById('admin-order-list');
+      if (!el) return;
+      el.innerHTML = '';
+      if (!resp.success || !Array.isArray(resp.orders) || !resp.orders.length) {
+        el.innerHTML = '<div style="color:#666;font-size:11px">No customer orders yet</div>';
+        return;
+      }
+      resp.orders.slice(0, 30).forEach(order => {
+        const row = document.createElement('div');
+        row.style.cssText = 'border:1px solid rgba(255,140,0,.16);background:rgba(255,140,0,.04);padding:8px;border-radius:4px';
+        const head = document.createElement('div');
+        head.style.cssText = 'display:flex;justify-content:space-between;gap:8px;font-family:Share Tech Mono,monospace;font-size:11px;color:#eee';
+        const customer = document.createElement('strong');
+        customer.textContent = (order.station || 'PC') + ' / ' + (order.username || 'Guest');
+        const total = document.createElement('span');
+        total.style.color = '#ffb13d';
+        total.textContent = '\u20b1' + order.total;
+        head.append(customer, total);
+        const items = document.createElement('div');
+        items.style.cssText = 'font-family:Share Tech Mono,monospace;font-size:10px;color:#999;margin:5px 0';
+        items.textContent = (order.items || []).map(item => item.quantity + '\u00d7 ' + item.name).join(', ');
+        const actions = document.createElement('div');
+        actions.style.cssText = 'display:flex;align-items:center;gap:6px';
+        const status = document.createElement('span');
+        status.style.cssText = 'font-family:Orbitron,monospace;font-size:8px;letter-spacing:1px;color:' + (order.status === 'pending' ? '#ffd740' : '#7ca783');
+        status.textContent = String(order.status || 'pending').toUpperCase();
+        actions.appendChild(status);
+        if (order.status === 'pending') {
+          const served = document.createElement('button');
+          served.className = 'btn-admin';
+          served.type = 'button';
+          served.style.cssText = 'padding:3px 7px;font-size:9px;margin-left:auto';
+          served.textContent = 'Mark served';
+          served.addEventListener('click', () => updateOrderStatus(order.id, 'served'));
+          actions.appendChild(served);
+        }
+        const remove = document.createElement('button');
+        remove.className = 'btn-admin danger';
+        remove.type = 'button';
+        remove.style.cssText = 'padding:3px 7px;font-size:9px';
+        remove.textContent = 'Delete';
+        remove.addEventListener('click', () => deleteOrder(order.id));
+        actions.appendChild(remove);
+        row.append(head, items, actions);
+        el.appendChild(row);
+      });
+    }
+
+    async function updateOrderStatus(id, status) {
+      await fetch('/api/admin/orders/' + encodeURIComponent(id), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+        body: JSON.stringify({ status })
+      }).catch(() => null);
+      loadAdminOrders();
+    }
+
+    async function deleteOrder(id) {
+      await fetch('/api/admin/orders/' + encodeURIComponent(id), {
+        method: 'DELETE',
+        headers: { 'x-admin-token': adminToken }
+      }).catch(() => null);
+      loadAdminOrders();
     }
 
     async function refreshAdminAds() {

@@ -338,8 +338,10 @@ function closeConfiguredPrograms(reason) {
   }
 }
 
-const SESSION_WIDTH = 250;
-const SESSION_HEIGHT = 50;
+const SESSION_WIDTH = 360;
+const SESSION_HEIGHT = 58;
+const SESSION_EXPANDED_HEIGHT = 340;
+let currentSessionHeight = SESSION_HEIGHT;
 
 function performLogout() {
   return new Promise((resolve) => {
@@ -493,6 +495,7 @@ app.whenReady().then(async () => {
   const fs = require('fs');
   const settings = require('./src/settings-store');
   const coinLogs = require('./src/coin-log-store');
+  const orderStore = require('./src/order-store');
 
   const defaultDataDir = path.join(path.dirname(app.getPath('exe')), 'data');
   let dataDir = defaultDataDir;
@@ -549,6 +552,7 @@ app.whenReady().then(async () => {
   settings.setAppRole('auto-shutdown');
   settings.setDataDir(dataDir);
   coinLogs.setDataDir(dataDir);
+  orderStore.setDataDir(dataDir);
   console.log('[Electron] Data dir:', dataDir);
 
   // The watchdog is no longer baked into the app. It is now a standalone
@@ -826,10 +830,11 @@ function showLoginWindow(onReady) {
 
 function showSessionWindow(onShown) {
   const { screen } = require('electron');
-  const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
+  const primaryWorkArea = screen.getPrimaryDisplay().workArea;
+  currentSessionHeight = SESSION_HEIGHT;
 
-  const sessionX = sw - SESSION_WIDTH - 10;
-  const sessionY = sh - SESSION_HEIGHT - 10;
+  const sessionX = primaryWorkArea.x + primaryWorkArea.width - SESSION_WIDTH - 10;
+  const sessionY = primaryWorkArea.y + primaryWorkArea.height - SESSION_HEIGHT - 10;
 
   sessionWindow = new BrowserWindow({
     width: SESSION_WIDTH,
@@ -884,10 +889,10 @@ function showSessionWindow(onShown) {
   sessionWindow.on('will-move', (event, newBounds) => {
     if (!sessionReady) return;
     event.preventDefault();
-    const { width: dw, height: dh } = require('electron').screen.getPrimaryDisplay().workAreaSize;
-    const clampedX = Math.max(0, Math.min(newBounds.x, dw - SESSION_WIDTH));
-    const clampedY = Math.max(0, Math.min(newBounds.y, dh - SESSION_HEIGHT));
-    sessionWindow.setBounds({ x: clampedX, y: clampedY, width: SESSION_WIDTH, height: SESSION_HEIGHT });
+    const workArea = require('electron').screen.getDisplayMatching(newBounds).workArea;
+    const clampedX = Math.max(workArea.x, Math.min(newBounds.x, workArea.x + workArea.width - SESSION_WIDTH));
+    const clampedY = Math.max(workArea.y, Math.min(newBounds.y, workArea.y + workArea.height - currentSessionHeight));
+    sessionWindow.setBounds({ x: clampedX, y: clampedY, width: SESSION_WIDTH, height: currentSessionHeight });
   });
 
   sessionWindow.webContents.once('did-finish-load', () => {
@@ -1001,6 +1006,19 @@ function showSessionWindow(onShown) {
 ipcMain.on('session-state', (event, state) => {
   console.log('[Electron] session-state:', state);
   handleStateChange(state);
+});
+
+ipcMain.on('session-overlay-size', (event, mode) => {
+  if (!sessionWindow || sessionWindow.isDestroyed() || event.sender !== sessionWindow.webContents) return;
+  const expanded = mode === 'expanded';
+  const nextHeight = expanded ? SESSION_EXPANDED_HEIGHT : SESSION_HEIGHT;
+  if (currentSessionHeight === nextHeight) return;
+  const bounds = sessionWindow.getBounds();
+  const workArea = require('electron').screen.getDisplayMatching(bounds).workArea;
+  currentSessionHeight = nextHeight;
+  const x = Math.max(workArea.x, Math.min(bounds.x, workArea.x + workArea.width - SESSION_WIDTH));
+  const y = Math.max(workArea.y, Math.min(bounds.y + bounds.height - nextHeight, workArea.y + workArea.height - nextHeight));
+  sessionWindow.setBounds({ x, y, width: SESSION_WIDTH, height: nextHeight }, true);
 });
 
 ipcMain.on('trigger-shutdown', () => {

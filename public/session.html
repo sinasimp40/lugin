@@ -249,6 +249,54 @@
   .strip.danger-mode .sweep {
     background: linear-gradient(90deg, transparent, rgba(255,34,0,0.03), rgba(255,34,0,0.06), rgba(255,34,0,0.03), transparent);
   }
+
+  .strip { position:absolute; left:0; right:0; bottom:0; height:58px; }
+  .main-section { padding: 4px 8px; }
+  .timer { font-size: 13px; }
+  .points-zone { min-width: 58px; padding: 0 8px; }
+  .quick-actions { display:flex; gap:4px; margin-left:6px; -webkit-app-region:no-drag; }
+  .quick-btn {
+    background:rgba(255,140,0,.08); border:1px solid rgba(255,140,0,.28); color:#ffad32;
+    font:700 7px 'Orbitron',monospace; letter-spacing:.8px; padding:4px 6px; cursor:pointer;
+  }
+  .quick-btn:hover,.quick-btn.active { background:#ff8c00; color:#130c04; border-color:#ffb13d; }
+  .logout-btn { padding:4px 6px; margin-left:0; }
+  .drawer {
+    display:none; position:absolute; left:0; right:0; bottom:58px; height:282px;
+    background:linear-gradient(160deg,#111216,#090a0c); border:1px solid rgba(255,140,0,.4);
+    border-top:2px solid #ff8c00; box-shadow:0 -8px 30px rgba(0,0,0,.7); overflow:hidden;
+    font-family:'Share Tech Mono',monospace; color:#eee; -webkit-app-region:no-drag;
+  }
+  .drawer.active { display:flex; flex-direction:column; }
+  .drawer-head { display:flex; justify-content:space-between; align-items:center; padding:11px 13px; border-bottom:1px solid rgba(255,140,0,.18); }
+  .drawer-title { font:800 12px 'Orbitron',monospace; letter-spacing:1px; color:#ffb13d; }
+  .drawer-close { border:0; background:transparent; color:#a98a68; font-size:18px; cursor:pointer; padding:0 3px; }
+  .drawer-body { flex:1; min-height:0; overflow:auto; padding:10px 12px; }
+  .product-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .product {
+    display:flex; align-items:center; justify-content:space-between; gap:6px; min-width:0;
+    border:1px solid rgba(255,140,0,.17); background:rgba(255,140,0,.045); padding:8px;
+  }
+  .product-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; color:#f0dfca; }
+  .product-price { color:#ffb13d; font-size:10px; margin-top:2px; }
+  .add-btn { flex:0 0 24px; height:24px; border:1px solid #ff8c00; background:#ff8c00; color:#171009; font-size:16px; cursor:pointer; }
+  .empty-state { color:#806e5c; text-align:center; padding:35px 10px; font-size:10px; line-height:1.6; }
+  .cart-bar { display:flex; align-items:center; gap:8px; padding:9px 12px; border-top:1px solid rgba(255,140,0,.22); background:#171109; }
+  .cart-summary { flex:1; min-width:0; font-size:9px; color:#9b8268; }
+  .cart-summary strong { display:block; color:#ffd08a; font-size:11px; }
+  .clear-cart { border:0; background:transparent; color:#986b45; font:9px 'Share Tech Mono'; cursor:pointer; }
+  .order-btn { border:1px solid #ff9b1a; background:#ff8c00; color:#171009; padding:8px 12px; font:800 8px 'Orbitron'; letter-spacing:1px; cursor:pointer; }
+  .order-btn:disabled { opacity:.35; cursor:not-allowed; }
+  .rank-list { display:flex; flex-direction:column; gap:5px; }
+  .rank-row { display:grid; grid-template-columns:28px 1fr auto; gap:7px; align-items:center; padding:7px 9px; border:1px solid rgba(255,140,0,.12); background:rgba(255,255,255,.018); }
+  .rank-row.me { border-color:#ff8c00; background:rgba(255,140,0,.11); }
+  .rank-no { font:800 12px 'Orbitron'; color:#ffb13d; }
+  .rank-user { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; }
+  .rank-coins { text-align:right; color:#ffd08a; font-size:10px; }
+  .rank-coins span { display:block; color:#74614e; font-size:7px; letter-spacing:1px; }
+  .drawer-note { font-size:8px; color:#6e5d4b; padding:8px 12px; border-top:1px solid rgba(255,140,0,.12); }
+  .toast { display:none; position:absolute; left:12px; right:12px; bottom:10px; padding:9px; background:#172318; border:1px solid #3d8b48; color:#8cdf97; font-size:10px; text-align:center; z-index:8; }
+  .toast.active { display:block; }
 </style>
 </head>
 <body>
@@ -271,10 +319,35 @@
           <div class="user" id="username">User</div>
           <div class="pc-label" id="pc-label"></div>
         </div>
+        <div class="quick-actions">
+          <button class="quick-btn" id="shop-btn" type="button">ORDER</button>
+          <button class="quick-btn" id="rank-btn" type="button">TOP 5</button>
+        </div>
         <button class="logout-btn" id="logout-btn">LOGOUT</button>
       </div>
     </div>
   </div>
+  <section class="drawer" id="drawer" aria-label="Session tools">
+    <header class="drawer-head">
+      <div class="drawer-title" id="drawer-title">QUICK ORDER</div>
+      <button class="drawer-close" id="drawer-close" type="button" aria-label="Close">&times;</button>
+    </header>
+    <div class="drawer-body">
+      <div id="store-view">
+        <div class="product-grid" id="product-grid"></div>
+      </div>
+      <div id="rank-view" style="display:none">
+        <div class="rank-list" id="rank-list"></div>
+      </div>
+    </div>
+    <div class="cart-bar" id="cart-bar">
+      <div class="cart-summary"><span id="cart-count">0 items</span><strong id="cart-total">&#8369;0</strong></div>
+      <button class="clear-cart" id="clear-cart" type="button">CLEAR</button>
+      <button class="order-btn" id="place-order" type="button" disabled>PLACE ORDER</button>
+    </div>
+    <div class="drawer-note" id="rank-note" style="display:none">ALL-TIME RANKING FROM COIN LOGS</div>
+    <div class="toast" id="order-toast"></div>
+  </section>
 
   <script>
     (function() {
@@ -368,6 +441,165 @@
     let wsReconnectTimer = null;
     let autoLogoutTriggered = false;
     let checkingExpiry = false;
+    let storeProducts = [];
+    let cart = {};
+    let activeDrawer = null;
+
+    function setOverlayExpanded(expanded) {
+      if (window.electronAPI && window.electronAPI.resizeSessionOverlay) {
+        window.electronAPI.resizeSessionOverlay(expanded);
+      }
+    }
+
+    function closeDrawer() {
+      activeDrawer = null;
+      document.getElementById('drawer').classList.remove('active');
+      document.getElementById('shop-btn').classList.remove('active');
+      document.getElementById('rank-btn').classList.remove('active');
+      setOverlayExpanded(false);
+    }
+
+    function openDrawer(view) {
+      if (activeDrawer === view) { closeDrawer(); return; }
+      activeDrawer = view;
+      document.getElementById('drawer').classList.add('active');
+      document.getElementById('shop-btn').classList.toggle('active', view === 'shop');
+      document.getElementById('rank-btn').classList.toggle('active', view === 'rank');
+      document.getElementById('store-view').style.display = view === 'shop' ? '' : 'none';
+      document.getElementById('rank-view').style.display = view === 'rank' ? '' : 'none';
+      document.getElementById('cart-bar').style.display = view === 'shop' ? 'flex' : 'none';
+      document.getElementById('rank-note').style.display = view === 'rank' ? '' : 'none';
+      document.getElementById('drawer-title').textContent = view === 'shop' ? 'QUICK ORDER' : 'TOP 5 REGULARS';
+      setOverlayExpanded(true);
+      if (view === 'shop') loadProducts();
+      else loadLeaderboard();
+    }
+
+    function money(value) {
+      const number = Number(value) || 0;
+      return '\u20b1' + (Number.isInteger(number) ? number : number.toFixed(2));
+    }
+
+    async function loadProducts() {
+      try {
+        const response = await fetch('/api/session/store');
+        const data = await response.json();
+        storeProducts = Array.isArray(data.products) ? data.products : [];
+      } catch (_) { storeProducts = []; }
+      renderProducts();
+    }
+
+    function renderProducts() {
+      const grid = document.getElementById('product-grid');
+      grid.innerHTML = '';
+      if (!storeProducts.length) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">No products are available.<br>Ask the administrator to add products.</div>';
+        return;
+      }
+      storeProducts.forEach(product => {
+        const row = document.createElement('div');
+        row.className = 'product';
+        const info = document.createElement('div');
+        info.style.minWidth = '0';
+        const name = document.createElement('div');
+        name.className = 'product-name';
+        name.textContent = product.name;
+        const price = document.createElement('div');
+        price.className = 'product-price';
+        price.textContent = money(product.price);
+        const add = document.createElement('button');
+        add.className = 'add-btn';
+        add.type = 'button';
+        add.textContent = '+';
+        add.setAttribute('aria-label', 'Add ' + product.name);
+        add.addEventListener('click', () => {
+          cart[product.id] = (cart[product.id] || 0) + 1;
+          renderCart();
+        });
+        info.append(name, price);
+        row.append(info, add);
+        grid.appendChild(row);
+      });
+    }
+
+    function renderCart() {
+      const items = storeProducts.filter(product => cart[product.id]);
+      const count = items.reduce((sum, product) => sum + cart[product.id], 0);
+      const total = items.reduce((sum, product) => sum + product.price * cart[product.id], 0);
+      document.getElementById('cart-count').textContent = count + (count === 1 ? ' item' : ' items');
+      document.getElementById('cart-total').textContent = money(total);
+      document.getElementById('place-order').disabled = count === 0;
+    }
+
+    async function placeOrder() {
+      const items = Object.entries(cart).map(([id, quantity]) => ({ id, quantity }));
+      if (!items.length) return;
+      const button = document.getElementById('place-order');
+      button.disabled = true;
+      button.textContent = 'SENDING...';
+      try {
+        const response = await fetch('/api/session/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items })
+        });
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error || 'Order failed');
+        cart = {};
+        renderCart();
+        showOrderToast('ORDER SENT — PLEASE WAIT AT YOUR PC');
+      } catch (error) {
+        showOrderToast(error.message || 'Could not send order', true);
+      } finally {
+        button.textContent = 'PLACE ORDER';
+        button.disabled = Object.keys(cart).length === 0;
+      }
+    }
+
+    function showOrderToast(message, isError) {
+      const toast = document.getElementById('order-toast');
+      toast.textContent = message;
+      toast.style.background = isError ? '#2b1512' : '#172318';
+      toast.style.borderColor = isError ? '#a64235' : '#3d8b48';
+      toast.style.color = isError ? '#ff8f80' : '#8cdf97';
+      toast.classList.add('active');
+      setTimeout(() => toast.classList.remove('active'), 3000);
+    }
+
+    async function loadLeaderboard() {
+      const list = document.getElementById('rank-list');
+      list.innerHTML = '<div class="empty-state">Loading coin ranking...</div>';
+      try {
+        const response = await fetch('/api/session/leaderboard');
+        const data = await response.json();
+        const leaderboard = Array.isArray(data.leaderboard) ? data.leaderboard : [];
+        list.innerHTML = '';
+        if (!leaderboard.length) {
+          list.innerHTML = '<div class="empty-state">No coin activity recorded yet.</div>';
+          return;
+        }
+        leaderboard.forEach((member, index) => {
+          const row = document.createElement('div');
+          row.className = 'rank-row' + (member.username.toLowerCase() === sessionUsername.toLowerCase() ? ' me' : '');
+          const rank = document.createElement('div');
+          rank.className = 'rank-no';
+          rank.textContent = String(index + 1).padStart(2, '0');
+          const user = document.createElement('div');
+          user.className = 'rank-user';
+          user.textContent = member.username;
+          const coins = document.createElement('div');
+          coins.className = 'rank-coins';
+          coins.textContent = String(member.coins);
+          const label = document.createElement('span');
+          label.textContent = 'COINS';
+          coins.appendChild(label);
+          row.append(rank, user, coins);
+          list.appendChild(row);
+        });
+      } catch (_) {
+        list.innerHTML = '<div class="empty-state">Ranking is temporarily unavailable.</div>';
+      }
+    }
 
     async function checkExpiryLogout() {
       if (timeLeft > 0 || autoLogoutTriggered || checkingExpiry) return;
@@ -432,6 +664,8 @@
               updateTimer();
               checkExpiryLogout();
             }
+          } else if (msg.type === 'settings' && activeDrawer === 'shop') {
+            loadProducts();
           } else if (msg.type === 'logged-out') {
             setPoints(null);
             if (window.electronAPI && window.electronAPI.setSessionState) {
@@ -558,6 +792,11 @@
     }
 
     document.getElementById('logout-btn').addEventListener('click', (e) => { e.preventDefault(); doLogout(); });
+    document.getElementById('shop-btn').addEventListener('click', () => openDrawer('shop'));
+    document.getElementById('rank-btn').addEventListener('click', () => openDrawer('rank'));
+    document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+    document.getElementById('clear-cart').addEventListener('click', () => { cart = {}; renderCart(); });
+    document.getElementById('place-order').addEventListener('click', placeOrder);
 
     loadStatus();
     connectWs();
