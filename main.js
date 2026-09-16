@@ -817,7 +817,11 @@ function showLoginWindow(onReady) {
         clearInterval(focusRecovery);
         return;
       }
-      forceLoginVisible();
+      if (loginWindow.isMinimized() || !loginWindow.isVisible() || !loginWindow.isFullScreen()) {
+        forceLoginVisible();
+      } else if (!loginWindow.isFocused()) {
+        reclaimFocus();
+      }
     }, 100);
     console.log('[Electron] Login window shown');
     fireReady();
@@ -977,12 +981,14 @@ function showSessionWindow(onShown) {
     if (!sessionWindow || sessionWindow.isDestroyed() || sessionHiddenForGame) return;
     try {
       sessionWindow.setSkipTaskbar(true);
-      sessionWindow.setAlwaysOnTop(true, 'screen-saver');
-      if (!sessionWindow.isVisible() || sessionWindow.isMinimized()) {
+      const needsTopmost = !sessionWindow.isAlwaysOnTop();
+      if (needsTopmost) sessionWindow.setAlwaysOnTop(true, 'screen-saver');
+      const needsShow = !sessionWindow.isVisible() || sessionWindow.isMinimized();
+      if (needsShow) {
         sessionWindow.restore();
         sessionWindow.showInactive();
       }
-      sessionWindow.moveTop();
+      if (needsTopmost || needsShow) sessionWindow.moveTop();
     } catch (_) {}
   }
 
