@@ -119,6 +119,72 @@ function changeAdminPassword(oldPassword, newPassword) {
   return true;
 }
 
+function telegramSecretKey() {
+  return crypto.createHash('sha256')
+    .update(process.env.SESSION_SECRET || HMAC_KEY)
+    .digest();
+}
+
+function encryptTelegramToken(token) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', telegramSecretKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(token, 'utf8'), cipher.final()]);
+  return ['v1', iv.toString('hex'), cipher.getAuthTag().toString('hex'), encrypted.toString('hex')].join(':');
+}
+
+function decryptTelegramToken(value) {
+  if (!value) return '';
+  try {
+    const [, ivHex, tagHex, encryptedHex] = String(value).split(':');
+    if (!ivHex || !tagHex || !encryptedHex) return '';
+    const decipher = crypto.createDecipheriv('aes-256-gcm', telegramSecretKey(), Buffer.from(ivHex, 'hex'));
+    decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
+    return Buffer.concat([decipher.update(Buffer.from(encryptedHex, 'hex')), decipher.final()]).toString('utf8');
+  } catch (_) {
+    return '';
+  }
+}
+
+function getTelegramSettings() {
+  const s = load();
+  return {
+    botToken: decryptTelegramToken(s.telegramBotTokenEncrypted),
+    channelId: String(s.telegramChannelId || ''),
+  };
+}
+
+function getTelegramAdminSettings() {
+  const { botToken, channelId } = getTelegramSettings();
+  return {
+    configured: !!(botToken && channelId),
+    channelId,
+    tokenPreview: botToken ? '••••••••' + botToken.slice(-4) : '',
+  };
+}
+
+function updateTelegramSettings({ botToken, channelId, clearToken } = {}) {
+  const s = load();
+  if (clearToken) {
+    delete s.telegramBotTokenEncrypted;
+  } else if (botToken !== undefined && String(botToken).trim()) {
+    const token = String(botToken).trim();
+    if (!/^\d{6,20}:[A-Za-z0-9_-]{20,200}$/.test(token)) {
+      throw new Error('Invalid Telegram bot token format');
+    }
+    s.telegramBotTokenEncrypted = encryptTelegramToken(token);
+  }
+  if (channelId !== undefined) {
+    const value = String(channelId).trim();
+    if (value && !/^(?:-?\d{3,30}|@[A-Za-z0-9_]{5,64})$/.test(value)) {
+      throw new Error('Enter a Telegram channel ID such as -1001234567890 or @channelname');
+    }
+    if (value) s.telegramChannelId = value;
+    else delete s.telegramChannelId;
+  }
+  save(s);
+  return getTelegramAdminSettings();
+}
+
 function getSharedRates() {
   if (settingsFilename === 'settings-server.json') return null;
   const serverSettingsPath = path.join(dataDir, 'settings-server.json');
@@ -525,6 +591,9 @@ module.exports = {
   getSettings,
   getPublicSettings,
   updateSettings,
+  getTelegramSettings,
+  getTelegramAdminSettings,
+  updateTelegramSettings,
   isWithinCurfew,
   saveBackgroundImage,
   removeBackgroundImage,

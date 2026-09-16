@@ -861,6 +861,23 @@ app.delete('/api/admin/products/:id', verifyToken, (req, res) => {
   res.json({ success: true, products: updated.products });
 });
 
+app.get('/api/admin/telegram', verifyToken, (req, res) => {
+  res.json({ success: true, telegram: settings.getTelegramAdminSettings() });
+});
+
+app.post('/api/admin/telegram', verifyToken, (req, res) => {
+  try {
+    const telegram = settings.updateTelegramSettings({
+      botToken: req.body.botToken,
+      channelId: req.body.channelId,
+      clearToken: !!req.body.clearToken,
+    });
+    res.json({ success: true, telegram });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
 app.get('/api/admin/orders', verifyToken, (req, res) => {
   res.json({ success: true, orders: orderStore.getOrders() });
 });
@@ -894,8 +911,8 @@ app.post('/api/session/orders', (req, res) => {
   }
   recentOrderRequests.set(requestKey, now);
   setTimeout(() => recentOrderRequests.delete(requestKey), 6000).unref();
-  resolveActiveHotspotSession().then(username => {
-    if (!username) return res.status(401).json({ success: false, error: 'No active paid session found' });
+  resolveActiveHotspotSession().then(async session => {
+    if (!session || !session.username) return res.status(401).json({ success: false, error: 'No active paid session found' });
   const requestedItems = Array.isArray(req.body.items) ? req.body.items : [];
   const productMap = new Map((settings.getSettings().products || []).map(product => [product.id, product]));
   const items = [];
@@ -911,12 +928,13 @@ app.post('/api/session/orders', (req, res) => {
   if (!items.length) return res.status(400).json({ success: false, error: 'Your order is empty' });
   const total = Math.round(items.reduce((sum, item) => sum + item.price * item.quantity, 0) * 100) / 100;
   const order = orderStore.createOrder({
-    username,
-    station: settings.getSettings().computerName || 'PC',
+    username: session.username,
+    station: session.pc || settings.getSettings().computerName || 'PC',
     items,
     total,
   });
-  res.json({ success: true, order });
+  const telegramSent = await sendTelegramOrderNotification(order, session);
+  res.json({ success: true, order, telegramSent });
   }).catch(error => {
     console.log('[Orders] Session validation failed:', error.message);
     if (!res.headersSent) res.status(503).json({ success: false, error: 'Could not verify the active session' });
@@ -926,8 +944,66 @@ app.post('/api/session/orders', (req, res) => {
 async function resolveActiveHotspotSession() {
   const response = await fetch(`http://${HOTSPOT_DNS}/status`, { signal: AbortSignal.timeout(5000) });
   const data = parseHotspotResponse(Buffer.from(await response.arrayBuffer()));
-  if (!data.isLogin) return '';
-  return String(data.username || '').trim().slice(0, 80);
+  if (!data.isLogin) return null;
+  const settingsNow = settings.getSettings();
+  const pc = data.units && data.ip && data.units[data.ip]
+    ? data.units[data.ip]
+    : settingsNow.pisonetUnitName || settingsNow.computerName || 'PC';
+  return {
+    username: String(data.username || '').trim().slice(0, 80),
+    timeLeft: Math.max(0, parseInt(data.sessionTimeLeft, 10) || 0),
+    pc: String(pc).slice(0, 80),
+  };
+}
+
+function formatSessionTime(seconds) {
+  const value = Math.max(0, Number(seconds) || 0);
+  const hours = Math.floor(value / 3600);
+  const minutes = Math.floor((value % 3600) / 60);
+  const secs = value % 60;
+  return [hours, minutes, secs].map(part => String(part).padStart(2, '0')).join(':');
+}
+
+async function sendTelegramOrderNotification(order, session) {
+  const telegram = settings.getTelegramSettings();
+  if (!telegram.botToken || !telegram.channelId) return false;
+  const itemLines = order.items.map(item =>
+    `- ${item.name} x${item.quantity} — ₱${(item.price * item.quantity).toFixed(2)}`
+  );
+  const text = [
+    'NEW KIOSK ORDER',
+    '',
+    `PC: ${order.station}`,
+    `USERNAME: ${order.username}`,
+    `TIME LEFT: ${formatSessionTime(session.timeLeft)}`,
+    `ORDER TIME: ${new Date(order.createdAt).toLocaleString()}`,
+    '',
+    ...itemLines,
+    '',
+    `TOTAL: ₱${Number(order.total).toFixed(2)}`,
+  ].join('\n');
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${telegram.botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: telegram.channelId, text, disable_web_page_preview: true }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) {
+      console.log('[Telegram] Order notification failed:', response.status);
+      return false;
+    }
+    const result = await response.json();
+    if (!result.ok) {
+      console.log('[Telegram] Order notification rejected:', result.description || 'unknown error');
+      return false;
+    }
+    console.log('[Telegram] Order notification sent for', order.id);
+    return true;
+  } catch (error) {
+    console.log('[Telegram] Order notification error:', error.message);
+    return false;
+  }
 }
 
 async function getSessionLeaderboard() {
