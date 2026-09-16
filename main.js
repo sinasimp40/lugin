@@ -707,6 +707,9 @@ function showLoginWindow(onReady) {
     skipTaskbar: true,
     alwaysOnTop: true,
     kiosk: true,
+    fullscreen: true,
+    fullscreenable: true,
+    autoHideMenuBar: true,
     enableLargerThanScreen: true,
     backgroundColor: '#0a0a0a',
     icon: require('path').join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
@@ -749,7 +752,9 @@ function showLoginWindow(onReady) {
     try {
       if (loginWindow.isMinimized()) loginWindow.restore();
       if (!loginWindow.isVisible()) loginWindow.show();
+      loginWindow.setFullScreen(true);
       loginWindow.setKiosk(true);
+      loginWindow.setSkipTaskbar(true);
       loginWindow.setAlwaysOnTop(true, 'screen-saver');
       loginWindow.moveTop();
       loginWindow.focus();
@@ -758,6 +763,7 @@ function showLoginWindow(onReady) {
   loginWindow.on('minimize', (e) => { e.preventDefault(); setImmediate(forceLoginVisible); });
   loginWindow.on('hide', () => setImmediate(forceLoginVisible));
   loginWindow.on('restore', () => setImmediate(forceLoginVisible));
+  loginWindow.on('leave-full-screen', () => setImmediate(forceLoginVisible));
 
   let windowShown = false;
   let readyCalled = false;
@@ -772,7 +778,9 @@ function showLoginWindow(onReady) {
     if (windowShown || !loginWindow || loginWindow.isDestroyed()) return;
     windowShown = true;
     loginWindow.setBounds({ x, y, width, height });
+    loginWindow.setFullScreen(true);
     loginWindow.setKiosk(true);
+    loginWindow.setSkipTaskbar(true);
     loginWindow.setAlwaysOnTop(true, 'screen-saver');
     loginWindow.show();
     loginWindow.moveTop();
