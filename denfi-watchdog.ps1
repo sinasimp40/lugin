@@ -19,8 +19,8 @@
 #   To remove it later:
 #         powershell -ExecutionPolicy Bypass -File .\denfi-watchdog.ps1 -Uninstall
 #
-#   If the app is in a non-standard location, pass it explicitly:
-#         powershell -ExecutionPolicy Bypass -File .\denfi-watchdog.ps1 -TargetExe "D:\Apps\denfi-auto-shutdown.exe"
+#   This watchdog is fixed to:
+#         G:\auto\denfi-auto-shutdown\denfi-auto-shutdown.exe
 # ===========================================================================
 
 param(
@@ -34,43 +34,15 @@ $ErrorActionPreference = "Continue"
 
 $TaskName = "DenfiAutoShutdownWatchdog"
 $ExeBaseName = "denfi-auto-shutdown"
+$FixedTargetExe = "G:\auto\denfi-auto-shutdown\denfi-auto-shutdown.exe"
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 function Find-TargetExe {
   param([string]$hint)
-  if ($hint -ne "" -and (Test-Path $hint)) { return (Resolve-Path $hint).Path }
-
-  # Folder this script is running from (portable builds usually sit next to it).
-  $scriptDir = ""
-  if ($PSScriptRoot) { $scriptDir = $PSScriptRoot }
-  elseif ($PSCommandPath) { $scriptDir = Split-Path -Parent $PSCommandPath }
-
-  $candidates = @(
-    "G:\auto\denfi-auto-shutdown\denfi-auto-shutdown.exe",
-    (Join-Path ${env:ProgramFiles} "Denfi Auto Shutdown\$ExeBaseName.exe"),
-    (Join-Path ${env:ProgramFiles(x86)} "Denfi Auto Shutdown\$ExeBaseName.exe"),
-    (Join-Path $env:LOCALAPPDATA "Programs\denfi-auto-shutdown\$ExeBaseName.exe"),
-    (Join-Path $env:LOCALAPPDATA "Programs\Denfi Auto Shutdown\$ExeBaseName.exe")
-  )
-  if ($scriptDir -ne "") {
-    $candidates += (Join-Path $scriptDir "$ExeBaseName.exe")
-    $candidates += (Join-Path $scriptDir "Denfi Auto Shutdown\$ExeBaseName.exe")
-    $candidates += (Join-Path $scriptDir "win-unpacked\$ExeBaseName.exe")
-  }
-  foreach ($c in $candidates) { if ($c -and (Test-Path $c)) { return (Resolve-Path $c).Path } }
-
-  # Last resort: recursively search the script's folder (handles unknown
-  # sub-folder layouts of portable/unpacked builds).
-  if ($scriptDir -ne "" -and (Test-Path $scriptDir)) {
-    try {
-      $found = Get-ChildItem -Path $scriptDir -Filter "$ExeBaseName.exe" -Recurse -File -EA SilentlyContinue |
-               Select-Object -First 1
-      if ($found) { return $found.FullName }
-    } catch {}
-  }
-  return ""
+  if ($hint -ne "") { return $hint }
+  return $FixedTargetExe
 }
 
 # Mirror the app's data-dir logic so the admin-stop sentinel lines up exactly:
@@ -178,7 +150,9 @@ function Invoke-WatchLoop {
         try { Remove-Item $SentinelFile -Force -EA SilentlyContinue } catch {}
         break
       }
-      $proc = Get-Process -Name $exeName -EA SilentlyContinue
+      $proc = @(Get-Process -Name $exeName -EA SilentlyContinue | Where-Object {
+        try { $_.Path -and ($_.Path -ieq $exe) } catch { $false }
+      })
       if (-not $proc) {
         # Grace window: an admin-stop may have just fired and the app exited
         # before its sentinel was observed. Wait, then re-check.
@@ -283,9 +257,7 @@ function Invoke-Install {
   param([string]$exe, [string]$data, [int]$poll)
 
   if ($exe -eq "") {
-    Write-Host "ERROR: Could not find denfi-auto-shutdown.exe automatically." -ForegroundColor Red
-    Write-Host "Re-run and point at it, e.g.:" -ForegroundColor Red
-    Write-Host '  powershell -ExecutionPolicy Bypass -File .\denfi-watchdog.ps1 -TargetExe "C:\Program Files\Denfi Auto Shutdown\denfi-auto-shutdown.exe"'
+    Write-Host "ERROR: Watchdog target path is empty." -ForegroundColor Red
     return
   }
 
