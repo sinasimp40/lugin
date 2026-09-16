@@ -260,7 +260,7 @@
 
   .strip { position:absolute; left:0; right:0; bottom:0; height:70px; }
   .drawer {
-    display:none; position:absolute; left:0; right:0; bottom:70px; height:282px;
+    display:none; position:absolute; left:0; right:0; bottom:70px; height:auto;
     background:linear-gradient(160deg,#111216,#090a0c); border:1px solid rgba(255,140,0,.4);
     border-top:2px solid #ff8c00; box-shadow:0 -8px 30px rgba(0,0,0,.7); overflow:hidden;
     font-family:'Share Tech Mono',monospace; color:#eee; -webkit-app-region:no-drag;
@@ -271,7 +271,7 @@
   .drawer-head { display:flex; justify-content:space-between; align-items:center; padding:11px 13px; border-bottom:1px solid rgba(255,140,0,.18); }
   .drawer-title { font:800 16px 'Orbitron',monospace; letter-spacing:1px; color:#ffb13d; }
   .drawer-close { border:0; background:transparent; color:#a98a68; font-size:22px; cursor:pointer; padding:0 4px; }
-  .drawer-body { flex:1; min-height:0; overflow:auto; padding:12px 14px; }
+  .drawer-body { flex:0 0 auto; min-height:0; overflow:visible; padding:12px 14px; }
   .product-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
   .product {
     display:flex; align-items:center; justify-content:space-between; gap:6px; min-width:0;
