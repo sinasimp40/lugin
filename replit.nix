@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.wineWowPackages.stable
     pkgs.xdg-utils
     pkgs.gtk3
     pkgs.dbus
