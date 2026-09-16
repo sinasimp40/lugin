@@ -1817,6 +1817,8 @@ const recentRegistrations = new Map();
 const lastAutoLoggedTime = new Map();
 let pollInFlight = false;
 let pollQueued = false;
+let confirmedLoggedOutSamples = 0;
+const LOGOUT_CONFIRMATION_SAMPLES = 3;
 
 function scheduleImmediatePoll() {
   if (pollInFlight) {
@@ -1836,6 +1838,19 @@ async function pollHotspotForWs() {
     const prevTime = lastSessionData?.sessionTimeLeft;
     const newTime = parseInt(data.sessionTimeLeft) || 0;
     const prevUser = lastSessionData?.username;
+
+    if (data.isLogin) {
+      confirmedLoggedOutSamples = 0;
+    } else if (wasLoggedIn) {
+      confirmedLoggedOutSamples++;
+      if (confirmedLoggedOutSamples < LOGOUT_CONFIRMATION_SAMPLES) {
+        console.log(`[WS] Ignoring temporary logged-out sample (${confirmedLoggedOutSamples}/${LOGOUT_CONFIRMATION_SAMPLES})`);
+        broadcast({ type: 'status-check-pending' });
+        return;
+      }
+    } else {
+      confirmedLoggedOutSamples = 0;
+    }
 
     if (data.isLogin && data.username && data.username.startsWith('mem-')) {
       const s = settings.getSettings();
@@ -1937,6 +1952,7 @@ async function pollHotspotForWs() {
     broadcast({ type: 'status', data });
 
     if (wasLoggedIn && !data.isLogin) {
+      confirmedLoggedOutSamples = 0;
       if (prevUser) lastAutoLoggedTime.delete(prevUser);
       broadcast({ type: 'logged-out' });
     }

@@ -1,2 +1,3 @@
 - [Monthly points ranking](monthly-points-ranking.md) — keep historical coin logs, but calculate session rankings and member points from the current local calendar month.
 - [Shutdown timer ownership](shutdown-timer-ownership.md) — idle shutdown is main-process authoritative; startup restoration shows the lock screen without starting the idle deadline.
+- [Session visibility reliability](session-visibility-reliability.md) — reject stale logout events and require repeated hotspot confirmation before removing an active session overlay.

@@ -1110,17 +1110,18 @@ function showSessionWindow(onShown) {
   let foregroundCheckInterval = null;
   let sessionVisibilityGuardInterval = null;
   let foregroundCheckSequence = 0;
+  const managedSessionWindow = sessionWindow;
 
   function restoreSessionOverlay() {
-    if (!sessionWindow || sessionWindow.isDestroyed() || sessionHiddenForGame) return;
+    if (currentState !== 'logged-in' || sessionWindow !== managedSessionWindow || !managedSessionWindow || managedSessionWindow.isDestroyed() || sessionHiddenForGame) return;
     try {
-      sessionWindow.setSkipTaskbar(true);
-      sessionWindow.setAlwaysOnTop(true, 'screen-saver');
-      if (!sessionWindow.isVisible() || sessionWindow.isMinimized()) {
-        sessionWindow.restore();
-        sessionWindow.showInactive();
+      managedSessionWindow.setSkipTaskbar(true);
+      managedSessionWindow.setAlwaysOnTop(true, 'screen-saver');
+      if (!managedSessionWindow.isVisible() || managedSessionWindow.isMinimized()) {
+        managedSessionWindow.restore();
+        managedSessionWindow.showInactive();
       }
-      sessionWindow.moveTop();
+      managedSessionWindow.moveTop();
     } catch (_) {}
   }
 
@@ -1155,7 +1156,7 @@ function showSessionWindow(onShown) {
   bypassRefreshInterval = setInterval(refreshBypassList, 10000);
 
   function checkForegroundAndManage() {
-    if (!sessionWindow || sessionWindow.isDestroyed()) return;
+    if (currentState !== 'logged-in' || sessionWindow !== managedSessionWindow || managedSessionWindow.isDestroyed()) return;
     const checkSequence = ++foregroundCheckSequence;
     if (process.platform !== 'win32') {
       restoreSessionOverlay();
@@ -1167,7 +1168,7 @@ function showSessionWindow(onShown) {
       return;
     }
     exec('powershell -NoProfile -Command "[System.Diagnostics.Process]::GetProcessById((Add-Type -MemberDefinition \'[DllImport(\\\"user32.dll\\\")] public static extern IntPtr GetForegroundWindow(); [DllImport(\\\"user32.dll\\\")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);\' -Name W -Namespace W -PassThru)::GetWindowThreadProcessId([W.W]::GetForegroundWindow(), [ref]($p = 0)) | Out-Null; $p).ProcessName"', { timeout: 3000, windowsHide: true }, (err, stdout) => {
-      if (!sessionWindow || sessionWindow.isDestroyed()) return;
+      if (currentState !== 'logged-in' || sessionWindow !== managedSessionWindow || managedSessionWindow.isDestroyed()) return;
       if (checkSequence !== foregroundCheckSequence) return;
       if (err) {
         // A failed foreground probe must never leave the session hidden.
@@ -1175,14 +1176,26 @@ function showSessionWindow(onShown) {
         restoreSessionOverlay();
         return;
       }
-      const procName = (stdout || '').trim().toLowerCase() + '.exe';
-      const isFullscreenGame = fullscreenBypassList.some(g => procName.includes(g));
+      const normalizeExeName = (value) => {
+        const base = String(value || '').trim().split(/[\\/]/).pop().toLowerCase();
+        return base && !base.endsWith('.exe') ? base + '.exe' : base;
+      };
+      const procName = normalizeExeName(stdout);
+      const isFullscreenGame = !!procName && fullscreenBypassList.some(g => {
+        const configuredName = normalizeExeName(g);
+        return !!configuredName && procName === configuredName;
+      });
       if (isFullscreenGame) {
         if (!sessionHiddenForGame) {
           sessionHiddenForGame = true;
-          sessionWindow.setAlwaysOnTop(false);
-          sessionWindow.hide();
-          console.log('[Session] Hidden for fullscreen game:', procName);
+          try {
+            managedSessionWindow.setAlwaysOnTop(false);
+            managedSessionWindow.hide();
+            console.log('[Session] Hidden for fullscreen game:', procName);
+          } catch (_) {
+            sessionHiddenForGame = false;
+            restoreSessionOverlay();
+          }
         }
       } else {
         const wasHidden = sessionHiddenForGame;
@@ -1377,31 +1390,71 @@ function handleStateChange(state) {
 }
 
 let pollInterval = null;
+let pollRequest = null;
+let pollGeneration = 0;
 
 function startPolling() {
   stopPolling();
   const http = require('http');
-  pollInterval = setInterval(() => {
-    http.get(`${APP_URL}/api/session/poll`, (res) => {
+  const generation = ++pollGeneration;
+
+  function scheduleNextPoll() {
+    if (generation !== pollGeneration || currentState !== 'logged-in') return;
+    pollInterval = setTimeout(runPoll, 1000);
+  }
+
+  function runPoll() {
+    pollInterval = null;
+    if (generation !== pollGeneration || currentState !== 'logged-in') return;
+    if (pollRequest) return;
+
+    const request = http.get(`${APP_URL}/api/session/poll`, (res) => {
       let body = '';
       res.on('data', (chunk) => body += chunk);
       res.on('end', () => {
+        if (pollRequest !== request) return;
+        pollRequest = null;
+        if (generation !== pollGeneration || currentState !== 'logged-in') return;
         try {
           const data = JSON.parse(body);
           if (data.event === 'logged-out') {
             console.log('[Electron] Poll detected logout');
             handleStateChange('logged-out');
+            return;
           }
         } catch (e) {}
+        scheduleNextPoll();
       });
-    }).on('error', () => {});
-  }, 1000);
+      res.on('aborted', () => {
+        if (pollRequest !== request) return;
+        pollRequest = null;
+        scheduleNextPoll();
+      });
+    });
+    pollRequest = request;
+    request.on('error', () => {
+      if (pollRequest !== request) return;
+      pollRequest = null;
+      scheduleNextPoll();
+    });
+    request.setTimeout(2500, () => {
+      try { request.destroy(new Error('Session poll timeout')); } catch (_) {}
+    });
+  }
+
+  scheduleNextPoll();
 }
 
 function stopPolling() {
+  pollGeneration++;
   if (pollInterval) {
-    clearInterval(pollInterval);
+    clearTimeout(pollInterval);
     pollInterval = null;
+  }
+  if (pollRequest) {
+    const request = pollRequest;
+    pollRequest = null;
+    try { request.destroy(); } catch (_) {}
   }
 }
 
