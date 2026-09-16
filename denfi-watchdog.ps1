@@ -48,6 +48,7 @@ function Find-TargetExe {
   elseif ($PSCommandPath) { $scriptDir = Split-Path -Parent $PSCommandPath }
 
   $candidates = @(
+    "G:\auto\denfi-auto-shutdown\denfi-auto-shutdown.exe",
     (Join-Path ${env:ProgramFiles} "Denfi Auto Shutdown\$ExeBaseName.exe"),
     (Join-Path ${env:ProgramFiles(x86)} "Denfi Auto Shutdown\$ExeBaseName.exe"),
     (Join-Path $env:LOCALAPPDATA "Programs\denfi-auto-shutdown\$ExeBaseName.exe"),
