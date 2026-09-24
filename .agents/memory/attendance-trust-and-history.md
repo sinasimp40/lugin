@@ -3,11 +3,11 @@ name: Attendance history and network trust
 description: Intentional no-pairing tradeoff, historical mission policy, and atomic receipts.
 ---
 
-Attendance progress sync uses the existing Denfi Points connection with no extra member/kiosk pairing step. A connected kiosk's admin may also change the shared mission, but that administrative action must be authenticated by Denfi Points; it is not progress pairing.
+Attendance progress and shared-mission saves use the existing Denfi Points connection without a per-kiosk Denfi Points password or pairing step. The Auto Shutdown admin login controls the editing UI; the Points desktop server permits automatic mission writes from a directly attached private subnet. This is network trust, not cryptographic authentication of a kiosk.
 
-**Why:** The user explicitly wanted manual key pairing removed after configuring the Denfi Points server, but also expects saving the mission from Auto Shutdown to update Denfi Points for every kiosk. Progress sync favors setup simplicity over protection from untrusted LAN devices; changing reward rules has greater impact. Connectivity is not authentication.
+**Why:** In a diskless shop, entering or retaining the Points admin password on every kiosk is impractical across resets. The user explicitly chose automatic shared-mission saves through the existing connection. Other devices on that subnet can impersonate kiosks, so this arrangement assumes an isolated, trusted shop network.
 
-**How to apply:** Do not add pairing to progress reports. Keep Denfi Points authoritative for a connected kiosk's mission; never silently save a conflicting local mission if the central save fails. Confirm the server address before forwarding admin credentials, and do not persist the password. HTTP on a trusted LAN is an acknowledged limitation, not proof of server identity; internet or untrusted-network access needs authenticated transport and server identity verification.
+**How to apply:** Do not reintroduce per-kiosk passwords for connected mission saves. Keep Denfi Points authoritative; never silently save a conflicting local mission if the central save fails. On multi-network Points hosts, scope automatic writes to the intended shop subnet; do not permit localhost proxies to bypass the check. Internet or untrusted-network access needs real authentication and server identity verification, not only an HTTP connection.
 
 Delayed attendance reports must be evaluated using the server's policy for the day played, not today's configuration. Persist a received-progress acknowledgement and any confirmed award together.
 

@@ -1924,11 +1924,6 @@
                  <p id="admin-attendance-today" style="font-size:11px;color:#ffba58;margin:0 0 12px"></p>
                 <div class="form-group"><label for="admin-attendance-points">Points per completed day</label><input type="number" id="admin-attendance-points" min="0" max="10000" step="0.01" style="width:100%" /></div>
                 <p id="admin-attendance-note" style="font-size:11px;color:#aaa;margin-bottom:14px">Only logged-in member accounts (mem-) qualify. Changing the target does not grant a second reward to someone already awarded today.</p>
-                 <div id="admin-attendance-points-auth" style="display:none">
-                   <p id="admin-attendance-target" style="font-size:11px;color:#e8b473;margin-bottom:10px"></p>
-                   <div class="form-group"><label for="admin-attendance-points-password">Denfi Points admin password</label><input type="password" id="admin-attendance-points-password" autocomplete="off" placeholder="Required to change the shared mission" style="width:100%" /></div>
-                   <div class="form-group"><label><input type="checkbox" id="admin-attendance-confirm" /> I recognize this server address and trust this network.</label></div>
-                 </div>
                  <button class="btn-admin" type="submit" id="admin-attendance-save">Save attendance</button>
                   <button class="btn-admin" type="button" id="admin-attendance-reload" hidden onclick="reloadAttendanceSettings()">Reload latest mission</button>
                  <div id="admin-attendance-status" class="admin-msg" role="status" aria-live="polite" style="margin:10px 0 0"></div>
@@ -3611,7 +3606,6 @@
         document.getElementById('admin-curfew-start').value = resp.settings.curfewStart || '22:00';
         document.getElementById('admin-curfew-end').value = resp.settings.curfewEnd || '06:00';
         renderAttendanceSettings(resp.settings);
-        document.getElementById('admin-attendance-confirm').checked = false;
         document.getElementById('admin-attendance-status').className = 'admin-msg';
       }
       loadSyncServerStatus();
@@ -3620,27 +3614,15 @@
 
     function setAttendanceManaged(serverUrl) {
       const pointsReadOnly = window._appRole === 'points';
-      if (window._attendanceServerUrl !== serverUrl) {
-        document.getElementById('admin-attendance-confirm').checked = false;
-      }
       window._attendanceServerUrl = serverUrl || '';
       window._attendanceManaged = !pointsReadOnly && !!serverUrl;
       ['admin-attendance-enabled', 'admin-attendance-points']
         .forEach(id => { document.getElementById(id).disabled = pointsReadOnly; });
       document.getElementById('admin-attendance-save').hidden = pointsReadOnly;
-      document.getElementById('admin-attendance-points-auth').style.display =
-        window._attendanceManaged ? 'block' : 'none';
-      if (window._attendanceManaged) {
-        let address = 'the configured Denfi Points server';
-        try { address = new URL(serverUrl).origin; } catch (_) {}
-        document.getElementById('admin-attendance-target').textContent =
-          `Admin password will be sent to ${address}. Verify this is your Denfi Points server. ` +
-          (String(serverUrl).startsWith('https://') ? 'Connection uses HTTPS.' : 'HTTP is not encrypted; use only on a trusted private network.');
-      }
       document.getElementById('admin-attendance-note').textContent = pointsReadOnly
         ? 'Read-only on Denfi Points. Set or change the shared mission in the Auto Shutdown admin panel. Denfi Points still stores attendance days and awards points.'
         : window._attendanceManaged
-        ? 'Saving here changes the shared mission for every connected kiosk. Member play time adds up across logins and reinstallations once synced to Denfi Points. Each member earns the reward only once per day.'
+        ? 'Saving automatically updates the connected Denfi Points server for every kiosk on your trusted shop network. If the server is unavailable, nothing is saved locally. Each member earns the reward only once per day.'
         : 'No Denfi Points server is connected. Attendance stays on this kiosk and cannot be restored from Denfi Points after reinstall until you reconnect. Set both values equal for a fixed target; members already awarded today do not receive a second reward.';
       document.getElementById('admin-attendance-min').disabled = pointsReadOnly;
       document.getElementById('admin-attendance-max').disabled = pointsReadOnly;
@@ -3718,15 +3700,6 @@
         showAttendanceStatus('Enter a 1–1440 minute range (minimum ≤ maximum) and 0–10000 points (up to 2 decimals).', 'error');
         return;
       }
-      const passwordInput = document.getElementById('admin-attendance-points-password');
-      if (window._attendanceManaged && !passwordInput.value) {
-        showAttendanceStatus('Enter the Denfi Points admin password to save the shared mission.', 'error');
-        return;
-      }
-      if (window._attendanceManaged && !document.getElementById('admin-attendance-confirm').checked) {
-        showAttendanceStatus('Verify the Denfi Points server address and trusted network before saving.', 'error');
-        return;
-      }
       const button = document.getElementById('admin-attendance-save');
       button.disabled = true;
       showAttendanceStatus('Saving attendance...', 'success');
@@ -3736,11 +3709,7 @@
           body: JSON.stringify({
             enabled: document.getElementById('admin-attendance-enabled').checked,
             mode: 'minutes', minMinutes, maxMinutes, points,
-            expectedMission: window._attendanceRenderedMission,
-            ...(window._attendanceManaged ? {
-              pointsAdminPassword: passwordInput.value,
-              confirmedServerUrl: window._attendanceServerUrl
-            } : {})
+            expectedMission: window._attendanceRenderedMission
           })
         });
         const resp = await response.json();
@@ -3758,8 +3727,6 @@
       } catch (err) {
         showAttendanceStatus(err.message || 'Could not save attendance.', 'error');
       } finally {
-        passwordInput.value = '';
-        document.getElementById('admin-attendance-confirm').checked = false;
         button.disabled = false;
       }
     }

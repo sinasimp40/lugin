@@ -5,6 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const attendance = require('../src/attendance-store');
 const connectionHint = require('../src/connection-hint');
+const { trustedLanPeer } = require('../src/trusted-lan');
 const coins = require('../src/coin-log-store');
 const settings = require('../src/settings-store');
 
@@ -200,4 +201,31 @@ test('attendance admin offers only play-time settings', () => {
   assert.ok(html.includes('id="admin-attendance-max"'));
   assert.ok(!html.includes('id="admin-attendance-mode"'));
   assert.ok(!html.includes('updateAttendanceInputs()'));
+  assert.ok(!html.includes('id="admin-attendance-points-password"'));
+  assert.ok(!html.includes('id="admin-attendance-confirm"'));
+});
+
+test('automatic mission writes are limited to the Points computer and its private subnet', () => {
+  const interfaces = {
+    Ethernet: [{ address: '10.10.10.29', netmask: '255.255.255.0', internal: false }],
+    Public: [{ address: '8.8.8.8', netmask: '255.255.255.0', internal: false }]
+  };
+  assert.equal(trustedLanPeer('10.10.10.45', interfaces), true);
+  assert.equal(trustedLanPeer('::ffff:10.10.10.45', interfaces), true);
+  assert.equal(trustedLanPeer('127.0.0.1', interfaces), false,
+    'a localhost reverse proxy must not bypass shop-network authorization');
+  assert.equal(trustedLanPeer('127.0.0.1', interfaces, { allowLoopback: true }), true);
+  assert.equal(trustedLanPeer('10.10.11.45', interfaces), false);
+  assert.equal(trustedLanPeer('8.8.8.9', interfaces), false);
+  assert.equal(trustedLanPeer('::ffff:8.8.8.9', interfaces), false);
+  assert.equal(trustedLanPeer('10.10.10.45', interfaces, { localAddress: '8.8.8.8' }), false);
+  assert.equal(trustedLanPeer('10.10.10.45', interfaces, {
+    localAddress: '10.10.10.29', subnet: '10.10.10.0/24'
+  }), true);
+  assert.equal(trustedLanPeer('10.10.10.45', interfaces, {
+    localAddress: '10.10.10.29', subnet: '10.10.11.0/24'
+  }), false);
+  assert.equal(trustedLanPeer('10.10.10.45', interfaces, {
+    localAddress: '10.10.10.29', subnet: 'bad-value'
+  }), false);
 });

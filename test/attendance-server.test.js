@@ -35,7 +35,8 @@ test('points server grants daily play-time reward once, with saved settings', as
   `;
   const child = spawn(process.execPath, ['-e', bootstrap], {
     cwd: path.join(__dirname, '..'),
-    env: { ...process.env, PORT: String(port), DENFI_APP_ROLE: 'points', DENFI_TEST_DATA_DIR: dir },
+    env: { ...process.env, PORT: String(port), DENFI_APP_ROLE: 'points', DENFI_TEST_DATA_DIR: dir,
+      NODE_ENV: 'test', DENFI_LISTEN_HOST: '127.0.0.1' },
     stdio: 'ignore'
   });
   const url = `http://127.0.0.1:${port}`;
@@ -206,20 +207,13 @@ test('points server grants daily play-time reward once, with saved settings', as
     assert.equal(clientSettings.attendancePoints, 4);
 
     const sharedMission = { enabled: true, mode: 'minutes', minMinutes: 8, maxMinutes: 8, points: 2.75 };
-    const missingPassword = await clientRequest('/api/admin/attendance', 'POST', sharedMission, kioskToken);
-    assert.equal(missingPassword.code, 400, 'changing all kiosks requires Points admin authentication');
-    const wrongPassword = await clientRequest('/api/admin/attendance', 'POST',
-      { ...sharedMission, pointsAdminPassword: 'wrong-password', confirmedServerUrl: url }, kioskToken);
-    assert.equal(wrongPassword.code, 403);
-    const wrongServer = await clientRequest('/api/admin/attendance', 'POST',
-      { ...sharedMission, pointsAdminPassword: 'test-password', confirmedServerUrl: 'http://wrong-server' }, kioskToken);
-    assert.equal(wrongServer.code, 409, 'do not send an admin password to an unconfirmed server address');
+    const withoutKioskAdmin = await clientRequest('/api/admin/attendance', 'POST', sharedMission);
+    assert.equal(withoutKioskAdmin.code, 401, 'editing still requires the local kiosk admin login');
     assert.equal((await request('/api/sync/attendance-config')).data.mode, 'minutes');
     assert.equal((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings.attendancePoints, 4);
 
     const saveFromKiosk = await clientRequest('/api/admin/attendance', 'POST',
-      { ...sharedMission, expectedMission: missionFromSettings(clientSettings),
-        pointsAdminPassword: 'test-password', confirmedServerUrl: url }, kioskToken);
+      { ...sharedMission, expectedMission: missionFromSettings(clientSettings) }, kioskToken);
     assert.equal(saveFromKiosk.code, 200);
     assert.equal(saveFromKiosk.data.settings.attendanceEnabled, true);
     assert.equal(saveFromKiosk.data.settings.attendanceMode, 'minutes');
@@ -258,16 +252,14 @@ test('points server grants daily play-time reward once, with saved settings', as
     assert.equal(mirrored.attendanceMinutes, 3);
     assert.equal(mirrored.attendancePoints, 5.5);
     const staleFormSave = await clientRequest('/api/admin/attendance', 'POST',
-      { ...sharedMission, expectedMission: oldMission,
-        pointsAdminPassword: 'test-password', confirmedServerUrl: url }, kioskToken);
+      { ...sharedMission, expectedMission: oldMission }, kioskToken);
     assert.equal(staleFormSave.code, 409, 'open kiosk form must be reloaded after the mission changes');
     const refreshed = await clientRequest('/api/admin/attendance-current', 'GET', undefined, kioskToken);
     assert.equal(refreshed.data.settings.attendancePoints, 5.5);
 
     const sharedMinutes = await clientRequest('/api/admin/attendance', 'POST',
       { enabled: true, mode: 'minutes', minMinutes: 2, maxMinutes: 4, points: 1.25,
-        expectedMission: missionFromSettings(mirrored),
-        pointsAdminPassword: 'test-password', confirmedServerUrl: url }, kioskToken);
+        expectedMission: missionFromSettings(mirrored) }, kioskToken);
     assert.equal(sharedMinutes.code, 200);
     const randomConfig = (await request('/api/sync/attendance-config')).data;
     assert.ok(randomConfig.minutes >= 2 && randomConfig.minutes <= 4);
@@ -292,8 +284,18 @@ test('points server grants daily play-time reward once, with saved settings', as
     assert.equal(attendance.status('mem-dana', key).awardedPoints, 1.25);
 
     const proxyPort = await freePort();
+    let proxySaveMode = 'lost-reply';
     responseLossProxy = http.createServer(async (req, res) => {
       try {
+        if (req.url === '/api/admin/login') {
+          res.writeHead(500).end('Mission saves must not send the Points admin password');
+          return;
+        }
+        if (req.method === 'POST' && req.url === '/api/admin/kiosk-attendance' &&
+            proxySaveMode === 'unsupported') {
+          res.writeHead(404, { 'content-type': 'text/html' }).end('<h1>Old Denfi Points version</h1>');
+          return;
+        }
         const chunks = [];
         for await (const chunk of req) chunks.push(chunk);
         const upstream = await fetch(url + req.url, {
@@ -306,6 +308,10 @@ test('points server grants daily play-time reward once, with saved settings', as
         });
         const body = await upstream.text();
         if (req.method === 'POST' && req.url === '/api/admin/kiosk-attendance') {
+          if (proxySaveMode === 'bad-gateway') {
+            res.writeHead(502, { 'content-type': 'application/json' }).end('{"error":"gateway timed out"}');
+            return;
+          }
           res.destroy(); // Points committed the mission, but its reply was lost.
           return;
         }
@@ -321,11 +327,24 @@ test('points server grants daily play-time reward once, with saved settings', as
       { url: proxyUrl }, kioskToken)).data.connected, true);
     const lostReply = await clientRequest('/api/admin/attendance', 'POST',
       { enabled: true, mode: 'minutes', minMinutes: 4, maxMinutes: 4, points: 6.75,
-        expectedMission: missionFromSettings((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings),
-        pointsAdminPassword: 'test-password', confirmedServerUrl: proxyUrl }, kioskToken);
+        expectedMission: missionFromSettings((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings) }, kioskToken);
     assert.equal(lostReply.data.success, true, 'read back a mission committed before response loss');
     assert.equal((await request('/api/sync/attendance-config')).data.minutes, 4);
     assert.equal((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings.attendancePoints, 6.75);
+    proxySaveMode = 'bad-gateway';
+    const committedDespite502 = await clientRequest('/api/admin/attendance', 'POST',
+      { enabled: true, mode: 'minutes', minMinutes: 5, maxMinutes: 5, points: 7.25,
+        expectedMission: missionFromSettings((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings) }, kioskToken);
+    assert.equal(committedDespite502.data.success, true, 'read back a mission committed before a proxy 502');
+    assert.equal((await request('/api/sync/attendance-config')).data.minutes, 5);
+    proxySaveMode = 'unsupported';
+    const oldServer = await clientRequest('/api/admin/attendance', 'POST',
+      { enabled: true, mode: 'minutes', minMinutes: 6, maxMinutes: 6, points: 7.75,
+        expectedMission: missionFromSettings((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings) }, kioskToken);
+    assert.equal(oldServer.code, 502);
+    assert.match(oldServer.data.error, /Update its desktop server/);
+    assert.equal((await request('/api/sync/attendance-config')).data.minutes, 5,
+      'an unsupported Points server does not change the local mission');
     assert.equal((await clientRequest('/api/admin/sync-server', 'POST',
       { url }, kioskToken)).data.connected, true);
     responseLossProxy.closeAllConnections();
@@ -338,7 +357,7 @@ test('points server grants daily play-time reward once, with saved settings', as
     child.kill();
     await new Promise(resolve => child.once('exit', resolve));
     const offline = await clientRequest('/api/admin/attendance', 'POST',
-      { ...sharedMission, pointsAdminPassword: 'test-password', confirmedServerUrl: url }, kioskToken);
+      sharedMission, kioskToken);
     assert.equal(offline.code, 503, 'no silent local save when Denfi Points is unavailable');
     assert.equal((await clientRequest('/api/admin/attendance-current', 'GET', undefined, kioskToken)).code, 503,
       'reload does not pretend an offline cached mission is current');
