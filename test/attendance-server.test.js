@@ -17,15 +17,17 @@ async function freePort() {
   return port;
 }
 
-test('points server grants daily login or play-time reward once, with saved settings', async () => {
+test('points server grants daily play-time reward once, with saved settings', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-attendance-api-'));
   const clientDir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-attendance-client-'));
   const port = await freePort();
   const clientPort = await freePort();
   const bootstrap = `
     const dir = process.env.DENFI_TEST_DATA_DIR;
-    require('./src/settings-store').setAppRole('points');
-    require('./src/settings-store').setDataDir(dir);
+    const settings = require('./src/settings-store');
+    settings.setAppRole('points');
+    settings.setDataDir(dir);
+    settings.updateSettings({ attendanceMode: 'login', attendanceEnabled: false });
     require('./src/coin-log-store').setDataDir(dir);
     require('./src/attendance-store').setDataDir(dir);
     require('./src/order-store').setDataDir(dir);
@@ -62,6 +64,8 @@ test('points server grants daily login or play-time reward once, with saved sett
       await delay(100);
     }
     assert.ok(ready, 'points server started');
+    assert.equal((await request('/api/sync/attendance-config')).data.mode, 'minutes',
+      'Points upgrades a persisted login mission on startup');
     const register = await request('/api/admin/register', 'POST', { password: 'test-password' });
     assert.equal(register.data.success, true);
     const token = register.data.token;
@@ -78,7 +82,7 @@ test('points server grants daily login or play-time reward once, with saved sett
       };
     }
     const deniedPointsEdit = await request('/api/admin/attendance', 'POST',
-      { enabled: true, mode: 'login', minutes: 1, points: 3 }, token);
+      { enabled: true, mode: 'minutes', minutes: 1, points: 3 }, token);
     assert.equal(deniedPointsEdit.code, 403, 'Points admin cannot change the shared mission');
     assert.equal((await request('/api/sync/attendance-config')).data.enabled, false);
     const genericEdit = await request('/api/admin/settings', 'POST',
@@ -86,17 +90,20 @@ test('points server grants daily login or play-time reward once, with saved sett
         attendanceTargetSeed: '0'.repeat(32) }, token);
     assert.equal(genericEdit.data.settings.attendanceEnabled, false, 'generic settings cannot bypass mission ownership');
     const configure = await kioskWriteOnPoints(
-      { enabled: true, mode: 'login', minMinutes: 1, maxMinutes: 1, points: 3 });
+      { enabled: true, mode: 'minutes', minMinutes: 1, maxMinutes: 1, points: 3 });
     assert.equal(configure.data.success, true);
-    assert.equal((await request('/api/sync/attendance-config')).data.mode, 'login');
+    assert.equal((await request('/api/sync/attendance-config')).data.mode, 'minutes');
+    assert.equal((await kioskWriteOnPoints(
+      { enabled: true, mode: 'login', minMinutes: 1, maxMinutes: 1, points: 3 })).code, 400);
     const invalid = await request('/api/sync/attendance', 'POST',
       { deviceId: '00000000-0000-4000-8000-000000000001', day: '2000-01-01', username: 'mem-alice', seconds: 0 });
     assert.equal(invalid.code, 400);
     const day = new Date();
     const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
     const sample = { deviceId: '00000000-0000-4000-8000-000000000001', day: key, username: 'mem-alice', seconds: 0 };
-    const first = await request('/api/sync/attendance', 'POST', sample);
-    const retry = await request('/api/sync/attendance', 'POST', sample);
+    assert.equal((await request('/api/sync/attendance', 'POST', sample)).data.attendance.awarded, false);
+    const first = await request('/api/sync/attendance', 'POST', { ...sample, seconds: 60 });
+    const retry = await request('/api/sync/attendance', 'POST', { ...sample, seconds: 60 });
     assert.equal(first.data.attendance.awarded, true);
     assert.equal(retry.data.attendance.awarded, true);
     assert.equal((await request('/api/sync/member-points/mem-alice')).data.points, 3);
@@ -118,6 +125,20 @@ test('points server grants daily login or play-time reward once, with saved sett
     assert.equal((await request('/api/sync/member-points/mem-bob')).data.points, 4);
     assert.equal((await request('/api/sync/member-points/mem-alice')).data.points, 3);
     assert.equal((await request('/api/sync/coin-logs')).data.logs.length, 2);
+    const newDevice = { ...bob, deviceId: '00000000-0000-4000-8000-000000000003', seconds: 0 };
+    const restored = await request('/api/sync/attendance', 'POST', newDevice);
+    assert.equal(restored.data.attendance.seconds, 90, 'new install reads progress stored on Points');
+    assert.equal(restored.data.attendance.awarded, true, 'Points remembers the completed day');
+    await request('/api/sync/attendance', 'POST', { ...newDevice, seconds: 60 });
+    assert.equal((await request('/api/sync/member-points/mem-bob')).data.points, 4,
+      'new install cannot grant the same day twice');
+    const partialBeforeReinstall = { ...sample, username: 'mem-reinstall', seconds: 30 };
+    await request('/api/sync/attendance', 'POST', partialBeforeReinstall);
+    const afterReinstall = await request('/api/sync/attendance', 'POST',
+      { ...partialBeforeReinstall, deviceId: '00000000-0000-4000-8000-000000000004', seconds: 0 });
+    assert.equal(afterReinstall.data.attendance.seconds, 30, 'unfinished time survives reinstall');
+    assert.equal((await request('/api/sync/attendance', 'POST',
+      { ...partialBeforeReinstall, deviceId: '00000000-0000-4000-8000-000000000004', seconds: 30 })).data.attendance.awarded, true);
     const bobYear = await request(`/api/sync/attendance-year/mem-bob?year=${day.getFullYear()}`);
     assert.equal(bobYear.data.days[key].status, 'completed');
     assert.equal(bobYear.data.days[key].points, 4);
@@ -130,7 +151,7 @@ test('points server grants daily login or play-time reward once, with saved sett
     const late = await request('/api/sync/attendance', 'POST',
       { ...sample, day: previousKey, username: 'mem-carol', seconds: 60 });
     assert.equal(late.data.attendance.awarded, false, 'yesterday had no mission configured');
-    assert.equal((await request('/api/sync/coin-logs')).data.logs.length, 2);
+    assert.equal((await request('/api/sync/coin-logs')).data.logs.length, 3);
     const carolYear = await request(`/api/sync/attendance-year/mem-carol?year=${yesterday.getFullYear()}`);
     assert.equal(carolYear.data.days[previousKey].status, 'attended-no-mission');
     const noMissionYear = await request(`/api/sync/attendance-year/mem-nobody?year=${yesterday.getFullYear()}`);
@@ -184,7 +205,7 @@ test('points server grants daily login or play-time reward once, with saved sett
     assert.equal(clientSettings.attendanceMode, 'minutes');
     assert.equal(clientSettings.attendancePoints, 4);
 
-    const sharedMission = { enabled: true, mode: 'login', minMinutes: 8, maxMinutes: 8, points: 2.75 };
+    const sharedMission = { enabled: true, mode: 'minutes', minMinutes: 8, maxMinutes: 8, points: 2.75 };
     const missingPassword = await clientRequest('/api/admin/attendance', 'POST', sharedMission, kioskToken);
     assert.equal(missingPassword.code, 400, 'changing all kiosks requires Points admin authentication');
     const wrongPassword = await clientRequest('/api/admin/attendance', 'POST',
@@ -201,29 +222,29 @@ test('points server grants daily login or play-time reward once, with saved sett
         pointsAdminPassword: 'test-password', confirmedServerUrl: url }, kioskToken);
     assert.equal(saveFromKiosk.code, 200);
     assert.equal(saveFromKiosk.data.settings.attendanceEnabled, true);
-    assert.equal(saveFromKiosk.data.settings.attendanceMode, 'login');
+    assert.equal(saveFromKiosk.data.settings.attendanceMode, 'minutes');
     assert.equal(saveFromKiosk.data.settings.attendanceMinutes, 8);
     assert.equal(saveFromKiosk.data.settings.attendanceMinMinutes, 8);
     assert.equal(saveFromKiosk.data.settings.attendanceMaxMinutes, 8);
     assert.equal(saveFromKiosk.data.settings.attendancePoints, 2.75);
     const pointsSettings = (await request('/api/admin/settings', 'GET', undefined, token)).data.settings;
     assert.equal(pointsSettings.attendanceEnabled, true);
-    assert.equal(pointsSettings.attendanceMode, 'login');
+    assert.equal(pointsSettings.attendanceMode, 'minutes');
     assert.equal(pointsSettings.attendanceMinutes, 8);
     assert.equal(pointsSettings.attendancePoints, 2.75);
-    assert.equal((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings.attendanceMode, 'login');
+    assert.equal((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings.attendanceMode, 'minutes');
     assert.equal((await request('/api/sync/attendance-config')).data.points, 2.75);
 
     const pointsChanged = await request('/api/admin/attendance', 'POST',
       { enabled: false, mode: 'minutes', minutes: 3, points: 5.5 }, token);
     assert.equal(pointsChanged.code, 403);
-    assert.equal((await request('/api/sync/attendance-config')).data.mode, 'login');
+    assert.equal((await request('/api/sync/attendance-config')).data.mode, 'minutes');
     const oldMission = (await request('/api/sync/attendance-config')).data;
     const otherKioskChanged = await kioskWriteOnPoints(
       { enabled: false, mode: 'minutes', minMinutes: 3, maxMinutes: 3, points: 5.5 });
     assert.equal(otherKioskChanged.data.success, true);
     const staleEdit = await request('/api/admin/kiosk-attendance', 'POST',
-      { enabled: true, mode: 'login', minMinutes: 8, maxMinutes: 8, points: 2.75,
+      { enabled: true, mode: 'minutes', minMinutes: 8, maxMinutes: 8, points: 2.75,
         expectedMission: oldMission }, token);
     assert.equal(staleEdit.code, 409, 'stale save cannot overwrite another kiosk');
     let mirrored;
@@ -324,11 +345,11 @@ test('points server grants daily login or play-time reward once, with saved sett
     assert.equal((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings.attendanceMode, 'minutes');
     assert.equal((await clientRequest('/api/admin/sync-server', 'POST', { url: '' }, kioskToken)).data.connected, false);
     const localSave = await clientRequest('/api/admin/attendance', 'POST',
-      { enabled: false, mode: 'login', minMinutes: 12, maxMinutes: 12, points: 0 }, kioskToken);
+      { enabled: false, mode: 'minutes', minMinutes: 12, maxMinutes: 12, points: 0 }, kioskToken);
     assert.equal(localSave.data.success, true, 'standalone kiosk can still save all attendance fields');
     const localSettings = (await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings;
     assert.equal(localSettings.attendanceEnabled, false);
-    assert.equal(localSettings.attendanceMode, 'login');
+    assert.equal(localSettings.attendanceMode, 'minutes');
     assert.equal(localSettings.attendanceMinutes, 12);
     assert.equal(localSettings.attendanceMinMinutes, 12);
     assert.equal(localSettings.attendanceMaxMinutes, 12);
@@ -348,5 +369,55 @@ test('points server grants daily login or play-time reward once, with saved sett
     }
     fs.rmSync(dir, { recursive: true, force: true });
     fs.rmSync(clientDir, { recursive: true, force: true });
+  }
+});
+
+test('connected kiosk converts a cached login mission while Points is offline', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-attendance-offline-upgrade-'));
+  const port = await freePort();
+  const bootstrap = `
+    const dir = process.env.DENFI_TEST_DATA_DIR;
+    const settings = require('./src/settings-store');
+    settings.setAppRole('auto-shutdown');
+    settings.setDataDir(dir);
+    settings.updateSettings({ attendanceEnabled: true, attendanceMode: 'login',
+      attendanceMinutes: 2, syncServerUrl: 'http://127.0.0.1:1' });
+    require('./src/coin-log-store').setDataDir(dir);
+    require('./src/attendance-store').setDataDir(dir);
+    require('./src/order-store').setDataDir(dir);
+    require('./server');
+  `;
+  const kiosk = spawn(process.execPath, ['-e', bootstrap], {
+    cwd: path.join(__dirname, '..'),
+    env: { ...process.env, PORT: String(port), DENFI_APP_ROLE: 'auto-shutdown',
+      DENFI_TEST_DATA_DIR: dir },
+    stdio: 'ignore'
+  });
+  try {
+    let ready = false;
+    for (let n = 0; n < 60; n++) {
+      if (kiosk.exitCode !== null) throw new Error('Kiosk exited before ready');
+      try {
+        const status = await fetch(`http://127.0.0.1:${port}/api/admin/status`);
+        if (status.ok) { ready = true; break; }
+      } catch (_) {}
+      await delay(100);
+    }
+    assert.equal(ready, true);
+    const registered = await fetch(`http://127.0.0.1:${port}/api/admin/register`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: 'test-password' })
+    }).then(r => r.json());
+    const current = await fetch(`http://127.0.0.1:${port}/api/admin/settings`, {
+      headers: { 'x-admin-token': registered.token }
+    }).then(r => r.json());
+    assert.equal(current.settings.attendanceMode, 'minutes');
+    assert.equal(current.settings.syncServerUrl, 'http://127.0.0.1:1');
+  } finally {
+    if (kiosk.exitCode === null && kiosk.signalCode === null) {
+      kiosk.kill();
+      await new Promise(resolve => kiosk.once('exit', resolve));
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });

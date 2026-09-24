@@ -667,6 +667,19 @@ app.whenReady().then(async () => {
   coinLogs.setDataDir(dataDir);
   orderStore.setDataDir(dataDir);
   attendance.setDataDir(dataDir);
+  const connectionHint = require('./src/connection-hint');
+  const existingPointsAddress = syncServerUrl || settings.getSettings().syncServerUrl;
+  if (existingPointsAddress) {
+    try { connectionHint.writeHint(existingPointsAddress); }
+    catch (err) { console.log('[Electron] Could not preserve Points address across reinstall:', err.message); }
+  } else {
+    const restoredAddress = connectionHint.readHint();
+    if (restoredAddress) {
+      syncServerUrl = restoredAddress;
+      settings.updateSettings({ syncServerUrl: restoredAddress });
+      console.log('[Electron] Restored Denfi Points address from machine settings:', restoredAddress);
+    }
+  }
   currentState = 'restoring-session';
   setIdleShutdownConfig(settingsStore.getSettings().autoShutdownSeconds);
   console.log('[Electron] Data dir:', dataDir);

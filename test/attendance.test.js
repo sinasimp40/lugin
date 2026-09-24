@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const attendance = require('../src/attendance-store');
+const connectionHint = require('../src/connection-hint');
 const coins = require('../src/coin-log-store');
 const settings = require('../src/settings-store');
 
@@ -87,7 +88,7 @@ test('sync acknowledgement saves both the progress receipt and award together', 
   }
 });
 
-test('historical mission policy never borrows a newly enabled mission', () => {
+test('legacy login mission converts to play time without assigning old days a new goal', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-policy-'));
   settings.setAppRole('points');
   settings.setDataDir(dir);
@@ -98,9 +99,12 @@ test('historical mission policy never borrows a newly enabled mission', () => {
     settings.updateSettings({ attendanceEnabled: true, attendanceMode: 'login',
       attendanceMinutes: 30, attendancePoints: 7 });
     assert.equal(settings.getAttendancePolicy(yesterday).enabled, false);
+    assert.equal(settings.ensurePlaytimeMission(), true);
+    assert.equal(settings.ensurePlaytimeMission(), false);
     assert.equal(settings.getAttendancePolicy(tomorrow).points, 7);
     settings.setDataDir(dir);
-    assert.equal(settings.getAttendancePolicy(tomorrow).mode, 'login');
+    assert.equal(settings.getAttendancePolicy(tomorrow).mode, 'minutes');
+    assert.equal(settings.getAttendancePolicy(yesterday).enabled, false);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -172,4 +176,28 @@ test('connected kiosk derives the shared daily target from the saved seed during
     settings.setAppRole('points', true);
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('Denfi Points address survives local reinstall separately from kiosk data and clears on disconnect', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-connection-hint-'));
+  try {
+    assert.equal(connectionHint.readHint(dir), '');
+    connectionHint.writeHint('http://10.10.10.29:5000', dir);
+    assert.equal(connectionHint.readHint(dir), 'http://10.10.10.29:5000');
+    connectionHint.writeHint('http://MY-POINTS-PC:5000', dir);
+    assert.equal(connectionHint.readHint(dir), 'http://MY-POINTS-PC:5000');
+    assert.throws(() => connectionHint.writeHint('http://user:password@10.10.10.29:5000', dir));
+    connectionHint.writeHint('', dir);
+    assert.equal(connectionHint.readHint(dir), '');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('attendance admin offers only play-time settings', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.ok(html.includes('id="admin-attendance-min"'));
+  assert.ok(html.includes('id="admin-attendance-max"'));
+  assert.ok(!html.includes('id="admin-attendance-mode"'));
+  assert.ok(!html.includes('updateAttendanceInputs()'));
 });

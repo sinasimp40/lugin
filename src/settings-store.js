@@ -402,6 +402,13 @@ function updateSettings(updates) {
   return getSettings();
 }
 
+function ensurePlaytimeMission() {
+  if (load().attendanceMode !== 'login') return false;
+  // Only today's policy changes; earlier attendance days retain their rules.
+  updateSettings({ attendanceMode: 'minutes' });
+  return true;
+}
+
 function getAttendancePolicy(day) {
   const raw = load();
   if (day === attendanceDayKey()) {
@@ -721,6 +728,7 @@ module.exports = {
   getSettings,
   getPublicSettings,
   updateSettings,
+  ensurePlaytimeMission,
   getAttendancePolicy,
   getAttendancePoliciesForYear,
   getTelegramSettings,

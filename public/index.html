@@ -1912,12 +1912,11 @@
               <div class="admin-section" style="max-width:520px"><h3>Change admin password</h3><form onsubmit="event.preventDefault(); changeAdminPassword();" autocomplete="off"><div class="form-group"><label>Current password</label><input type="password" id="admin-old-pw" placeholder="Current password" /></div><div class="form-group"><label>New password</label><input type="password" id="admin-new-pw" placeholder="New password" /></div><button type="submit" class="btn-admin">Change password</button></form></div>
             </section>
             <section class="admin-page" id="admin-page-attendance">
-              <div class="admin-page-intro"><div><h2>Daily attendance</h2><p>Reward members once per day for logging in or completing a play-time mission. Time adds up across sessions and resets at local midnight.</p></div></div>
+               <div class="admin-page-intro"><div><h2>Daily attendance</h2><p>Members earn points for meeting a play-time target. Synced play time continues after logout and login; a new mission day starts at midnight.</p></div></div>
               <div class="admin-section" style="max-width:520px">
                 <h3>Play-time mission</h3>
                  <form id="admin-attendance-form" onsubmit="event.preventDefault(); saveAttendance();" autocomplete="off">
                 <div class="form-group"><label><input type="checkbox" id="admin-attendance-enabled" /> Enable daily attendance</label></div>
-                 <div class="form-group"><label for="admin-attendance-mode">Mission type</label><select id="admin-attendance-mode" onchange="updateAttendanceInputs()" style="width:100%;padding:10px;background:#0f1113;color:#eee;border:1px solid #343a3f;border-radius:6px"><option value="minutes">Play-time target</option><option value="login">Login once per day</option></select></div>
                  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
                    <div class="form-group"><label for="admin-attendance-min">Minimum play time (minutes)</label><input type="number" id="admin-attendance-min" min="1" max="1440" step="1" style="width:100%" /></div>
                    <div class="form-group"><label for="admin-attendance-max">Maximum play time (minutes)</label><input type="number" id="admin-attendance-max" min="1" max="1440" step="1" style="width:100%" /></div>
@@ -2810,16 +2809,15 @@
       document.getElementById('session-panel').classList.toggle('attendance-available', isMember);
       document.getElementById('session-attendance-calendar').classList.toggle('active', isMember);
       if (!visible) return;
-      const percent = progress.mode === 'login' ? (progress.awarded ? 100 : 0)
-        : Math.max(0, Math.min(100, Math.round(progress.seconds / (progress.minutes * 60) * 1000) / 10));
+      const percent = Math.max(0, Math.min(100, Math.round(progress.seconds / (progress.minutes * 60) * 1000) / 10));
       const played = `${Math.floor(progress.seconds / 60)}:${String(progress.seconds % 60).padStart(2, '0')}`;
       document.getElementById('session-attendance-fill').style.width = percent + '%';
       document.getElementById('session-attendance-bar').setAttribute('aria-valuenow', percent);
       document.getElementById('session-attendance-label').textContent = progress.awarded
         ? `DAILY COMPLETE · +${progress.points} PTS`
         : progress.pending
-        ? progress.mode === 'login' ? 'DAILY LOGIN · SYNC PENDING' : `DAILY ${played}/${progress.minutes}m · SYNC PENDING`
-        : progress.mode === 'login' ? 'DAILY LOGIN · CHECKING' : `DAILY ${played}/${progress.minutes}m · +${progress.points} PTS`;
+        ? `DAILY ${played}/${progress.minutes}m · SYNC PENDING`
+        : `DAILY ${played}/${progress.minutes}m · +${progress.points} PTS`;
     }
 
     function updateTimerDisplay() {
@@ -3627,10 +3625,9 @@
       }
       window._attendanceServerUrl = serverUrl || '';
       window._attendanceManaged = !pointsReadOnly && !!serverUrl;
-      ['admin-attendance-enabled', 'admin-attendance-mode', 'admin-attendance-points']
+      ['admin-attendance-enabled', 'admin-attendance-points']
         .forEach(id => { document.getElementById(id).disabled = pointsReadOnly; });
       document.getElementById('admin-attendance-save').hidden = pointsReadOnly;
-      updateAttendanceInputs();
       document.getElementById('admin-attendance-points-auth').style.display =
         window._attendanceManaged ? 'block' : 'none';
       if (window._attendanceManaged) {
@@ -3643,15 +3640,10 @@
       document.getElementById('admin-attendance-note').textContent = pointsReadOnly
         ? 'Read-only on Denfi Points. Set or change the shared mission in the Auto Shutdown admin panel. Denfi Points still stores attendance days and awards points.'
         : window._attendanceManaged
-        ? 'Saving here changes the shared Denfi Points mission for every connected kiosk. Only logged-in members (mem-) qualify; members already awarded today do not receive a second reward.'
-        : 'Only logged-in member accounts (mem-) qualify. The target is chosen once per day from the range; set both values equal for a fixed target. Already-awarded members do not receive a second reward.';
-    }
-
-    function updateAttendanceInputs() {
-      const disabled = window._appRole === 'points' ||
-        document.getElementById('admin-attendance-mode').value === 'login';
-      document.getElementById('admin-attendance-min').disabled = disabled;
-      document.getElementById('admin-attendance-max').disabled = disabled;
+        ? 'Saving here changes the shared mission for every connected kiosk. Member play time adds up across logins and reinstallations once synced to Denfi Points. Each member earns the reward only once per day.'
+        : 'No Denfi Points server is connected. Attendance stays on this kiosk and cannot be restored from Denfi Points after reinstall until you reconnect. Set both values equal for a fixed target; members already awarded today do not receive a second reward.';
+      document.getElementById('admin-attendance-min').disabled = pointsReadOnly;
+      document.getElementById('admin-attendance-max').disabled = pointsReadOnly;
     }
 
     function attendanceMissionSnapshot(saved) {
@@ -3668,14 +3660,11 @@
 
     function renderAttendanceSettings(saved) {
       document.getElementById('admin-attendance-enabled').checked = !!saved.attendanceEnabled;
-      document.getElementById('admin-attendance-mode').value = saved.attendanceMode || 'minutes';
       document.getElementById('admin-attendance-min').value = saved.attendanceMinMinutes ?? saved.attendanceMinutes;
       document.getElementById('admin-attendance-max').value = saved.attendanceMaxMinutes ?? saved.attendanceMinutes;
       document.getElementById('admin-attendance-points').value = saved.attendancePoints;
       document.getElementById('admin-attendance-today').textContent = saved.attendanceEnabled
-        ? saved.attendanceMode === 'minutes' ? `Today's shared target: ${saved.attendanceMinutes} minutes`
-          : 'Today: log in once to complete the mission'
-        : 'Daily attendance is off';
+        ? `Today's shared target: ${saved.attendanceMinutes} minutes` : 'Daily attendance is off';
       window._attendanceRenderedMission = attendanceMissionSnapshot(saved);
       window._attendanceDraftDirty = false;
       window._attendanceConflict = false;
@@ -3685,7 +3674,7 @@
 
     for (const eventName of ['input', 'change']) {
       document.getElementById('admin-attendance-form').addEventListener(eventName, event => {
-        if (['admin-attendance-enabled', 'admin-attendance-mode', 'admin-attendance-min',
+        if (['admin-attendance-enabled', 'admin-attendance-min',
              'admin-attendance-max', 'admin-attendance-points'].includes(event.target.id)) {
           window._attendanceDraftDirty = true;
         }
@@ -3746,7 +3735,7 @@
           method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
           body: JSON.stringify({
             enabled: document.getElementById('admin-attendance-enabled').checked,
-            mode: document.getElementById('admin-attendance-mode').value, minMinutes, maxMinutes, points,
+            mode: 'minutes', minMinutes, maxMinutes, points,
             expectedMission: window._attendanceRenderedMission,
             ...(window._attendanceManaged ? {
               pointsAdminPassword: passwordInput.value,

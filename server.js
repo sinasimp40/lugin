@@ -887,7 +887,7 @@ function parseAttendanceInput(body) {
   const ranged = body.minMinutes !== undefined || body.maxMinutes !== undefined;
   const minMinutes = ranged ? body.minMinutes : body.minutes;
   const maxMinutes = ranged ? body.maxMinutes : body.minutes;
-  if (typeof enabled !== 'boolean' || !['login', 'minutes'].includes(mode) ||
+  if (typeof enabled !== 'boolean' || mode !== 'minutes' ||
       !Number.isInteger(minMinutes) || minMinutes < 1 || minMinutes > 1440 ||
       !Number.isInteger(maxMinutes) || maxMinutes < minMinutes || maxMinutes > 1440 ||
       !Number.isFinite(points) || points < 0 || points > 10000 ||
@@ -1631,21 +1631,27 @@ let syncServerUrl = '';
 let syncRatesInterval = null;
 let attendanceConfigInterval = null;
 let attendanceConfigRevision = 0;
+let attendanceConfigReady = false;
 
 function setSyncServer(url, persist) {
   attendanceConfigRevision++;
+  attendanceConfigReady = false;
   syncServerUrl = (url || '').trim().replace(/\/+$/, '');
   if (syncRatesInterval) { clearInterval(syncRatesInterval); syncRatesInterval = null; }
   if (attendanceConfigInterval) { clearInterval(attendanceConfigInterval); attendanceConfigInterval = null; }
+  if (persist) {
+    settings.updateSettings({ syncServerUrl });
+    if (isElectron && appRole === 'auto-shutdown') {
+      try { require('./src/connection-hint').writeHint(syncServerUrl); }
+      catch (err) { console.log('[Sync] Could not preserve Points address across reinstall:', err.message); }
+    }
+  }
   if (syncServerUrl) {
     console.log('[Sync] Data server URL:', syncServerUrl);
     syncRatesFromServer();
     syncRatesInterval = setInterval(syncRatesFromServer, 5 * 60 * 1000);
     const attendanceReady = syncAttendanceConfigFromServer();
     attendanceConfigInterval = setInterval(syncAttendanceConfigFromServer, 3000);
-    if (persist) {
-      settings.updateSettings({ syncServerUrl });
-    }
     return attendanceReady;
   }
 }
@@ -1656,7 +1662,7 @@ async function syncAttendanceConfigFromServer() {
   try {
     const remote = await fetchAttendance('/api/sync/attendance-config');
     if (revision !== attendanceConfigRevision || !syncServerUrl) return false;
-    if (typeof remote.enabled !== 'boolean' || !['login', 'minutes'].includes(remote.mode) ||
+    if (typeof remote.enabled !== 'boolean' || remote.mode !== 'minutes' ||
         !Number.isInteger(remote.minutes) || remote.minutes < 1 || remote.minutes > 1440 ||
         !Number.isInteger(remote.minMinutes) || remote.minMinutes < 1 ||
         !Number.isInteger(remote.maxMinutes) || remote.maxMinutes < remote.minMinutes || remote.maxMinutes > 1440 ||
@@ -1682,8 +1688,10 @@ async function syncAttendanceConfigFromServer() {
       });
       broadcastSettings();
     }
+    attendanceConfigReady = true;
     return true;
   } catch (err) {
+    if (revision === attendanceConfigRevision) attendanceConfigReady = false;
     console.log('[Attendance] Config sync unavailable:', err.message);
     return false;
   }
@@ -1788,8 +1796,7 @@ app.get('/api/admin/sync-server', verifyToken, (req, res) => {
 app.post('/api/admin/sync-server', verifyToken, express.json(), async (req, res) => {
   let url = (req.body.url || '').trim().replace(/\/+$/, '');
   if (!url) {
-    setSyncServer('');
-    settings.updateSettings({ syncServerUrl: '' });
+    setSyncServer('', true);
     return res.json({ success: true, syncServerUrl: '', connected: false });
   }
   if (!/^https?:\/\//i.test(url)) url = 'http://' + url;
@@ -2021,9 +2028,13 @@ async function updateAttendanceFromSession(data) {
   const sample = attendance.record(
     data.isLogin && Number(data.sessionTimeLeft) > 0 ? data.username : '', config.enabled
   );
-  if (syncServerUrl) void flushPendingAttendance();
+  if (syncServerUrl && attendanceConfigReady) void flushPendingAttendance();
   if (!sample) return null;
   if (syncServerUrl) {
+    if (!attendanceConfigReady) {
+      const progress = attendance.status(sample.username, sample.day);
+      return { ...progress, ...config, points: progress.awardedPoints ?? config.points, pending: true };
+    }
     try {
       const body = await fetchAttendance('/api/sync/attendance', sample);
       if (!body.success || !body.attendance) throw new Error('Invalid Denfi Points attendance response');
@@ -2040,7 +2051,7 @@ async function updateAttendanceFromSession(data) {
 
 let attendanceFlushInFlight = false;
 async function flushPendingAttendance() {
-  if (attendanceFlushInFlight || !syncServerUrl) return;
+  if (attendanceFlushInFlight || !syncServerUrl || !attendanceConfigReady) return;
   attendanceFlushInFlight = true;
   try {
     const previousDays = attendance.pendingSamples().filter(sample => sample.day !== attendance.dayKey());
@@ -2384,6 +2395,7 @@ server.listen(PORT, LISTEN_HOST, () => {
   console.log(`Denfi Auto Shutdown running at http://${LISTEN_HOST}:${PORT}`);
   if (typeof process.send === 'function') process.send('server-ready');
   ensureMonthlyLeaderboardReport();
+  if (settings.ensurePlaytimeMission()) console.log('[Attendance] Switched legacy login mission to play time');
 
   if (appRole === 'auto-shutdown') {
     const savedSync = settings.getSettings().syncServerUrl;
