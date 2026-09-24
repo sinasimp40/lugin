@@ -488,24 +488,19 @@
   }
   .logout-btn::before { display:none; }
 
-  /* Attendance is intentionally dense: the drawer is scaled by the host window,
-     so the year remains scrollable instead of forcing an oversized native window. */
   #attendance-btn { display:none; border-color:rgba(255,215,64,.8); background:linear-gradient(180deg,#8a8110,#5d5700); color:#fffca7; }
   #attendance-btn.member-visible { display:block; }
   .attendance-view { min-width:0; }
   .attendance-toolbar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:9px; }
-  .attendance-year { color:#ffe0a4; font:800 17px 'Orbitron',monospace; letter-spacing:1px; }
-  .year-nav { display:flex; gap:5px; }
-  .year-nav button, .attendance-retry { border:1px solid rgba(255,177,61,.7); background:#39250f; color:#ffd08a; cursor:pointer; font:12px 'Share Tech Mono'; padding:5px 9px; }
-  .year-nav button:hover, .attendance-retry:hover { background:#68400e; color:#fff0ce; }
-  .year-nav button:disabled { opacity:.35; cursor:not-allowed; }
+  .attendance-month-label { color:#ffe0a4; font:800 15px 'Orbitron',monospace; letter-spacing:.5px; }
+  .month-nav { display:flex; gap:5px; }
+  .month-nav button, .attendance-retry { border:1px solid rgba(255,177,61,.7); background:#39250f; color:#ffd08a; cursor:pointer; font:12px 'Share Tech Mono'; padding:5px 9px; }
+  .month-nav button:hover, .attendance-retry:hover { background:#68400e; color:#fff0ce; }
+  .month-nav button:disabled { opacity:.35; cursor:not-allowed; }
   .attendance-meta { color:#9f8769; font-size:10px; letter-spacing:.4px; margin-bottom:8px; }
   .attendance-error { color:#ffaaa0; border:1px solid rgba(255,95,75,.55); background:#2b1715; padding:12px; line-height:1.45; font-size:11px; }
   .attendance-error strong { display:block; color:#ffd0c9; margin-bottom:7px; }
-  .calendar-scroll { max-height:430px; overflow-y:auto; padding-right:4px; scrollbar-color:#96601e #17120d; }
-  .calendar-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
   .month { border:1px solid rgba(255,140,0,.2); background:rgba(255,255,255,.025); padding:7px; min-width:0; }
-  .month-title { color:#ffc578; font:700 13px 'Orbitron',monospace; letter-spacing:.5px; margin-bottom:6px; }
   .weekdays, .month-days { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
   .weekdays span { color:#a49176; font-size:11px; text-align:center; }
   .day { min-width:0; height:27px; border:1px solid transparent; background:#201a14; color:#b6a28a; cursor:default; font:12px 'Share Tech Mono'; padding:0; }
@@ -526,7 +521,6 @@
   .legend-swatch.absent { background:#4a2525; border-color:#984f4b; }
   .legend-swatch.no-mission { background:#302a24; }
   .legend-swatch.future { background:#181818; }
-  @media (max-width:560px) { .calendar-grid { grid-template-columns:1fr; } .calendar-scroll { max-height:420px; } }
 </style>
 </head>
 <body>
@@ -579,10 +573,10 @@
       </div>
       <div id="attendance-view" class="attendance-view" style="display:none">
         <div class="attendance-toolbar">
-          <div class="attendance-year" id="attendance-year"></div>
-          <div class="year-nav">
-            <button id="attendance-prev" type="button" aria-label="Previous year">PREV</button>
-            <button id="attendance-next" type="button" aria-label="Next year">NEXT</button>
+          <div class="attendance-month-label" id="attendance-month-label"></div>
+          <div class="month-nav">
+            <button id="attendance-prev" type="button" aria-label="Previous month">PREV</button>
+            <button id="attendance-next" type="button" aria-label="Next month">NEXT</button>
           </div>
         </div>
         <div class="attendance-meta" id="attendance-meta">Loading attendance record...</div>
@@ -698,7 +692,7 @@
     const OVERLAY_SCALE = 0.72;
     const MIN_OVERLAY_WIDTH = 331;
     const MAX_OVERLAY_WIDTH = 560;
-    let attendanceYear = new Date().getFullYear();
+    let attendanceMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     let attendanceRequest = 0;
 
     function measureIntrinsicWidth(element) {
@@ -814,11 +808,15 @@
       document.getElementById('attendance-view').style.display = view === 'attendance' ? '' : 'none';
       document.getElementById('cart-bar').style.display = view === 'shop' ? 'flex' : 'none';
       document.getElementById('rank-note').style.display = view === 'rank' ? '' : 'none';
-      document.getElementById('drawer-title').textContent = view === 'shop' ? 'QUICK ORDER' : view === 'rank' ? 'TOP 5 REGULARS' : 'ATTENDANCE · FULL YEAR';
+      document.getElementById('drawer-title').textContent = view === 'shop' ? 'QUICK ORDER' : view === 'rank' ? 'TOP 5 REGULARS' : 'ATTENDANCE';
       resizeDrawerToContent();
       if (view === 'shop') loadProducts();
       else if (view === 'rank') loadLeaderboard();
-      else loadAttendance(attendanceYear);
+      else {
+        const today = new Date();
+        attendanceMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        loadAttendance(attendanceMonth);
+      }
     }
 
     function isMemberSession() {
@@ -835,23 +833,17 @@
       return new Date(iso + 'T12:00:00').toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric', year:'numeric' });
     }
 
-    function renderAttendance(days, meta) {
+    function renderAttendance(days, meta, selectedMonth) {
       const content = document.getElementById('attendance-content');
       const source = meta.source === 'denfi-points' ? 'DENFI POINTS' : meta.source === 'local' ? 'LOCAL RECORD' : meta.source === 'demo' ? 'DEMO PREVIEW' : 'SOURCE UNKNOWN';
       document.getElementById('attendance-meta').textContent = `${meta.username || sessionUsername} · ${source} · select a date for details`;
-      content.innerHTML = '';
-      const scroll = document.createElement('div');
-      scroll.className = 'calendar-scroll';
-      const grid = document.createElement('div');
-      grid.className = 'calendar-grid';
+      content.replaceChildren();
       const today = new Date();
       const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-      for (let month = 0; month < 12; month++) {
-        const panel = document.createElement('section');
-        panel.className = 'month';
-        const title = document.createElement('div');
-        title.className = 'month-title';
-        title.textContent = new Date(meta.year, month, 1).toLocaleDateString(undefined, { month:'long' }).toUpperCase();
+      const month = selectedMonth.getMonth();
+      const panel = document.createElement('section');
+      panel.className = 'month';
+      panel.setAttribute('aria-label', selectedMonth.toLocaleDateString(undefined, { month:'long', year:'numeric' }));
         const weekdays = document.createElement('div');
         weekdays.className = 'weekdays';
         ['S','M','T','W','T','F','S'].forEach(label => { const s=document.createElement('span'); s.textContent=label; weekdays.appendChild(s); });
@@ -884,11 +876,8 @@
           });
           monthDays.appendChild(button);
         }
-        panel.append(title, weekdays, monthDays);
-        grid.appendChild(panel);
-      }
-      scroll.appendChild(grid);
-      content.appendChild(scroll);
+      panel.append(weekdays, monthDays);
+      content.appendChild(panel);
       const legend = document.createElement('div');
       legend.className = 'attendance-legend';
       [['completed','COMPLETED'],['played','PLAYED · INCOMPLETE'],['attended-no-mission','ATTENDED · NO MISSION'],['absent','ABSENT'],['no-mission','NO MISSION'],['future','FUTURE']].forEach(([key,label]) => {
@@ -898,20 +887,26 @@
       resizeDrawerToContent();
     }
 
-    async function loadAttendance(year) {
+    async function loadAttendance(selectedMonth) {
       if (!isMemberSession()) return;
+      const year = selectedMonth.getFullYear();
       const requestId = ++attendanceRequest;
-      document.getElementById('attendance-year').textContent = year;
-      document.getElementById('attendance-prev').disabled = year <= 2000;
-      document.getElementById('attendance-next').disabled = year >= new Date().getFullYear();
+      document.getElementById('attendance-month-label').textContent =
+        selectedMonth.toLocaleDateString(undefined, { month:'long', year:'numeric' }).toUpperCase();
+      document.getElementById('attendance-prev').disabled = year === 2000 && selectedMonth.getMonth() === 0;
+      document.getElementById('attendance-next').disabled =
+        year === new Date().getFullYear() && selectedMonth.getMonth() === 11;
       const content = document.getElementById('attendance-content');
       document.getElementById('attendance-meta').textContent = 'Fetching attendance record...';
-      content.innerHTML = '<div class="empty-state">Loading the year record...</div>';
+      content.innerHTML = '<div class="empty-state">Loading attendance...</div>';
       resizeDrawerToContent();
       if (previewMode) {
         const demo = {};
-        [['01-08','completed'],['01-09','played'],['02-14','no-mission'],['03-22','absent'],['05-04','completed'],['07-19','played'],['09-16','completed'],['11-02','absent']].forEach(([d,status]) => { demo[`${year}-${d}`]={status,seconds:status==='completed'?3600:1800,goalSeconds:3600,points:status==='completed'?5:0}; });
-        renderAttendance(demo, { year, username: sessionUsername, source:'demo' });
+        const monthKey = String(selectedMonth.getMonth() + 1).padStart(2,'0');
+        [['08','completed'],['09','played'],['12','absent'],['14','attended-no-mission'],['16','completed'],['18','played']].forEach(([day,status]) => {
+          demo[`${year}-${monthKey}-${day}`]={status,seconds:status==='completed'?3600:1800,goalSeconds:3600,points:status==='completed'?5:0};
+        });
+        renderAttendance(demo, { year, username: sessionUsername, source:'demo' }, selectedMonth);
         return;
       }
       try {
@@ -920,8 +915,9 @@
         if (requestId !== attendanceRequest) return;
         if (!response.ok || !data.success) throw new Error(response.status === 401 ? 'Your session is no longer authorized.' : response.status === 503 ? 'Attendance service is unavailable.' : (data.error || 'Attendance record could not be loaded.'));
         if (data.username !== sessionUsername || data.year !== year || !data.days || typeof data.days !== 'object') throw new Error('The active member changed. Please reopen attendance.');
-        renderAttendance(data.days && typeof data.days === 'object' ? data.days : {}, { year: data.year || year, username: data.username, source: data.source });
+        renderAttendance(data.days, { year, username: data.username, source: data.source }, selectedMonth);
       } catch (error) {
+        if (requestId !== attendanceRequest) return;
         document.getElementById('attendance-meta').textContent = 'Attendance unavailable';
         content.replaceChildren();
         const errorBox = document.createElement('div');
@@ -934,7 +930,7 @@
         retry.className = 'attendance-retry';
         retry.type = 'button';
         retry.textContent = 'RETRY';
-        retry.addEventListener('click', () => loadAttendance(year));
+        retry.addEventListener('click', () => loadAttendance(selectedMonth));
         errorBox.append(label, explanation, document.createElement('br'), retry);
         content.appendChild(errorBox);
         resizeDrawerToContent();
@@ -1376,14 +1372,14 @@
     document.getElementById('rank-btn').addEventListener('click', () => openDrawer('rank'));
     document.getElementById('attendance-btn').addEventListener('click', () => openDrawer('attendance'));
     document.getElementById('attendance-prev').addEventListener('click', () => {
-      if (attendanceYear <= 2000) return;
-      attendanceYear -= 1;
-      loadAttendance(attendanceYear);
+      if (attendanceMonth.getFullYear() === 2000 && attendanceMonth.getMonth() === 0) return;
+      attendanceMonth = new Date(attendanceMonth.getFullYear(), attendanceMonth.getMonth() - 1, 1);
+      loadAttendance(attendanceMonth);
     });
     document.getElementById('attendance-next').addEventListener('click', () => {
-      if (attendanceYear >= new Date().getFullYear()) return;
-      attendanceYear += 1;
-      loadAttendance(attendanceYear);
+      if (attendanceMonth.getFullYear() === new Date().getFullYear() && attendanceMonth.getMonth() === 11) return;
+      attendanceMonth = new Date(attendanceMonth.getFullYear(), attendanceMonth.getMonth() + 1, 1);
+      loadAttendance(attendanceMonth);
     });
     document.getElementById('drawer-close').addEventListener('click', closeDrawer);
     document.getElementById('clear-cart').addEventListener('click', () => { cart = {}; renderCart(); });

@@ -6,7 +6,7 @@
   -webkit-app-region:no-drag;
 }
 .attendance-modal-panel {
-  width:min(980px,100%); max-height:min(88vh,900px); overflow:auto;
+  width:min(470px,100%); max-height:min(88vh,900px); overflow:auto;
   padding:24px; background:linear-gradient(155deg,#1a1713,#0e1012);
   border:1px solid rgba(255,164,56,.58); border-top:3px solid #ff9d1e;
   box-shadow:0 28px 70px rgba(0,0,0,.72); color:#e9ded0;
@@ -26,7 +26,7 @@
 .attendance-modal-close { font-size:24px; }
 .attendance-modal-controls { padding:9px 0 14px; border-top:1px solid rgba(255,255,255,.08); }
 .attendance-year-controls { justify-content:flex-start; }
-.attendance-year-controls strong { min-width:65px; text-align:center; font:800 17px 'Orbitron',monospace; color:#ffe0aa; }
+.attendance-year-controls strong { min-width:180px; text-align:center; font:800 17px 'Orbitron',monospace; color:#ffe0aa; }
 .attendance-year-controls button:disabled { opacity:.3; cursor:not-allowed; }
 #attendance-modal-source { color:#a69278; font-size:11px; text-align:right; }
 .attendance-modal-detail {
@@ -36,14 +36,13 @@
 .attendance-modal-status { color:#eac68d; font-size:12px; line-height:1.6; }
 .attendance-modal-status.error { color:#ffc0af; }
 .attendance-modal-status button { font-size:12px; padding:3px 12px; margin-left:10px; }
-.attendance-modal-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+.attendance-modal-grid { display:block; }
 .attendance-month { min-width:0; padding:11px; border:1px solid rgba(255,158,36,.2); background:#171817; }
-.attendance-month h3 { margin:0 0 9px; color:#f5bb71; font:800 12px 'Orbitron',monospace; letter-spacing:.5px; }
 .attendance-weekdays,.attendance-days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px; }
-.attendance-weekdays span { font-size:9px; color:#9f8b74; text-align:center; }
+.attendance-weekdays span { font-size:12px; color:#9f8b74; text-align:center; }
 .attendance-days button {
-  min-width:0; height:26px; padding:0; border:1px solid transparent; background:#2b2926;
-  color:#c4b5a4; cursor:pointer; font:11px 'Share Tech Mono',monospace;
+  min-width:0; height:38px; padding:0; border:1px solid transparent; background:#2b2926;
+  color:#c4b5a4; cursor:pointer; font:14px 'Share Tech Mono',monospace;
 }
 .attendance-days button:hover,.attendance-days button:focus-visible { outline:1px solid #fff2c2; outline-offset:1px; }
 .attendance-days .is-completed,.attendance-modal-legend .is-completed { background:#245d39; border-color:#69c587; color:#f3fff3; }
@@ -56,11 +55,10 @@
 .attendance-modal-legend { display:flex; gap:12px; flex-wrap:wrap; margin-top:16px; color:#c2ae96; font-size:11px; }
 .attendance-modal-legend span { display:flex; align-items:center; gap:5px; }
 .attendance-modal-legend i { display:inline-block; width:11px; height:11px; border:1px solid transparent; }
-@media(max-width:760px) { .attendance-modal-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:430px) {
   .attendance-modal { padding:8px; }
   .attendance-modal-panel { padding:14px; max-height:95vh; }
-  .attendance-modal-grid { grid-template-columns:1fr; }
+  .attendance-year-controls strong { min-width:130px; font-size:14px; }
   .attendance-modal-head h2 { font-size:17px; }
   .attendance-modal-controls { align-items:flex-start; flex-direction:column; }
 }

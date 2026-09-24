@@ -4,12 +4,12 @@
   const status = document.getElementById('attendance-modal-status');
   const detail = document.getElementById('attendance-modal-detail');
   const source = document.getElementById('attendance-modal-source');
-  const yearLabel = document.getElementById('attendance-modal-year');
+  const monthLabel = document.getElementById('attendance-modal-month');
   const previous = document.getElementById('attendance-modal-prev');
   const next = document.getElementById('attendance-modal-next');
   const closeButton = document.getElementById('attendance-modal-close');
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  let year = new Date().getFullYear();
+  let selectedMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   let requestId = 0;
   let lastFocus = null;
 
@@ -23,18 +23,18 @@
     const retry = document.createElement('button');
     retry.type = 'button';
     retry.textContent = 'Retry';
-    retry.addEventListener('click', () => loadYear(year));
+    retry.addEventListener('click', () => loadMonth(selectedMonth));
     status.appendChild(retry);
   }
 
-  function render(days) {
+  function render(days, selected) {
     grid.replaceChildren();
     const today = localDay(new Date());
-    for (let month = 0; month < 12; month++) {
+    const year = selected.getFullYear();
+    const month = selected.getMonth();
       const panel = document.createElement('section');
       panel.className = 'attendance-month';
-      const heading = document.createElement('h3');
-      heading.textContent = months[month];
+      panel.setAttribute('aria-label', `${months[month]} ${year}`);
       const weekdays = document.createElement('div');
       weekdays.className = 'attendance-weekdays';
       for (const label of ['S','M','T','W','T','F','S']) {
@@ -71,18 +71,18 @@
         });
         dates.appendChild(button);
       }
-      panel.append(heading, weekdays, dates);
+      panel.append(weekdays, dates);
       grid.appendChild(panel);
-    }
   }
 
-  async function loadYear(selected) {
-    year = selected;
+  async function loadMonth(selected) {
+    selectedMonth = new Date(selected.getFullYear(), selected.getMonth(), 1);
+    const year = selectedMonth.getFullYear();
     const current = new Date().getFullYear();
     const thisRequest = ++requestId;
-    yearLabel.textContent = year;
-    previous.disabled = year <= 2000;
-    next.disabled = year >= current;
+    monthLabel.textContent = `${months[selectedMonth.getMonth()]} ${year}`;
+    previous.disabled = year === 2000 && selectedMonth.getMonth() === 0;
+    next.disabled = year === current && selectedMonth.getMonth() === 11;
     source.textContent = '';
     detail.textContent = 'Choose a date to see your progress.';
     grid.replaceChildren();
@@ -98,7 +98,7 @@
       }
       source.textContent = `${payload.username} · ${payload.source === 'denfi-points' ? 'Denfi Points' : 'Local record'}`;
       status.textContent = '';
-      render(payload.days);
+      render(payload.days, selectedMonth);
     } catch (error) {
       if (thisRequest !== requestId || modal.hidden) return;
       showError(error.message || 'Attendance history is unavailable. Please try again.');
@@ -116,7 +116,7 @@
     lastFocus = document.activeElement;
     modal.hidden = false;
     closeButton.focus();
-    loadYear(new Date().getFullYear());
+    loadMonth(new Date());
   }
 
   closeButton.addEventListener('click', close);
@@ -125,7 +125,15 @@
     if (modal.hidden) return;
     if (event.key === 'Escape') close();
   });
-  previous.addEventListener('click', () => { if (year > 2000) loadYear(year - 1); });
-  next.addEventListener('click', () => { if (year < new Date().getFullYear()) loadYear(year + 1); });
+  previous.addEventListener('click', () => {
+    if (selectedMonth.getFullYear() > 2000 || selectedMonth.getMonth() > 0) {
+      loadMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1));
+    }
+  });
+  next.addEventListener('click', () => {
+    if (selectedMonth.getFullYear() < new Date().getFullYear() || selectedMonth.getMonth() < 11) {
+      loadMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1));
+    }
+  });
   window.DenfiAttendance = { open, close };
 })();
