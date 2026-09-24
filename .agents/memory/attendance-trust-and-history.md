@@ -14,3 +14,9 @@ Delayed attendance reports must be evaluated using the server's policy for the d
 **Why:** Network outages can cross midnight or policy changes, and a crash between separate writes can otherwise leave a confirmed reward missing from the kiosk permanently.
 
 **How to apply:** Keep historical policy semantics and atomic local receipts when changing attendance rules, replay, or reward storage.
+
+Only Auto Shutdown's admin panel edits the shared attendance mission. Denfi Points shows the mission read-only while continuing to store attendance days and award points. A play-time range chooses one stable target for everyone each calendar day; equal minimum and maximum values give a fixed target.
+
+**Why:** The user explicitly wanted Auto Shutdown to be the sole settings editor, without losing Denfi Points' global history and rewards. A daily shared target must not change on refresh or restart, or reward results and historical calendar goals would disagree. Relying only on yesterday's cached target also breaks the mission if the server is offline across midnight.
+
+**How to apply:** Keep kiosk-initiated mission saves distinct from the Denfi Points admin panel; mirror the central range and daily-selection seed to kiosks. Apply the same daily target to every member, including during outages, and evaluate delayed progress against the policy for its original day.

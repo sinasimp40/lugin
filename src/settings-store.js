@@ -206,9 +206,42 @@ function getSharedRates() {
   return null;
 }
 
+function attendanceDayKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function attendanceBounds(raw) {
+  const legacy = Number.isInteger(raw.minutes ?? raw.attendanceMinutes) &&
+    (raw.minutes ?? raw.attendanceMinutes) >= 1 && (raw.minutes ?? raw.attendanceMinutes) <= 1440
+    ? (raw.minutes ?? raw.attendanceMinutes) : 60;
+  const minValue = raw.minMinutes ?? raw.attendanceMinMinutes;
+  const maxValue = raw.maxMinutes ?? raw.attendanceMaxMinutes;
+  const min = Number.isInteger(minValue) && minValue >= 1 && minValue <= 1440 ? minValue : legacy;
+  const max = Number.isInteger(maxValue) && maxValue >= min && maxValue <= 1440 ? maxValue : min;
+  return { min, max };
+}
+
+function attendanceTargetForDay(raw, day) {
+  const { min, max } = attendanceBounds(raw);
+  const seed = raw.targetSeed ?? raw.attendanceTargetSeed;
+  if (min === max || typeof seed !== 'string' || !/^[0-9a-f]{32}$/.test(seed)) return min;
+  const value = crypto.createHash('sha256').update(`${seed}:${day}`).digest().readUInt32BE(0);
+  return min + value % (max - min + 1);
+}
+
+function attendancePolicyForDay(raw, day) {
+  return {
+    enabled: !!raw.enabled,
+    mode: raw.mode === 'login' ? 'login' : 'minutes',
+    minutes: attendanceTargetForDay(raw, day),
+    points: Number.isFinite(raw.points) && raw.points >= 0 ? raw.points : 1
+  };
+}
+
 function getSettings() {
   const s = load();
   const shared = getSharedRates();
+  const attendanceRange = attendanceBounds(s);
   let coinRates = Array.isArray(s.coinRates) && s.coinRates.length > 0 ? s.coinRates : [];
   let pointRates = Array.isArray(s.pointRates) && s.pointRates.length > 0 ? s.pointRates : [];
   if (shared) {
@@ -236,7 +269,11 @@ function getSettings() {
     pointRates,
     attendanceEnabled: !!s.attendanceEnabled,
     attendanceMode: s.attendanceMode === 'login' ? 'login' : 'minutes',
-    attendanceMinutes: Number.isInteger(s.attendanceMinutes) && s.attendanceMinutes >= 1 ? s.attendanceMinutes : 60,
+    attendanceMinutes: attendanceTargetForDay(s, attendanceDayKey()),
+    attendanceMinMinutes: attendanceRange.min,
+    attendanceMaxMinutes: attendanceRange.max,
+    attendanceTargetSeed: typeof s.attendanceTargetSeed === 'string' && /^[0-9a-f]{32}$/.test(s.attendanceTargetSeed)
+      ? s.attendanceTargetSeed : '',
     attendancePoints: Number.isFinite(s.attendancePoints) && s.attendancePoints >= 0 ? s.attendancePoints : 1,
     monthlyLeaderboardReportedPeriod: String(s.monthlyLeaderboardReportedPeriod || ''),
     syncServerUrl: s.syncServerUrl || '',
@@ -264,6 +301,9 @@ function getPublicSettings() {
     attendanceEnabled: s.attendanceEnabled,
     attendanceMode: s.attendanceMode,
     attendanceMinutes: s.attendanceMinutes,
+    attendanceMinMinutes: s.attendanceMinMinutes,
+    attendanceMaxMinutes: s.attendanceMaxMinutes,
+    attendanceTargetSeed: s.attendanceTargetSeed,
     attendancePoints: s.attendancePoints,
   };
 }
@@ -319,17 +359,38 @@ function updateSettings(updates) {
   if (updates.pointRates !== undefined && Array.isArray(updates.pointRates)) s.pointRates = updates.pointRates;
   if (updates.attendanceEnabled !== undefined) s.attendanceEnabled = !!updates.attendanceEnabled;
   if (updates.attendanceMode === 'login' || updates.attendanceMode === 'minutes') s.attendanceMode = updates.attendanceMode;
+  const beforeRange = attendanceBounds(s);
+  const ranged = updates.attendanceMinMinutes !== undefined || updates.attendanceMaxMinutes !== undefined;
   if (updates.attendanceMinutes !== undefined) s.attendanceMinutes = updates.attendanceMinutes;
+  if (ranged) {
+    s.attendanceMinMinutes = updates.attendanceMinMinutes;
+    s.attendanceMaxMinutes = updates.attendanceMaxMinutes;
+  } else if (updates.attendanceMinutes !== undefined) {
+    // Older clients that send one value still configure a fixed target.
+    s.attendanceMinMinutes = updates.attendanceMinutes;
+    s.attendanceMaxMinutes = updates.attendanceMinutes;
+  }
+  const afterRange = attendanceBounds(s);
+  if (updates.attendanceTargetSeed !== undefined) {
+    if (updates.attendanceTargetSeed === '' || /^[0-9a-f]{32}$/.test(updates.attendanceTargetSeed)) {
+      s.attendanceTargetSeed = updates.attendanceTargetSeed;
+    }
+  } else if (beforeRange.min !== afterRange.min || beforeRange.max !== afterRange.max) {
+    s.attendanceTargetSeed = crypto.randomBytes(16).toString('hex');
+  }
   if (updates.attendancePoints !== undefined) s.attendancePoints = updates.attendancePoints;
   if (updates.attendanceEnabled !== undefined || updates.attendanceMode !== undefined ||
-      updates.attendanceMinutes !== undefined || updates.attendancePoints !== undefined) {
-    const now = new Date();
-    const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      updates.attendanceMinutes !== undefined || ranged || updates.attendanceTargetSeed !== undefined ||
+      updates.attendancePoints !== undefined) {
+    const day = attendanceDayKey();
     s.attendancePolicies = s.attendancePolicies || {};
     s.attendancePolicies[day] = {
       enabled: !!s.attendanceEnabled,
       mode: s.attendanceMode === 'login' ? 'login' : 'minutes',
-      minutes: s.attendanceMinutes ?? 60,
+      minutes: attendanceTargetForDay(s, day),
+      minMinutes: afterRange.min,
+      maxMinutes: afterRange.max,
+      targetSeed: s.attendanceTargetSeed || '',
       points: s.attendancePoints ?? 1
     };
   }
@@ -343,22 +404,20 @@ function updateSettings(updates) {
 
 function getAttendancePolicy(day) {
   const raw = load();
-  const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  if (day === today) {
+  if (day === attendanceDayKey()) {
     const s = getSettings();
     return { enabled: s.attendanceEnabled, mode: s.attendanceMode, minutes: s.attendanceMinutes, points: s.attendancePoints };
   }
   const latest = Object.keys(raw.attendancePolicies || {}).filter(key => key <= day).sort().pop();
-  return latest ? raw.attendancePolicies[latest] : { enabled: false, mode: 'minutes', minutes: 60, points: 1 };
+  return latest ? attendancePolicyForDay(raw.attendancePolicies[latest], day)
+    : { enabled: false, mode: 'minutes', minutes: 60, points: 1 };
 }
 
 function getAttendancePoliciesForYear(year) {
   const raw = load();
   const keys = Object.keys(raw.attendancePolicies || {}).sort();
   const current = getSettings();
-  const today = new Date();
-  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const todayKey = attendanceDayKey();
   const policies = {};
   let latest = 0;
   let policy = { enabled: false, mode: 'minutes', minutes: 60, points: 1 };
@@ -371,7 +430,7 @@ function getAttendancePoliciesForYear(year) {
     policies[day] = day === todayKey
       ? { enabled: current.attendanceEnabled, mode: current.attendanceMode,
         minutes: current.attendanceMinutes, points: current.attendancePoints }
-      : policy;
+      : attendancePolicyForDay(policy, day);
     cursor.setDate(cursor.getDate() + 1);
   }
   return policies;

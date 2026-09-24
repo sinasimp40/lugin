@@ -105,3 +105,71 @@ test('historical mission policy never borrows a newly enabled mission', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('one daily play-time target is shared, stable across restarts, and stays within the saved range', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-random-mission-'));
+  settings.setAppRole('points');
+  settings.setDataDir(dir);
+  try {
+    const now = new Date();
+    const today = attendance.dayKey(now.getTime());
+    const tomorrow = attendance.dayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime());
+    const yesterday = attendance.dayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime());
+    const saved = settings.updateSettings({
+      attendanceEnabled: true, attendanceMode: 'minutes',
+      attendanceMinMinutes: 30, attendanceMaxMinutes: 60, attendancePoints: 2
+    });
+    assert.ok(saved.attendanceMinutes >= 30 && saved.attendanceMinutes <= 60);
+    assert.match(saved.attendanceTargetSeed, /^[0-9a-f]{32}$/);
+    const firstTarget = settings.getAttendancePolicy(today).minutes;
+    const nextTarget = settings.getAttendancePolicy(tomorrow).minutes;
+    assert.ok(nextTarget >= 30 && nextTarget <= 60);
+    assert.equal(settings.getAttendancePolicy(yesterday).enabled, false);
+    settings.setDataDir(dir);
+    assert.equal(settings.getSettings().attendanceMinutes, firstTarget);
+    assert.equal(settings.getAttendancePolicy(tomorrow).minutes, nextTarget);
+    settings.updateSettings({ attendancePoints: 3 });
+    assert.equal(settings.getAttendancePolicy(today).minutes, firstTarget,
+      'saving points alone must not reroll the mission time');
+    assert.equal(settings.getAttendancePolicy(tomorrow).minutes, nextTarget);
+    settings.updateSettings({ attendanceMinMinutes: 45, attendanceMaxMinutes: 45 });
+    assert.equal(settings.getAttendancePolicy(today).minutes, 45);
+    assert.equal(settings.getAttendancePolicy(tomorrow).minutes, 45);
+    assert.equal(settings.getAttendancePolicy(yesterday).enabled, false);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('connected kiosk derives the shared daily target from the saved seed during an outage', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-remote-target-'));
+  settings.setAppRole('auto-shutdown', true);
+  settings.setDataDir(dir);
+  try {
+    const seed = 'a'.repeat(32);
+    const standalone = settings.updateSettings({
+      attendanceEnabled: true, attendanceMode: 'minutes',
+      attendanceMinMinutes: 30, attendanceMaxMinutes: 60,
+      attendanceTargetSeed: seed, attendancePoints: 2
+    });
+    const staleCachedTarget = standalone.attendanceMinutes === 30 ? 31 : 30;
+    settings.updateSettings({
+      attendanceMinMinutes: 30, attendanceMaxMinutes: 60,
+      attendanceMinutes: staleCachedTarget, attendanceTargetSeed: seed,
+      syncServerUrl: 'http://127.0.0.1:5000'
+    });
+    assert.equal(settings.getSettings().attendanceMinutes, standalone.attendanceMinutes);
+    settings.setDataDir(dir);
+    assert.equal(settings.getSettings().attendanceMinutes, standalone.attendanceMinutes,
+      'yesterday’s cached target cannot override today’s shared selection');
+    const tomorrow = attendance.dayKey(new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() + 1).getTime());
+    assert.ok(settings.getAttendancePolicy(tomorrow).minutes >= 30);
+    assert.ok(settings.getAttendancePolicy(tomorrow).minutes <= 60);
+    settings.updateSettings({ syncServerUrl: '' });
+    assert.equal(settings.getSettings().attendanceMinutes, standalone.attendanceMinutes,
+      'standalone kiosk uses its stable local daily selection');
+  } finally {
+    settings.setAppRole('points', true);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

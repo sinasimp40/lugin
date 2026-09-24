@@ -1915,10 +1915,14 @@
               <div class="admin-page-intro"><div><h2>Daily attendance</h2><p>Reward members once per day for logging in or completing a play-time mission. Time adds up across sessions and resets at local midnight.</p></div></div>
               <div class="admin-section" style="max-width:520px">
                 <h3>Play-time mission</h3>
-                <form onsubmit="event.preventDefault(); saveAttendance();" autocomplete="off">
+                 <form id="admin-attendance-form" onsubmit="event.preventDefault(); saveAttendance();" autocomplete="off">
                 <div class="form-group"><label><input type="checkbox" id="admin-attendance-enabled" /> Enable daily attendance</label></div>
-                <div class="form-group"><label for="admin-attendance-mode">Mission type</label><select id="admin-attendance-mode" onchange="document.getElementById('admin-attendance-minutes').disabled = this.value === 'login' || document.getElementById('admin-attendance-save').disabled" style="width:100%;padding:10px;background:#0f1113;color:#eee;border:1px solid #343a3f;border-radius:6px"><option value="minutes">Play-time target</option><option value="login">Login once per day</option></select></div>
-                <div class="form-group"><label for="admin-attendance-minutes">Required play time (minutes)</label><input type="number" id="admin-attendance-minutes" min="1" max="1440" step="1" style="width:100%" /></div>
+                 <div class="form-group"><label for="admin-attendance-mode">Mission type</label><select id="admin-attendance-mode" onchange="updateAttendanceInputs()" style="width:100%;padding:10px;background:#0f1113;color:#eee;border:1px solid #343a3f;border-radius:6px"><option value="minutes">Play-time target</option><option value="login">Login once per day</option></select></div>
+                 <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+                   <div class="form-group"><label for="admin-attendance-min">Minimum play time (minutes)</label><input type="number" id="admin-attendance-min" min="1" max="1440" step="1" style="width:100%" /></div>
+                   <div class="form-group"><label for="admin-attendance-max">Maximum play time (minutes)</label><input type="number" id="admin-attendance-max" min="1" max="1440" step="1" style="width:100%" /></div>
+                 </div>
+                 <p id="admin-attendance-today" style="font-size:11px;color:#ffba58;margin:0 0 12px"></p>
                 <div class="form-group"><label for="admin-attendance-points">Points per completed day</label><input type="number" id="admin-attendance-points" min="0" max="10000" step="0.01" style="width:100%" /></div>
                 <p id="admin-attendance-note" style="font-size:11px;color:#aaa;margin-bottom:14px">Only logged-in member accounts (mem-) qualify. Changing the target does not grant a second reward to someone already awarded today.</p>
                  <div id="admin-attendance-points-auth" style="display:none">
@@ -1927,6 +1931,7 @@
                    <div class="form-group"><label><input type="checkbox" id="admin-attendance-confirm" /> I recognize this server address and trust this network.</label></div>
                  </div>
                  <button class="btn-admin" type="submit" id="admin-attendance-save">Save attendance</button>
+                  <button class="btn-admin" type="button" id="admin-attendance-reload" hidden onclick="reloadAttendanceSettings()">Reload latest mission</button>
                  <div id="admin-attendance-status" class="admin-msg" role="status" aria-live="polite" style="margin:10px 0 0"></div>
                 </form>
               </div>
@@ -2162,6 +2167,17 @@
         window.electronAPI.setIdleShutdownConfig(s.autoShutdownSeconds || 0);
       }
       updateCurfewUI(s);
+      if (document.getElementById('admin-panel-view').style.display === 'block') {
+        const saved = { ...s, syncServerUrl: window._appRole === 'points' ? '' : window._attendanceServerUrl };
+        if (window._appRole === 'points' || !window._attendanceDraftDirty) {
+          renderAttendanceSettings(saved);
+        } else if (JSON.stringify(attendanceMissionSnapshot(saved)) !==
+                   JSON.stringify(window._attendanceRenderedMission)) {
+          window._attendanceConflict = true;
+          document.getElementById('admin-attendance-reload').hidden = false;
+          showAttendanceStatus('The shared mission changed while you were editing. Reload it before saving.', 'error');
+        }
+      }
     }
 
     function applyLoginImage(imgInfo) {
@@ -3605,11 +3621,16 @@
     }
 
     function setAttendanceManaged(serverUrl) {
+      const pointsReadOnly = window._appRole === 'points';
       if (window._attendanceServerUrl !== serverUrl) {
         document.getElementById('admin-attendance-confirm').checked = false;
       }
       window._attendanceServerUrl = serverUrl || '';
-      window._attendanceManaged = window._appRole !== 'points' && !!serverUrl;
+      window._attendanceManaged = !pointsReadOnly && !!serverUrl;
+      ['admin-attendance-enabled', 'admin-attendance-mode', 'admin-attendance-points']
+        .forEach(id => { document.getElementById(id).disabled = pointsReadOnly; });
+      document.getElementById('admin-attendance-save').hidden = pointsReadOnly;
+      updateAttendanceInputs();
       document.getElementById('admin-attendance-points-auth').style.display =
         window._attendanceManaged ? 'block' : 'none';
       if (window._attendanceManaged) {
@@ -3619,18 +3640,68 @@
           `Admin password will be sent to ${address}. Verify this is your Denfi Points server. ` +
           (String(serverUrl).startsWith('https://') ? 'Connection uses HTTPS.' : 'HTTP is not encrypted; use only on a trusted private network.');
       }
-      document.getElementById('admin-attendance-note').textContent = window._attendanceManaged
+      document.getElementById('admin-attendance-note').textContent = pointsReadOnly
+        ? 'Read-only on Denfi Points. Set or change the shared mission in the Auto Shutdown admin panel. Denfi Points still stores attendance days and awards points.'
+        : window._attendanceManaged
         ? 'Saving here changes the shared Denfi Points mission for every connected kiosk. Only logged-in members (mem-) qualify; members already awarded today do not receive a second reward.'
-        : 'Only logged-in member accounts (mem-) qualify. Changing the target does not grant a second reward to someone already awarded today.';
+        : 'Only logged-in member accounts (mem-) qualify. The target is chosen once per day from the range; set both values equal for a fixed target. Already-awarded members do not receive a second reward.';
+    }
+
+    function updateAttendanceInputs() {
+      const disabled = window._appRole === 'points' ||
+        document.getElementById('admin-attendance-mode').value === 'login';
+      document.getElementById('admin-attendance-min').disabled = disabled;
+      document.getElementById('admin-attendance-max').disabled = disabled;
+    }
+
+    function attendanceMissionSnapshot(saved) {
+      return {
+        enabled: !!saved.attendanceEnabled,
+        mode: saved.attendanceMode || 'minutes',
+        minMinutes: saved.attendanceMinMinutes ?? saved.attendanceMinutes,
+        maxMinutes: saved.attendanceMaxMinutes ?? saved.attendanceMinutes,
+        minutes: saved.attendanceMinutes,
+        points: saved.attendancePoints,
+        targetSeed: saved.attendanceTargetSeed || ''
+      };
     }
 
     function renderAttendanceSettings(saved) {
       document.getElementById('admin-attendance-enabled').checked = !!saved.attendanceEnabled;
       document.getElementById('admin-attendance-mode').value = saved.attendanceMode || 'minutes';
-      document.getElementById('admin-attendance-minutes').value = saved.attendanceMinutes;
+      document.getElementById('admin-attendance-min').value = saved.attendanceMinMinutes ?? saved.attendanceMinutes;
+      document.getElementById('admin-attendance-max').value = saved.attendanceMaxMinutes ?? saved.attendanceMinutes;
       document.getElementById('admin-attendance-points').value = saved.attendancePoints;
-      document.getElementById('admin-attendance-minutes').disabled = saved.attendanceMode === 'login';
+      document.getElementById('admin-attendance-today').textContent = saved.attendanceEnabled
+        ? saved.attendanceMode === 'minutes' ? `Today's shared target: ${saved.attendanceMinutes} minutes`
+          : 'Today: log in once to complete the mission'
+        : 'Daily attendance is off';
+      window._attendanceRenderedMission = attendanceMissionSnapshot(saved);
+      window._attendanceDraftDirty = false;
+      window._attendanceConflict = false;
+      document.getElementById('admin-attendance-reload').hidden = true;
       setAttendanceManaged(saved.syncServerUrl);
+    }
+
+    for (const eventName of ['input', 'change']) {
+      document.getElementById('admin-attendance-form').addEventListener(eventName, event => {
+        if (['admin-attendance-enabled', 'admin-attendance-mode', 'admin-attendance-min',
+             'admin-attendance-max', 'admin-attendance-points'].includes(event.target.id)) {
+          window._attendanceDraftDirty = true;
+        }
+      });
+    }
+
+    async function reloadAttendanceSettings() {
+      try {
+        const response = await fetch('/api/admin/attendance-current', { headers: { 'x-admin-token': adminToken } });
+        const result = await response.json();
+        if (!response.ok || !result.settings) throw new Error(result.error || 'Could not reload the mission.');
+        renderAttendanceSettings(result.settings);
+        showAttendanceStatus('Latest mission loaded. Review it before saving.', 'success');
+      } catch (err) {
+        showAttendanceStatus(err.message || 'Could not reload the mission.', 'error');
+      }
     }
 
     function showAttendanceStatus(message, type) {
@@ -3640,12 +3711,22 @@
     }
 
     async function saveAttendance() {
-      const minutes = Number(document.getElementById('admin-attendance-minutes').value);
+      if (window._appRole === 'points') {
+        showAttendanceStatus('Change the mission in the Auto Shutdown admin panel.', 'error');
+        return;
+      }
+      if (window._attendanceConflict || !window._attendanceRenderedMission) {
+        showAttendanceStatus('Reload the latest mission before saving.', 'error');
+        return;
+      }
+      const minMinutes = Number(document.getElementById('admin-attendance-min').value);
+      const maxMinutes = Number(document.getElementById('admin-attendance-max').value);
       const points = Number(document.getElementById('admin-attendance-points').value);
-      if (!Number.isInteger(minutes) || minutes < 1 || minutes > 1440 ||
+      if (!Number.isInteger(minMinutes) || minMinutes < 1 || minMinutes > 1440 ||
+          !Number.isInteger(maxMinutes) || maxMinutes < minMinutes || maxMinutes > 1440 ||
           !Number.isFinite(points) || points < 0 || points > 10000 ||
           Math.abs(Math.round(points * 100) - points * 100) > 1e-8) {
-        showAttendanceStatus('Enter 1–1440 minutes and 0–10000 points (up to 2 decimals).', 'error');
+        showAttendanceStatus('Enter a 1–1440 minute range (minimum ≤ maximum) and 0–10000 points (up to 2 decimals).', 'error');
         return;
       }
       const passwordInput = document.getElementById('admin-attendance-points-password');
@@ -3665,7 +3746,8 @@
           method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
           body: JSON.stringify({
             enabled: document.getElementById('admin-attendance-enabled').checked,
-            mode: document.getElementById('admin-attendance-mode').value, minutes, points,
+            mode: document.getElementById('admin-attendance-mode').value, minMinutes, maxMinutes, points,
+            expectedMission: window._attendanceRenderedMission,
             ...(window._attendanceManaged ? {
               pointsAdminPassword: passwordInput.value,
               confirmedServerUrl: window._attendanceServerUrl
@@ -3673,6 +3755,10 @@
           })
         });
         const resp = await response.json();
+        if (response.status === 409) {
+          window._attendanceConflict = true;
+          document.getElementById('admin-attendance-reload').hidden = false;
+        }
         if (!response.ok || !resp.success || !resp.settings) {
           throw new Error(resp.error || 'Could not save attendance.');
         }

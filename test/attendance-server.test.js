@@ -65,8 +65,28 @@ test('points server grants daily login or play-time reward once, with saved sett
     const register = await request('/api/admin/register', 'POST', { password: 'test-password' });
     assert.equal(register.data.success, true);
     const token = register.data.token;
-    const configure = await request('/api/admin/attendance', 'POST',
+    async function kioskWriteOnPoints(input) {
+      const expectedMission = (await request('/api/sync/attendance-config')).data;
+      return request('/api/admin/kiosk-attendance', 'POST', { ...input, expectedMission }, token);
+    }
+    function missionFromSettings(s) {
+      return {
+        enabled: s.attendanceEnabled, mode: s.attendanceMode,
+        minMinutes: s.attendanceMinMinutes, maxMinutes: s.attendanceMaxMinutes,
+        minutes: s.attendanceMinutes, points: s.attendancePoints,
+        targetSeed: s.attendanceTargetSeed
+      };
+    }
+    const deniedPointsEdit = await request('/api/admin/attendance', 'POST',
       { enabled: true, mode: 'login', minutes: 1, points: 3 }, token);
+    assert.equal(deniedPointsEdit.code, 403, 'Points admin cannot change the shared mission');
+    assert.equal((await request('/api/sync/attendance-config')).data.enabled, false);
+    const genericEdit = await request('/api/admin/settings', 'POST',
+      { attendanceEnabled: true, attendanceMinMinutes: 2, attendanceMaxMinutes: 4,
+        attendanceTargetSeed: '0'.repeat(32) }, token);
+    assert.equal(genericEdit.data.settings.attendanceEnabled, false, 'generic settings cannot bypass mission ownership');
+    const configure = await kioskWriteOnPoints(
+      { enabled: true, mode: 'login', minMinutes: 1, maxMinutes: 1, points: 3 });
     assert.equal(configure.data.success, true);
     assert.equal((await request('/api/sync/attendance-config')).data.mode, 'login');
     const invalid = await request('/api/sync/attendance', 'POST',
@@ -82,8 +102,8 @@ test('points server grants daily login or play-time reward once, with saved sett
     assert.equal((await request('/api/sync/member-points/mem-alice')).data.points, 3);
     assert.equal((await request('/api/sync/coin-logs')).data.logs.length, 1);
 
-    const configureMinutes = await request('/api/admin/attendance', 'POST',
-      { enabled: true, mode: 'minutes', minutes: 1, points: 4 }, token);
+    const configureMinutes = await kioskWriteOnPoints(
+      { enabled: true, mode: 'minutes', minMinutes: 1, maxMinutes: 1, points: 4 });
     assert.equal(configureMinutes.data.success, true);
     const bob = { ...sample, username: 'mem-bob', seconds: 30 };
     const partial = await request('/api/sync/attendance', 'POST', bob);
@@ -164,7 +184,7 @@ test('points server grants daily login or play-time reward once, with saved sett
     assert.equal(clientSettings.attendanceMode, 'minutes');
     assert.equal(clientSettings.attendancePoints, 4);
 
-    const sharedMission = { enabled: true, mode: 'login', minutes: 8, points: 2.75 };
+    const sharedMission = { enabled: true, mode: 'login', minMinutes: 8, maxMinutes: 8, points: 2.75 };
     const missingPassword = await clientRequest('/api/admin/attendance', 'POST', sharedMission, kioskToken);
     assert.equal(missingPassword.code, 400, 'changing all kiosks requires Points admin authentication');
     const wrongPassword = await clientRequest('/api/admin/attendance', 'POST',
@@ -177,11 +197,14 @@ test('points server grants daily login or play-time reward once, with saved sett
     assert.equal((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings.attendancePoints, 4);
 
     const saveFromKiosk = await clientRequest('/api/admin/attendance', 'POST',
-      { ...sharedMission, pointsAdminPassword: 'test-password', confirmedServerUrl: url }, kioskToken);
+      { ...sharedMission, expectedMission: missionFromSettings(clientSettings),
+        pointsAdminPassword: 'test-password', confirmedServerUrl: url }, kioskToken);
     assert.equal(saveFromKiosk.code, 200);
     assert.equal(saveFromKiosk.data.settings.attendanceEnabled, true);
     assert.equal(saveFromKiosk.data.settings.attendanceMode, 'login');
     assert.equal(saveFromKiosk.data.settings.attendanceMinutes, 8);
+    assert.equal(saveFromKiosk.data.settings.attendanceMinMinutes, 8);
+    assert.equal(saveFromKiosk.data.settings.attendanceMaxMinutes, 8);
     assert.equal(saveFromKiosk.data.settings.attendancePoints, 2.75);
     const pointsSettings = (await request('/api/admin/settings', 'GET', undefined, token)).data.settings;
     assert.equal(pointsSettings.attendanceEnabled, true);
@@ -193,7 +216,16 @@ test('points server grants daily login or play-time reward once, with saved sett
 
     const pointsChanged = await request('/api/admin/attendance', 'POST',
       { enabled: false, mode: 'minutes', minutes: 3, points: 5.5 }, token);
-    assert.equal(pointsChanged.data.success, true);
+    assert.equal(pointsChanged.code, 403);
+    assert.equal((await request('/api/sync/attendance-config')).data.mode, 'login');
+    const oldMission = (await request('/api/sync/attendance-config')).data;
+    const otherKioskChanged = await kioskWriteOnPoints(
+      { enabled: false, mode: 'minutes', minMinutes: 3, maxMinutes: 3, points: 5.5 });
+    assert.equal(otherKioskChanged.data.success, true);
+    const staleEdit = await request('/api/admin/kiosk-attendance', 'POST',
+      { enabled: true, mode: 'login', minMinutes: 8, maxMinutes: 8, points: 2.75,
+        expectedMission: oldMission }, token);
+    assert.equal(staleEdit.code, 409, 'stale save cannot overwrite another kiosk');
     let mirrored;
     for (let n = 0; n < 50; n++) {
       mirrored = (await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings;
@@ -204,23 +236,38 @@ test('points server grants daily login or play-time reward once, with saved sett
     assert.equal(mirrored.attendanceMode, 'minutes');
     assert.equal(mirrored.attendanceMinutes, 3);
     assert.equal(mirrored.attendancePoints, 5.5);
+    const staleFormSave = await clientRequest('/api/admin/attendance', 'POST',
+      { ...sharedMission, expectedMission: oldMission,
+        pointsAdminPassword: 'test-password', confirmedServerUrl: url }, kioskToken);
+    assert.equal(staleFormSave.code, 409, 'open kiosk form must be reloaded after the mission changes');
+    const refreshed = await clientRequest('/api/admin/attendance-current', 'GET', undefined, kioskToken);
+    assert.equal(refreshed.data.settings.attendancePoints, 5.5);
 
     const sharedMinutes = await clientRequest('/api/admin/attendance', 'POST',
-      { enabled: true, mode: 'minutes', minutes: 2, points: 1.25,
+      { enabled: true, mode: 'minutes', minMinutes: 2, maxMinutes: 4, points: 1.25,
+        expectedMission: missionFromSettings(mirrored),
         pointsAdminPassword: 'test-password', confirmedServerUrl: url }, kioskToken);
     assert.equal(sharedMinutes.code, 200);
-    assert.equal((await request('/api/sync/attendance-config')).data.minutes, 2);
+    const randomConfig = (await request('/api/sync/attendance-config')).data;
+    assert.ok(randomConfig.minutes >= 2 && randomConfig.minutes <= 4);
+    assert.equal(randomConfig.minMinutes, 2);
+    assert.equal(randomConfig.maxMinutes, 4);
+    assert.equal((await request('/api/sync/attendance-config')).data.minutes, randomConfig.minutes,
+      'shared daily target does not reroll on refresh');
+    assert.equal(sharedMinutes.data.settings.attendanceMinutes, randomConfig.minutes);
+    assert.equal((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings.attendanceMinutes, randomConfig.minutes);
     assert.equal((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings.attendancePoints, 1.25);
-    const dana = { ...sample, username: 'mem-dana', seconds: 60 };
+    const targetSeconds = randomConfig.minutes * 60;
+    const dana = { ...sample, username: 'mem-dana', seconds: targetSeconds - 1 };
     assert.equal((await request('/api/sync/attendance', 'POST', dana)).data.attendance.awarded, false);
-    assert.equal((await request('/api/sync/attendance', 'POST', { ...dana, seconds: 120 })).data.attendance.awarded, true);
+    assert.equal((await request('/api/sync/attendance', 'POST', { ...dana, seconds: targetSeconds })).data.attendance.awarded, true);
     const centralDay = (await request(`/api/sync/attendance-year/mem-dana?year=${day.getFullYear()}`)).data.days[key];
     assert.equal(centralDay.status, 'completed');
-    assert.equal(centralDay.seconds, 120);
-    assert.equal(centralDay.goalSeconds, 120);
+    assert.equal(centralDay.seconds, targetSeconds);
+    assert.equal(centralDay.goalSeconds, targetSeconds);
     assert.equal(centralDay.points, 1.25);
     attendance.setDataDir(dir);
-    assert.equal(attendance.status('mem-dana', key).seconds, 120, 'progress is persisted by Denfi Points');
+    assert.equal(attendance.status('mem-dana', key).seconds, targetSeconds, 'progress is persisted by Denfi Points');
     assert.equal(attendance.status('mem-dana', key).awardedPoints, 1.25);
 
     const proxyPort = await freePort();
@@ -237,7 +284,7 @@ test('points server grants daily login or play-time reward once, with saved sett
           body: chunks.length ? Buffer.concat(chunks) : undefined
         });
         const body = await upstream.text();
-        if (req.method === 'POST' && req.url === '/api/admin/attendance') {
+        if (req.method === 'POST' && req.url === '/api/admin/kiosk-attendance') {
           res.destroy(); // Points committed the mission, but its reply was lost.
           return;
         }
@@ -252,7 +299,8 @@ test('points server grants daily login or play-time reward once, with saved sett
     assert.equal((await clientRequest('/api/admin/sync-server', 'POST',
       { url: proxyUrl }, kioskToken)).data.connected, true);
     const lostReply = await clientRequest('/api/admin/attendance', 'POST',
-      { enabled: true, mode: 'minutes', minutes: 4, points: 6.75,
+      { enabled: true, mode: 'minutes', minMinutes: 4, maxMinutes: 4, points: 6.75,
+        expectedMission: missionFromSettings((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings),
         pointsAdminPassword: 'test-password', confirmedServerUrl: proxyUrl }, kioskToken);
     assert.equal(lostReply.data.success, true, 'read back a mission committed before response loss');
     assert.equal((await request('/api/sync/attendance-config')).data.minutes, 4);
@@ -271,15 +319,19 @@ test('points server grants daily login or play-time reward once, with saved sett
     const offline = await clientRequest('/api/admin/attendance', 'POST',
       { ...sharedMission, pointsAdminPassword: 'test-password', confirmedServerUrl: url }, kioskToken);
     assert.equal(offline.code, 503, 'no silent local save when Denfi Points is unavailable');
+    assert.equal((await clientRequest('/api/admin/attendance-current', 'GET', undefined, kioskToken)).code, 503,
+      'reload does not pretend an offline cached mission is current');
     assert.equal((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings.attendanceMode, 'minutes');
     assert.equal((await clientRequest('/api/admin/sync-server', 'POST', { url: '' }, kioskToken)).data.connected, false);
     const localSave = await clientRequest('/api/admin/attendance', 'POST',
-      { enabled: false, mode: 'login', minutes: 12, points: 0 }, kioskToken);
+      { enabled: false, mode: 'login', minMinutes: 12, maxMinutes: 12, points: 0 }, kioskToken);
     assert.equal(localSave.data.success, true, 'standalone kiosk can still save all attendance fields');
     const localSettings = (await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings;
     assert.equal(localSettings.attendanceEnabled, false);
     assert.equal(localSettings.attendanceMode, 'login');
     assert.equal(localSettings.attendanceMinutes, 12);
+    assert.equal(localSettings.attendanceMinMinutes, 12);
+    assert.equal(localSettings.attendanceMaxMinutes, 12);
     assert.equal(localSettings.attendancePoints, 0);
   } finally {
     if (responseLossProxy) {

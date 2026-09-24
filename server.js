@@ -857,11 +857,21 @@ app.get('/api/admin/settings', verifyToken, (req, res) => {
   res.json({ success: true, settings: settings.getSettings() });
 });
 
+app.get('/api/admin/attendance-current', verifyToken, async (req, res) => {
+  if (syncServerUrl && !(await syncAttendanceConfigFromServer())) {
+    return res.status(503).json({ success: false, error: 'Could not load the current mission from Denfi Points. Try again when connected.' });
+  }
+  res.json({ success: true, settings: settings.getSettings() });
+});
+
 app.post('/api/admin/settings', verifyToken, (req, res) => {
   const body = req.body;
   delete body.attendanceEnabled;
   delete body.attendanceMode;
   delete body.attendanceMinutes;
+  delete body.attendanceMinMinutes;
+  delete body.attendanceMaxMinutes;
+  delete body.attendanceTargetSeed;
   delete body.attendancePoints;
   if (coinLogsReadOnly) {
     delete body.coinRates;
@@ -872,13 +882,65 @@ app.post('/api/admin/settings', verifyToken, (req, res) => {
   res.json({ success: true, settings: updated });
 });
 
-app.post('/api/admin/attendance', verifyToken, async (req, res) => {
-  const { enabled, mode, minutes, points, pointsAdminPassword, confirmedServerUrl } = req.body;
+function parseAttendanceInput(body) {
+  const { enabled, mode, points } = body;
+  const ranged = body.minMinutes !== undefined || body.maxMinutes !== undefined;
+  const minMinutes = ranged ? body.minMinutes : body.minutes;
+  const maxMinutes = ranged ? body.maxMinutes : body.minutes;
   if (typeof enabled !== 'boolean' || !['login', 'minutes'].includes(mode) ||
-      !Number.isInteger(minutes) || minutes < 1 || minutes > 1440 ||
+      !Number.isInteger(minMinutes) || minMinutes < 1 || minMinutes > 1440 ||
+      !Number.isInteger(maxMinutes) || maxMinutes < minMinutes || maxMinutes > 1440 ||
       !Number.isFinite(points) || points < 0 || points > 10000 ||
       Math.abs(Math.round(points * 100) - points * 100) > 1e-8) {
-    return res.status(400).json({ success: false, error: 'Use 1–1440 minutes and 0–10000 points (up to 2 decimals).' });
+    return null;
+  }
+  return { enabled, mode, minMinutes, maxMinutes, points };
+}
+
+function attendanceUpdates(input) {
+  return {
+    attendanceEnabled: input.enabled, attendanceMode: input.mode,
+    attendanceMinMinutes: input.minMinutes, attendanceMaxMinutes: input.maxMinutes,
+    attendancePoints: input.points
+  };
+}
+
+function missionMatches(expected, actual) {
+  return expected && typeof expected === 'object' &&
+    expected.enabled === actual.enabled && expected.mode === actual.mode &&
+    expected.minMinutes === actual.minMinutes && expected.maxMinutes === actual.maxMinutes &&
+    expected.minutes === actual.minutes && expected.points === actual.points &&
+    expected.targetSeed === actual.targetSeed;
+}
+
+app.post('/api/admin/kiosk-attendance', verifyToken, (req, res) => {
+  if (appRole !== 'points') return res.status(404).end();
+  const input = parseAttendanceInput(req.body);
+  if (!input) return res.status(400).json({ success: false, error: 'Use a 1–1440 minute range (minimum ≤ maximum) and 0–10000 points (up to 2 decimals).' });
+  if (!missionMatches(req.body.expectedMission, attendanceConfig())) {
+    return res.status(409).json({ success: false, error: 'The shared mission changed. Reload Attendance to review the latest settings before saving.' });
+  }
+  try {
+    const updated = settings.updateSettings(attendanceUpdates(input));
+    broadcastSettings();
+    return res.json({ success: true, settings: updated });
+  } catch (err) {
+    console.error('[Attendance] Denfi Points mission save failed:', err.message);
+    return res.status(500).json({ success: false, error: 'Denfi Points could not save the mission.' });
+  }
+});
+
+app.post('/api/admin/attendance', verifyToken, async (req, res) => {
+  if (appRole === 'points') {
+    return res.status(403).json({ success: false, error: 'Change the shared mission in the Auto Shutdown admin panel.' });
+  }
+  const input = parseAttendanceInput(req.body);
+  if (!input) return res.status(400).json({ success: false, error: 'Use a 1–1440 minute range (minimum ≤ maximum) and 0–10000 points (up to 2 decimals).' });
+  const { enabled, mode, minMinutes, maxMinutes, points } = input;
+  const { pointsAdminPassword, confirmedServerUrl } = req.body;
+  const expectedMission = req.body.expectedMission || attendanceConfig();
+  if (!missionMatches(expectedMission, attendanceConfig())) {
+    return res.status(409).json({ success: false, error: 'The shared mission changed on this kiosk. Reload Attendance before saving.' });
   }
   if (appRole !== 'points' && syncServerUrl) {
     if (typeof pointsAdminPassword !== 'string' || !pointsAdminPassword) {
@@ -889,11 +951,31 @@ app.post('/api/admin/attendance', verifyToken, async (req, res) => {
     }
     const url = syncServerUrl;
     let attemptedRemoteSave = false;
-    const mirrorSavedMission = () => {
+    const mirrorSavedMission = (source) => {
+      const saved = source.settings || source;
+      const remote = {
+        enabled: saved.attendanceEnabled ?? saved.enabled,
+        mode: saved.attendanceMode ?? saved.mode,
+        minMinutes: saved.attendanceMinMinutes ?? saved.minMinutes,
+        maxMinutes: saved.attendanceMaxMinutes ?? saved.maxMinutes,
+        minutes: saved.attendanceMinutes ?? saved.minutes,
+        points: saved.attendancePoints ?? saved.points,
+        targetSeed: saved.attendanceTargetSeed ?? saved.targetSeed
+      };
+      if (remote.enabled !== enabled || remote.mode !== mode ||
+          remote.minMinutes !== minMinutes || remote.maxMinutes !== maxMinutes ||
+          remote.points !== points || !Number.isInteger(remote.minutes) ||
+          remote.minutes < minMinutes || remote.minutes > maxMinutes ||
+          typeof remote.targetSeed !== 'string' ||
+          (remote.targetSeed !== '' && !/^[0-9a-f]{32}$/.test(remote.targetSeed))) {
+        return res.status(502).json({ success: false, error: 'Could not verify the mission saved on Denfi Points. Check the server before retrying.' });
+      }
       attendanceConfigRevision++;
       try {
         const updated = settings.updateSettings({
-          attendanceEnabled: enabled, attendanceMode: mode, attendanceMinutes: minutes, attendancePoints: points
+          ...attendanceUpdates(input),
+          attendanceMinutes: remote.minutes,
+          attendanceTargetSeed: remote.targetSeed
         });
         broadcastSettings();
         return res.json({ success: true, settings: updated });
@@ -916,19 +998,21 @@ app.post('/api/admin/attendance', verifyToken, async (req, res) => {
         return res.status(409).json({ success: false, error: 'Denfi Points connection changed. Try again.' });
       }
       attemptedRemoteSave = true;
-      const remoteResponse = await fetch(url + '/api/admin/attendance', {
+      const remoteResponse = await fetch(url + '/api/admin/kiosk-attendance', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': login.token },
-        body: JSON.stringify({ enabled, mode, minutes, points }),
+        body: JSON.stringify({ ...input, expectedMission }),
         signal: AbortSignal.timeout(5000)
       });
       const remote = await remoteResponse.json();
       if (!remoteResponse.ok || !remote.success) {
-        return res.status(502).json({ success: false, error: remote.error || 'Denfi Points could not save attendance.' });
+        return res.status(remoteResponse.status === 409 ? 409 : 502).json({
+          success: false, error: remote.error || 'Denfi Points could not save attendance.'
+        });
       }
       if (url !== syncServerUrl) {
         return res.status(409).json({ success: false, error: 'Saved on the previous Denfi Points server, but the connection changed. Check the current server.' });
       }
-      return mirrorSavedMission();
+      return mirrorSavedMission(remote);
     } catch (err) {
       console.error('[Attendance] Could not save shared mission:', err.message);
       if (attemptedRemoteSave) {
@@ -940,8 +1024,9 @@ app.post('/api/admin/attendance', verifyToken, async (req, res) => {
           if (!check.ok) throw new Error('Could not read back the mission');
           const saved = await check.json();
           if (saved.enabled === enabled && saved.mode === mode &&
-              saved.minutes === minutes && saved.points === points) {
-            return mirrorSavedMission();
+              saved.minMinutes === minMinutes && saved.maxMinutes === maxMinutes &&
+              saved.points === points) {
+            return mirrorSavedMission(saved);
           }
         } catch (_) {
           return res.status(503).json({ success: false, error: 'Save outcome unknown. Check the mission on Denfi Points before retrying.' });
@@ -951,9 +1036,7 @@ app.post('/api/admin/attendance', verifyToken, async (req, res) => {
       return res.status(503).json({ success: false, error: 'Could not reach Denfi Points. Nothing was saved on this kiosk.' });
     }
   }
-  const updated = settings.updateSettings({
-    attendanceEnabled: enabled, attendanceMode: mode, attendanceMinutes: minutes, attendancePoints: points
-  });
+  const updated = settings.updateSettings(attendanceUpdates(input));
   broadcastSettings();
   res.json({ success: true, settings: updated });
 });
@@ -1568,13 +1651,18 @@ function setSyncServer(url, persist) {
 }
 
 async function syncAttendanceConfigFromServer() {
-  if (!syncServerUrl) return;
+  if (!syncServerUrl) return false;
   const revision = attendanceConfigRevision;
   try {
     const remote = await fetchAttendance('/api/sync/attendance-config');
-    if (revision !== attendanceConfigRevision || !syncServerUrl) return;
+    if (revision !== attendanceConfigRevision || !syncServerUrl) return false;
     if (typeof remote.enabled !== 'boolean' || !['login', 'minutes'].includes(remote.mode) ||
         !Number.isInteger(remote.minutes) || remote.minutes < 1 || remote.minutes > 1440 ||
+        !Number.isInteger(remote.minMinutes) || remote.minMinutes < 1 ||
+        !Number.isInteger(remote.maxMinutes) || remote.maxMinutes < remote.minMinutes || remote.maxMinutes > 1440 ||
+        remote.minutes < remote.minMinutes || remote.minutes > remote.maxMinutes ||
+        typeof remote.targetSeed !== 'string' ||
+        (remote.targetSeed !== '' && !/^[0-9a-f]{32}$/.test(remote.targetSeed)) ||
         !Number.isFinite(remote.points) || remote.points < 0 || remote.points > 10000 ||
         Math.abs(Math.round(remote.points * 100) - remote.points * 100) > 1e-8) {
       throw new Error('Invalid attendance mission from Denfi Points');
@@ -1582,15 +1670,22 @@ async function syncAttendanceConfigFromServer() {
     const current = settings.getSettings();
     if (current.attendanceEnabled !== remote.enabled || current.attendanceMode !== remote.mode ||
         current.attendanceMinutes !== remote.minutes ||
+        current.attendanceMinMinutes !== remote.minMinutes ||
+        current.attendanceMaxMinutes !== remote.maxMinutes ||
+        current.attendanceTargetSeed !== remote.targetSeed ||
         current.attendancePoints !== remote.points) {
       settings.updateSettings({
         attendanceEnabled: remote.enabled, attendanceMode: remote.mode,
-        attendanceMinutes: remote.minutes, attendancePoints: remote.points
+        attendanceMinutes: remote.minutes, attendanceMinMinutes: remote.minMinutes,
+        attendanceMaxMinutes: remote.maxMinutes, attendanceTargetSeed: remote.targetSeed,
+        attendancePoints: remote.points
       });
       broadcastSettings();
     }
+    return true;
   } catch (err) {
     console.log('[Attendance] Config sync unavailable:', err.message);
+    return false;
   }
 }
 
@@ -1820,7 +1915,9 @@ function attendanceConfig() {
   const s = settings.getSettings();
   return {
     enabled: s.attendanceEnabled, mode: s.attendanceMode,
-    minutes: s.attendanceMinutes, points: s.attendancePoints
+    minutes: s.attendanceMinutes, minMinutes: s.attendanceMinMinutes,
+    maxMinutes: s.attendanceMaxMinutes, targetSeed: s.attendanceTargetSeed,
+    points: s.attendancePoints
   };
 }
 
