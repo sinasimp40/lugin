@@ -57,6 +57,8 @@ The application is built using Electron for the desktop client, with a Node.js (
 - **electron-builder:** For creating executable installers.
 
 ## Running on Replit
+- The project requires Node.js 22.12 or newer; the Replit workspace uses Node.js 22.
+- Install the existing dependencies with `npm install` after a fresh import.
 - Run the browser version with the **Start application** workflow (`node server.js`).
 - The server listens on `0.0.0.0` and uses Replit's assigned `PORT` (default `5000`).
 - Electron kiosk features and Windows system controls only work in the packaged Windows desktop app.
