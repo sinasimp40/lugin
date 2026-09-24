@@ -7,7 +7,7 @@ Attendance progress and shared-mission saves use the existing Denfi Points conne
 
 **Why:** In a diskless shop, entering or retaining the Points admin password on every kiosk is impractical across resets. The user explicitly chose automatic shared-mission saves through the existing connection. Other devices on that subnet can impersonate kiosks, so this arrangement assumes an isolated, trusted shop network.
 
-**How to apply:** Do not reintroduce per-kiosk passwords for connected mission saves. Keep Denfi Points authoritative; never silently save a conflicting local mission if the central save fails. On multi-network Points hosts, scope automatic writes to the intended shop subnet; do not permit localhost proxies to bypass the check. Internet or untrusted-network access needs real authentication and server identity verification, not only an HTTP connection.
+**How to apply:** Do not reintroduce per-kiosk passwords for connected mission saves. Keep Denfi Points authoritative; never silently save a conflicting local mission if the central save fails. On multi-network Points hosts, scope automatic writes to the intended shop subnet. When both apps run on the same PC, connect via its private LAN address, not localhost: a reverse proxy must not bypass the network trust check. Internet or untrusted-network access needs real authentication and server identity verification, not only an HTTP connection.
 
 Delayed attendance reports must be evaluated using the server's policy for the day played, not today's configuration. Persist a received-progress acknowledgement and any confirmed award together.
 

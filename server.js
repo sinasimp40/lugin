@@ -1747,11 +1747,46 @@ async function probePointsServer(ip) {
   return null;
 }
 
+function isLoopbackPointsUrl(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+  } catch (_) {
+    return false;
+  }
+}
+
+async function findLocalPointsServer() {
+  const os = require('os');
+  const networks = os.networkInterfaces();
+  const { trustedLanPeer } = require('./src/trusted-lan');
+  for (const net of Object.values(networks).flat()) {
+    if (!net || net.family !== 'IPv4' || net.internal ||
+        !trustedLanPeer(net.address, networks, {
+          localAddress: net.address,
+          subnet: process.env.DENFI_TRUSTED_KIOSK_SUBNET
+        })) continue;
+    const found = await probePointsServer(net.address);
+    if (found) return found;
+  }
+  return null;
+}
+
 async function discoverPointsServer() {
   const savedUrl = settings.getSettings().syncServerUrl;
   if (savedUrl) {
-    const ok = await probePointsServer(new URL(savedUrl).hostname);
-    if (ok) return savedUrl;
+    if (isElectron && isLoopbackPointsUrl(savedUrl)) {
+      const localAddress = await findLocalPointsServer();
+      if (localAddress) return localAddress;
+    } else {
+      const ok = await probePointsServer(new URL(savedUrl).hostname);
+      if (ok) return savedUrl;
+    }
+  }
+
+  if (isElectron) {
+    const localAddress = await findLocalPointsServer();
+    if (localAddress) return localAddress;
   }
 
   const gateway = await getDefaultGateway();
@@ -1781,8 +1816,10 @@ async function discoverPointsServer() {
     }
   }
 
-  const localhost = await probePointsServer('127.0.0.1');
-  if (localhost) return localhost;
+  if (!isElectron) {
+    const localhost = await probePointsServer('127.0.0.1');
+    if (localhost) return localhost;
+  }
 
   return null;
 }
@@ -1804,6 +1841,11 @@ app.post('/api/admin/sync-server', verifyToken, express.json(), async (req, res)
   }
   if (!/^https?:\/\//i.test(url)) url = 'http://' + url;
   try {
+    if (isElectron && isLoopbackPointsUrl(url)) {
+      const localAddress = await findLocalPointsServer();
+      if (!localAddress) return res.json({ success: false, error: 'Use the Denfi Points computer’s private LAN address. A localhost connection cannot securely save the shared mission.' });
+      url = localAddress;
+    }
     const resp = await fetch(url + '/api/admin/status', { signal: AbortSignal.timeout(3000) });
     if (resp.ok) {
       const data = await resp.json();
@@ -2405,6 +2447,22 @@ server.listen(PORT, LISTEN_HOST, () => {
     if (!syncServerUrl && savedSync) {
       console.log('[Sync] Loading saved server URL:', savedSync);
       setSyncServer(savedSync);
+    }
+    if (isElectron && syncServerUrl && isLoopbackPointsUrl(syncServerUrl)) {
+      void findLocalPointsServer().then(found => {
+        if (found && isLoopbackPointsUrl(syncServerUrl)) setSyncServer(found, true);
+      }).catch(err => console.log('[Sync] Could not resolve the local Points LAN address:', err.message));
+    }
+    if (isElectron) {
+      setInterval(() => {
+        if (syncServerUrl && !isLoopbackPointsUrl(syncServerUrl)) return;
+        void findLocalPointsServer().then(found => {
+          if (found && (!syncServerUrl || isLoopbackPointsUrl(syncServerUrl))) {
+            console.log('[Sync] Found Denfi Points on this computer:', found);
+            setSyncServer(found, true);
+          }
+        }).catch(err => console.log('[Sync] Local Points discovery failed:', err.message));
+      }, 15000).unref();
     }
     if (!syncServerUrl) {
       (async () => {

@@ -21,6 +21,10 @@ function writeAdminStopSentinel() {
 
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+app.setName('Denfi Auto Shutdown');
+const autoUserData = path.join(app.getPath('appData'), 'denfi-auto-shutdown');
+require('fs').mkdirSync(autoUserData, { recursive: true });
+app.setPath('userData', autoUserData);
 
 const PORT = 5001;
 const APP_URL = `http://127.0.0.1:${PORT}`;
@@ -581,28 +585,6 @@ app.on('child-process-gone', (_event, details) => {
 });
 
 app.whenReady().then(async () => {
-  // Cross-app mutual exclusion MUST be the first awaited step so no startup
-  // side effects (server boot, window creation, watchdog spawn, task install)
-  // happen if the lock is denied.
-  const lockResult = await appLock.acquireLock('auto-shutdown');
-  if (!lockResult.acquired) {
-    const holder = lockResult.holder && lockResult.holder.role ? lockResult.holder.role : 'another Denfi app';
-    const friendly = holder === 'points' ? 'Denfi Points' : holder;
-    try {
-      const { dialog } = require('electron');
-      dialog.showErrorBox(
-        'Denfi Auto Shutdown',
-        `Cannot start: ${friendly} is already running on this PC.\n\n` +
-        `Auto-Shutdown and Denfi Points cannot run at the same time.\n` +
-        `Please close ${friendly} first, then try again.`
-      );
-    } catch (_) {}
-    app.exit(1);
-    return;
-  }
-
-  process.env.PORT = String(PORT);
-
   const path = require('path');
   const fs = require('fs');
   const settings = require('./src/settings-store');
@@ -656,6 +638,26 @@ app.whenReady().then(async () => {
     }
   }
 
+  // Publish the data folder atomically with the role lock. The other app can
+  // then reject a shared folder even when both are launched simultaneously.
+  const lockResult = await appLock.acquireLock('auto-shutdown', dataDir);
+  if (!lockResult.acquired) {
+    const { dialog } = require('electron');
+    dialog.showErrorBox('Denfi Auto Shutdown',
+      'Cannot start: Auto Shutdown is already running on this PC, or its local lock is in use.');
+    app.exit(1);
+    return;
+  }
+  const pointsHolder = await appLock.queryHolder('points');
+  if (appLock.sameDataDir(dataDir, pointsHolder?.dataDir)) {
+    const { dialog } = require('electron');
+    dialog.showErrorBox('Denfi Auto Shutdown',
+      'Auto Shutdown and Denfi Points can run on the same PC, but cannot share one data folder. Install them in separate folders before starting both.');
+    app.exit(1);
+    return;
+  }
+  process.env.PORT = String(PORT);
+
   try {
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
   } catch (e) {
@@ -704,7 +706,7 @@ app.whenReady().then(async () => {
               if (data.registered !== undefined && data.appRole === 'auto-shutdown') {
                 resolve();
               } else if (data.registered !== undefined && data.appRole && data.appRole !== 'auto-shutdown') {
-                reject(new Error('Port ' + PORT + ' is being used by Denfi Points. Both apps cannot run on the same port.'));
+                reject(new Error('Port ' + PORT + ' is serving another app.'));
               } else {
                 retry();
               }

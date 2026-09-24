@@ -222,6 +222,9 @@ test('automatic mission writes are limited to the Points computer and its privat
   assert.equal(trustedLanPeer('10.10.10.45', interfaces, {
     localAddress: '10.10.10.29', subnet: '10.10.10.0/24'
   }), true);
+  assert.equal(trustedLanPeer('10.10.10.29', interfaces, {
+    localAddress: '10.10.10.29', subnet: '10.10.10.0/24'
+  }), true, 'a co-located kiosk can use the Points computer’s private LAN address');
   assert.equal(trustedLanPeer('10.10.10.45', interfaces, {
     localAddress: '10.10.10.29', subnet: '10.10.11.0/24'
   }), false);

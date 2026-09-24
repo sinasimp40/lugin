@@ -1,8 +1,13 @@
 const { app, Tray, Menu, nativeImage, BrowserWindow } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const appLock = require('./src/app-lock');
 
 process.env.DENFI_APP_ROLE = 'points';
+app.setName('Denfi Points');
+const pointsUserData = path.join(app.getPath('appData'), 'denfi-points');
+fs.mkdirSync(pointsUserData, { recursive: true });
+app.setPath('userData', pointsUserData);
 
 let tray = null;
 let serverModule = null;
@@ -13,29 +18,32 @@ if (!gotPointsLock) {
 }
 
 app.on('ready', async () => {
-  // Cross-app exclusion: don't run if Auto-Shutdown is up on this PC.
-  const lockResult = await appLock.acquireLock('points');
+  const exeDir = path.dirname(app.getPath('exe'));
+  const dataDir = path.join(exeDir, 'data');
+  // Only another Denfi Points instance on this PC blocks startup.
+  const lockResult = await appLock.acquireLock('points', dataDir);
   if (!lockResult.acquired) {
-    const holder = lockResult.holder && lockResult.holder.role ? lockResult.holder.role : 'another Denfi app';
-    const friendly = holder === 'auto-shutdown' ? 'Denfi Auto Shutdown' : holder;
     try {
       const { dialog } = require('electron');
       dialog.showErrorBox(
         'Denfi Points',
-        `Cannot start: ${friendly} is already running on this PC.\n\n` +
-        `Auto-Shutdown and Denfi Points cannot run at the same time.\n` +
-        `Please close ${friendly} first, then try again.`
+        'Cannot start: Denfi Points is already running on this PC, or its local lock is in use.'
       );
     } catch (_) {}
     app.exit(1);
     return;
   }
 
+  const kioskHolder = await appLock.queryHolder('auto-shutdown');
+  if (appLock.sameDataDir(dataDir, kioskHolder?.dataDir)) {
+    const { dialog } = require('electron');
+    dialog.showErrorBox('Denfi Points',
+      'Denfi Points and Auto Shutdown can run on the same PC, but cannot share one data folder. Install them in separate folders before starting both.');
+    app.quit();
+    return;
+  }
+  process.env.PORT = '5000';
   process.env.DENFI_LISTEN_HOST = '0.0.0.0';
-
-  const fs = require('fs');
-  const exeDir = path.dirname(app.getPath('exe'));
-  const dataDir = path.join(exeDir, 'data');
 
   try {
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
