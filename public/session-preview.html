@@ -51,13 +51,18 @@
       <div class="hud">ARENA / ROUND 08<strong>12 — 09</strong></div>
       <div class="crosshair"></div>
     </div>
-    <div class="hint">Interactive demo — use ORDER, RANKING, and LOGOUT in the bottom-right overlay</div>
+    <div class="hint">Interactive demo — use ORDER, RANKING, ATTENDANCE, and LOGOUT in the bottom-right overlay</div>
     <div class="taskbar">
       <div class="start"><i></i><i></i><i></i><i></i></div>
       <div class="app-dot"></div>
       <div class="clock"><span id="clock">10:24 PM</span><br>9/16/2026</div>
     </div>
     <iframe class="session-frame" id="session-frame" title="Interactive Denfi session overlay" src="/session.html?preview=1"></iframe>
+    <script>
+      if (new URLSearchParams(location.search).get('attendance') === '1') {
+        document.getElementById('session-frame').src = '/session.html?preview=1&attendance=1';
+      }
+    </script>
   </main>
   <script>
     const frame = document.getElementById('session-frame');

@@ -52,6 +52,12 @@ function load() {
         try { save(raw); } catch (_) {}
       }
     }
+    if ('attendancePairHash' in raw || 'attendanceClientKey' in raw || 'attendancePairRejected' in raw) {
+      delete raw.attendancePairHash;
+      delete raw.attendanceClientKey;
+      delete raw.attendancePairRejected;
+      save(raw);
+    }
     return raw;
   } catch (e) {
     const backupPath = settingsPath + '.corrupted.' + Date.now();
@@ -347,34 +353,28 @@ function getAttendancePolicy(day) {
   return latest ? raw.attendancePolicies[latest] : { enabled: false, mode: 'minutes', minutes: 60, points: 1 };
 }
 
-function setAttendancePairKey(key) {
-  const s = load();
-  s.attendancePairHash = crypto.createHash('sha256').update(key).digest('hex');
-  save(s);
-}
-function getAttendancePairHash() { return load().attendancePairHash || ''; }
-function isAttendancePairRejected() { return !!load().attendancePairRejected; }
-function setAttendancePairRejected(rejected) {
-  const s = load();
-  if (!!s.attendancePairRejected === !!rejected) return;
-  s.attendancePairRejected = !!rejected;
-  save(s);
-}
-
-function verifyAttendancePairKey(key) {
-  const hash = load().attendancePairHash;
-  if (!hash || typeof key !== 'string') return false;
-  const provided = crypto.createHash('sha256').update(key).digest();
-  return crypto.timingSafeEqual(provided, Buffer.from(hash, 'hex'));
-}
-
-function hasAttendancePairKey() { return !!load().attendancePairHash; }
-function getAttendanceClientKey() { return load().attendanceClientKey || ''; }
-function setAttendanceClientKey(key) {
-  const s = load();
-  s.attendanceClientKey = key;
-  s.attendancePairRejected = false;
-  save(s);
+function getAttendancePoliciesForYear(year) {
+  const raw = load();
+  const keys = Object.keys(raw.attendancePolicies || {}).sort();
+  const current = getSettings();
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const policies = {};
+  let latest = 0;
+  let policy = { enabled: false, mode: 'minutes', minutes: 60, points: 1 };
+  const cursor = new Date(year, 0, 1);
+  while (cursor.getFullYear() === year) {
+    const day = `${year}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+    while (latest < keys.length && keys[latest] <= day) {
+      policy = raw.attendancePolicies[keys[latest++]];
+    }
+    policies[day] = day === todayKey
+      ? { enabled: current.attendanceEnabled, mode: current.attendanceMode,
+        minutes: current.attendanceMinutes, points: current.attendancePoints }
+      : policy;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return policies;
 }
 
 function saveBackgroundImage(fileBuffer, originalName, mimeType) {
@@ -663,14 +663,7 @@ module.exports = {
   getPublicSettings,
   updateSettings,
   getAttendancePolicy,
-  setAttendancePairKey,
-  getAttendancePairHash,
-  isAttendancePairRejected,
-  setAttendancePairRejected,
-  verifyAttendancePairKey,
-  hasAttendancePairKey,
-  getAttendanceClientKey,
-  setAttendanceClientKey,
+  getAttendancePoliciesForYear,
   getTelegramSettings,
   getTelegramAdminSettings,
   updateTelegramSettings,

@@ -1,13 +1,13 @@
 ---
-name: Attendance trust and history
-description: Why central attendance sync needs signed messages, historical mission policy, and atomic receipts.
+name: Attendance history and network trust
+description: Intentional no-pairing tradeoff, historical mission policy, and atomic receipts.
 ---
 
-Treat attendance pairing as a trust boundary even on a local network. Never transmit the reusable shared key in requests, and authenticate both submitted progress and mission configuration returned to a kiosk.
+Attendance sync uses the existing Denfi Points connection with no extra member/kiosk pairing step.
 
-**Why:** Kiosks commonly use HTTP to reach Denfi Points on the LAN. A bearer key or unsigned response could let a network observer forge rewards or disable local time tracking.
+**Why:** The user explicitly wanted manual key pairing removed after configuring the Denfi Points server. This favors setup simplicity over protection from untrusted LAN devices. Connectivity is not authentication.
 
-**How to apply:** When extending central sync, preserve request and response integrity, reject stale/replayed submissions, and avoid accepting unsigned mission settings.
+**How to apply:** Do not reintroduce an admin key prompt without discussing the user-facing tradeoff. Treat the LAN as trusted and be candid that exposed sync endpoints can be abused; if internet exposure becomes necessary, plan a different secure deployment.
 
 Delayed attendance reports must be evaluated using the server's policy for the day played, not today's configuration. Persist a received-progress acknowledgement and any confirmed award together.
 

@@ -130,6 +130,23 @@ function status(username, day = dayKey()) {
   };
 }
 
+function yearEntries(username, year) {
+  const result = {};
+  const days = load().days || {};
+  const prefix = `${year}-`;
+  for (const [day, users] of Object.entries(days)) {
+    if (!day.startsWith(prefix)) continue;
+    const entry = users?.[username];
+    if (!entry) continue;
+    result[day] = {
+      seconds: Object.values(entry.devices || {}).reduce((sum, n) => sum + (Number(n) || 0), 0),
+      awarded: !!entry.awarded,
+      awardedPoints: entry.awardedPoints
+    };
+  }
+  return result;
+}
+
 function markAwarded(username, day, points) {
   const data = load();
   const entry = data.days?.[day]?.[username];
@@ -140,4 +157,4 @@ function markAwarded(username, day, points) {
   }
 }
 
-module.exports = { setDataDir, dayKey, record, merge, status, markAwarded, pendingSamples, markSynced, acknowledge };
+module.exports = { setDataDir, dayKey, record, merge, status, yearEntries, markAwarded, pendingSamples, markSynced, acknowledge };

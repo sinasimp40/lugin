@@ -487,6 +487,46 @@
     box-shadow:0 0 8px rgba(255,70,45,.35), inset 0 1px 0 rgba(255,255,255,.18);
   }
   .logout-btn::before { display:none; }
+
+  /* Attendance is intentionally dense: the drawer is scaled by the host window,
+     so the year remains scrollable instead of forcing an oversized native window. */
+  #attendance-btn { display:none; border-color:rgba(255,215,64,.8); background:linear-gradient(180deg,#8a8110,#5d5700); color:#fffca7; }
+  #attendance-btn.member-visible { display:block; }
+  .attendance-view { min-width:0; }
+  .attendance-toolbar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:9px; }
+  .attendance-year { color:#ffe0a4; font:800 17px 'Orbitron',monospace; letter-spacing:1px; }
+  .year-nav { display:flex; gap:5px; }
+  .year-nav button, .attendance-retry { border:1px solid rgba(255,177,61,.7); background:#39250f; color:#ffd08a; cursor:pointer; font:12px 'Share Tech Mono'; padding:5px 9px; }
+  .year-nav button:hover, .attendance-retry:hover { background:#68400e; color:#fff0ce; }
+  .year-nav button:disabled { opacity:.35; cursor:not-allowed; }
+  .attendance-meta { color:#9f8769; font-size:10px; letter-spacing:.4px; margin-bottom:8px; }
+  .attendance-error { color:#ffaaa0; border:1px solid rgba(255,95,75,.55); background:#2b1715; padding:12px; line-height:1.45; font-size:11px; }
+  .attendance-error strong { display:block; color:#ffd0c9; margin-bottom:7px; }
+  .calendar-scroll { max-height:430px; overflow-y:auto; padding-right:4px; scrollbar-color:#96601e #17120d; }
+  .calendar-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .month { border:1px solid rgba(255,140,0,.2); background:rgba(255,255,255,.025); padding:7px; min-width:0; }
+  .month-title { color:#ffc578; font:700 13px 'Orbitron',monospace; letter-spacing:.5px; margin-bottom:6px; }
+  .weekdays, .month-days { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+  .weekdays span { color:#a49176; font-size:11px; text-align:center; }
+  .day { min-width:0; height:27px; border:1px solid transparent; background:#201a14; color:#b6a28a; cursor:default; font:12px 'Share Tech Mono'; padding:0; }
+  .day[aria-label] { cursor:pointer; }
+  .day.completed { background:#235b37; border-color:#68ca83; color:#e4ffe9; }
+  .day.played { background:#8a5b18; border-color:#e2a847; color:#fff0c2; }
+  .day.attended-no-mission { background:#214c57; border-color:#58b9cd; color:#dcf8ff; }
+  .day.absent { background:#4a2525; border-color:#984f4b; color:#ffc3bc; }
+  .day.no-mission { background:#302a24; color:#897865; }
+  .day.future { background:#181818; color:#514b45; }
+  .day.today { outline:1px solid #ffe28a; outline-offset:1px; }
+  .attendance-legend { display:flex; flex-wrap:wrap; gap:7px 11px; margin-top:9px; color:#9f8769; font-size:9px; }
+  .legend-item { display:flex; align-items:center; gap:4px; }
+  .legend-swatch { width:9px; height:9px; border:1px solid rgba(255,255,255,.18); }
+  .legend-swatch.completed { background:#235b37; border-color:#68ca83; }
+  .legend-swatch.played { background:#8a5b18; border-color:#e2a847; }
+  .legend-swatch.attended-no-mission { background:#214c57; border-color:#58b9cd; }
+  .legend-swatch.absent { background:#4a2525; border-color:#984f4b; }
+  .legend-swatch.no-mission { background:#302a24; }
+  .legend-swatch.future { background:#181818; }
+  @media (max-width:560px) { .calendar-grid { grid-template-columns:1fr; } .calendar-scroll { max-height:420px; } }
 </style>
 </head>
 <body>
@@ -520,6 +560,7 @@
         <div class="quick-actions">
           <button class="quick-btn" id="shop-btn" type="button">ORDER</button>
           <button class="quick-btn" id="rank-btn" type="button">RANKING</button>
+          <button class="quick-btn" id="attendance-btn" type="button">ATTENDANCE</button>
         </div>
         <button class="logout-btn" id="logout-btn">LOGOUT</button>
       </div>
@@ -535,6 +576,17 @@
       </div>
       <div id="rank-view" style="display:none">
         <div class="rank-list" id="rank-list"></div>
+      </div>
+      <div id="attendance-view" class="attendance-view" style="display:none">
+        <div class="attendance-toolbar">
+          <div class="attendance-year" id="attendance-year"></div>
+          <div class="year-nav">
+            <button id="attendance-prev" type="button" aria-label="Previous year">PREV</button>
+            <button id="attendance-next" type="button" aria-label="Next year">NEXT</button>
+          </div>
+        </div>
+        <div class="attendance-meta" id="attendance-meta">Loading attendance record...</div>
+        <div id="attendance-content"></div>
       </div>
     </div>
     <div class="cart-bar" id="cart-bar">
@@ -646,6 +698,8 @@
     const OVERLAY_SCALE = 0.72;
     const MIN_OVERLAY_WIDTH = 331;
     const MAX_OVERLAY_WIDTH = 560;
+    let attendanceYear = new Date().getFullYear();
+    let attendanceRequest = 0;
 
     function measureIntrinsicWidth(element) {
       if (!element || !element.classList.contains('active') && element.id === 'pc-label') return 0;
@@ -738,6 +792,7 @@
       document.querySelector('.overlay-shell').classList.remove('drawer-below');
       document.getElementById('shop-btn').classList.remove('active');
       document.getElementById('rank-btn').classList.remove('active');
+      document.getElementById('attendance-btn').classList.remove('active');
       setOverlayExpanded(false);
     }
 
@@ -753,14 +808,137 @@
       document.getElementById('drawer').classList.add('active');
       document.getElementById('shop-btn').classList.toggle('active', view === 'shop');
       document.getElementById('rank-btn').classList.toggle('active', view === 'rank');
+      document.getElementById('attendance-btn').classList.toggle('active', view === 'attendance');
       document.getElementById('store-view').style.display = view === 'shop' ? '' : 'none';
       document.getElementById('rank-view').style.display = view === 'rank' ? '' : 'none';
+      document.getElementById('attendance-view').style.display = view === 'attendance' ? '' : 'none';
       document.getElementById('cart-bar').style.display = view === 'shop' ? 'flex' : 'none';
       document.getElementById('rank-note').style.display = view === 'rank' ? '' : 'none';
-      document.getElementById('drawer-title').textContent = view === 'shop' ? 'QUICK ORDER' : 'TOP 5 REGULARS';
+      document.getElementById('drawer-title').textContent = view === 'shop' ? 'QUICK ORDER' : view === 'rank' ? 'TOP 5 REGULARS' : 'ATTENDANCE · FULL YEAR';
       resizeDrawerToContent();
       if (view === 'shop') loadProducts();
-      else loadLeaderboard();
+      else if (view === 'rank') loadLeaderboard();
+      else loadAttendance(attendanceYear);
+    }
+
+    function isMemberSession() {
+      return String(sessionUsername || '').toLowerCase().startsWith('mem-');
+    }
+
+    function updateAttendanceButton() {
+      const button = document.getElementById('attendance-btn');
+      button.classList.toggle('member-visible', isMemberSession());
+      if (!isMemberSession() && activeDrawer === 'attendance') closeDrawer();
+    }
+
+    function attendanceDateLabel(iso) {
+      return new Date(iso + 'T12:00:00').toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+    }
+
+    function renderAttendance(days, meta) {
+      const content = document.getElementById('attendance-content');
+      const source = meta.source === 'denfi-points' ? 'DENFI POINTS' : meta.source === 'local' ? 'LOCAL RECORD' : meta.source === 'demo' ? 'DEMO PREVIEW' : 'SOURCE UNKNOWN';
+      document.getElementById('attendance-meta').textContent = `${meta.username || sessionUsername} · ${source} · select a date for details`;
+      content.innerHTML = '';
+      const scroll = document.createElement('div');
+      scroll.className = 'calendar-scroll';
+      const grid = document.createElement('div');
+      grid.className = 'calendar-grid';
+      const today = new Date();
+      const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+      for (let month = 0; month < 12; month++) {
+        const panel = document.createElement('section');
+        panel.className = 'month';
+        const title = document.createElement('div');
+        title.className = 'month-title';
+        title.textContent = new Date(meta.year, month, 1).toLocaleDateString(undefined, { month:'long' }).toUpperCase();
+        const weekdays = document.createElement('div');
+        weekdays.className = 'weekdays';
+        ['S','M','T','W','T','F','S'].forEach(label => { const s=document.createElement('span'); s.textContent=label; weekdays.appendChild(s); });
+        const monthDays = document.createElement('div');
+        monthDays.className = 'month-days';
+        const firstDay = new Date(meta.year, month, 1).getDay();
+        for (let blank = 0; blank < firstDay; blank++) monthDays.appendChild(document.createElement('span'));
+        const total = new Date(meta.year, month + 1, 0).getDate();
+        for (let date = 1; date <= total; date++) {
+          const iso = `${meta.year}-${String(month + 1).padStart(2,'0')}-${String(date).padStart(2,'0')}`;
+          const record = days[iso] || {};
+          const button = document.createElement('button');
+          button.className = 'day';
+          button.textContent = date;
+          button.type = 'button';
+          const future = iso > todayIso;
+          const rawState = String(record.status || 'no-mission').toLowerCase();
+          const stateMap = { complete:'completed', completed:'completed', 'played-but-incomplete':'played', 'played_but_incomplete':'played', incomplete:'played', played:'played', 'attended-no-mission':'attended-no-mission', 'no_mission':'no-mission', 'no mission':'no-mission', 'no-mission':'no-mission', absent:'absent' };
+          let state = future ? 'future' : (stateMap[rawState] || 'no-mission');
+          if (!['completed','played','attended-no-mission','absent','no-mission'].includes(state) && !future) state = 'no-mission';
+          button.classList.add(state);
+          if (iso === todayIso) button.classList.add('today');
+          const label = `${attendanceDateLabel(iso)}: ${state === 'played' ? 'attended, mission unfinished' : state === 'attended-no-mission' ? 'attended, no mission that day' : state.replace('-', ' ')}`;
+          button.setAttribute('aria-label', label);
+          button.title = label + (record.seconds ? ` · ${Math.floor(record.seconds / 60)} minutes` : '');
+          button.addEventListener('click', () => {
+            const played = record.seconds ? ` · ${Math.floor(record.seconds / 60)}m played` : '';
+            const target = record.goalSeconds ? ` / ${Math.floor(record.goalSeconds / 60)}m target` : '';
+            document.getElementById('attendance-meta').textContent = `${attendanceDateLabel(iso)} · ${state.replaceAll('-', ' ').toUpperCase()}${played}${target}${state === 'completed' && record.points ? ` · +${record.points} POINTS AWARDED` : ''}`;
+          });
+          monthDays.appendChild(button);
+        }
+        panel.append(title, weekdays, monthDays);
+        grid.appendChild(panel);
+      }
+      scroll.appendChild(grid);
+      content.appendChild(scroll);
+      const legend = document.createElement('div');
+      legend.className = 'attendance-legend';
+      [['completed','COMPLETED'],['played','PLAYED · INCOMPLETE'],['attended-no-mission','ATTENDED · NO MISSION'],['absent','ABSENT'],['no-mission','NO MISSION'],['future','FUTURE']].forEach(([key,label]) => {
+        const item=document.createElement('span'); item.className='legend-item'; item.innerHTML=`<i class="legend-swatch ${key}"></i>${label}`; legend.appendChild(item);
+      });
+      content.appendChild(legend);
+      resizeDrawerToContent();
+    }
+
+    async function loadAttendance(year) {
+      if (!isMemberSession()) return;
+      const requestId = ++attendanceRequest;
+      document.getElementById('attendance-year').textContent = year;
+      document.getElementById('attendance-prev').disabled = year <= 2000;
+      document.getElementById('attendance-next').disabled = year >= new Date().getFullYear();
+      const content = document.getElementById('attendance-content');
+      document.getElementById('attendance-meta').textContent = 'Fetching attendance record...';
+      content.innerHTML = '<div class="empty-state">Loading the year record...</div>';
+      resizeDrawerToContent();
+      if (previewMode) {
+        const demo = {};
+        [['01-08','completed'],['01-09','played'],['02-14','no-mission'],['03-22','absent'],['05-04','completed'],['07-19','played'],['09-16','completed'],['11-02','absent']].forEach(([d,status]) => { demo[`${year}-${d}`]={status,seconds:status==='completed'?3600:1800,goalSeconds:3600,points:status==='completed'?5:0}; });
+        renderAttendance(demo, { year, username: sessionUsername, source:'demo' });
+        return;
+      }
+      try {
+        const response = await fetch(`/api/session/attendance?year=${encodeURIComponent(year)}`);
+        const data = await response.json().catch(() => ({}));
+        if (requestId !== attendanceRequest) return;
+        if (!response.ok || !data.success) throw new Error(response.status === 401 ? 'Your session is no longer authorized.' : response.status === 503 ? 'Attendance service is unavailable.' : (data.error || 'Attendance record could not be loaded.'));
+        if (data.username !== sessionUsername || data.year !== year || !data.days || typeof data.days !== 'object') throw new Error('The active member changed. Please reopen attendance.');
+        renderAttendance(data.days && typeof data.days === 'object' ? data.days : {}, { year: data.year || year, username: data.username, source: data.source });
+      } catch (error) {
+        document.getElementById('attendance-meta').textContent = 'Attendance unavailable';
+        content.replaceChildren();
+        const errorBox = document.createElement('div');
+        errorBox.className = 'attendance-error';
+        const label = document.createElement('strong');
+        label.textContent = 'ATTENDANCE UNAVAILABLE';
+        const explanation = document.createElement('div');
+        explanation.textContent = error.message || 'Could not load this record.';
+        const retry = document.createElement('button');
+        retry.className = 'attendance-retry';
+        retry.type = 'button';
+        retry.textContent = 'RETRY';
+        retry.addEventListener('click', () => loadAttendance(year));
+        errorBox.append(label, explanation, document.createElement('br'), retry);
+        content.appendChild(errorBox);
+        resizeDrawerToContent();
+      }
     }
 
     function money(value) {
@@ -990,6 +1168,7 @@
               timeLeft = newTime;
               if (newTime > 0) autoLogoutTriggered = false;
               if (msg.data.logoutLink) logoutLink = msg.data.logoutLink;
+              if (msg.data.username && sessionUsername && msg.data.username !== sessionUsername && activeDrawer === 'attendance') closeDrawer();
               if (msg.data.username) sessionUsername = msg.data.username;
               if (msg.data.ip) sessionIp = msg.data.ip;
               if (msg.data.mac) sessionMac = msg.data.mac;
@@ -999,12 +1178,15 @@
               if (msg.data.memberPoints !== undefined) setPoints(msg.data.memberPoints);
               else setPoints(null);
               setAttendance(msg.data.attendance);
+              updateAttendanceButton();
               updateTimer();
               checkExpiryLogout();
             }
           } else if (msg.type === 'settings' && activeDrawer === 'shop') {
             loadProducts();
           } else if (msg.type === 'logged-out') {
+            sessionUsername = '';
+            updateAttendanceButton();
             setPoints(null);
             setAttendance(null);
             if (window.electronAPI && window.electronAPI.setSessionState) {
@@ -1064,7 +1246,6 @@
       document.getElementById('attendance-track').setAttribute('aria-valuenow', percent);
       document.getElementById('attendance-label').textContent = completed
         ? `DAILY COMPLETE · +${progress.points} PTS`
-        : progress.pairRequired ? 'DAILY · PAIR KIOSK IN ADMIN'
         : progress.pending
         ? progress.mode === 'login' ? 'DAILY LOGIN · SYNC PENDING' : `DAILY ${played}/${progress.minutes}m · SYNC PENDING`
           : progress.mode === 'login' ? 'DAILY LOGIN · CHECKING' : `DAILY ${played}/${progress.minutes}m · +${progress.points} PTS`;
@@ -1078,6 +1259,7 @@
         setPcLabel('PC-07');
         setPoints(86.5);
         setAttendance({ enabled: true, seconds: 1800, minutes: 60, points: 5, awarded: false });
+        updateAttendanceButton();
         updateTimer();
         return;
       }
@@ -1104,6 +1286,7 @@
           if (data.data.memberPoints !== undefined) setPoints(data.data.memberPoints);
           else setPoints(null);
           setAttendance(data.data.attendance);
+          updateAttendanceButton();
           updateTimer();
           checkExpiryLogout();
         }
@@ -1191,11 +1374,25 @@
     document.getElementById('logout-btn').addEventListener('click', (e) => { e.preventDefault(); doLogout(); });
     document.getElementById('shop-btn').addEventListener('click', () => openDrawer('shop'));
     document.getElementById('rank-btn').addEventListener('click', () => openDrawer('rank'));
+    document.getElementById('attendance-btn').addEventListener('click', () => openDrawer('attendance'));
+    document.getElementById('attendance-prev').addEventListener('click', () => {
+      if (attendanceYear <= 2000) return;
+      attendanceYear -= 1;
+      loadAttendance(attendanceYear);
+    });
+    document.getElementById('attendance-next').addEventListener('click', () => {
+      if (attendanceYear >= new Date().getFullYear()) return;
+      attendanceYear += 1;
+      loadAttendance(attendanceYear);
+    });
     document.getElementById('drawer-close').addEventListener('click', closeDrawer);
     document.getElementById('clear-cart').addEventListener('click', () => { cart = {}; renderCart(); });
     document.getElementById('place-order').addEventListener('click', placeOrder);
 
     loadStatus();
+    if (previewMode && new URLSearchParams(location.search).get('attendance') === '1') {
+      openDrawer('attendance');
+    }
     if (!previewMode) connectWs();
     interval = setInterval(() => {
       if (timeLeft > 0) {

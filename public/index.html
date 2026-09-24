@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Denfi Auto Shutdown</title>
-  <style>
+    <link rel="stylesheet" href="/attendance-calendar.css">
+    <style>
     @font-face {
       font-family: 'Orbitron';
       font-style: normal;
@@ -1063,7 +1064,8 @@
     .ad-content-editor hr { border: none; border-top: 1px solid var(--dark-border); margin: 8px 0; }
 
     .session-panel { display: none; position: fixed; right: 10px; bottom: 10px; width: 250px; height: 80px; z-index: 99; }
-    .session-panel.attendance-visible { height: 105px; }
+    .session-panel.attendance-visible { height: 135px; }
+    .session-panel.attendance-available:not(.attendance-visible) { height: 108px; }
     .session-panel.active { display: block; }
     .session-compact {
       padding: 10px 14px; width: 100%; height: 100%;
@@ -1109,6 +1111,10 @@
     .session-attendance.active { display:block; }
     .session-attendance-bar { height:5px; margin-top:4px; background:#443322; border-radius:4px; overflow:hidden; }
     .session-attendance-fill { height:100%; width:0; background:#ffae38; transition:width .7s ease; }
+    .session-attendance-calendar { display:none; -webkit-app-region:no-drag; }
+    .session-attendance-calendar.active { display:block; }
+    .session-attendance-calendar button { width:100%; border:1px solid rgba(255,185,79,.6); border-radius:3px; padding:4px 8px; background:#3a270d; color:#ffe1aa; cursor:pointer; font:700 10px 'Share Tech Mono',monospace; letter-spacing:1px; }
+    .session-attendance-calendar button:hover { background:#74450e; }
     .session-bottom .btn-logout-sm {
       -webkit-app-region: no-drag;
       background: rgba(255,140,0,0.08);
@@ -1679,6 +1685,30 @@
         <span id="session-attendance-label"></span>
         <div class="session-attendance-bar" role="progressbar" id="session-attendance-bar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="session-attendance-fill" id="session-attendance-fill"></div></div>
       </div>
+      <div class="session-attendance-calendar" id="session-attendance-calendar">
+        <button type="button" onclick="DenfiAttendance.open()">ATTENDANCE · YEAR CALENDAR</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="attendance-modal" class="attendance-modal" role="dialog" aria-modal="true" aria-labelledby="attendance-modal-title" hidden>
+    <div class="attendance-modal-panel">
+      <div class="attendance-modal-head">
+        <div><span class="attendance-eyebrow">MEMBER HISTORY</span><h2 id="attendance-modal-title">Daily attendance</h2></div>
+        <button type="button" class="attendance-modal-close" id="attendance-modal-close" aria-label="Close attendance calendar">&times;</button>
+      </div>
+      <div class="attendance-modal-controls">
+        <div class="attendance-year-controls">
+          <button type="button" id="attendance-modal-prev" aria-label="Previous year">←</button>
+          <strong id="attendance-modal-year"></strong>
+          <button type="button" id="attendance-modal-next" aria-label="Next year">→</button>
+        </div>
+        <span id="attendance-modal-source"></span>
+      </div>
+      <div id="attendance-modal-detail" class="attendance-modal-detail" aria-live="polite">Choose a date to see your progress.</div>
+      <div id="attendance-modal-status" class="attendance-modal-status" role="status"></div>
+      <div id="attendance-modal-grid" class="attendance-modal-grid"></div>
+      <div class="attendance-modal-legend"><span><i class="is-completed"></i> Completed</span><span><i class="is-incomplete"></i> Played, unfinished</span><span><i class="is-attended-no-mission"></i> Attended, no mission</span><span><i class="is-absent"></i> Absent</span><span><i class="is-no-mission"></i> No mission</span><span><i class="is-upcoming"></i> Future</span></div>
     </div>
   </div>
 
@@ -1891,13 +1921,6 @@
                 <div class="form-group"><label for="admin-attendance-points">Points per completed day</label><input type="number" id="admin-attendance-points" min="0" max="10000" step="0.01" style="width:100%" /></div>
                 <p id="admin-attendance-note" style="font-size:11px;color:#aaa;margin-bottom:14px">Only logged-in member accounts (mem-) qualify. Changing the target does not grant a second reward to someone already awarded today.</p>
                 <button class="btn-admin" id="admin-attendance-save" onclick="saveAttendance()">Save attendance</button>
-              </div>
-              <div class="admin-section" style="max-width:520px;margin-top:14px">
-                <h3>Pair with Denfi Points</h3>
-                <p style="font-size:11px;color:#aaa;margin-bottom:10px">For connected kiosks, set a shared key of at least 16 characters on Denfi Points, then enter the same key on each kiosk. Changing the key requires pairing each kiosk again.</p>
-                <div class="form-group"><label for="admin-attendance-key">Shared attendance key</label><input type="password" id="admin-attendance-key" autocomplete="new-password" placeholder="Enter a shared key (16+ characters)" style="width:100%" /></div>
-                <button class="btn-admin" onclick="saveAttendancePair()">Save pairing key</button>
-                <div id="admin-attendance-pair-status" style="font-size:11px;color:#aaa;margin-top:10px"></div>
               </div>
             </section>
           </main>
@@ -2709,6 +2732,9 @@
     }
 
     function showSession(data) {
+      if (sessionData?.username && sessionData.username !== data.username) {
+        window.DenfiAttendance?.close();
+      }
       sessionData = data;
 
       if (window.electronAPI && window.electronAPI.setSessionState) {
@@ -2753,9 +2779,12 @@
 
     function updateSessionAttendance(progress, username) {
       const el = document.getElementById('session-attendance');
-      const visible = !!progress?.enabled && String(username || '').toLowerCase().startsWith('mem-');
+      const isMember = String(username || '').toLowerCase().startsWith('mem-');
+      const visible = !!progress?.enabled && isMember;
       el.classList.toggle('active', visible);
       document.getElementById('session-panel').classList.toggle('attendance-visible', visible);
+      document.getElementById('session-panel').classList.toggle('attendance-available', isMember);
+      document.getElementById('session-attendance-calendar').classList.toggle('active', isMember);
       if (!visible) return;
       const percent = progress.mode === 'login' ? (progress.awarded ? 100 : 0)
         : Math.max(0, Math.min(100, Math.round(progress.seconds / (progress.minutes * 60) * 1000) / 10));
@@ -2764,7 +2793,6 @@
       document.getElementById('session-attendance-bar').setAttribute('aria-valuenow', percent);
       document.getElementById('session-attendance-label').textContent = progress.awarded
         ? `DAILY COMPLETE · +${progress.points} PTS`
-        : progress.pairRequired ? 'DAILY · PAIR KIOSK IN ADMIN'
         : progress.pending
         ? progress.mode === 'login' ? 'DAILY LOGIN · SYNC PENDING' : `DAILY ${played}/${progress.minutes}m · SYNC PENDING`
         : progress.mode === 'login' ? 'DAILY LOGIN · CHECKING' : `DAILY ${played}/${progress.minutes}m · +${progress.points} PTS`;
@@ -2848,6 +2876,7 @@
     }
 
     function showLoggedOut() {
+      window.DenfiAttendance?.close();
       if (countdownInterval) clearInterval(countdownInterval);
       if (statusInterval) clearInterval(statusInterval);
       countdownInterval = null; statusInterval = null;
@@ -3572,7 +3601,6 @@
         else document.getElementById('admin-attendance-note').textContent =
           'Only logged-in member accounts (mem-) qualify. Changing the target does not grant a second reward to someone already awarded today.';
       }
-      loadAttendancePairStatus();
       loadSyncServerStatus();
       loadTelegramSettings();
     }
@@ -3594,32 +3622,6 @@
         })
       }).then(r => r.json()).catch(() => ({ success: false, error: 'Could not save attendance' }));
       showAdminMsg('admin-panel-msg', resp.success ? 'Daily attendance saved' : resp.error, resp.success ? 'success' : 'error');
-    }
-
-    async function loadAttendancePairStatus() {
-      const resp = await fetch('/api/admin/attendance-pair', {
-        headers: { 'x-admin-token': adminToken }
-      }).then(r => r.json()).catch(() => ({}));
-      document.getElementById('admin-attendance-pair-status').textContent =
-        resp.rejected ? 'Pairing key rejected by Denfi Points. Enter the new key here.'
-          : resp.configured ? 'Pairing key saved on this device.' : 'No pairing key saved yet.';
-    }
-
-    async function saveAttendancePair() {
-      const field = document.getElementById('admin-attendance-key');
-      const key = field.value;
-      if (key.length < 16 || key.length > 128) {
-        showAdminMsg('admin-panel-msg', 'Use a shared key of 16–128 characters.', 'error');
-        return;
-      }
-      const resp = await fetch('/api/admin/attendance-pair', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
-        body: JSON.stringify({ key })
-      }).then(r => r.json()).catch(() => ({ success: false, error: 'Could not save pairing key' }));
-      field.value = '';
-      showAdminMsg('admin-panel-msg', resp.success ? 'Pairing key saved' : resp.error,
-        resp.success ? 'success' : 'error');
-      if (resp.success) loadAttendancePairStatus();
     }
 
     function updateBgPreview(bgInfo) {
@@ -4930,5 +4932,6 @@
     connectSettingsWs();
     init();
   </script>
+  <script src="/attendance-calendar.js"></script>
 </body>
 </html>
