@@ -428,7 +428,7 @@ function closeConfiguredPrograms(reason) {
 // renders at its original logical size and scales itself to these bounds.
 const SESSION_WIDTH = 331;
 const SESSION_MAX_WIDTH = 560;
-const SESSION_HEIGHT = 50;
+const SESSION_HEIGHT = 70;
 const SESSION_EXPANDED_HEIGHT = 253;
 let currentSessionWidth = SESSION_WIDTH;
 let currentSessionHeight = SESSION_HEIGHT;
@@ -608,6 +608,7 @@ app.whenReady().then(async () => {
   const settings = require('./src/settings-store');
   const coinLogs = require('./src/coin-log-store');
   const orderStore = require('./src/order-store');
+  const attendance = require('./src/attendance-store');
 
   const defaultDataDir = path.join(path.dirname(app.getPath('exe')), 'data');
   let dataDir = defaultDataDir;
@@ -665,6 +666,7 @@ app.whenReady().then(async () => {
   settings.setDataDir(dataDir);
   coinLogs.setDataDir(dataDir);
   orderStore.setDataDir(dataDir);
+  attendance.setDataDir(dataDir);
   currentState = 'restoring-session';
   setIdleShutdownConfig(settingsStore.getSettings().autoShutdownSeconds);
   console.log('[Electron] Data dir:', dataDir);

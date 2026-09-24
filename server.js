@@ -7,6 +7,8 @@ const http = require('http');
 const settings = require('./src/settings-store');
 const coinLogs = require('./src/coin-log-store');
 const orderStore = require('./src/order-store');
+const attendance = require('./src/attendance-store');
+const attendanceAuth = require('./src/attendance-auth');
 
 const appRoleInit = process.env.DENFI_APP_ROLE || 'auto-shutdown';
 settings.setAppRole(appRoleInit);
@@ -858,6 +860,10 @@ app.get('/api/admin/settings', verifyToken, (req, res) => {
 
 app.post('/api/admin/settings', verifyToken, (req, res) => {
   const body = req.body;
+  delete body.attendanceEnabled;
+  delete body.attendanceMode;
+  delete body.attendanceMinutes;
+  delete body.attendancePoints;
   if (coinLogsReadOnly) {
     delete body.coinRates;
     delete body.pointRates;
@@ -865,6 +871,52 @@ app.post('/api/admin/settings', verifyToken, (req, res) => {
   const updated = settings.updateSettings(body);
   broadcastSettings();
   res.json({ success: true, settings: updated });
+});
+
+app.post('/api/admin/attendance', verifyToken, (req, res) => {
+  if (appRole !== 'points' && syncServerUrl) {
+    return res.status(403).json({ success: false, error: 'Set attendance on Denfi Points while connected.' });
+  }
+  const { enabled, mode, minutes, points } = req.body;
+  if (typeof enabled !== 'boolean' || !['login', 'minutes'].includes(mode) ||
+      !Number.isInteger(minutes) || minutes < 1 || minutes > 1440 ||
+      !Number.isFinite(points) || points < 0 || points > 10000 ||
+      Math.abs(Math.round(points * 100) - points * 100) > 1e-8) {
+    return res.status(400).json({ success: false, error: 'Use 1–1440 minutes and 0–10000 points (up to 2 decimals).' });
+  }
+  const updated = settings.updateSettings({
+    attendanceEnabled: enabled, attendanceMode: mode, attendanceMinutes: minutes, attendancePoints: points
+  });
+  broadcastSettings();
+  res.json({ success: true, settings: updated });
+});
+
+app.get('/api/admin/attendance-pair', verifyToken, (req, res) => {
+  res.json({ configured: appRole === 'points'
+    ? settings.hasAttendancePairKey() : !!settings.getAttendanceClientKey(),
+    rejected: appRole !== 'points' && settings.isAttendancePairRejected() });
+});
+
+app.post('/api/admin/attendance-pair', verifyToken, async (req, res) => {
+  const key = req.body?.key;
+  if (typeof key !== 'string' || key.length < 16 || key.length > 128) {
+    return res.status(400).json({ success: false, error: 'Use a shared key of 16–128 characters.' });
+  }
+  if (appRole === 'points') {
+    settings.setAttendancePairKey(key);
+    return res.json({ success: true });
+  }
+  if (!syncServerUrl) return res.status(400).json({ success: false, error: 'Connect to Denfi Points first.' });
+  try {
+    await fetchAttendance('/api/sync/attendance-auth', null, key, false);
+    settings.setAttendanceClientKey(key);
+    await syncAttendanceConfigFromServer();
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(err.pairRequired ? 403 : 503).json({
+      success: false, error: err.pairRequired ? 'Key rejected by Denfi Points.' : 'Cannot verify the key with Denfi Points.'
+    });
+  }
 });
 
 app.post('/api/admin/products', verifyToken, (req, res) => {
@@ -1455,18 +1507,70 @@ function broadcastSettings() {
 
 let syncServerUrl = '';
 let syncRatesInterval = null;
+let attendanceConfigInterval = null;
 
 function setSyncServer(url, persist) {
   syncServerUrl = (url || '').trim().replace(/\/+$/, '');
   if (syncRatesInterval) { clearInterval(syncRatesInterval); syncRatesInterval = null; }
+  if (attendanceConfigInterval) { clearInterval(attendanceConfigInterval); attendanceConfigInterval = null; }
   if (syncServerUrl) {
     console.log('[Sync] Data server URL:', syncServerUrl);
     syncRatesFromServer();
     syncRatesInterval = setInterval(syncRatesFromServer, 5 * 60 * 1000);
+    syncAttendanceConfigFromServer();
+    attendanceConfigInterval = setInterval(syncAttendanceConfigFromServer, 15000);
     if (persist) {
       settings.updateSettings({ syncServerUrl });
     }
   }
+}
+
+async function syncAttendanceConfigFromServer() {
+  if (!syncServerUrl || !settings.getAttendanceClientKey() || settings.isAttendancePairRejected()) return;
+  try {
+    const remote = await fetchAttendance('/api/sync/attendance-config');
+    if (typeof remote.enabled !== 'boolean' || !['login', 'minutes'].includes(remote.mode) ||
+        !Number.isInteger(remote.minutes) || remote.minutes < 1 || remote.minutes > 1440 ||
+        !Number.isFinite(remote.points) || remote.points < 0 || remote.points > 10000 ||
+        Math.abs(Math.round(remote.points * 100) - remote.points * 100) > 1e-8) {
+      throw new Error('Invalid attendance mission from Denfi Points');
+    }
+    const current = settings.getSettings();
+    if (current.attendanceEnabled !== remote.enabled || current.attendanceMode !== remote.mode ||
+        current.attendanceMinutes !== remote.minutes ||
+        current.attendancePoints !== remote.points) {
+      settings.updateSettings({
+        attendanceEnabled: remote.enabled, attendanceMode: remote.mode,
+        attendanceMinutes: remote.minutes, attendancePoints: remote.points
+      });
+      broadcastSettings();
+    }
+  } catch (err) {
+    console.log('[Attendance] Config sync unavailable:', err.message);
+  }
+}
+
+async function fetchAttendance(route, sample = null, overrideKey = null, rememberRejection = true) {
+  const key = overrideKey || settings.getAttendanceClientKey();
+  const method = sample === null ? 'GET' : 'POST';
+  const body = sample === null ? '' : JSON.stringify(sample);
+  const signed = attendanceAuth.signRequest(key, method, route, body);
+  const resp = await fetch(syncServerUrl + route, {
+    method, headers: { ...(sample === null ? {} : { 'Content-Type': 'application/json' }), ...signed.headers },
+    body: sample === null ? undefined : body, signal: AbortSignal.timeout(3000)
+  });
+  if (resp.status === 403) {
+    if (rememberRejection) settings.setAttendancePairRejected(true);
+    const error = new Error('Attendance pairing key rejected');
+    error.pairRequired = true;
+    throw error;
+  }
+  if (!resp.ok) throw new Error(`Denfi Points returned ${resp.status}`);
+  const raw = await resp.text();
+  if (!attendanceAuth.verifyResponse(key, signed.nonce, raw, resp.headers.get('x-attendance-response-sig'))) {
+    throw new Error('Unverified attendance response');
+  }
+  return JSON.parse(raw);
 }
 
 async function getDefaultGateway() {
@@ -1680,6 +1784,106 @@ app.post('/api/sync/coin-log', express.json(), (req, res) => {
   }
 });
 
+function attendanceConfig() {
+  const s = settings.getSettings();
+  return {
+    enabled: s.attendanceEnabled, mode: s.attendanceMode,
+    minutes: s.attendanceMinutes, points: s.attendancePoints
+  };
+}
+
+function attendanceResult(username, day) {
+  const config = settings.getAttendancePolicy(day);
+  const progress = attendance.status(username, day);
+  if (config.enabled && (config.mode === 'login' || progress.seconds >= config.minutes * 60) && !progress.awarded) {
+    coinLogs.appendAttendanceAward(username, day, config.points);
+    attendance.markAwarded(username, day, config.points);
+    progress.awarded = true;
+    progress.awardedPoints = config.points;
+  }
+  return { ...progress, ...config, points: progress.awardedPoints ?? config.points };
+}
+
+function verifyAttendanceSync(req, res, next) {
+  if (appRole !== 'points') return res.status(404).end();
+  if (!attendanceAuth.verifyRequest(req, settings.getAttendancePairHash())) {
+    return res.status(403).json({ success: false, error: 'Kiosk is not paired for attendance.' });
+  }
+  next();
+}
+
+function signedAttendanceResponse(req, res, data) {
+  res.set('x-attendance-response-sig',
+    attendanceAuth.signResponse(settings.getAttendancePairHash(), req.get('x-attendance-nonce'), data));
+  res.json(data);
+}
+
+app.get('/api/sync/attendance-config', verifyAttendanceSync, (req, res) => {
+  signedAttendanceResponse(req, res, attendanceConfig());
+});
+
+app.get('/api/sync/attendance-auth', verifyAttendanceSync, (req, res) => {
+  signedAttendanceResponse(req, res, { success: true });
+});
+
+app.post('/api/sync/attendance', verifyAttendanceSync, (req, res) => {
+  try {
+    const sample = req.body;
+    attendance.merge(sample);
+    signedAttendanceResponse(req, res, { success: true, attendance: attendanceResult(sample.username, sample.day) });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+async function updateAttendanceFromSession(data) {
+  const config = attendanceConfig();
+  const sample = attendance.record(
+    data.isLogin && Number(data.sessionTimeLeft) > 0 ? data.username : '', config.enabled
+  );
+  if (syncServerUrl) void flushPendingAttendance();
+  if (!sample) return null;
+  if (syncServerUrl) {
+    const key = settings.getAttendanceClientKey();
+    if (!key || settings.isAttendancePairRejected()) {
+      const progress = attendance.status(sample.username, sample.day);
+      return { ...progress, ...config, points: progress.awardedPoints ?? config.points,
+        pending: true, pairRequired: true };
+    }
+    try {
+      const body = await fetchAttendance('/api/sync/attendance', sample);
+      if (!body.success || !body.attendance) throw new Error('Invalid Denfi Points attendance response');
+      attendance.acknowledge(sample, body.attendance);
+      return body.attendance;
+    } catch (err) {
+      console.log('[Attendance] Sync pending:', err.message);
+      const progress = attendance.status(sample.username, sample.day);
+      return { ...progress, ...config, points: progress.awardedPoints ?? config.points,
+        pending: true, pairRequired: !!err.pairRequired };
+    }
+  }
+  return attendanceResult(sample.username, sample.day);
+}
+
+let attendanceFlushInFlight = false;
+async function flushPendingAttendance() {
+  if (attendanceFlushInFlight || !syncServerUrl || !settings.getAttendanceClientKey() ||
+      settings.isAttendancePairRejected()) return;
+  attendanceFlushInFlight = true;
+  try {
+    const previousDays = attendance.pendingSamples().filter(sample => sample.day !== attendance.dayKey());
+    for (const sample of previousDays) {
+      const result = await fetchAttendance('/api/sync/attendance', sample);
+      if (!result.success) break;
+      attendance.acknowledge(sample, result.attendance);
+    }
+  } catch (err) {
+    console.log('[Attendance] Past-day sync pending:', err.message);
+  } finally {
+    attendanceFlushInFlight = false;
+  }
+}
+
 app.get('/api/sync/rates', (req, res) => {
   try {
     const s = settings.getSettings();
@@ -1850,6 +2054,10 @@ async function pollHotspotForWs() {
       }
     } else {
       confirmedLoggedOutSamples = 0;
+    }
+
+    if (appRole === 'auto-shutdown') {
+      data.attendance = await updateAttendanceFromSession(data);
     }
 
     if (data.isLogin && data.username && data.username.startsWith('mem-')) {

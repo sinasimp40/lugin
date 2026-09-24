@@ -93,6 +93,31 @@ function calcPoints(amount, pointRates) {
   return best;
 }
 
+function logPoints(log, pointRates) {
+  return log.source === 'attendance' ? Number(log.points) || 0 : calcPoints(log.amount, pointRates);
+}
+
+function appendAttendanceAward(username, day, points) {
+  let awarded = false;
+  loadModifySave(data => {
+    if ((data.logs || []).some(l => l.source === 'attendance' && l.username === username && l.attendanceDay === day)) return;
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const backdated = day === today ? Date.now()
+      : new Date(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10)), 23, 59, 59).getTime();
+    const log = {
+      id: crypto.randomUUID(), username, attendanceDay: day, amount: 0,
+      timeAdded: 'Daily attendance', points, timestamp: backdated,
+      date: new Date(backdated).toISOString(), ip: '', mac: '', source: 'attendance'
+    };
+    data.logs.push(log);
+    if (!data.memberPoints) data.memberPoints = {};
+    data.memberPoints[username] = Math.round(((data.memberPoints[username] || 0) + points) * 100) / 100;
+    awarded = true;
+  });
+  return awarded;
+}
+
 function getPeriodKey(value) {
   const date = value instanceof Date
     ? value
@@ -190,7 +215,7 @@ function ensurePointsSync(pointRates) {
   const currentHash = ratesHash(pointRates);
   if (data._ratesHash === currentHash) return;
   (data.logs || []).forEach(l => {
-    l.points = calcPoints(l.amount, pointRates);
+    l.points = logPoints(l, pointRates);
   });
   recalcPoints(data);
   data._ratesHash = currentHash;
@@ -200,7 +225,7 @@ function ensurePointsSync(pointRates) {
 function recalcAllPoints(pointRates) {
   const data = load();
   (data.logs || []).forEach(l => {
-    l.points = calcPoints(l.amount, pointRates);
+    l.points = logPoints(l, pointRates);
   });
   recalcPoints(data);
   data._ratesHash = ratesHash(pointRates);
@@ -277,6 +302,7 @@ function deleteMemberLogs(username) {
 module.exports = {
   setDataDir,
   appendLog,
+  appendAttendanceAward,
   deleteLog,
   deleteMemberLogs,
   clearAllLogs,

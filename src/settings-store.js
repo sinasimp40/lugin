@@ -228,6 +228,10 @@ function getSettings() {
     curfewEnd: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.curfewEnd) ? s.curfewEnd : '06:00',
     coinRates,
     pointRates,
+    attendanceEnabled: !!s.attendanceEnabled,
+    attendanceMode: s.attendanceMode === 'login' ? 'login' : 'minutes',
+    attendanceMinutes: Number.isInteger(s.attendanceMinutes) && s.attendanceMinutes >= 1 ? s.attendanceMinutes : 60,
+    attendancePoints: Number.isFinite(s.attendancePoints) && s.attendancePoints >= 0 ? s.attendancePoints : 1,
     monthlyLeaderboardReportedPeriod: String(s.monthlyLeaderboardReportedPeriod || ''),
     syncServerUrl: s.syncServerUrl || '',
   };
@@ -251,6 +255,10 @@ function getPublicSettings() {
     curfewEnabled: s.curfewEnabled,
     curfewStart: s.curfewStart,
     curfewEnd: s.curfewEnd,
+    attendanceEnabled: s.attendanceEnabled,
+    attendanceMode: s.attendanceMode,
+    attendanceMinutes: s.attendanceMinutes,
+    attendancePoints: s.attendancePoints,
   };
 }
 
@@ -303,12 +311,70 @@ function updateSettings(updates) {
   if (updates.curfewEnd !== undefined && /^([01]\d|2[0-3]):[0-5]\d$/.test(updates.curfewEnd)) s.curfewEnd = updates.curfewEnd;
   if (updates.coinRates !== undefined && Array.isArray(updates.coinRates)) s.coinRates = updates.coinRates;
   if (updates.pointRates !== undefined && Array.isArray(updates.pointRates)) s.pointRates = updates.pointRates;
+  if (updates.attendanceEnabled !== undefined) s.attendanceEnabled = !!updates.attendanceEnabled;
+  if (updates.attendanceMode === 'login' || updates.attendanceMode === 'minutes') s.attendanceMode = updates.attendanceMode;
+  if (updates.attendanceMinutes !== undefined) s.attendanceMinutes = updates.attendanceMinutes;
+  if (updates.attendancePoints !== undefined) s.attendancePoints = updates.attendancePoints;
+  if (updates.attendanceEnabled !== undefined || updates.attendanceMode !== undefined ||
+      updates.attendanceMinutes !== undefined || updates.attendancePoints !== undefined) {
+    const now = new Date();
+    const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    s.attendancePolicies = s.attendancePolicies || {};
+    s.attendancePolicies[day] = {
+      enabled: !!s.attendanceEnabled,
+      mode: s.attendanceMode === 'login' ? 'login' : 'minutes',
+      minutes: s.attendanceMinutes ?? 60,
+      points: s.attendancePoints ?? 1
+    };
+  }
   if (updates.monthlyLeaderboardReportedPeriod !== undefined) {
     s.monthlyLeaderboardReportedPeriod = String(updates.monthlyLeaderboardReportedPeriod || '').slice(0, 7);
   }
   if (updates.syncServerUrl !== undefined) s.syncServerUrl = updates.syncServerUrl;
   save(s);
   return getSettings();
+}
+
+function getAttendancePolicy(day) {
+  const raw = load();
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  if (day === today) {
+    const s = getSettings();
+    return { enabled: s.attendanceEnabled, mode: s.attendanceMode, minutes: s.attendanceMinutes, points: s.attendancePoints };
+  }
+  const latest = Object.keys(raw.attendancePolicies || {}).filter(key => key <= day).sort().pop();
+  return latest ? raw.attendancePolicies[latest] : { enabled: false, mode: 'minutes', minutes: 60, points: 1 };
+}
+
+function setAttendancePairKey(key) {
+  const s = load();
+  s.attendancePairHash = crypto.createHash('sha256').update(key).digest('hex');
+  save(s);
+}
+function getAttendancePairHash() { return load().attendancePairHash || ''; }
+function isAttendancePairRejected() { return !!load().attendancePairRejected; }
+function setAttendancePairRejected(rejected) {
+  const s = load();
+  if (!!s.attendancePairRejected === !!rejected) return;
+  s.attendancePairRejected = !!rejected;
+  save(s);
+}
+
+function verifyAttendancePairKey(key) {
+  const hash = load().attendancePairHash;
+  if (!hash || typeof key !== 'string') return false;
+  const provided = crypto.createHash('sha256').update(key).digest();
+  return crypto.timingSafeEqual(provided, Buffer.from(hash, 'hex'));
+}
+
+function hasAttendancePairKey() { return !!load().attendancePairHash; }
+function getAttendanceClientKey() { return load().attendanceClientKey || ''; }
+function setAttendanceClientKey(key) {
+  const s = load();
+  s.attendanceClientKey = key;
+  s.attendancePairRejected = false;
+  save(s);
 }
 
 function saveBackgroundImage(fileBuffer, originalName, mimeType) {
@@ -596,6 +662,15 @@ module.exports = {
   getSettings,
   getPublicSettings,
   updateSettings,
+  getAttendancePolicy,
+  setAttendancePairKey,
+  getAttendancePairHash,
+  isAttendancePairRejected,
+  setAttendancePairRejected,
+  verifyAttendancePairKey,
+  hasAttendancePairKey,
+  getAttendanceClientKey,
+  setAttendanceClientKey,
   getTelegramSettings,
   getTelegramAdminSettings,
   updateTelegramSettings,

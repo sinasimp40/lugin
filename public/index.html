@@ -1063,6 +1063,7 @@
     .ad-content-editor hr { border: none; border-top: 1px solid var(--dark-border); margin: 8px 0; }
 
     .session-panel { display: none; position: fixed; right: 10px; bottom: 10px; width: 250px; height: 80px; z-index: 99; }
+    .session-panel.attendance-visible { height: 105px; }
     .session-panel.active { display: block; }
     .session-compact {
       padding: 10px 14px; width: 100%; height: 100%;
@@ -1104,6 +1105,10 @@
       box-shadow: 0 0 10px rgba(255,215,64,0.1);
     }
     .session-bottom .session-points.active { display: block; }
+    .session-attendance { display:none; font:10px 'Share Tech Mono',monospace; color:#ffba58; }
+    .session-attendance.active { display:block; }
+    .session-attendance-bar { height:5px; margin-top:4px; background:#443322; border-radius:4px; overflow:hidden; }
+    .session-attendance-fill { height:100%; width:0; background:#ffae38; transition:width .7s ease; }
     .session-bottom .btn-logout-sm {
       -webkit-app-region: no-drag;
       background: rgba(255,140,0,0.08);
@@ -1670,6 +1675,10 @@
         <button class="btn-logout-sm" onclick="doLogout()">Logout</button>
         <div class="session-points" id="session-points"></div>
       </div>
+      <div class="session-attendance" id="session-attendance">
+        <span id="session-attendance-label"></span>
+        <div class="session-attendance-bar" role="progressbar" id="session-attendance-bar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="session-attendance-fill" id="session-attendance-fill"></div></div>
+      </div>
     </div>
   </div>
 
@@ -1834,6 +1843,7 @@
             <button class="admin-tab" onclick="switchAdminView('appearance',this)"><span class="admin-tab-mark"></span>Appearance</button>
             <button class="admin-tab" onclick="switchAdminView('behavior',this)"><span class="admin-tab-mark"></span>Applications</button>
             <button class="admin-tab" onclick="switchAdminView('advertising',this)"><span class="admin-tab-mark"></span>Advertising</button>
+            <button class="admin-tab" onclick="switchAdminView('attendance',this)"><span class="admin-tab-mark"></span>Attendance</button>
             <button class="admin-tab" onclick="switchAdminView('security',this)"><span class="admin-tab-mark"></span>Security</button>
           </nav>
           <main class="admin-workspace">
@@ -1870,6 +1880,25 @@
             <section class="admin-page" id="admin-page-security">
               <div class="admin-page-intro"><div><h2>Security</h2><p>Change the operator password for this kiosk.</p></div></div>
               <div class="admin-section" style="max-width:520px"><h3>Change admin password</h3><form onsubmit="event.preventDefault(); changeAdminPassword();" autocomplete="off"><div class="form-group"><label>Current password</label><input type="password" id="admin-old-pw" placeholder="Current password" /></div><div class="form-group"><label>New password</label><input type="password" id="admin-new-pw" placeholder="New password" /></div><button type="submit" class="btn-admin">Change password</button></form></div>
+            </section>
+            <section class="admin-page" id="admin-page-attendance">
+              <div class="admin-page-intro"><div><h2>Daily attendance</h2><p>Reward members once per day for logging in or completing a play-time mission. Time adds up across sessions and resets at local midnight.</p></div></div>
+              <div class="admin-section" style="max-width:520px">
+                <h3>Play-time mission</h3>
+                <div class="form-group"><label><input type="checkbox" id="admin-attendance-enabled" /> Enable daily attendance</label></div>
+                <div class="form-group"><label for="admin-attendance-mode">Mission type</label><select id="admin-attendance-mode" onchange="document.getElementById('admin-attendance-minutes').disabled = this.value === 'login' || document.getElementById('admin-attendance-save').disabled" style="width:100%;padding:10px;background:#0f1113;color:#eee;border:1px solid #343a3f;border-radius:6px"><option value="minutes">Play-time target</option><option value="login">Login once per day</option></select></div>
+                <div class="form-group"><label for="admin-attendance-minutes">Required play time (minutes)</label><input type="number" id="admin-attendance-minutes" min="1" max="1440" step="1" style="width:100%" /></div>
+                <div class="form-group"><label for="admin-attendance-points">Points per completed day</label><input type="number" id="admin-attendance-points" min="0" max="10000" step="0.01" style="width:100%" /></div>
+                <p id="admin-attendance-note" style="font-size:11px;color:#aaa;margin-bottom:14px">Only logged-in member accounts (mem-) qualify. Changing the target does not grant a second reward to someone already awarded today.</p>
+                <button class="btn-admin" id="admin-attendance-save" onclick="saveAttendance()">Save attendance</button>
+              </div>
+              <div class="admin-section" style="max-width:520px;margin-top:14px">
+                <h3>Pair with Denfi Points</h3>
+                <p style="font-size:11px;color:#aaa;margin-bottom:10px">For connected kiosks, set a shared key of at least 16 characters on Denfi Points, then enter the same key on each kiosk. Changing the key requires pairing each kiosk again.</p>
+                <div class="form-group"><label for="admin-attendance-key">Shared attendance key</label><input type="password" id="admin-attendance-key" autocomplete="new-password" placeholder="Enter a shared key (16+ characters)" style="width:100%" /></div>
+                <button class="btn-admin" onclick="saveAttendancePair()">Save pairing key</button>
+                <div id="admin-attendance-pair-status" style="font-size:11px;color:#aaa;margin-top:10px"></div>
+              </div>
             </section>
           </main>
         </div>
@@ -2513,6 +2542,7 @@
               if (msg.data.username) document.getElementById('session-username').textContent = msg.data.username;
               if (msg.data.memberPoints !== undefined) updateSessionPoints(msg.data.memberPoints);
               else updateSessionPoints(null);
+              updateSessionAttendance(msg.data.attendance, msg.data.username);
               if (msg.data.logoutLink && sessionData) sessionData.logoutLink = msg.data.logoutLink;
               checkExpiryLogout();
             } else if (sessionData) {
@@ -2693,6 +2723,7 @@
       document.getElementById('session-username').textContent = data.username || 'User';
       if (data.memberPoints !== undefined) updateSessionPoints(data.memberPoints);
       else updateSessionPoints(null);
+      updateSessionAttendance(data.attendance, data.username);
       localTimeLeft = parseInt(data.sessionTimeLeft) || 0;
       autoLogoutTriggered = false;
       updateTimerDisplay();
@@ -2718,6 +2749,25 @@
       const display = pts % 1 === 0 ? pts.toString() : pts.toFixed(2);
       el.textContent = display + ' pts';
       el.classList.add('active');
+    }
+
+    function updateSessionAttendance(progress, username) {
+      const el = document.getElementById('session-attendance');
+      const visible = !!progress?.enabled && String(username || '').toLowerCase().startsWith('mem-');
+      el.classList.toggle('active', visible);
+      document.getElementById('session-panel').classList.toggle('attendance-visible', visible);
+      if (!visible) return;
+      const percent = progress.mode === 'login' ? (progress.awarded ? 100 : 0)
+        : Math.max(0, Math.min(100, Math.round(progress.seconds / (progress.minutes * 60) * 1000) / 10));
+      const played = `${Math.floor(progress.seconds / 60)}:${String(progress.seconds % 60).padStart(2, '0')}`;
+      document.getElementById('session-attendance-fill').style.width = percent + '%';
+      document.getElementById('session-attendance-bar').setAttribute('aria-valuenow', percent);
+      document.getElementById('session-attendance-label').textContent = progress.awarded
+        ? `DAILY COMPLETE · +${progress.points} PTS`
+        : progress.pairRequired ? 'DAILY · PAIR KIOSK IN ADMIN'
+        : progress.pending
+        ? progress.mode === 'login' ? 'DAILY LOGIN · SYNC PENDING' : `DAILY ${played}/${progress.minutes}m · SYNC PENDING`
+        : progress.mode === 'login' ? 'DAILY LOGIN · CHECKING' : `DAILY ${played}/${progress.minutes}m · +${progress.points} PTS`;
     }
 
     function updateTimerDisplay() {
@@ -2804,6 +2854,7 @@
       disconnectSessionWs();
       stopLoginPolling();
       updateSessionPoints(null);
+      updateSessionAttendance(null);
       document.getElementById('session-panel').classList.remove('active');
       document.getElementById('login-panel').classList.remove('hidden');
       try { closeLoginForm(); } catch (e) {}
@@ -3508,9 +3559,67 @@
         document.getElementById('admin-curfew-enabled').checked = !!resp.settings.curfewEnabled;
         document.getElementById('admin-curfew-start').value = resp.settings.curfewStart || '22:00';
         document.getElementById('admin-curfew-end').value = resp.settings.curfewEnd || '06:00';
+        document.getElementById('admin-attendance-enabled').checked = !!resp.settings.attendanceEnabled;
+        document.getElementById('admin-attendance-mode').value = resp.settings.attendanceMode || 'minutes';
+        document.getElementById('admin-attendance-minutes').value = resp.settings.attendanceMinutes;
+        document.getElementById('admin-attendance-points').value = resp.settings.attendancePoints;
+        const attendanceManaged = !!resp.settings.syncServerUrl && window._appRole !== 'points';
+        ['admin-attendance-enabled', 'admin-attendance-mode', 'admin-attendance-minutes', 'admin-attendance-points', 'admin-attendance-save']
+          .forEach(id => { document.getElementById(id).disabled = attendanceManaged; });
+        if (resp.settings.attendanceMode === 'login') document.getElementById('admin-attendance-minutes').disabled = true;
+        if (attendanceManaged) document.getElementById('admin-attendance-note').textContent =
+          'Managed by Denfi Points. Change the mission in the Denfi Points admin panel.';
+        else document.getElementById('admin-attendance-note').textContent =
+          'Only logged-in member accounts (mem-) qualify. Changing the target does not grant a second reward to someone already awarded today.';
       }
+      loadAttendancePairStatus();
       loadSyncServerStatus();
       loadTelegramSettings();
+    }
+
+    async function saveAttendance() {
+      const minutes = Number(document.getElementById('admin-attendance-minutes').value);
+      const points = Number(document.getElementById('admin-attendance-points').value);
+      if (!Number.isInteger(minutes) || minutes < 1 || minutes > 1440 ||
+          !Number.isFinite(points) || points < 0 || points > 10000 ||
+          Math.abs(Math.round(points * 100) - points * 100) > 1e-8) {
+        showAdminMsg('admin-panel-msg', 'Enter 1–1440 minutes and 0–10000 points (up to 2 decimals).', 'error');
+        return;
+      }
+      const resp = await fetch('/api/admin/attendance', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+        body: JSON.stringify({
+          enabled: document.getElementById('admin-attendance-enabled').checked,
+          mode: document.getElementById('admin-attendance-mode').value, minutes, points
+        })
+      }).then(r => r.json()).catch(() => ({ success: false, error: 'Could not save attendance' }));
+      showAdminMsg('admin-panel-msg', resp.success ? 'Daily attendance saved' : resp.error, resp.success ? 'success' : 'error');
+    }
+
+    async function loadAttendancePairStatus() {
+      const resp = await fetch('/api/admin/attendance-pair', {
+        headers: { 'x-admin-token': adminToken }
+      }).then(r => r.json()).catch(() => ({}));
+      document.getElementById('admin-attendance-pair-status').textContent =
+        resp.rejected ? 'Pairing key rejected by Denfi Points. Enter the new key here.'
+          : resp.configured ? 'Pairing key saved on this device.' : 'No pairing key saved yet.';
+    }
+
+    async function saveAttendancePair() {
+      const field = document.getElementById('admin-attendance-key');
+      const key = field.value;
+      if (key.length < 16 || key.length > 128) {
+        showAdminMsg('admin-panel-msg', 'Use a shared key of 16–128 characters.', 'error');
+        return;
+      }
+      const resp = await fetch('/api/admin/attendance-pair', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+        body: JSON.stringify({ key })
+      }).then(r => r.json()).catch(() => ({ success: false, error: 'Could not save pairing key' }));
+      field.value = '';
+      showAdminMsg('admin-panel-msg', resp.success ? 'Pairing key saved' : resp.error,
+        resp.success ? 'success' : 'error');
+      if (resp.success) loadAttendancePairStatus();
     }
 
     function updateBgPreview(bgInfo) {
