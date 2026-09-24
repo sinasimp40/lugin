@@ -872,16 +872,84 @@ app.post('/api/admin/settings', verifyToken, (req, res) => {
   res.json({ success: true, settings: updated });
 });
 
-app.post('/api/admin/attendance', verifyToken, (req, res) => {
-  if (appRole !== 'points' && syncServerUrl) {
-    return res.status(403).json({ success: false, error: 'Set attendance on Denfi Points while connected.' });
-  }
-  const { enabled, mode, minutes, points } = req.body;
+app.post('/api/admin/attendance', verifyToken, async (req, res) => {
+  const { enabled, mode, minutes, points, pointsAdminPassword, confirmedServerUrl } = req.body;
   if (typeof enabled !== 'boolean' || !['login', 'minutes'].includes(mode) ||
       !Number.isInteger(minutes) || minutes < 1 || minutes > 1440 ||
       !Number.isFinite(points) || points < 0 || points > 10000 ||
       Math.abs(Math.round(points * 100) - points * 100) > 1e-8) {
     return res.status(400).json({ success: false, error: 'Use 1–1440 minutes and 0–10000 points (up to 2 decimals).' });
+  }
+  if (appRole !== 'points' && syncServerUrl) {
+    if (typeof pointsAdminPassword !== 'string' || !pointsAdminPassword) {
+      return res.status(400).json({ success: false, error: 'Enter the Denfi Points admin password to change the shared mission.' });
+    }
+    if (confirmedServerUrl !== syncServerUrl) {
+      return res.status(409).json({ success: false, error: 'Denfi Points address changed. Verify the server address before saving.' });
+    }
+    const url = syncServerUrl;
+    let attemptedRemoteSave = false;
+    const mirrorSavedMission = () => {
+      attendanceConfigRevision++;
+      try {
+        const updated = settings.updateSettings({
+          attendanceEnabled: enabled, attendanceMode: mode, attendanceMinutes: minutes, attendancePoints: points
+        });
+        broadcastSettings();
+        return res.json({ success: true, settings: updated });
+      } catch (err) {
+        console.error('[Attendance] Denfi Points saved the mission but the kiosk cache failed:', err.message);
+        return res.status(500).json({ success: false, error: 'Saved on Denfi Points, but this kiosk could not save its copy. Check local storage permissions.' });
+      }
+    };
+    try {
+      const loginResponse = await fetch(url + '/api/admin/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pointsAdminPassword }),
+        signal: AbortSignal.timeout(5000)
+      });
+      const login = await loginResponse.json();
+      if (!loginResponse.ok || !login.success || !login.token) {
+        return res.status(403).json({ success: false, error: login.error || 'Denfi Points admin login failed.' });
+      }
+      if (url !== syncServerUrl) {
+        return res.status(409).json({ success: false, error: 'Denfi Points connection changed. Try again.' });
+      }
+      attemptedRemoteSave = true;
+      const remoteResponse = await fetch(url + '/api/admin/attendance', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': login.token },
+        body: JSON.stringify({ enabled, mode, minutes, points }),
+        signal: AbortSignal.timeout(5000)
+      });
+      const remote = await remoteResponse.json();
+      if (!remoteResponse.ok || !remote.success) {
+        return res.status(502).json({ success: false, error: remote.error || 'Denfi Points could not save attendance.' });
+      }
+      if (url !== syncServerUrl) {
+        return res.status(409).json({ success: false, error: 'Saved on the previous Denfi Points server, but the connection changed. Check the current server.' });
+      }
+      return mirrorSavedMission();
+    } catch (err) {
+      console.error('[Attendance] Could not save shared mission:', err.message);
+      if (attemptedRemoteSave) {
+        if (url !== syncServerUrl) {
+          return res.status(409).json({ success: false, error: 'Connection changed; save outcome on the previous Denfi Points server is unknown. Check there before retrying.' });
+        }
+        try {
+          const check = await fetch(url + '/api/sync/attendance-config', { signal: AbortSignal.timeout(3000) });
+          if (!check.ok) throw new Error('Could not read back the mission');
+          const saved = await check.json();
+          if (saved.enabled === enabled && saved.mode === mode &&
+              saved.minutes === minutes && saved.points === points) {
+            return mirrorSavedMission();
+          }
+        } catch (_) {
+          return res.status(503).json({ success: false, error: 'Save outcome unknown. Check the mission on Denfi Points before retrying.' });
+        }
+        return res.status(503).json({ success: false, error: 'Could not verify the save; the mission on Denfi Points differs. Check it before retrying.' });
+      }
+      return res.status(503).json({ success: false, error: 'Could not reach Denfi Points. Nothing was saved on this kiosk.' });
+    }
   }
   const updated = settings.updateSettings({
     attendanceEnabled: enabled, attendanceMode: mode, attendanceMinutes: minutes, attendancePoints: points
@@ -1479,8 +1547,10 @@ function broadcastSettings() {
 let syncServerUrl = '';
 let syncRatesInterval = null;
 let attendanceConfigInterval = null;
+let attendanceConfigRevision = 0;
 
 function setSyncServer(url, persist) {
+  attendanceConfigRevision++;
   syncServerUrl = (url || '').trim().replace(/\/+$/, '');
   if (syncRatesInterval) { clearInterval(syncRatesInterval); syncRatesInterval = null; }
   if (attendanceConfigInterval) { clearInterval(attendanceConfigInterval); attendanceConfigInterval = null; }
@@ -1488,18 +1558,21 @@ function setSyncServer(url, persist) {
     console.log('[Sync] Data server URL:', syncServerUrl);
     syncRatesFromServer();
     syncRatesInterval = setInterval(syncRatesFromServer, 5 * 60 * 1000);
-    syncAttendanceConfigFromServer();
-    attendanceConfigInterval = setInterval(syncAttendanceConfigFromServer, 15000);
+    const attendanceReady = syncAttendanceConfigFromServer();
+    attendanceConfigInterval = setInterval(syncAttendanceConfigFromServer, 3000);
     if (persist) {
       settings.updateSettings({ syncServerUrl });
     }
+    return attendanceReady;
   }
 }
 
 async function syncAttendanceConfigFromServer() {
   if (!syncServerUrl) return;
+  const revision = attendanceConfigRevision;
   try {
     const remote = await fetchAttendance('/api/sync/attendance-config');
+    if (revision !== attendanceConfigRevision || !syncServerUrl) return;
     if (typeof remote.enabled !== 'boolean' || !['login', 'minutes'].includes(remote.mode) ||
         !Number.isInteger(remote.minutes) || remote.minutes < 1 || remote.minutes > 1440 ||
         !Number.isFinite(remote.points) || remote.points < 0 || remote.points > 10000 ||
@@ -1620,8 +1693,7 @@ app.get('/api/admin/sync-server', verifyToken, (req, res) => {
 app.post('/api/admin/sync-server', verifyToken, express.json(), async (req, res) => {
   let url = (req.body.url || '').trim().replace(/\/+$/, '');
   if (!url) {
-    syncServerUrl = '';
-    if (syncRatesInterval) { clearInterval(syncRatesInterval); syncRatesInterval = null; }
+    setSyncServer('');
     settings.updateSettings({ syncServerUrl: '' });
     return res.json({ success: true, syncServerUrl: '', connected: false });
   }
@@ -1631,7 +1703,7 @@ app.post('/api/admin/sync-server', verifyToken, express.json(), async (req, res)
     if (resp.ok) {
       const data = await resp.json();
       if (data.appRole === 'points') {
-        setSyncServer(url, true);
+        await setSyncServer(url, true);
         return res.json({ success: true, syncServerUrl: url, connected: true });
       }
       return res.json({ success: false, error: 'Server found but it is not Denfi Points (appRole: ' + data.appRole + ')' });
@@ -1646,7 +1718,7 @@ app.post('/api/admin/sync-server/detect', verifyToken, async (req, res) => {
   try {
     const found = await discoverPointsServer();
     if (found) {
-      setSyncServer(found, true);
+      await setSyncServer(found, true);
       return res.json({ success: true, syncServerUrl: found, connected: true });
     }
     return res.json({ success: false, error: 'No Denfi Points server found on network' });
