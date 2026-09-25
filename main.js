@@ -1047,7 +1047,10 @@ function showSessionWindow(onShown) {
     transparent: true,
     hasShadow: false,
     show: false,
-    focusable: false,
+    // Member actions (especially typing a custom stake) need keyboard focus.
+    // A no-activate transparent window can be repainted behind the active
+    // game on every click on Windows.
+    focusable: true,
     thickFrame: false,
     useContentSize: true,
     webPreferences: {
@@ -1185,6 +1188,13 @@ function showSessionWindow(onShown) {
 
   function checkForegroundAndManage() {
     if (currentState !== 'logged-in' || sessionWindow !== managedSessionWindow || managedSessionWindow.isDestroyed()) return;
+    // A member is interacting with the session controls. Do not hide the
+    // window based on a stale fullscreen-game probe from the last foreground.
+    if (managedSessionWindow.isFocused()) {
+      sessionHiddenForGame = false;
+      restoreSessionOverlay();
+      return;
+    }
     const checkSequence = ++foregroundCheckSequence;
     if (process.platform !== 'win32') {
       restoreSessionOverlay();
@@ -1198,6 +1208,11 @@ function showSessionWindow(onShown) {
     exec('powershell -NoProfile -Command "[System.Diagnostics.Process]::GetProcessById((Add-Type -MemberDefinition \'[DllImport(\\\"user32.dll\\\")] public static extern IntPtr GetForegroundWindow(); [DllImport(\\\"user32.dll\\\")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);\' -Name W -Namespace W -PassThru)::GetWindowThreadProcessId([W.W]::GetForegroundWindow(), [ref]($p = 0)) | Out-Null; $p).ProcessName"', { timeout: 3000, windowsHide: true }, (err, stdout) => {
       if (currentState !== 'logged-in' || sessionWindow !== managedSessionWindow || managedSessionWindow.isDestroyed()) return;
       if (checkSequence !== foregroundCheckSequence) return;
+      if (managedSessionWindow.isFocused()) {
+        sessionHiddenForGame = false;
+        restoreSessionOverlay();
+        return;
+      }
       if (err) {
         // A failed foreground probe must never leave the session hidden.
         sessionHiddenForGame = false;

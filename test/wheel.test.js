@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const net = require('node:net');
+const http = require('node:http');
 const crypto = require('node:crypto');
 const { spawn } = require('node:child_process');
 const { setTimeout: delay } = require('node:timers/promises');
@@ -274,6 +275,33 @@ test('Auto Shutdown offers editable defaults offline but keeps drafts off Denfi 
     assert.equal((await request('/api/admin/wheel', 'POST', { ...edited, mode: 'publish' }, token)).status, 503);
     assert.deepEqual((await request('/api/admin/wheel', 'GET', null, token)).data.wheel, edited);
     assert.notEqual((await request('/api/session/wheel')).status, 200, 'offline drafts cannot enable real spins');
+    let legacyWrites = 0;
+    const legacyPoints = http.createServer((req, res) => {
+      res.setHeader('Content-Type', 'application/json');
+      if (req.url === '/api/admin/status') return res.end(JSON.stringify({ appRole:'points' }));
+      if (req.url === '/api/sync/wheel-config') return res.end(JSON.stringify({
+        success:true, wheel:{ enabled:true, outcomes:defaultWheel().outcomes }
+      }));
+      if (req.url === '/api/admin/kiosk-wheel') legacyWrites++;
+      res.end(JSON.stringify({ success:true }));
+    });
+    await new Promise(resolve => legacyPoints.listen(0, '127.0.0.1', resolve));
+    try {
+      const legacyUrl = `http://127.0.0.1:${legacyPoints.address().port}`;
+      assert.equal((await request('/api/admin/sync-server', 'POST', { url:legacyUrl }, token)).data.success, true);
+      const legacyPolicy = (await request('/api/admin/wheel', 'GET', null, token)).data;
+      assert.equal(legacyPolicy.connected, true);
+      assert.equal(legacyPolicy.pointsSupportsPolicy, false);
+      assert.equal(legacyPolicy.activeWheel.maxSpinsPerDay, 1);
+      assert.deepEqual(legacyPolicy.wheel, edited, 'offline draft remains separate from the old live policy');
+      const rejected = await request('/api/admin/wheel', 'POST', { ...edited, mode:'publish' }, token);
+      assert.equal(rejected.status, 409);
+      assert.match(rejected.data.error, /older build/);
+      assert.equal(legacyWrites, 0, 'do not partly publish odds to an outdated Points build');
+    } finally {
+      legacyPoints.closeAllConnections();
+      await new Promise(resolve => legacyPoints.close(resolve));
+    }
     const pointsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-wheel-draft-points-'));
     const pointsSocket = net.createServer();
     await new Promise(resolve => pointsSocket.listen(0, '127.0.0.1', resolve));
@@ -311,12 +339,15 @@ test('Auto Shutdown offers editable defaults offline but keeps drafts off Denfi 
       const pending = (await request('/api/admin/wheel', 'GET', null, token)).data;
       assert.equal(pending.connected, true);
       assert.equal(pending.draft, true);
+      assert.equal(pending.pointsSupportsPolicy, true);
+      assert.equal(pending.activeWheel.maxSpinsPerDay, 1);
       assert.deepEqual(pending.wheel, edited, 'reconnecting keeps the offline draft visible');
       assert.deepEqual((await fetch(pointsUrl + '/api/sync/wheel-config').then(r => r.json())).wheel.outcomes,
         defaultWheel().outcomes, 'reconnecting must not silently publish the draft');
       const published = await request('/api/admin/wheel', 'POST', { ...edited, mode: 'publish' }, token);
       assert.equal(published.status, 200);
       assert.equal(published.data.draft, false);
+      assert.deepEqual(published.data.activeWheel, edited);
       assert.deepEqual((await fetch(pointsUrl + '/api/sync/wheel-config').then(r => r.json())).wheel, edited);
       assert.equal((await request('/api/admin/wheel', 'GET', null, token)).data.draft, false);
       const updatedStatus = await fetch(pointsUrl + '/api/sync/wheel/status/mem-configured').then(r => r.json());

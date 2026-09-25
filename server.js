@@ -957,24 +957,28 @@ function wheelErrorResponse(res, error, ambiguous = false) {
 }
 
 app.get('/api/admin/wheel', verifyToken, async (req, res) => {
-  if (appRole === 'points') return res.json({ success: true, wheel: settings.getSettings().wheel, readOnly: true, connected: true });
+  if (appRole === 'points') return res.json({ success: true, wheel: settings.getSettings().wheel,
+    activeWheel: settings.getSettings().wheel, readOnly: true, connected: true });
   const saved = settings.getSettings();
   try {
     const remote = await fetchPointsWheel('/api/sync/wheel-config');
     const wheel = parseWheel(remote.wheel);
     if (!wheel) throw new Error('Denfi Points returned invalid betting settings.');
     // Never discard an explicitly saved offline draft when the server reconnects.
-    res.json({ success: true, wheel: saved.wheelDraft || wheel, draft: !!saved.wheelDraft, connected: true });
+    res.json({ success: true, wheel: saved.wheelDraft || wheel, activeWheel:wheel,
+      pointsSupportsPolicy: Number.isInteger(remote.wheel?.maxSpinsPerDay) &&
+        typeof remote.wheel?.allowCustomStake === 'boolean',
+      draft: !!saved.wheelDraft, connected: true });
   } catch (error) {
     res.json({ success: true, wheel: saved.wheelDraft || saved.wheel || defaultWheel(),
-      draft: !!saved.wheelDraft, connected: false });
+      activeWheel:null, draft: !!saved.wheelDraft, connected: false });
   }
 });
 
 app.post('/api/admin/kiosk-wheel', authorizeKioskMission, (req, res) => {
   if (appRole !== 'points') return res.status(404).end();
   const wheel = parseWheel(req.body);
-  if (!wheel) return res.status(400).json({ success: false, error: 'Enter 2–12 distinct multipliers (0–100x), positive percentages and a total of exactly 100%.' });
+  if (!wheel) return res.status(400).json({ success: false, error: 'Enter 1–12 distinct multipliers (0–100x), positive percentages and a total of exactly 100%.' });
   try {
     settings.updateSettings({ wheel });
     res.json({ success: true, wheel });
@@ -986,7 +990,7 @@ app.post('/api/admin/kiosk-wheel', authorizeKioskMission, (req, res) => {
 app.post('/api/admin/wheel', verifyToken, async (req, res) => {
   if (appRole !== 'auto-shutdown') return res.status(403).json({ success: false, error: 'Configure the wheel in Auto Shutdown.' });
   const wheel = parseWheel(req.body);
-  if (!wheel) return res.status(400).json({ success: false, error: 'Enter 2–12 distinct multipliers (0–100x), positive percentages and a total of exactly 100%.' });
+  if (!wheel) return res.status(400).json({ success: false, error: 'Enter 1–12 distinct multipliers (0–100x), positive percentages and a total of exactly 100%.' });
   if (req.body.mode === 'draft') {
     try {
       settings.updateSettings({ wheelDraft: wheel });
@@ -996,13 +1000,29 @@ app.post('/api/admin/wheel', verifyToken, async (req, res) => {
     }
   }
   try {
+    // Older Points builds silently discard maxSpinsPerDay and allowCustomStake.
+    // Check before writing so a successful-looking response cannot activate
+    // odds while leaving the operator's stake policy at its defaults.
+    const before = await fetchPointsWheel('/api/sync/wheel-config');
+    if (!Number.isInteger(before.wheel?.maxSpinsPerDay) ||
+        typeof before.wheel?.allowCustomStake !== 'boolean') {
+      const error = new Error('Denfi Points is an older build. Update the Denfi Points .exe, reconnect it, then publish these betting settings again.');
+      error.status = 409;
+      throw error;
+    }
     const data = await fetchPointsWheel('/api/admin/kiosk-wheel', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wheel)
     });
-    const saved = parseWheel(data.wheel);
-    if (!saved) throw new Error('Denfi Points returned invalid betting settings.');
+    const confirmed = await fetchPointsWheel('/api/sync/wheel-config');
+    const saved = parseWheel(confirmed.wheel);
+    if (!saved || JSON.stringify(saved) !== JSON.stringify(wheel) ||
+        JSON.stringify(data.wheel) !== JSON.stringify(wheel)) {
+      const error = new Error('Denfi Points did not retain the new spin limit and stake policy. Update both .exe builds and publish again.');
+      error.status = 409;
+      throw error;
+    }
     settings.updateSettings({ wheel: saved, wheelDraft: null });
-    res.json({ success: true, wheel: saved, draft: false, connected: true });
+    res.json({ success: true, wheel: saved, activeWheel:saved, draft: false, connected: true });
   } catch (error) {
     wheelErrorResponse(res, error);
   }

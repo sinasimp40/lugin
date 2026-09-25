@@ -892,7 +892,10 @@
         const measuredWidth = Math.max(MIN_OVERLAY_WIDTH, Math.min(MAX_OVERLAY_WIDTH, Math.ceil(logicalWidth * OVERLAY_SCALE)));
         // Keep the window steady while a drawer is open; Windows repaints transparent
         // windows on every bounds change, including changes caused by points polling.
-        const targetWidth = activeDrawer ? Math.max(overlayWidth, measuredWidth) : measuredWidth;
+        // Avoid changing the bounds of a transparent native window while
+        // the drawer is being used; Windows flashes on every bounds change.
+        if (activeDrawer) return;
+        const targetWidth = measuredWidth;
         if (targetWidth === overlayWidth) return;
         overlayWidth = targetWidth;
 
