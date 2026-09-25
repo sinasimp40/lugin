@@ -43,4 +43,8 @@ function pickOutcome(outcomes) {
   throw new Error('Invalid wheel probability distribution');
 }
 
-module.exports = { defaultWheel, parseWheel, pickOutcome };
+function oddsToken(wheel) {
+  return crypto.createHash('sha256').update(JSON.stringify(wheel.outcomes)).digest('hex');
+}
+
+module.exports = { defaultWheel, parseWheel, pickOutcome, oddsToken };

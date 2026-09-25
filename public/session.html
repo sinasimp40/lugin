@@ -534,6 +534,32 @@
   .wheel-error { display:none; margin-top:8px; padding:8px; border:1px solid #a64c3e; color:#ffaaa0; background:#2b1715; font-size:11px; line-height:1.4; }
   .wheel-error.active { display:block; }
   @media (prefers-reduced-motion: reduce) { .wheel-disc { transition:none; } }
+  /* Betting Games: a compact, honest reel. Tiles are visual presentation only. */
+  .wheel-intro { align-items:center; margin-bottom:8px; }
+  .wheel-kicker { color:#f4ef12; font-size:9px; letter-spacing:1.7px; }
+  .wheel-balance { color:#f4ef12; font-size:15px; }
+  .wheel-warning { border-color:rgba(244,239,18,.32); background:rgba(244,239,18,.055); color:#d9d2a4; padding:7px 9px; margin-bottom:8px; }
+  .wheel-explanation { color:#8d8b76; margin:0 0 9px; }
+  .wheel-stage { width:100%; height:100px; aspect-ratio:auto; margin:5px 0 10px; position:relative; overflow:hidden; border:1px solid rgba(244,239,18,.28); background:#0b0c0d; box-shadow:inset 0 0 26px rgba(0,0,0,.8); }
+  .wheel-stage::before,.wheel-stage::after { content:''; position:absolute; z-index:2; top:0; bottom:0; width:28%; pointer-events:none; }
+  .wheel-stage::before { left:0; background:linear-gradient(90deg,#0b0c0d 0%,rgba(11,12,13,.86) 35%,transparent 100%); }
+  .wheel-stage::after { right:0; background:linear-gradient(270deg,#0b0c0d 0%,rgba(11,12,13,.86) 35%,transparent 100%); }
+  .wheel-pointer { top:0; bottom:0; left:50%; width:2px; height:auto; transform:translateX(-50%); border:0; background:#f4ef12; filter:none; box-shadow:0 0 9px rgba(244,239,18,.75); }
+  .wheel-pointer::after { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); border-left:6px solid transparent; border-right:6px solid transparent; border-top:8px solid #f4ef12; }
+  .wheel-disc { position:absolute; inset:0; width:auto; height:auto; border:0; border-radius:0; background:transparent !important; box-shadow:none; transition:none; overflow:visible; }
+  .wheel-disc::after { display:none; }
+  .wheel-labels { position:absolute; inset:0; display:flex; align-items:center; gap:6px; padding:0 calc(50% - 38px); width:max-content; transform:translateX(0); transition:transform 4.2s cubic-bezier(.12,.78,.18,1); }
+  .wheel-label { position:static; flex:0 0 76px; height:64px; display:flex; align-items:center; justify-content:center; transform:none; border:1px solid rgba(244,239,18,.22); border-radius:2px; background:linear-gradient(180deg,#25261b,#171812); color:#eeeac0; font-size:16px; text-shadow:0 1px 4px #000; }
+  .wheel-label.is-target { border-color:#f4ef12; color:#fffca7; background:linear-gradient(180deg,#605d10,#29280a); box-shadow:inset 0 0 0 1px rgba(244,239,18,.25); }
+  .wheel-result { min-height:21px; color:#f4ef12; font-size:13px; }
+  .wheel-stats { margin:8px 0; }
+  .wheel-stat { border-color:rgba(244,239,18,.18); color:#88866f; }
+  .wheel-stat strong { color:#e8e59f; font-size:11px; }
+  .wheel-spin { border-color:#f4ef12; background:linear-gradient(180deg,#b5b00f,#6b6704); color:#121203; padding:10px; }
+  .wheel-note { color:#aaa66e; }
+  .demo-badge { display:inline-block; margin-left:7px; padding:2px 5px; border:1px solid rgba(244,239,18,.55); color:#f4ef12; font:8px 'Share Tech Mono'; letter-spacing:1px; vertical-align:middle; }
+  .demo-badge[hidden] { display:none; }
+  @media (prefers-reduced-motion: reduce) { .wheel-labels { transition:none; } }
   .attendance-view { min-width:0; }
   .attendance-toolbar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:9px; }
   .attendance-month-label { color:#ffe0a4; font:800 15px 'Orbitron',monospace; letter-spacing:.5px; }
@@ -631,14 +657,14 @@
         <div id="attendance-content"></div>
       </div>
       <div id="wheel-view" class="wheel-view">
-        <div class="wheel-intro"><div class="wheel-kicker">CURRENT-MONTH POINTS AT RISK</div><div class="wheel-balance" id="wheel-balance">0 PTS</div></div>
-        <div class="wheel-warning">ONE SPIN STAKES YOUR ENTIRE BALANCE. LOSE 0x LOSES IT ALL. A RESULT IS LOCKED BY THE SERVER.</div>
-        <div class="wheel-explanation">1x returns the entire stake. Multipliers are gross payouts, before the balance is updated.</div>
+        <div class="wheel-intro"><div class="wheel-kicker">ALL-IN MULTIPLIER REEL<span class="demo-badge" id="wheel-demo-badge" hidden>DEMO</span></div><div class="wheel-balance" id="wheel-balance">0 PTS</div></div>
+        <div class="wheel-warning">ONE SPIN STAKES YOUR ENTIRE BALANCE. THE SERVER LOCKS THE RESULT.</div>
+        <div class="wheel-explanation">Numbers roll only after your confirmed request returns. Tiles are presentation, not probability.</div>
         <div class="wheel-confirm" id="wheel-confirm" role="alertdialog" aria-labelledby="wheel-confirm-text" aria-modal="false">
           <div class="wheel-confirm-text" id="wheel-confirm-text">Confirm staking your entire points balance?</div>
           <div class="wheel-confirm-actions"><button type="button" id="wheel-confirm-no">CANCEL</button><button type="button" class="wheel-confirm-yes" id="wheel-confirm-yes">STAKE ALL POINTS</button></div>
         </div>
-        <div class="wheel-stage"><div class="wheel-pointer"></div><div class="wheel-disc" id="wheel-disc"><div class="wheel-labels" id="wheel-labels"></div></div></div>
+        <div class="wheel-stage" aria-label="Multiplier reel"><div class="wheel-pointer" aria-hidden="true"></div><div class="wheel-disc" id="wheel-disc"><div class="wheel-labels" id="wheel-labels"></div></div></div>
         <div class="wheel-result" id="wheel-result">READY FOR A HIGH-STAKES SPIN</div>
         <div class="wheel-stats"><div class="wheel-stat">STAKE<strong id="wheel-stake">0 PTS</strong></div><div class="wheel-stat">PAYOUT<strong id="wheel-payout">—</strong></div><div class="wheel-stat">NEW BALANCE<strong id="wheel-new-balance">—</strong></div></div>
         <button class="wheel-spin" id="wheel-spin" type="button" disabled>CONFIRM AND SPIN</button>
@@ -766,8 +792,9 @@
     let wheelConfirmOpen = false;
     let wheelConfirmUsername = '';
     let wheelExpectedStake = null;
-    let wheelExpectedOutcomes = null;
-    let wheelRotation = 0;
+    let wheelMultipliers = [];
+    let wheelOddsToken = '';
+    let wheelReelOffset = 0;
     let drawerResizeTimer = null;
     function wheelPendingKey(username) {
       return `denfi-wheel-pending:${String(username || '').toLowerCase()}`;
@@ -778,23 +805,29 @@
         const raw = sessionStorage.getItem(wheelPendingKey(username));
         if (!raw) return null;
         const pending = JSON.parse(raw);
+        const legacy = !pending.oddsToken && Array.isArray(pending.expectedOutcomes);
+        const choices = legacy ? pending.expectedOutcomes.map(item => item.multiplier) : pending.multipliers;
         return pending && typeof pending.requestId === 'string' && Number.isFinite(Number(pending.expectedStake))
-          && Array.isArray(pending.expectedOutcomes) && pending.expectedOutcomes.length
+          && Array.isArray(choices) && choices.length
+          && (legacy || typeof pending.oddsToken === 'string')
           ? {
             requestId: pending.requestId,
             expectedStake: Number(Number(pending.expectedStake).toFixed(2)),
-            expectedOutcomes: pending.expectedOutcomes.map(item => ({ multiplier:Number(item.multiplier), weight:Number(item.weight) }))
+            multipliers: choices.map(Number).filter(Number.isFinite),
+            oddsToken: legacy ? '' : pending.oddsToken,
+            legacy
           }
           : null;
       } catch (_) { return null; }
     }
-    function writePendingWheel(username, requestId, expectedStake, expectedOutcomes) {
+    function writePendingWheel(username, requestId, expectedStake, multipliers, oddsToken) {
       if (previewMode || !username) return;
       try {
         sessionStorage.setItem(wheelPendingKey(username), JSON.stringify({
           requestId,
           expectedStake:Number(expectedStake.toFixed(2)),
-          expectedOutcomes: expectedOutcomes.map(item => ({ multiplier:Number(item.multiplier), weight:Number(item.weight) }))
+          multipliers: multipliers.map(Number).filter(Number.isFinite),
+          oddsToken: String(oddsToken || '')
         }));
       } catch (_) {}
     }
@@ -966,7 +999,8 @@
         resetWheelConfirmation();
         wheelRequestId = null;
         wheelExpectedStake = null;
-        wheelExpectedOutcomes = null;
+      wheelMultipliers = [];
+      wheelOddsToken = '';
         wheelRequestUsername = '';
       }
     }
@@ -977,32 +1011,25 @@
     }
     function renderWheel() {
       if (!wheelData) return;
-      const outcomes = Array.isArray(wheelData.outcomes) ? wheelData.outcomes : [];
+      const multipliers = Array.isArray(wheelData.multipliers) ? wheelData.multipliers : [];
       document.getElementById('wheel-balance').textContent = wheelMoney(wheelData.balance);
       document.getElementById('wheel-stake').textContent = wheelMoney(wheelData.balance);
       const labels = document.getElementById('wheel-labels');
       labels.replaceChildren();
-      const colors = ['#ff7e16','#29231c','#ffd36e','#7f4b1e','#f4a02b','#b74d1e','#d8a23b'];
-      const totalWeight = outcomes.reduce((sum, item) => sum + Math.max(0, Number(item.weight) || 0), 0) || 1;
-      let cursor = 0;
-      const stops = [];
-      outcomes.forEach((outcome, index) => {
-        const weight = Math.max(0, Number(outcome.weight) || 0);
-        const start = cursor / totalWeight * 360;
-        cursor += weight;
-        const end = cursor / totalWeight * 360;
-        stops.push(`${colors[index % colors.length]} ${start}deg ${end}deg`);
+      const visible = multipliers.length ? multipliers : [0, .5, 1, 2, 5];
+      wheelReelOffset = -Math.ceil(8 / visible.length) * visible.length * 82;
+      const tiles = Array.from({ length: 48 }, (_, index) => visible[index % visible.length]);
+      tiles.forEach((multiplier, index) => {
         const label = document.createElement('span');
         label.className = 'wheel-label';
-        label.textContent = Number(outcome.multiplier) === 0 ? 'LOSE 0x' : `${Number(outcome.multiplier)}x`;
-        const angle = (start + end) / 2;
-        const radians = angle * Math.PI / 180;
-        const radius = 58;
-        label.style.left = `calc(50% + ${Math.sin(radians) * radius}px)`;
-        label.style.top = `calc(50% - ${Math.cos(radians) * radius}px)`;
+        label.textContent = `${Number(multiplier)}x`;
+        label.dataset.index = String(index);
         labels.appendChild(label);
       });
-      document.getElementById('wheel-disc').style.background = `conic-gradient(${stops.join(',')})`;
+      labels.style.transition = 'none';
+      labels.style.transform = `translateX(${wheelReelOffset}px)`;
+      void labels.offsetWidth;
+      labels.style.transition = '';
       resizeDrawerToContent();
     }
     async function loadWheel() {
@@ -1017,14 +1044,16 @@
       if (pending) {
         wheelRequestId = pending.requestId;
         wheelExpectedStake = pending.expectedStake;
-        wheelExpectedOutcomes = pending.expectedOutcomes;
+        wheelMultipliers = pending.multipliers;
+        wheelOddsToken = pending.oddsToken;
         wheelRequestUsername = sessionUsername;
         document.getElementById('wheel-result').textContent = 'RESULT NOT CONFIRMED';
         document.getElementById('wheel-note').textContent = 'Result not confirmed. Retry the same request.';
       } else {
         wheelRequestId = null;
         wheelExpectedStake = null;
-        wheelExpectedOutcomes = null;
+        wheelMultipliers = [];
+        wheelOddsToken = '';
         wheelRequestUsername = '';
         document.getElementById('wheel-note').textContent = '';
       }
@@ -1032,7 +1061,8 @@
       document.getElementById('wheel-spin').disabled = true;
       if (!pending) document.getElementById('wheel-result').textContent = 'LOADING POINTS BALANCE...';
       if (previewMode) {
-        wheelData = { enabled:true, balance:86.5, outcomes:[{multiplier:0,weight:35},{multiplier:.5,weight:20},{multiplier:1,weight:20},{multiplier:2,weight:15},{multiplier:5,weight:10}] };
+        wheelData = { enabled:true, balance:86.5, multipliers:[0,.5,1,2,5], oddsToken:'preview-demo-token' };
+        document.getElementById('wheel-demo-badge').hidden = false;
         renderWheel();
         wheelLoaded = true;
         document.getElementById('wheel-spin').disabled = false;
@@ -1048,7 +1078,13 @@
         const data = await response.json().catch(() => ({}));
         if (!isCurrentWheelView()) return;
         if (!response.ok || !data.success) throw new Error(data.error || 'Wheel service is unavailable.');
-        wheelData = data;
+          wheelData = data;
+          if (!Array.isArray(data.multipliers)) throw new Error('Multiplier choices are unavailable.');
+          if (pending) {
+            wheelData.oddsToken = pending.oddsToken;
+            wheelData.multipliers = pending.multipliers;
+          }
+          document.getElementById('wheel-demo-badge').hidden = true;
         renderWheel();
         wheelLoaded = true;
         if (data.enabled === false) {
@@ -1082,18 +1118,12 @@
           : (e.message || 'Wheel service is offline.');
         error.classList.add('active');
         if (pending) {
-          wheelData = wheelData || { enabled:false, balance:0, outcomes:[
-            { multiplier:0, weight:35 }, { multiplier:.5, weight:20 },
-            { multiplier:1, weight:20 }, { multiplier:2, weight:15 }, { multiplier:5, weight:10 }
-          ] };
+          wheelData = wheelData || { enabled:false, balance:0, multipliers:pending.multipliers, oddsToken:pending.oddsToken };
           wheelLoaded = true;
         }
         document.getElementById('wheel-spin').disabled = !pending;
         if (pending) document.getElementById('wheel-spin').textContent = 'RETRY SAME REQUEST';
       }
-    }
-    function outcomeIndex(multiplier) {
-      return (wheelData.outcomes || []).findIndex(item => Number(item.multiplier) === Number(multiplier));
     }
     function createWheelRequestId() {
       if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
@@ -1116,10 +1146,6 @@
         wheelConfirmOpen = true;
         wheelConfirmUsername = sessionUsername;
         wheelExpectedStake = Number(stake.toFixed(2));
-        wheelExpectedOutcomes = wheelData.outcomes.map(item => ({
-          multiplier: Number(item.multiplier),
-          weight: Number(item.weight)
-        }));
         document.getElementById('wheel-confirm-text').textContent = `Stake all ${wheelMoney(wheelExpectedStake)}? LOSE 0x loses it all.`;
         document.getElementById('wheel-confirm').classList.add('active');
         document.getElementById('wheel-spin').textContent = 'CONFIRM BELOW';
@@ -1136,21 +1162,24 @@
       try {
         wheelRequestId = wheelRequestId || createWheelRequestId();
         wheelRequestUsername = requestUsername;
-        writePendingWheel(requestUsername, wheelRequestId, expectedStake, wheelExpectedOutcomes);
+        if (!recovering) writePendingWheel(requestUsername, wheelRequestId, expectedStake, wheelData.multipliers, wheelData.oddsToken);
         let spin;
         if (previewMode) {
           await new Promise(resolve => setTimeout(resolve, 400));
           spin = { stake: expectedStake, multiplier: 2, payout: expectedStake * 2, balance: expectedStake * 2, net: expectedStake, id:'preview-spin', createdAt:new Date().toISOString() };
         } else {
-          const response = await fetch('/api/session/wheel/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({requestId:wheelRequestId, expectedStake, expectedOutcomes:wheelExpectedOutcomes}) });
+          const response = await fetch('/api/session/wheel/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+            requestId:wheelRequestId, expectedStake,
+            ...(recovering && !wheelOddsToken ? { legacyReplay:true } : { oddsToken:wheelOddsToken || wheelData.oddsToken })
+          }) });
           const data = await response.json().catch(() => ({}));
           if (response.status === 409 && /balance changed/i.test(String(data.error || ''))) {
             const known = new Error('Balance changed');
             known.code = 'KNOWN_NOT_SETTLED';
             throw known;
           }
-          if (response.status === 409 && /wheel odds changed/i.test(String(data.error || ''))) {
-            const known = new Error('Wheel odds changed');
+          if (response.status === 409 && /game settings changed/i.test(String(data.error || ''))) {
+            const known = new Error('Game settings changed');
             known.code = 'KNOWN_NOT_SETTLED';
             throw known;
           }
@@ -1174,23 +1203,26 @@
           wheelExpectedStake = null;
           return;
         }
-        if (Array.isArray(spin.outcomes) && spin.outcomes.length) {
-          wheelData.outcomes = spin.outcomes;
-          renderWheel();
-        }
-        const idx = outcomeIndex(spin.multiplier);
-        if (idx < 0) throw new Error('Server returned an unknown wheel result.');
-        const totalWeight = wheelData.outcomes.reduce((sum, item) => sum + Math.max(0, Number(item.weight) || 0), 0) || 1;
-        const beforeWeight = wheelData.outcomes.slice(0, idx).reduce((sum, item) => sum + Math.max(0, Number(item.weight) || 0), 0);
-        const resultWeight = Math.max(0, Number(wheelData.outcomes[idx].weight) || 0);
-        const resultCenter = ((beforeWeight + resultWeight / 2) / totalWeight) * 360;
-        wheelRotation += 1440 + (360 - resultCenter) - (wheelRotation % 360);
-        document.getElementById('wheel-disc').style.transform = `rotate(${wheelRotation}deg)`;
+        const result = Number(spin.multiplier);
+        if (!Number.isFinite(result)) throw new Error('Server returned an unknown multiplier result.');
+        const visible = Array.isArray(wheelData.multipliers) && wheelData.multipliers.length ? wheelData.multipliers : [0,.5,1,2,5];
+        const resultChoice = visible.findIndex(value => Number(value) === result);
+        if (resultChoice < 0) throw new Error('Server returned an unknown multiplier result.');
+        const targetIndex = Math.ceil(18 / visible.length) * visible.length + resultChoice;
+        const tileWidth = 82;
+        wheelReelOffset = -(targetIndex * tileWidth);
+        const labels = document.getElementById('wheel-labels');
+        Array.from(labels.children).forEach((el, index) => el.classList.toggle('is-target', index === targetIndex));
+        labels.style.transition = 'none';
+        labels.style.transform = `translateX(${-Math.ceil(8 / visible.length) * visible.length * tileWidth}px)`;
+        void labels.offsetWidth;
+        labels.style.transition = '';
+        labels.style.transform = `translateX(${wheelReelOffset}px)`;
         const settle = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 4300;
         setTimeout(() => {
           if (String(sessionUsername || '').toLowerCase() !== String(requestUsername || '').toLowerCase()) {
             clearPendingWheel(requestUsername, wheelRequestId);
-            wheelSpinInFlight = false; wheelRequestId = null; wheelRequestUsername = ''; wheelExpectedStake = null; wheelExpectedOutcomes = null;
+            wheelSpinInFlight = false; wheelRequestId = null; wheelRequestUsername = ''; wheelExpectedStake = null; wheelMultipliers = []; wheelOddsToken = '';
             return;
           }
           document.getElementById('wheel-result').textContent = `${Number(spin.multiplier)}x RESULT CONFIRMED`;
@@ -1205,7 +1237,7 @@
           wheelData.balance = Number(spin.balance);
           setPoints(spin.balance);
           button.textContent = 'SPIN AGAIN';
-          wheelSpinInFlight = false; wheelRequestId = null; wheelRequestUsername = ''; wheelExpectedStake = null; wheelExpectedOutcomes = null;
+          wheelSpinInFlight = false; wheelRequestId = null; wheelRequestUsername = ''; wheelExpectedStake = null; wheelMultipliers = []; wheelOddsToken = '';
           if (wheelData.balance <= 0) button.disabled = true;
           resizeDrawerToContent();
         }, settle);
@@ -1215,7 +1247,8 @@
           wheelSpinInFlight = false;
           wheelRequestId = null;
           wheelExpectedStake = null;
-          wheelExpectedOutcomes = null;
+          wheelMultipliers = [];
+          wheelOddsToken = '';
           wheelRequestUsername = '';
           resetWheelConfirmation();
           error.textContent = e.message + '. Review the new balance before trying again.';

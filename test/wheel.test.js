@@ -108,7 +108,11 @@ test('Points API settles once and keeps pending Telegram notifications for retry
     assert.equal(ready, true);
     const token = (await request('/api/admin/register', 'POST', { password: 'test-password' })).data.token;
     assert.equal((await request('/api/sync/wheel-config')).data.wheel.outcomes[0].weight, 35);
-    assert.equal((await request('/api/sync/wheel/status/mem-player')).data.balance, 12);
+    const status = (await request('/api/sync/wheel/status/mem-player')).data;
+    assert.equal(status.balance, 12);
+    assert.deepEqual(status.multipliers, [0, 0.5, 1, 2, 5]);
+    assert.equal(status.outcomes, undefined, 'player status must not disclose winning rates');
+    assert.match(status.oddsToken, /^[a-f0-9]{64}$/);
     assert.equal((await request('/api/admin/wheel', 'POST', defaultWheel(), token)).status, 403);
     const updateGeneric = await request('/api/admin/settings', 'POST', { wheel: { enabled: false, outcomes: defaultWheel().outcomes } }, token);
     assert.equal(updateGeneric.data.settings.wheel.enabled, true);
@@ -116,15 +120,13 @@ test('Points API settles once and keeps pending Telegram notifications for retry
       { enabled: true, outcomes: [{ multiplier: 0, weight: 40 }, { multiplier: 2, weight: 40 }] })).status, 400);
     const requestId = '00000000-0000-4000-8000-000000000009';
     assert.equal((await request('/api/sync/wheel/spin', 'POST', {
-      username: 'mem-player', requestId, expectedStake: 13, expectedOutcomes: defaultWheel().outcomes
+      username: 'mem-player', requestId, expectedStake: 13, oddsToken: status.oddsToken
     })).status, 409, 'stale reviewed balances must not wager extra points');
     assert.equal((await request('/api/sync/wheel/spin', 'POST', {
-      username: 'mem-player', requestId, expectedStake: 12,
-      expectedOutcomes: [{ multiplier: 0, weight: 50 }, { multiplier: 1, weight: 50 }]
+      username: 'mem-player', requestId, expectedStake: 12, oddsToken: '0'.repeat(64)
     })).status, 409, 'changed odds must not settle against different chances');
     const first = await request('/api/sync/wheel/spin', 'POST', {
-      username: 'mem-player', requestId, station: 'PC 1', expectedStake: 12,
-      expectedOutcomes: defaultWheel().outcomes
+      username: 'mem-player', requestId, station: 'PC 1', expectedStake: 12, oddsToken: status.oddsToken
     });
     assert.equal(first.status, 200);
     assert.equal(first.data.spin.stake, 12);
@@ -133,12 +135,19 @@ test('Points API settles once and keeps pending Telegram notifications for retry
     const disabled = await request('/api/admin/kiosk-wheel', 'POST', { enabled: false, outcomes: defaultWheel().outcomes });
     assert.equal(disabled.data.wheel.enabled, false);
     const again = await request('/api/sync/wheel/spin', 'POST', {
-      username: 'mem-player', requestId, expectedStake: 12, expectedOutcomes: defaultWheel().outcomes
+      username: 'mem-player', requestId, expectedStake: 12, oddsToken: status.oddsToken
     });
     assert.equal(again.data.spin.id, first.data.spin.id);
+    const legacyReplay = await request('/api/sync/wheel/spin', 'POST', {
+      username: 'mem-player', requestId, expectedStake: 12, legacyReplay: true
+    });
+    assert.equal(legacyReplay.data.spin.id, first.data.spin.id, 'older pending clients can recover a settled request');
     assert.equal((await request('/api/sync/wheel/spin', 'POST', {
-      username: 'mem-player', requestId: '00000000-0000-4000-8000-000000000010', expectedStake: 12,
-      expectedOutcomes: defaultWheel().outcomes
+      username: 'mem-player', requestId: '00000000-0000-4000-8000-000000000011',
+      expectedStake: 12, legacyReplay: true
+    })).status, 409, 'an older pending request must not become a new wager');
+    assert.equal((await request('/api/sync/wheel/spin', 'POST', {
+      username: 'mem-player', requestId: '00000000-0000-4000-8000-000000000010', expectedStake: 12, oddsToken: status.oddsToken
     })).status, 403);
     assert.equal((await request('/api/sync/coin-logs')).data.logs.filter(item => item.source === 'wheel').length, 1);
     assert.equal((await request('/api/sync/member-points/mem-player')).data.points, first.data.spin.balance);
