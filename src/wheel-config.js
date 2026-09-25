@@ -2,11 +2,19 @@ const crypto = require('crypto');
 
 const DEFAULT_OUTCOMES = Object.freeze([
   { multiplier: 0, weight: 35 },
+  { multiplier: 1.5, weight: 20 },
+  { multiplier: 1.8, weight: 20 },
+  { multiplier: 2, weight: 15 },
+  { multiplier: 5, weight: 10 }
+]);
+
+const LEGACY_DEFAULT_OUTCOMES = [
+  { multiplier: 0, weight: 35 },
   { multiplier: 0.5, weight: 20 },
   { multiplier: 1, weight: 20 },
   { multiplier: 2, weight: 15 },
   { multiplier: 5, weight: 10 }
-]);
+];
 
 function defaultWheel() {
   return { enabled: true, outcomes: DEFAULT_OUTCOMES.map(item => ({ ...item })) };
@@ -34,6 +42,15 @@ function parseWheel(input) {
   return total === 10000 ? { enabled: input.enabled, outcomes } : null;
 }
 
+function currentWheel(input) {
+  const wheel = parseWheel(input) || defaultWheel();
+  // Upgrade only the exact old default; preserve every operator-customized distribution.
+  const wasLegacyDefault = wheel.outcomes.length === LEGACY_DEFAULT_OUTCOMES.length &&
+    wheel.outcomes.every((item, index) => item.multiplier === LEGACY_DEFAULT_OUTCOMES[index].multiplier &&
+      item.weight === LEGACY_DEFAULT_OUTCOMES[index].weight);
+  return wasLegacyDefault ? { enabled: wheel.enabled, outcomes: defaultWheel().outcomes } : wheel;
+}
+
 function pickOutcome(outcomes) {
   let ticket = crypto.randomInt(10000);
   for (const outcome of outcomes) {
@@ -47,4 +64,4 @@ function oddsToken(wheel) {
   return crypto.createHash('sha256').update(JSON.stringify(wheel.outcomes)).digest('hex');
 }
 
-module.exports = { defaultWheel, parseWheel, pickOutcome, oddsToken };
+module.exports = { defaultWheel, currentWheel, parseWheel, pickOutcome, oddsToken };

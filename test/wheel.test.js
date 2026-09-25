@@ -7,7 +7,7 @@ const net = require('node:net');
 const { spawn } = require('node:child_process');
 const { setTimeout: delay } = require('node:timers/promises');
 const logs = require('../src/coin-log-store');
-const { defaultWheel, parseWheel } = require('../src/wheel-config');
+const { defaultWheel, currentWheel, parseWheel } = require('../src/wheel-config');
 
 test('full-balance settlement is idempotent, rate-proof and decreases ranking', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-wheel-ledger-'));
@@ -59,11 +59,44 @@ test('full-balance settlement is idempotent, rate-proof and decreases ranking', 
 
 test('wheel configuration rejects invalid odds, duplicates and non-cent precision', () => {
   assert.equal(defaultWheel().outcomes.reduce((sum, item) => sum + item.weight, 0), 100);
+  assert.deepEqual(defaultWheel().outcomes, [
+    { multiplier: 0, weight: 35 }, { multiplier: 1.5, weight: 20 },
+    { multiplier: 1.8, weight: 20 }, { multiplier: 2, weight: 15 }, { multiplier: 5, weight: 10 }
+  ]);
   assert.equal(parseWheel(defaultWheel()).enabled, true);
+  const legacy = { enabled: false, outcomes: [
+    { multiplier: 0, weight: 35 }, { multiplier: 0.5, weight: 20 },
+    { multiplier: 1, weight: 20 }, { multiplier: 2, weight: 15 }, { multiplier: 5, weight: 10 }
+  ] };
+  assert.deepEqual(currentWheel(legacy), { enabled: false, outcomes: defaultWheel().outcomes });
+  const customized = { ...legacy, outcomes: legacy.outcomes.map((item, index) =>
+    ({ ...item, weight: index === 0 ? 30 : index === 1 ? 25 : item.weight })) };
+  assert.deepEqual(currentWheel(customized), customized, 'customized rates must not be replaced');
   assert.equal(parseWheel({ enabled: true, outcomes: [{ multiplier: 0, weight: 40 }, { multiplier: 2, weight: 50 }] }), null);
   assert.equal(parseWheel({ enabled: true, outcomes: [{ multiplier: 2, weight: 40 }, { multiplier: 2, weight: 60 }] }), null);
   assert.equal(parseWheel({ enabled: true, outcomes: [{ multiplier: 0, weight: 33.333 }, { multiplier: 1, weight: 66.667 }] }), null);
   assert.equal(parseWheel({ enabled: true, outcomes: [{ multiplier: 0, weight: 0 }, { multiplier: 1, weight: 100 }] }), null);
+});
+
+test('2× pays twice the exact staked balance, including the original stake', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-wheel-math-'));
+  try {
+    logs.setDataDir(dir);
+    const rates = [{ pesos: 1, points: 1 }];
+    for (const [username, stake] of [['mem-large', 86.5], ['mem-small', 6.5]]) {
+      logs.appendLog({ username, amount: stake, ip: username, mac: username }, rates);
+      const spin = logs.appendWheelSpin({
+        username, requestId: username === 'mem-large' ? '00000000-0000-4000-8000-000000000031' : '00000000-0000-4000-8000-000000000032',
+        station: 'PC', expectedStake: stake, outcomes: [{ multiplier: 2, weight: 100 }], pointRates: rates
+      });
+      assert.equal(spin.stake, stake);
+      assert.equal(spin.payout, stake * 2);
+      assert.equal(spin.balance, stake * 2);
+      assert.equal(spin.net, stake);
+    }
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('Auto Shutdown offers editable defaults offline but keeps drafts off Denfi Points', async () => {
@@ -109,9 +142,9 @@ test('Auto Shutdown offers editable defaults offline but keeps drafts off Denfi 
     assert.deepEqual(initial.data.wheel.outcomes, defaultWheel().outcomes);
     assert.equal(initial.data.connected, false);
     assert.equal(initial.data.draft, false);
-    const edited = { enabled: false, outcomes: [
-      { multiplier: 0, weight: 45 }, { multiplier: 0.5, weight: 10 },
-      { multiplier: 1, weight: 20 }, { multiplier: 2, weight: 15 }, { multiplier: 5, weight: 10 }
+    const edited = { enabled: true, outcomes: [
+      { multiplier: 0, weight: 45 }, { multiplier: 1.5, weight: 10 },
+      { multiplier: 1.8, weight: 20 }, { multiplier: 2, weight: 15 }, { multiplier: 5, weight: 10 }
     ] };
     const saved = await request('/api/admin/wheel', 'POST', { ...edited, mode: 'draft' }, token);
     assert.equal(saved.status, 200);
@@ -128,9 +161,11 @@ test('Auto Shutdown offers editable defaults offline but keeps drafts off Denfi 
     const points = spawn(process.execPath, ['-e', `
       const dir=process.env.DENFI_TEST_DATA_DIR;
       const settings=require('./src/settings-store'); settings.setAppRole('points'); settings.setDataDir(dir);
-      require('./src/coin-log-store').setDataDir(dir);
+      const logs=require('./src/coin-log-store'); logs.setDataDir(dir);
       require('./src/attendance-store').setDataDir(dir);
       require('./src/order-store').setDataDir(dir);
+      logs.appendLog({username:'mem-configured',amount:10,ip:'a',mac:'b'},[{pesos:1,points:1}]);
+      settings.updateSettings({pointRates:[{pesos:1,points:1}]});
       require('./server');
     `], {
       cwd: path.join(__dirname, '..'),
@@ -150,6 +185,7 @@ test('Auto Shutdown offers editable defaults offline but keeps drafts off Denfi 
         await delay(100);
       }
       assert.equal(pointsReady, true);
+      const oldStatus = await fetch(pointsUrl + '/api/sync/wheel/status/mem-configured').then(r => r.json());
       assert.equal((await request('/api/admin/sync-server', 'POST', { url: pointsUrl }, token)).data.success, true);
       const pending = (await request('/api/admin/wheel', 'GET', null, token)).data;
       assert.equal(pending.connected, true);
@@ -162,6 +198,17 @@ test('Auto Shutdown offers editable defaults offline but keeps drafts off Denfi 
       assert.equal(published.data.draft, false);
       assert.deepEqual((await fetch(pointsUrl + '/api/sync/wheel-config').then(r => r.json())).wheel, edited);
       assert.equal((await request('/api/admin/wheel', 'GET', null, token)).data.draft, false);
+      const updatedStatus = await fetch(pointsUrl + '/api/sync/wheel/status/mem-configured').then(r => r.json());
+      assert.deepEqual(updatedStatus.multipliers, edited.outcomes.map(item => item.multiplier));
+      assert.notEqual(updatedStatus.oddsToken, oldStatus.oddsToken);
+      const attempt = { username:'mem-configured', station:'PC', requestId:'00000000-0000-4000-8000-000000000041', expectedStake:10 };
+      const spinRequest = oddsToken => fetch(pointsUrl + '/api/sync/wheel/spin', {
+        method:'POST', headers:{'content-type':'application/json'},
+        body:JSON.stringify({ ...attempt, oddsToken })
+      });
+      assert.equal((await spinRequest(oldStatus.oddsToken)).status, 409, 'old odds must be reviewed again');
+      const spun = await spinRequest(updatedStatus.oddsToken).then(r => r.json());
+      assert.deepEqual(spun.spin.outcomes, edited.outcomes, 'new odds apply to the next spin');
     } finally {
       points.kill();
       fs.rmSync(pointsDir, { recursive: true, force: true });
@@ -216,7 +263,7 @@ test('Points API settles once and keeps pending Telegram notifications for retry
     assert.equal((await request('/api/sync/wheel-config')).data.wheel.outcomes[0].weight, 35);
     const status = (await request('/api/sync/wheel/status/mem-player')).data;
     assert.equal(status.balance, 12);
-    assert.deepEqual(status.multipliers, [0, 0.5, 1, 2, 5]);
+    assert.deepEqual(status.multipliers, [0, 1.5, 1.8, 2, 5]);
     assert.equal(status.outcomes, undefined, 'player status must not disclose winning rates');
     assert.match(status.oddsToken, /^[a-f0-9]{64}$/);
     assert.equal((await request('/api/admin/wheel', 'POST', defaultWheel(), token)).status, 403);

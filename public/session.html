@@ -1019,7 +1019,7 @@
       document.getElementById('wheel-stake').textContent = wheelMoney(wheelData.balance);
       const labels = document.getElementById('wheel-labels');
       labels.replaceChildren();
-      const visible = multipliers.length ? multipliers : [0, .5, 1, 2, 5];
+      const visible = multipliers.length ? multipliers : [0, 1.5, 1.8, 2, 5];
       wheelReelOffset = -Math.ceil(8 / visible.length) * visible.length * 82;
       const tiles = Array.from({ length: 48 }, (_, index) => visible[index % visible.length]);
       tiles.forEach((multiplier, index) => {
@@ -1085,7 +1085,7 @@
       document.getElementById('wheel-spin').disabled = true;
       if (!pending) document.getElementById('wheel-result').textContent = 'LOADING POINTS BALANCE...';
       if (previewMode) {
-        wheelData = { enabled:true, balance:86.5, multipliers:[0,.5,1,2,5], oddsToken:'preview-demo-token' };
+        wheelData = { enabled:true, balance:86.5, multipliers:[0,1.5,1.8,2,5], oddsToken:'preview-demo-token' };
         document.getElementById('wheel-demo-badge').hidden = false;
         renderWheel();
         wheelLoaded = true;
@@ -1238,7 +1238,7 @@
         }
         const result = Number(spin.multiplier);
         if (!Number.isFinite(result)) throw new Error('Server returned an unknown multiplier result.');
-        const visible = Array.isArray(wheelData.multipliers) && wheelData.multipliers.length ? wheelData.multipliers : [0,.5,1,2,5];
+        const visible = Array.isArray(wheelData.multipliers) && wheelData.multipliers.length ? wheelData.multipliers : [0,1.5,1.8,2,5];
         const resultChoice = visible.findIndex(value => Number(value) === result);
         if (resultChoice < 0) throw new Error('Server returned an unknown multiplier result.');
         const targetIndex = Math.ceil(30 / visible.length) * visible.length + resultChoice;
@@ -1277,9 +1277,9 @@
           document.getElementById('wheel-payout').textContent = wheelMoney(spin.payout);
           document.getElementById('wheel-new-balance').textContent = wheelMoney(spin.balance);
           document.getElementById('wheel-balance').textContent = wheelMoney(spin.balance);
-          document.getElementById('wheel-note').textContent = spin.notificationSent === false
-            ? 'Telegram delivery queued; automatic retry.'
-            : '';
+          document.getElementById('wheel-note').textContent =
+            `${wheelMoney(spin.stake)} × ${result} = ${wheelMoney(spin.payout)} payout (includes your stake).` +
+            (spin.notificationSent === false ? ' Telegram delivery queued; automatic retry.' : '');
           clearPendingWheel(requestUsername, wheelRequestId);
           wheelData.balance = Number(spin.balance);
           setPoints(spin.balance);

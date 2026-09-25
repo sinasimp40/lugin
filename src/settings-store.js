@@ -58,6 +58,13 @@ function load() {
       delete raw.attendancePairRejected;
       save(raw);
     }
+    if (raw.wheelDefaultsRevision !== 2) {
+      const { currentWheel, parseWheel } = require('./wheel-config');
+      if (parseWheel(raw.wheel)) raw.wheel = currentWheel(raw.wheel);
+      if (parseWheel(raw.wheelDraft)) raw.wheelDraft = currentWheel(raw.wheelDraft);
+      raw.wheelDefaultsRevision = 2;
+      save(raw);
+    }
     return raw;
   } catch (e) {
     const backupPath = settingsPath + '.corrupted.' + Date.now();
@@ -385,11 +392,13 @@ function updateSettings(updates) {
     const wheel = require('./wheel-config').parseWheel(updates.wheel);
     if (!wheel) throw new Error('Wheel requires 2–12 distinct multipliers and winning percentages totaling exactly 100%.');
     s.wheel = wheel;
+    s.wheelDefaultsRevision = 2;
   }
   if (updates.wheelDraft !== undefined) {
     const draft = updates.wheelDraft === null ? null : require('./wheel-config').parseWheel(updates.wheelDraft);
     if (updates.wheelDraft !== null && !draft) throw new Error('Wheel draft requires valid multipliers and percentages totaling 100%.');
     s.wheelDraft = draft;
+    s.wheelDefaultsRevision = 2;
   }
   if (updates.attendanceEnabled !== undefined || updates.attendanceMode !== undefined ||
       updates.attendanceMinutes !== undefined || ranged || updates.attendanceTargetSeed !== undefined ||
