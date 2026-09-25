@@ -850,7 +850,7 @@
       const button = document.getElementById('wheel-spin');
       if (button && !wheelSpinInFlight && !wheelRequestId) {
         button.textContent = 'REVIEW ALL-POINTS SPIN';
-        button.disabled = !wheelLoaded;
+        button.disabled = !wheelLoaded || wheelData?.enabled === false || !(Number(wheelData?.balance) > 0);
       }
     }
 
@@ -1167,6 +1167,10 @@
       const stake = Number(wheelData.balance) || 0;
       if (!recovering && stake <= 0) { document.getElementById('wheel-error').textContent = 'No balance is available to stake.'; document.getElementById('wheel-error').classList.add('active'); return; }
       if (!recovering && !wheelConfirmOpen) {
+        // A completed spin leaves its result tile highlighted; start the next spin from a fresh strip.
+        renderWheel();
+        document.getElementById('wheel-payout').textContent = '—';
+        document.getElementById('wheel-new-balance').textContent = '—';
         wheelConfirmOpen = true;
         wheelConfirmUsername = sessionUsername;
         wheelExpectedStake = Number(stake.toFixed(2));
@@ -1279,9 +1283,9 @@
           clearPendingWheel(requestUsername, wheelRequestId);
           wheelData.balance = Number(spin.balance);
           setPoints(spin.balance);
-          button.textContent = 'SPIN AGAIN';
+          button.textContent = Number(spin.balance) > 0 ? 'SPIN AGAIN' : 'NO POINTS LEFT TO SPIN';
           wheelSpinInFlight = false; wheelRequestId = null; wheelRequestUsername = ''; wheelExpectedStake = null; wheelMultipliers = []; wheelOddsToken = '';
-          if (wheelData.balance <= 0) button.disabled = true;
+          button.disabled = !Number.isFinite(wheelData.balance) || wheelData.balance <= 0;
           resizeDrawerToContent();
         }, settle);
       } catch (e) {
