@@ -8,6 +8,7 @@ const settings = require('./src/settings-store');
 const coinLogs = require('./src/coin-log-store');
 const orderStore = require('./src/order-store');
 const attendance = require('./src/attendance-store');
+const { parseWheel } = require('./src/wheel-config');
 
 const appRoleInit = process.env.DENFI_APP_ROLE || 'auto-shutdown';
 settings.setAppRole(appRoleInit);
@@ -873,6 +874,7 @@ app.post('/api/admin/settings', verifyToken, (req, res) => {
   delete body.attendanceMaxMinutes;
   delete body.attendanceTargetSeed;
   delete body.attendancePoints;
+  delete body.wheel;
   if (coinLogsReadOnly) {
     delete body.coinRates;
     delete body.pointRates;
@@ -922,10 +924,74 @@ function authorizeKioskMission(req, res, next) {
       require('./src/trusted-lan').trustedLanPeer(req.socket.remoteAddress, undefined, {
         localAddress: req.socket.localAddress,
         subnet: process.env.DENFI_TRUSTED_KIOSK_SUBNET,
-        allowLoopback: localTest
+        // The two desktop apps can share a PC: their local IPC is loopback.
+        allowLoopback: isElectron || localTest
       })) return next();
-  return res.status(403).json({ success: false, error: 'Automatic mission changes require the Denfi Points desktop server on the trusted shop network.' });
+  return res.status(403).json({ success: false, error: 'This request requires the Denfi Points desktop server on the trusted shop network.' });
 }
+
+function requireLocalWheelPlayer(req, res, next) {
+  const address = String(req.socket.remoteAddress || '');
+  if (address === '::1' || address.startsWith('127.') || address.startsWith('::ffff:127.')) return next();
+  return res.status(403).json({ success: false, error: 'The wheel can only be played at this kiosk.' });
+}
+
+async function fetchPointsWheel(route, options) {
+  if (!syncServerUrl) throw new Error('Denfi Points is not connected. Betting is unavailable.');
+  const response = await fetch(syncServerUrl + route, { ...options, signal: AbortSignal.timeout(8000) });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.success) {
+    const error = new Error(data.error || 'Denfi Points is unavailable.');
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
+
+function wheelErrorResponse(res, error, ambiguous = false) {
+  const status = [400, 403, 404, 409].includes(error.status) ? error.status : 503;
+  return res.status(status).json({ success: false, error: error.status ? error.message :
+    ambiguous
+      ? 'Could not confirm the result from Denfi Points. Retry using the same spin request; do not start another spin.'
+      : 'Denfi Points is unavailable. Reconnect and try again.' });
+}
+
+app.get('/api/admin/wheel', verifyToken, async (req, res) => {
+  try {
+    const wheel = appRole === 'points'
+      ? settings.getSettings().wheel
+      : (await fetchPointsWheel('/api/sync/wheel-config')).wheel;
+    res.json({ success: true, wheel, readOnly: appRole === 'points' });
+  } catch (error) {
+    wheelErrorResponse(res, error);
+  }
+});
+
+app.post('/api/admin/kiosk-wheel', authorizeKioskMission, (req, res) => {
+  if (appRole !== 'points') return res.status(404).end();
+  const wheel = parseWheel(req.body);
+  if (!wheel) return res.status(400).json({ success: false, error: 'Enter 2–12 distinct multipliers (0–100x), positive percentages and a total of exactly 100%.' });
+  try {
+    settings.updateSettings({ wheel });
+    res.json({ success: true, wheel });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Denfi Points could not save the wheel.' });
+  }
+});
+
+app.post('/api/admin/wheel', verifyToken, async (req, res) => {
+  if (appRole !== 'auto-shutdown') return res.status(403).json({ success: false, error: 'Configure the wheel in Auto Shutdown.' });
+  const wheel = parseWheel(req.body);
+  if (!wheel) return res.status(400).json({ success: false, error: 'Enter 2–12 distinct multipliers (0–100x), positive percentages and a total of exactly 100%.' });
+  try {
+    const data = await fetchPointsWheel('/api/admin/kiosk-wheel', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wheel)
+    });
+    res.json({ success: true, wheel: data.wheel });
+  } catch (error) {
+    wheelErrorResponse(res, error);
+  }
+});
 
 app.post('/api/admin/kiosk-attendance', authorizeKioskMission, (req, res) => {
   if (appRole !== 'points') return res.status(404).end();
@@ -1079,6 +1145,7 @@ app.post('/api/admin/telegram', verifyToken, (req, res) => {
     });
     monthlyReportAttemptedPeriod = '';
     ensureMonthlyLeaderboardReport();
+    void flushWheelNotifications();
     res.json({ success: true, telegram });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -1236,6 +1303,51 @@ async function sendTelegramMessage(text) {
   }
 }
 
+let wheelNotificationInFlight = false;
+async function flushWheelNotifications() {
+  if (wheelNotificationInFlight || appRole !== 'auto-shutdown' || !syncServerUrl) return null;
+  const telegram = settings.getTelegramSettings();
+  if (!telegram.botToken || !telegram.channelId) return null;
+  wheelNotificationInFlight = true;
+  try {
+    const { claim } = await fetchPointsWheel('/api/sync/wheel/claim-notification', { method: 'POST' });
+    if (!claim) return null;
+    const { spin, leaseToken } = claim;
+    const value = amount => Number(amount).toFixed(2) + ' pts';
+    const lines = [
+      'DENFI POINTS  /  BETTING GAMES',
+      '━━━━━━━━━━━━━━━━━━━━',
+      Number(spin.multiplier) === 0 ? 'RESULT  ·  LOSE' : `RESULT  ·  ${spin.multiplier}×`,
+      '',
+      `Member       ${spin.username}`,
+      `Station      ${spin.station || 'PC'}`,
+      `Stake        ${value(spin.stake)}`,
+      `Payout       ${value(spin.payout)}`,
+      `Net          ${spin.net >= 0 ? '+' : ''}${value(spin.net)}`,
+      `New balance  ${value(spin.balance)}`,
+      `Played       ${new Date(spin.createdAt).toLocaleString()}`,
+      '━━━━━━━━━━━━━━━━━━━━',
+      'Every spin stakes the full monthly balance.'
+    ];
+    const result = await sendTelegramMessage(lines.join('\n'));
+    if (!result.sent) {
+      console.log('[Wheel] Telegram delivery pending:', result.error);
+      return null;
+    }
+    await fetchPointsWheel('/api/sync/wheel/ack-notification', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestId: spin.requestId, leaseToken })
+    });
+    return spin.requestId;
+  } catch (error) {
+    console.log('[Wheel] Notification retry pending:', error.message);
+    return null;
+  } finally {
+    wheelNotificationInFlight = false;
+  }
+}
+setInterval(() => { void flushWheelNotifications(); }, 15000).unref();
+
 async function ensureMonthlyLeaderboardReport() {
   const currentPeriod = coinLogs.getCurrentPeriodKey();
   const currentSettings = settings.getSettings();
@@ -1279,11 +1391,12 @@ function leaderboardFromLogs(logs, limit, periodKey) {
   for (const log of Array.isArray(logs) ? logs : []) {
     const username = String(log.username || '').trim();
     const points = Number(log.points) || 0;
-    if (!username || points <= 0 || coinLogs.getPeriodKey(log.timestamp) !== periodKey) continue;
+    if (!username || coinLogs.getPeriodKey(log.timestamp) !== periodKey) continue;
     totals[username] = (totals[username] || 0) + points;
   }
   return Object.entries(totals)
     .map(([username, points]) => ({ username, points: Math.round(points * 100) / 100 }))
+    .filter(member => member.points > 0)
     .sort((a, b) => b.points - a.points || a.username.localeCompare(b.username))
     .slice(0, limit);
 }
@@ -2068,6 +2181,66 @@ app.get('/api/session/attendance', async (req, res) => {
   res.json({ ...attendanceYear(username, year), username, source: 'local' });
 });
 
+async function activeWheelMember(req, res) {
+  if (appRole !== 'auto-shutdown') {
+    res.status(404).end();
+    return null;
+  }
+  try {
+    const active = await fetchStatusForRead();
+    if (active.isLogin && Number(active.sessionTimeLeft) > 0 &&
+        /^mem-[a-z0-9._-]{1,80}$/i.test(active.username || '')) {
+      return { username: active.username, station: settings.getSettings().pisonetUnitName || 'PC' };
+    }
+    res.status(401).json({ success: false, error: 'Log in as a member with an active session to play.' });
+  } catch (_) {
+    res.status(503).json({ success: false, error: 'Could not confirm the active member session.' });
+  }
+  return null;
+}
+
+app.get('/api/session/wheel', requireLocalWheelPlayer, async (req, res) => {
+  const member = await activeWheelMember(req, res);
+  if (!member) return;
+  try {
+    const data = await fetchPointsWheel('/api/sync/wheel/status/' + encodeURIComponent(member.username));
+    res.json({ success: true, enabled: data.wheel.enabled, outcomes: data.wheel.outcomes, balance: data.balance });
+  } catch (error) {
+    wheelErrorResponse(res, error);
+  }
+});
+
+app.post('/api/session/wheel/spin', requireLocalWheelPlayer, async (req, res) => {
+  const member = await activeWheelMember(req, res);
+  if (!member) return;
+  const requestId = req.body && req.body.requestId;
+  const expectedStake = req.body && req.body.expectedStake;
+  const expectedOutcomes = req.body && req.body.expectedOutcomes;
+  if (typeof requestId !== 'string' || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(requestId)) {
+    return res.status(400).json({ success: false, error: 'Invalid spin request ID.' });
+  }
+  if (typeof expectedStake !== 'number' || !Number.isFinite(expectedStake) || expectedStake <= 0 ||
+      !Number.isSafeInteger(Math.round(expectedStake * 100)) ||
+      Math.abs(Math.round(expectedStake * 100) - expectedStake * 100) > 1e-8 ||
+      !parseWheel({ enabled: true, outcomes: expectedOutcomes })) {
+    return res.status(400).json({ success: false, error: 'Invalid reviewed stake or wheel odds.' });
+  }
+  try {
+    const data = await fetchPointsWheel('/api/sync/wheel/spin', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: member.username, station: member.station, requestId, expectedStake, expectedOutcomes })
+    });
+    if (data.spin.username !== member.username || data.spin.requestId !== requestId) throw new Error('Denfi Points returned an invalid spin.');
+    // An unsent result is retained on Denfi Points until a kiosk with the configured bot delivers it.
+    if (!data.spin.notificationSent && await flushWheelNotifications() === requestId) {
+      data.spin.notificationSent = true;
+    }
+    res.json({ success: true, spin: data.spin });
+  } catch (error) {
+    wheelErrorResponse(res, error, true);
+  }
+});
+
 async function updateAttendanceFromSession(data) {
   const config = attendanceConfig();
   const sample = attendance.record(
@@ -2155,6 +2328,74 @@ app.get('/api/sync/member-points/:username', (req, res) => {
     res.json({ points, period });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/sync/wheel-config', (req, res) => {
+  if (appRole !== 'points') return res.status(404).end();
+  res.json({ success: true, wheel: settings.getSettings().wheel });
+});
+
+app.get('/api/sync/wheel/status/:username', authorizeKioskMission, (req, res) => {
+  if (appRole !== 'points') return res.status(404).end();
+  if (!/^mem-[a-z0-9._-]{1,80}$/i.test(req.params.username)) return res.status(400).json({ success: false, error: 'Invalid member.' });
+  try {
+    const s = settings.getSettings();
+    res.json({ success: true, wheel: s.wheel, balance: coinLogs.getMemberPoints(req.params.username, s.pointRates || []) });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Could not read the Points balance.' });
+  }
+});
+
+app.post('/api/sync/wheel/spin', authorizeKioskMission, (req, res) => {
+  if (appRole !== 'points') return res.status(404).end();
+  const { username, requestId, station, expectedStake, expectedOutcomes } = req.body || {};
+  if (typeof username !== 'string' || !/^mem-[a-z0-9._-]{1,80}$/i.test(username) ||
+      typeof requestId !== 'string' || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(requestId) ||
+      typeof expectedStake !== 'number' || !Number.isFinite(expectedStake) || expectedStake <= 0 ||
+      !Number.isSafeInteger(Math.round(expectedStake * 100)) ||
+      Math.abs(Math.round(expectedStake * 100) - expectedStake * 100) > 1e-8 ||
+      !parseWheel({ enabled: true, outcomes: expectedOutcomes })) {
+    return res.status(400).json({ success: false, error: 'Invalid member, request ID, stake or reviewed odds.' });
+  }
+  const previous = coinLogs.getWheelSpin(requestId);
+  if (previous && previous.username !== username) return res.status(409).json({ success: false, error: 'Spin request belongs to another member.' });
+  const s = settings.getSettings();
+  if (!previous && !s.wheel.enabled) return res.status(403).json({ success: false, error: 'Betting Games is disabled.' });
+  if (!previous && JSON.stringify(expectedOutcomes) !== JSON.stringify(s.wheel.outcomes)) {
+    return res.status(409).json({ success: false, error: 'Wheel odds changed. Reload Betting Games and review the current chances.' });
+  }
+  try {
+    const spin = previous || coinLogs.appendWheelSpin({
+      username, requestId, station, expectedStake, outcomes: s.wheel.outcomes, pointRates: s.pointRates || []
+    });
+    res.json({ success: true, spin });
+  } catch (error) {
+    const staleBalance = /Balance changed/.test(error.message);
+    const badRequest = staleBalance || /No points available|different member|too large/.test(error.message);
+    res.status(staleBalance ? 409 : badRequest ? 400 : 500).json({ success: false, error: badRequest ? error.message : 'The spin could not be recorded. Retry with the same request ID.' });
+  }
+});
+
+app.post('/api/sync/wheel/claim-notification', authorizeKioskMission, (req, res) => {
+  if (appRole !== 'points') return res.status(404).end();
+  try {
+    res.json({ success: true, claim: coinLogs.claimWheelNotification() });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Could not claim a wheel notification.' });
+  }
+});
+
+app.post('/api/sync/wheel/ack-notification', authorizeKioskMission, (req, res) => {
+  if (appRole !== 'points') return res.status(404).end();
+  if (typeof req.body?.requestId !== 'string' || !/^[a-f0-9]{32}$/.test(req.body?.leaseToken || '')) {
+    return res.status(400).json({ success: false, error: 'Invalid notification receipt.' });
+  }
+  try {
+    const acknowledged = coinLogs.acknowledgeWheelNotification(req.body.requestId, req.body.leaseToken);
+    res.status(acknowledged ? 200 : 409).json({ success: acknowledged, error: acknowledged ? undefined : 'Notification lease expired.' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Could not record the Telegram receipt.' });
   }
 });
 

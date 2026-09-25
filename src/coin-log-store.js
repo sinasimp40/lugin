@@ -94,7 +94,8 @@ function calcPoints(amount, pointRates) {
 }
 
 function logPoints(log, pointRates) {
-  return log.source === 'attendance' ? Number(log.points) || 0 : calcPoints(log.amount, pointRates);
+  return log.source === 'attendance' || log.source === 'wheel'
+    ? Number(log.points) || 0 : calcPoints(log.amount, pointRates);
 }
 
 function appendAttendanceAward(username, day, points) {
@@ -254,6 +255,7 @@ function getLogs(filters, pointRates) {
   }
 
   logs.sort((a, b) => b.timestamp - a.timestamp);
+  logs = logs.map(({ notificationLeaseToken, notificationLeaseUntil, ...log }) => log);
 
   return {
     logs,
@@ -271,6 +273,88 @@ function getMemberPoints(username, pointRates, periodKey) {
   return Math.round(total * 100) / 100;
 }
 
+function appendWheelSpin({ username, requestId, station, outcomes, pointRates, expectedStake }) {
+  ensurePointsSync(pointRates);
+  let spin;
+  loadModifySave(data => {
+    const existing = (data.logs || []).find(log => log.source === 'wheel' && log.requestId === requestId);
+    if (existing) {
+      if (existing.username !== username) throw new Error('This spin belongs to a different member.');
+      spin = existing;
+      return;
+    }
+    const period = getCurrentPeriodKey();
+    const balanceCents = (data.logs || [])
+      .filter(log => log.username === username && getPeriodKey(log.timestamp) === period)
+      .reduce((sum, log) => sum + Math.round((Number(log.points) || 0) * 100), 0);
+    if (expectedStake !== undefined && balanceCents !== Math.round(expectedStake * 100)) {
+      throw new Error('Balance changed. Reload Betting Games and review the new stake before spinning.');
+    }
+    if (!Number.isSafeInteger(balanceCents) || balanceCents <= 0) {
+      throw new Error('No points available to spin this month.');
+    }
+    const multiplier = require('./wheel-config').pickOutcome(outcomes);
+    const payoutCents = Math.round(balanceCents * multiplier);
+    if (!Number.isSafeInteger(payoutCents)) throw new Error('Points balance is too large to spin safely.');
+    const netCents = payoutCents - balanceCents;
+    const now = Date.now();
+    spin = {
+      id: crypto.randomUUID(), requestId, source: 'wheel', username,
+      station: String(station || 'PC').slice(0, 60), amount: 0,
+      timeAdded: `Wheel ${multiplier}x`, timestamp: now, date: new Date(now).toISOString(),
+      period, multiplier, outcomes: outcomes.map(item => ({ ...item })),
+      stake: balanceCents / 100, payout: payoutCents / 100,
+      points: netCents / 100, net: netCents / 100, balance: payoutCents / 100,
+      notificationSent: false
+    };
+    data.logs.push(spin);
+    if (!data.memberPoints) data.memberPoints = {};
+    data.memberPoints[username] = Math.round(((data.memberPoints[username] || 0) + spin.net) * 100) / 100;
+  });
+  return publicWheelSpin(spin);
+}
+
+function publicWheelSpin(log) {
+  const { notificationLeaseToken, notificationLeaseUntil, ...spin } = log;
+  return { ...spin, createdAt: spin.timestamp };
+}
+
+function getWheelSpin(requestId) {
+  const log = (load().logs || []).find(entry => entry.source === 'wheel' && entry.requestId === requestId);
+  return log ? publicWheelSpin(log) : null;
+}
+
+function claimWheelNotification() {
+  let claim = null;
+  const now = Date.now();
+  if (!(load().logs || []).some(entry => entry.source === 'wheel' && !entry.notificationSent &&
+    (!entry.notificationLeaseUntil || entry.notificationLeaseUntil < now))) return null;
+  loadModifySave(data => {
+    const now = Date.now();
+    const log = (data.logs || []).find(entry => entry.source === 'wheel' && !entry.notificationSent &&
+      (!entry.notificationLeaseUntil || entry.notificationLeaseUntil < now));
+    if (!log) return;
+    const leaseToken = crypto.randomBytes(16).toString('hex');
+    log.notificationLeaseUntil = now + 30000;
+    log.notificationLeaseToken = leaseToken;
+    claim = { spin: { ...log, createdAt: log.timestamp }, leaseToken };
+  });
+  return claim;
+}
+
+function acknowledgeWheelNotification(requestId, leaseToken) {
+  let acknowledged = false;
+  loadModifySave(data => {
+    const log = (data.logs || []).find(entry => entry.source === 'wheel' && entry.requestId === requestId);
+    if (!log || log.notificationLeaseToken !== leaseToken) return;
+    log.notificationSent = true;
+    delete log.notificationLeaseToken;
+    delete log.notificationLeaseUntil;
+    acknowledged = true;
+  });
+  return acknowledged;
+}
+
 function getLeaderboard(limit, pointRates, periodKey) {
   if (pointRates) ensurePointsSync(pointRates);
   const targetPeriod = periodKey || getCurrentPeriodKey();
@@ -278,11 +362,12 @@ function getLeaderboard(limit, pointRates, periodKey) {
   for (const log of load().logs || []) {
     const username = String(log.username || '').trim();
     const points = Number(log.points) || 0;
-    if (!username || points <= 0 || getPeriodKey(log.timestamp) !== targetPeriod) continue;
+    if (!username || getPeriodKey(log.timestamp) !== targetPeriod) continue;
     totals[username] = (totals[username] || 0) + points;
   }
   return Object.entries(totals)
     .map(([username, points]) => ({ username, points: Math.round(points * 100) / 100 }))
+    .filter(member => member.points > 0)
     .sort((a, b) => b.points - a.points || a.username.localeCompare(b.username))
     .slice(0, Math.max(1, Math.min(20, Number(limit) || 5)));
 }
@@ -310,6 +395,10 @@ module.exports = {
   ensurePointsSync,
   getLogs,
   getMemberPoints,
+  appendWheelSpin,
+  getWheelSpin,
+  claimWheelNotification,
+  acknowledgeWheelNotification,
   getLeaderboard,
   getPeriodKey,
   getCurrentPeriodKey,

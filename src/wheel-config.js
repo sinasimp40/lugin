@@ -1,0 +1,46 @@
+const crypto = require('crypto');
+
+const DEFAULT_OUTCOMES = Object.freeze([
+  { multiplier: 0, weight: 35 },
+  { multiplier: 0.5, weight: 20 },
+  { multiplier: 1, weight: 20 },
+  { multiplier: 2, weight: 15 },
+  { multiplier: 5, weight: 10 }
+]);
+
+function defaultWheel() {
+  return { enabled: true, outcomes: DEFAULT_OUTCOMES.map(item => ({ ...item })) };
+}
+
+function validHundredths(value) {
+  return typeof value === 'number' && Number.isFinite(value) &&
+    Math.abs(Math.round(value * 100) - value * 100) < 1e-8;
+}
+
+function parseWheel(input) {
+  if (!input || typeof input.enabled !== 'boolean' ||
+      !Array.isArray(input.outcomes) || input.outcomes.length < 2 || input.outcomes.length > 12) return null;
+  const seen = new Set();
+  let total = 0;
+  const outcomes = [];
+  for (const item of input.outcomes) {
+    if (!item || !validHundredths(item.multiplier) || item.multiplier < 0 || item.multiplier > 100 ||
+        !validHundredths(item.weight) || item.weight < 0.01 || item.weight > 100 ||
+        seen.has(item.multiplier)) return null;
+    seen.add(item.multiplier);
+    total += Math.round(item.weight * 100);
+    outcomes.push({ multiplier: item.multiplier, weight: item.weight });
+  }
+  return total === 10000 ? { enabled: input.enabled, outcomes } : null;
+}
+
+function pickOutcome(outcomes) {
+  let ticket = crypto.randomInt(10000);
+  for (const outcome of outcomes) {
+    ticket -= Math.round(outcome.weight * 100);
+    if (ticket < 0) return outcome.multiplier;
+  }
+  throw new Error('Invalid wheel probability distribution');
+}
+
+module.exports = { defaultWheel, parseWheel, pickOutcome };

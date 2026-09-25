@@ -275,6 +275,7 @@ function getSettings() {
     attendanceTargetSeed: typeof s.attendanceTargetSeed === 'string' && /^[0-9a-f]{32}$/.test(s.attendanceTargetSeed)
       ? s.attendanceTargetSeed : '',
     attendancePoints: Number.isFinite(s.attendancePoints) && s.attendancePoints >= 0 ? s.attendancePoints : 1,
+    wheel: require('./wheel-config').parseWheel(s.wheel) || require('./wheel-config').defaultWheel(),
     monthlyLeaderboardReportedPeriod: String(s.monthlyLeaderboardReportedPeriod || ''),
     syncServerUrl: s.syncServerUrl || '',
   };
@@ -379,6 +380,11 @@ function updateSettings(updates) {
     s.attendanceTargetSeed = crypto.randomBytes(16).toString('hex');
   }
   if (updates.attendancePoints !== undefined) s.attendancePoints = updates.attendancePoints;
+  if (updates.wheel !== undefined) {
+    const wheel = require('./wheel-config').parseWheel(updates.wheel);
+    if (!wheel) throw new Error('Wheel requires 2–12 distinct multipliers and winning percentages totaling exactly 100%.');
+    s.wheel = wheel;
+  }
   if (updates.attendanceEnabled !== undefined || updates.attendanceMode !== undefined ||
       updates.attendanceMinutes !== undefined || ranged || updates.attendanceTargetSeed !== undefined ||
       updates.attendancePoints !== undefined) {

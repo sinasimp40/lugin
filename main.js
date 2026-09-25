@@ -1277,7 +1277,9 @@ ipcMain.on('session-overlay-size', (event, mode) => {
   const y = nextHeight > SESSION_HEIGHT && direction === 'above'
     ? clampedStripY - (nextHeight - SESSION_HEIGHT)
     : clampedStripY;
-  sessionWindow.setBounds({ x, y, width: nextWidth, height: nextHeight }, true);
+  // Windows animates transparent BrowserWindow bounds by repeatedly
+  // repainting the entire surface; switching drawers then flashes the strip.
+  sessionWindow.setBounds({ x, y, width: nextWidth, height: nextHeight }, false);
   sessionWindow.webContents.send('session-overlay-placement', direction);
 });
 

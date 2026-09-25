@@ -115,6 +115,22 @@
     color: rgba(255,215,64,0.5);
     margin-top: 2px;
   }
+  .points-zone .games-zone-btn {
+    display:none;
+    -webkit-app-region:no-drag;
+    width:78px;
+    margin-top:6px;
+    padding:4px 2px;
+    border:1px solid rgba(72,48,0,.72);
+    border-radius:2px;
+    background:#8d590d;
+    color:#fff4b0;
+    font:700 7px/1.1 'Orbitron',monospace;
+    letter-spacing:.2px;
+    cursor:pointer;
+  }
+  .points-zone .games-zone-btn.member-visible { display:block; }
+  .points-zone .games-zone-btn.active { background:#c47712; border-color:#fff0a0; color:#fff; }
   .strip.danger-mode .points-zone {
     border-color: rgba(255,215,64,0.12);
     background: linear-gradient(180deg, rgba(255,215,64,0.06) 0%, rgba(255,215,64,0.02) 100%);
@@ -490,6 +506,34 @@
 
   #attendance-btn { display:none; border-color:rgba(255,215,64,.8); background:linear-gradient(180deg,#8a8110,#5d5700); color:#fffca7; }
   #attendance-btn.member-visible { display:block; }
+  .wheel-view { display:none; min-width:0; }
+  .wheel-intro { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; margin-bottom:10px; }
+  .wheel-kicker { color:#ffb13d; font:10px 'Share Tech Mono'; letter-spacing:1.5px; }
+  .wheel-balance { color:#ffe2ad; font:800 17px 'Orbitron'; white-space:nowrap; }
+  .wheel-warning { border:1px solid rgba(255,91,60,.65); background:rgba(122,31,18,.22); color:#ffc0a9; padding:8px 10px; font:11px/1.45 'Share Tech Mono'; margin-bottom:12px; }
+  .wheel-explanation { color:#a99379; font:10px/1.4 'Share Tech Mono'; margin:-5px 0 10px; }
+  .wheel-confirm { display:none; border:1px solid #e2a443; background:#2b1d10; padding:10px; margin-bottom:9px; }
+  .wheel-confirm.active { display:block; }
+  .wheel-confirm-text { color:#ffe0a6; font:11px/1.4 'Share Tech Mono'; margin-bottom:8px; }
+  .wheel-confirm-actions { display:flex; gap:7px; }
+  .wheel-confirm-actions button { flex:1; padding:8px 5px; border:1px solid #b77829; background:#42270e; color:#ffdc9d; font:10px 'Orbitron'; cursor:pointer; }
+  .wheel-confirm-actions .wheel-confirm-yes { background:#c26313; color:#fff7e6; border-color:#ffc264; }
+  .wheel-stage { position:relative; width:min(260px,72vw); aspect-ratio:1; margin:4px auto 12px; }
+  .wheel-pointer { position:absolute; z-index:3; top:-7px; left:50%; transform:translateX(-50%); width:0; height:0; border-left:9px solid transparent; border-right:9px solid transparent; border-top:18px solid #fff1bd; filter:drop-shadow(0 0 5px rgba(255,140,0,.8)); }
+  .wheel-disc { width:100%; height:100%; border-radius:50%; border:7px solid #ff9b22; background:#29231c; box-shadow:0 0 0 2px #2b1b0e,0 0 25px rgba(255,128,0,.25),inset 0 0 0 5px rgba(0,0,0,.3); transition:transform 4.2s cubic-bezier(.12,.78,.18,1); position:relative; }
+  .wheel-disc::after { content:''; position:absolute; inset:37%; border-radius:50%; background:#17120e; border:2px solid #ffb13d; box-shadow:0 0 12px rgba(255,140,0,.55); }
+  .wheel-labels { position:absolute; inset:0; pointer-events:none; }
+  .wheel-label { position:absolute; color:#fff4d4; font:800 clamp(9px,2.5vw,12px) 'Orbitron'; text-align:center; text-shadow:0 1px 2px #000; white-space:nowrap; transform:translate(-50%,-50%); }
+  .wheel-result { text-align:center; min-height:25px; color:#ffd27d; font:800 14px 'Orbitron'; letter-spacing:.7px; }
+  .wheel-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin:10px 0; }
+  .wheel-stat { padding:7px 4px; border:1px solid rgba(255,140,0,.2); background:rgba(255,255,255,.025); text-align:center; color:#9e876d; font-size:9px; }
+  .wheel-stat strong { display:block; color:#ffe0a1; font:12px 'Orbitron'; margin-top:3px; }
+  .wheel-spin { width:100%; padding:11px; border:1px solid #ffc264; background:linear-gradient(180deg,#f3a22d,#a8520b); color:#fff8e9; font:800 12px 'Orbitron'; letter-spacing:1px; cursor:pointer; }
+  .wheel-spin:disabled { opacity:.45; cursor:not-allowed; }
+  .wheel-note { min-height:16px; margin-top:7px; color:#d8a56b; font-size:10px; line-height:1.35; text-align:center; }
+  .wheel-error { display:none; margin-top:8px; padding:8px; border:1px solid #a64c3e; color:#ffaaa0; background:#2b1715; font-size:11px; line-height:1.4; }
+  .wheel-error.active { display:block; }
+  @media (prefers-reduced-motion: reduce) { .wheel-disc { transition:none; } }
   .attendance-view { min-width:0; }
   .attendance-toolbar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:9px; }
   .attendance-month-label { color:#ffe0a4; font:800 15px 'Orbitron',monospace; letter-spacing:.5px; }
@@ -533,7 +577,11 @@
     <div class="neon-line-right"></div>
     <div class="neon-glow-left"></div>
     <div class="neon-glow-right"></div>
-    <div class="points-zone" id="points-zone"></div>
+    <div class="points-zone" id="points-zone">
+      <span class="pts-value" id="points-value"></span>
+      <span class="pts-label">POINTS</span>
+      <button class="games-zone-btn" id="games-btn" type="button">BETTING GAMES</button>
+    </div>
     <div class="main-section">
       <div class="top-row">
         <div class="timer" id="timer">--:--:--</div>
@@ -582,13 +630,28 @@
         <div class="attendance-meta" id="attendance-meta">Loading attendance record...</div>
         <div id="attendance-content"></div>
       </div>
+      <div id="wheel-view" class="wheel-view">
+        <div class="wheel-intro"><div class="wheel-kicker">CURRENT-MONTH POINTS AT RISK</div><div class="wheel-balance" id="wheel-balance">0 PTS</div></div>
+        <div class="wheel-warning">ONE SPIN STAKES YOUR ENTIRE BALANCE. LOSE 0x LOSES IT ALL. A RESULT IS LOCKED BY THE SERVER.</div>
+        <div class="wheel-explanation">1x returns the entire stake. Multipliers are gross payouts, before the balance is updated.</div>
+        <div class="wheel-confirm" id="wheel-confirm" role="alertdialog" aria-labelledby="wheel-confirm-text" aria-modal="false">
+          <div class="wheel-confirm-text" id="wheel-confirm-text">Confirm staking your entire points balance?</div>
+          <div class="wheel-confirm-actions"><button type="button" id="wheel-confirm-no">CANCEL</button><button type="button" class="wheel-confirm-yes" id="wheel-confirm-yes">STAKE ALL POINTS</button></div>
+        </div>
+        <div class="wheel-stage"><div class="wheel-pointer"></div><div class="wheel-disc" id="wheel-disc"><div class="wheel-labels" id="wheel-labels"></div></div></div>
+        <div class="wheel-result" id="wheel-result">READY FOR A HIGH-STAKES SPIN</div>
+        <div class="wheel-stats"><div class="wheel-stat">STAKE<strong id="wheel-stake">0 PTS</strong></div><div class="wheel-stat">PAYOUT<strong id="wheel-payout">—</strong></div><div class="wheel-stat">NEW BALANCE<strong id="wheel-new-balance">—</strong></div></div>
+        <button class="wheel-spin" id="wheel-spin" type="button" disabled>CONFIRM AND SPIN</button>
+        <div class="wheel-note" id="wheel-note"></div>
+        <div class="wheel-error" id="wheel-error" role="alert"></div>
+      </div>
     </div>
     <div class="cart-bar" id="cart-bar">
       <div class="cart-summary"><span id="cart-count">0 items</span><strong id="cart-total">&#8369;0</strong></div>
       <button class="clear-cart" id="clear-cart" type="button">CLEAR</button>
       <button class="order-btn" id="place-order" type="button" disabled>PLACE ORDER</button>
     </div>
-    <div class="drawer-note" id="rank-note" style="display:none">CURRENT MONTH POINTS • RESETS MONTHLY</div>
+     <div class="drawer-note" id="rank-note" style="display:none">CURRENT MONTH POINTS • RESETS MONTHLY</div>
     <div class="toast" id="order-toast"></div>
   </section>
   </div>
@@ -694,6 +757,67 @@
     const MAX_OVERLAY_WIDTH = 560;
     let attendanceMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     let attendanceRequest = 0;
+    let wheelData = null;
+    let wheelLoaded = false;
+    let wheelSpinInFlight = false;
+    let wheelRequestId = null;
+    let wheelRequestUsername = '';
+    let wheelLoadSequence = 0;
+    let wheelConfirmOpen = false;
+    let wheelConfirmUsername = '';
+    let wheelExpectedStake = null;
+    let wheelExpectedOutcomes = null;
+    let wheelRotation = 0;
+    let drawerResizeTimer = null;
+    function wheelPendingKey(username) {
+      return `denfi-wheel-pending:${String(username || '').toLowerCase()}`;
+    }
+    function readPendingWheel(username) {
+      if (previewMode || !username) return null;
+      try {
+        const raw = sessionStorage.getItem(wheelPendingKey(username));
+        if (!raw) return null;
+        const pending = JSON.parse(raw);
+        return pending && typeof pending.requestId === 'string' && Number.isFinite(Number(pending.expectedStake))
+          && Array.isArray(pending.expectedOutcomes) && pending.expectedOutcomes.length
+          ? {
+            requestId: pending.requestId,
+            expectedStake: Number(Number(pending.expectedStake).toFixed(2)),
+            expectedOutcomes: pending.expectedOutcomes.map(item => ({ multiplier:Number(item.multiplier), weight:Number(item.weight) }))
+          }
+          : null;
+      } catch (_) { return null; }
+    }
+    function writePendingWheel(username, requestId, expectedStake, expectedOutcomes) {
+      if (previewMode || !username) return;
+      try {
+        sessionStorage.setItem(wheelPendingKey(username), JSON.stringify({
+          requestId,
+          expectedStake:Number(expectedStake.toFixed(2)),
+          expectedOutcomes: expectedOutcomes.map(item => ({ multiplier:Number(item.multiplier), weight:Number(item.weight) }))
+        }));
+      } catch (_) {}
+    }
+    function clearPendingWheel(username, requestId) {
+      if (previewMode || !username) return;
+      try {
+        const key = wheelPendingKey(username);
+        const raw = sessionStorage.getItem(key);
+        const current = JSON.parse(raw || 'null');
+        if (!requestId || (current && current.requestId === requestId) || raw === requestId) sessionStorage.removeItem(key);
+      } catch (_) {}
+    }
+    function resetWheelConfirmation() {
+      wheelConfirmOpen = false;
+      wheelConfirmUsername = '';
+      const panel = document.getElementById('wheel-confirm');
+      if (panel) panel.classList.remove('active');
+      const button = document.getElementById('wheel-spin');
+      if (button && !wheelSpinInFlight && !wheelRequestId) {
+        button.textContent = 'REVIEW ALL-POINTS SPIN';
+        button.disabled = !wheelLoaded;
+      }
+    }
 
     function measureIntrinsicWidth(element) {
       if (!element || !element.classList.contains('active') && element.id === 'pc-label') return 0;
@@ -760,7 +884,9 @@
 
     function resizeDrawerToContent() {
       if (!activeDrawer) return;
-      requestAnimationFrame(() => {
+      clearTimeout(drawerResizeTimer);
+      drawerResizeTimer = setTimeout(() => {
+       requestAnimationFrame(() => {
         const drawer = document.getElementById('drawer');
         const strip = document.getElementById('strip');
         if (!drawer || !strip || !drawer.classList.contains('active')) return;
@@ -777,16 +903,19 @@
             height: targetHeight
           }, location.origin);
         }
-      });
+       });
+      }, 90);
     }
 
     function closeDrawer() {
+      resetWheelConfirmation();
       activeDrawer = null;
       document.getElementById('drawer').classList.remove('active');
       document.querySelector('.overlay-shell').classList.remove('drawer-below');
       document.getElementById('shop-btn').classList.remove('active');
       document.getElementById('rank-btn').classList.remove('active');
       document.getElementById('attendance-btn').classList.remove('active');
+      document.getElementById('games-btn').classList.remove('active');
       setOverlayExpanded(false);
     }
 
@@ -803,20 +932,22 @@
       document.getElementById('shop-btn').classList.toggle('active', view === 'shop');
       document.getElementById('rank-btn').classList.toggle('active', view === 'rank');
       document.getElementById('attendance-btn').classList.toggle('active', view === 'attendance');
+      document.getElementById('games-btn').classList.toggle('active', view === 'games');
       document.getElementById('store-view').style.display = view === 'shop' ? '' : 'none';
       document.getElementById('rank-view').style.display = view === 'rank' ? '' : 'none';
       document.getElementById('attendance-view').style.display = view === 'attendance' ? '' : 'none';
+      document.getElementById('wheel-view').style.display = view === 'games' ? 'block' : 'none';
       document.getElementById('cart-bar').style.display = view === 'shop' ? 'flex' : 'none';
       document.getElementById('rank-note').style.display = view === 'rank' ? '' : 'none';
-      document.getElementById('drawer-title').textContent = view === 'shop' ? 'QUICK ORDER' : view === 'rank' ? 'TOP 5 REGULARS' : 'ATTENDANCE';
+      document.getElementById('drawer-title').textContent = view === 'shop' ? 'QUICK ORDER' : view === 'rank' ? 'TOP 5 REGULARS' : view === 'attendance' ? 'ATTENDANCE' : 'BETTING GAMES';
       resizeDrawerToContent();
       if (view === 'shop') loadProducts();
       else if (view === 'rank') loadLeaderboard();
-      else {
+      else if (view === 'attendance') {
         const today = new Date();
         attendanceMonth = new Date(today.getFullYear(), today.getMonth(), 1);
         loadAttendance(attendanceMonth);
-      }
+      } else loadWheel();
     }
 
     function isMemberSession() {
@@ -825,8 +956,279 @@
 
     function updateAttendanceButton() {
       const button = document.getElementById('attendance-btn');
+      const gamesButton = document.getElementById('games-btn');
       button.classList.toggle('member-visible', isMemberSession());
+      if (gamesButton) gamesButton.classList.toggle('member-visible', isMemberSession());
       if (!isMemberSession() && activeDrawer === 'attendance') closeDrawer();
+      if (!isMemberSession() && activeDrawer === 'games') closeDrawer();
+      if (activeDrawer === 'games' && (wheelRequestUsername || wheelConfirmUsername)
+        && String(wheelRequestUsername || wheelConfirmUsername).toLowerCase() !== String(sessionUsername || '').toLowerCase()) {
+        resetWheelConfirmation();
+        wheelRequestId = null;
+        wheelExpectedStake = null;
+        wheelExpectedOutcomes = null;
+        wheelRequestUsername = '';
+      }
+    }
+
+    function wheelMoney(value) {
+      const n = Number(value);
+      return Number.isFinite(n) ? n.toFixed(2) + ' PTS' : '—';
+    }
+    function renderWheel() {
+      if (!wheelData) return;
+      const outcomes = Array.isArray(wheelData.outcomes) ? wheelData.outcomes : [];
+      document.getElementById('wheel-balance').textContent = wheelMoney(wheelData.balance);
+      document.getElementById('wheel-stake').textContent = wheelMoney(wheelData.balance);
+      const labels = document.getElementById('wheel-labels');
+      labels.replaceChildren();
+      const colors = ['#ff7e16','#29231c','#ffd36e','#7f4b1e','#f4a02b','#b74d1e','#d8a23b'];
+      const totalWeight = outcomes.reduce((sum, item) => sum + Math.max(0, Number(item.weight) || 0), 0) || 1;
+      let cursor = 0;
+      const stops = [];
+      outcomes.forEach((outcome, index) => {
+        const weight = Math.max(0, Number(outcome.weight) || 0);
+        const start = cursor / totalWeight * 360;
+        cursor += weight;
+        const end = cursor / totalWeight * 360;
+        stops.push(`${colors[index % colors.length]} ${start}deg ${end}deg`);
+        const label = document.createElement('span');
+        label.className = 'wheel-label';
+        label.textContent = Number(outcome.multiplier) === 0 ? 'LOSE 0x' : `${Number(outcome.multiplier)}x`;
+        const angle = (start + end) / 2;
+        const radians = angle * Math.PI / 180;
+        const radius = 58;
+        label.style.left = `calc(50% + ${Math.sin(radians) * radius}px)`;
+        label.style.top = `calc(50% - ${Math.cos(radians) * radius}px)`;
+        labels.appendChild(label);
+      });
+      document.getElementById('wheel-disc').style.background = `conic-gradient(${stops.join(',')})`;
+      resizeDrawerToContent();
+    }
+    async function loadWheel() {
+      const loadSequence = ++wheelLoadSequence;
+      const loadUsername = sessionUsername;
+      const isCurrentWheelView = () => loadSequence === wheelLoadSequence
+        && activeDrawer === 'games'
+        && String(sessionUsername || '').toLowerCase() === String(loadUsername || '').toLowerCase();
+      const error = document.getElementById('wheel-error');
+      error.classList.remove('active');
+      const pending = readPendingWheel(sessionUsername);
+      if (pending) {
+        wheelRequestId = pending.requestId;
+        wheelExpectedStake = pending.expectedStake;
+        wheelExpectedOutcomes = pending.expectedOutcomes;
+        wheelRequestUsername = sessionUsername;
+        document.getElementById('wheel-result').textContent = 'RESULT NOT CONFIRMED';
+        document.getElementById('wheel-note').textContent = 'Result not confirmed. Retry the same request.';
+      } else {
+        wheelRequestId = null;
+        wheelExpectedStake = null;
+        wheelExpectedOutcomes = null;
+        wheelRequestUsername = '';
+        document.getElementById('wheel-note').textContent = '';
+      }
+      wheelLoaded = false;
+      document.getElementById('wheel-spin').disabled = true;
+      if (!pending) document.getElementById('wheel-result').textContent = 'LOADING POINTS BALANCE...';
+      if (previewMode) {
+        wheelData = { enabled:true, balance:86.5, outcomes:[{multiplier:0,weight:35},{multiplier:.5,weight:20},{multiplier:1,weight:20},{multiplier:2,weight:15},{multiplier:5,weight:10}] };
+        renderWheel();
+        wheelLoaded = true;
+        document.getElementById('wheel-spin').disabled = false;
+        if (!pending) {
+          document.getElementById('wheel-result').textContent = 'READY FOR A HIGH-STAKES SPIN';
+          document.getElementById('wheel-spin').textContent = 'REVIEW ALL-POINTS SPIN';
+        }
+        if (pending) document.getElementById('wheel-spin').textContent = 'RETRY SAME REQUEST';
+        return;
+      }
+      try {
+        const response = await fetch('/api/session/wheel');
+        const data = await response.json().catch(() => ({}));
+        if (!isCurrentWheelView()) return;
+        if (!response.ok || !data.success) throw new Error(data.error || 'Wheel service is unavailable.');
+        wheelData = data;
+        renderWheel();
+        wheelLoaded = true;
+        if (data.enabled === false) {
+          if (!pending) {
+            document.getElementById('wheel-result').textContent = 'WHEEL CURRENTLY OFFLINE';
+            document.getElementById('wheel-spin').disabled = true;
+          }
+        } else if (!Number.isFinite(Number(data.balance))) {
+          if (!pending) {
+            document.getElementById('wheel-result').textContent = 'POINTS BALANCE UNAVAILABLE';
+            document.getElementById('wheel-spin').disabled = true;
+          }
+        } else {
+          if (!pending) {
+            document.getElementById('wheel-result').textContent = 'READY FOR A HIGH-STAKES SPIN';
+            document.getElementById('wheel-spin').disabled = false;
+            document.getElementById('wheel-spin').textContent = 'REVIEW ALL-POINTS SPIN';
+          }
+          if (pending) document.getElementById('wheel-spin').disabled = false;
+          if (pending) document.getElementById('wheel-spin').textContent = 'RETRY SAME REQUEST';
+        }
+        if (pending) {
+          document.getElementById('wheel-spin').disabled = false;
+          document.getElementById('wheel-spin').textContent = 'RETRY SAME REQUEST';
+        }
+      } catch (e) {
+        if (!isCurrentWheelView()) return;
+        document.getElementById('wheel-result').textContent = pending ? 'RESULT NOT CONFIRMED' : 'WHEEL SERVICE OFFLINE';
+        error.textContent = pending
+          ? 'Result not confirmed. Retry the same request'
+          : (e.message || 'Wheel service is offline.');
+        error.classList.add('active');
+        if (pending) {
+          wheelData = wheelData || { enabled:false, balance:0, outcomes:[
+            { multiplier:0, weight:35 }, { multiplier:.5, weight:20 },
+            { multiplier:1, weight:20 }, { multiplier:2, weight:15 }, { multiplier:5, weight:10 }
+          ] };
+          wheelLoaded = true;
+        }
+        document.getElementById('wheel-spin').disabled = !pending;
+        if (pending) document.getElementById('wheel-spin').textContent = 'RETRY SAME REQUEST';
+      }
+    }
+    function outcomeIndex(multiplier) {
+      return (wheelData.outcomes || []).findIndex(item => Number(item.multiplier) === Number(multiplier));
+    }
+    function createWheelRequestId() {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+      if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+        const bytes = new Uint8Array(16);
+        window.crypto.getRandomValues(bytes);
+        bytes[6] = (bytes[6] & 0x0f) | 0x40;
+        bytes[8] = (bytes[8] & 0x3f) | 0x80;
+        const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+        return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+      }
+      throw new Error('Secure request IDs are unavailable. Spin was not submitted.');
+    }
+    async function spinWheel() {
+      const recovering = !!wheelRequestId;
+      if (wheelSpinInFlight || !wheelLoaded || !wheelData || (wheelData.enabled === false && !recovering)) return;
+      const stake = Number(wheelData.balance) || 0;
+      if (!recovering && stake <= 0) { document.getElementById('wheel-error').textContent = 'No balance is available to stake.'; document.getElementById('wheel-error').classList.add('active'); return; }
+      if (!recovering && !wheelConfirmOpen) {
+        wheelConfirmOpen = true;
+        wheelConfirmUsername = sessionUsername;
+        wheelExpectedStake = Number(stake.toFixed(2));
+        wheelExpectedOutcomes = wheelData.outcomes.map(item => ({
+          multiplier: Number(item.multiplier),
+          weight: Number(item.weight)
+        }));
+        document.getElementById('wheel-confirm-text').textContent = `Stake all ${wheelMoney(wheelExpectedStake)}? LOSE 0x loses it all.`;
+        document.getElementById('wheel-confirm').classList.add('active');
+        document.getElementById('wheel-spin').textContent = 'CONFIRM BELOW';
+        document.getElementById('wheel-spin').disabled = true;
+        return;
+      }
+      if (!recovering) resetWheelConfirmation();
+      wheelSpinInFlight = true;
+      const button = document.getElementById('wheel-spin');
+      button.disabled = true; button.textContent = 'LOCKING RESULT...';
+      const error = document.getElementById('wheel-error'); error.classList.remove('active');
+      const requestUsername = wheelRequestUsername || sessionUsername;
+      const expectedStake = Number(wheelExpectedStake.toFixed(2));
+      try {
+        wheelRequestId = wheelRequestId || createWheelRequestId();
+        wheelRequestUsername = requestUsername;
+        writePendingWheel(requestUsername, wheelRequestId, expectedStake, wheelExpectedOutcomes);
+        let spin;
+        if (previewMode) {
+          await new Promise(resolve => setTimeout(resolve, 400));
+          spin = { stake: expectedStake, multiplier: 2, payout: expectedStake * 2, balance: expectedStake * 2, net: expectedStake, id:'preview-spin', createdAt:new Date().toISOString() };
+        } else {
+          const response = await fetch('/api/session/wheel/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({requestId:wheelRequestId, expectedStake, expectedOutcomes:wheelExpectedOutcomes}) });
+          const data = await response.json().catch(() => ({}));
+          if (response.status === 409 && /balance changed/i.test(String(data.error || ''))) {
+            const known = new Error('Balance changed');
+            known.code = 'KNOWN_NOT_SETTLED';
+            throw known;
+          }
+          if (response.status === 409 && /wheel odds changed/i.test(String(data.error || ''))) {
+            const known = new Error('Wheel odds changed');
+            known.code = 'KNOWN_NOT_SETTLED';
+            throw known;
+          }
+          if (response.status === 403 && /betting games is disabled/i.test(String(data.error || ''))) {
+            const known = new Error('Betting Games is disabled');
+            known.code = 'KNOWN_NOT_SETTLED';
+            throw known;
+          }
+          if (response.status === 400 && /no points available/i.test(String(data.error || ''))) {
+            const known = new Error('No points available');
+            known.code = 'KNOWN_NOT_SETTLED';
+            throw known;
+          }
+          if (!response.ok || !data.success || !data.spin) throw new Error(data.error || 'Result not confirmed. Retry the same request.');
+          spin = data.spin;
+        }
+        const sameMember = String(sessionUsername || '').toLowerCase() === String(requestUsername || '').toLowerCase();
+        if (!sameMember) {
+          clearPendingWheel(requestUsername, wheelRequestId);
+          wheelSpinInFlight = false; wheelRequestId = null; wheelRequestUsername = '';
+          wheelExpectedStake = null;
+          return;
+        }
+        if (Array.isArray(spin.outcomes) && spin.outcomes.length) {
+          wheelData.outcomes = spin.outcomes;
+          renderWheel();
+        }
+        const idx = outcomeIndex(spin.multiplier);
+        if (idx < 0) throw new Error('Server returned an unknown wheel result.');
+        const totalWeight = wheelData.outcomes.reduce((sum, item) => sum + Math.max(0, Number(item.weight) || 0), 0) || 1;
+        const beforeWeight = wheelData.outcomes.slice(0, idx).reduce((sum, item) => sum + Math.max(0, Number(item.weight) || 0), 0);
+        const resultWeight = Math.max(0, Number(wheelData.outcomes[idx].weight) || 0);
+        const resultCenter = ((beforeWeight + resultWeight / 2) / totalWeight) * 360;
+        wheelRotation += 1440 + (360 - resultCenter) - (wheelRotation % 360);
+        document.getElementById('wheel-disc').style.transform = `rotate(${wheelRotation}deg)`;
+        const settle = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 4300;
+        setTimeout(() => {
+          if (String(sessionUsername || '').toLowerCase() !== String(requestUsername || '').toLowerCase()) {
+            clearPendingWheel(requestUsername, wheelRequestId);
+            wheelSpinInFlight = false; wheelRequestId = null; wheelRequestUsername = ''; wheelExpectedStake = null; wheelExpectedOutcomes = null;
+            return;
+          }
+          document.getElementById('wheel-result').textContent = `${Number(spin.multiplier)}x RESULT CONFIRMED`;
+          document.getElementById('wheel-stake').textContent = wheelMoney(spin.stake);
+          document.getElementById('wheel-payout').textContent = wheelMoney(spin.payout);
+          document.getElementById('wheel-new-balance').textContent = wheelMoney(spin.balance);
+          document.getElementById('wheel-balance').textContent = wheelMoney(spin.balance);
+          document.getElementById('wheel-note').textContent = spin.notificationSent === false
+            ? 'Telegram delivery queued; automatic retry.'
+            : '';
+          clearPendingWheel(requestUsername, wheelRequestId);
+          wheelData.balance = Number(spin.balance);
+          setPoints(spin.balance);
+          button.textContent = 'SPIN AGAIN';
+          wheelSpinInFlight = false; wheelRequestId = null; wheelRequestUsername = ''; wheelExpectedStake = null; wheelExpectedOutcomes = null;
+          if (wheelData.balance <= 0) button.disabled = true;
+          resizeDrawerToContent();
+        }, settle);
+      } catch (e) {
+        if (e && e.code === 'KNOWN_NOT_SETTLED') {
+          clearPendingWheel(requestUsername, wheelRequestId);
+          wheelSpinInFlight = false;
+          wheelRequestId = null;
+          wheelExpectedStake = null;
+          wheelExpectedOutcomes = null;
+          wheelRequestUsername = '';
+          resetWheelConfirmation();
+          error.textContent = e.message + '. Review the new balance before trying again.';
+          error.classList.add('active');
+          loadWheel();
+          return;
+        }
+        wheelSpinInFlight = false; button.disabled = false; button.textContent = 'RETRY SAME REQUEST';
+        error.textContent = 'Result not confirmed. Retry the same request';
+        error.classList.add('active');
+        document.getElementById('wheel-result').textContent = 'RESULT NOT CONFIRMED';
+        document.getElementById('wheel-note').textContent = 'Result not confirmed. Retry the same request.';
+      }
     }
 
     function attendanceDateLabel(iso) {
@@ -1211,15 +1613,18 @@
 
     function setPoints(pts) {
       const el = document.getElementById('points-zone');
+      const valueEl = document.getElementById('points-value');
       const isMember = sessionUsername && sessionUsername.toLowerCase().startsWith('mem-');
-      if (!isMember || pts === undefined || pts === null) {
+      if (!isMember) {
         el.classList.remove('active');
-        el.innerHTML = '';
+        valueEl.textContent = '';
         resizeOverlayToContent();
         return;
       }
-      const display = pts % 1 === 0 ? pts.toString() : pts.toFixed(2);
-      el.innerHTML = '<span class="pts-value">' + display + '</span><span class="pts-label">POINTS</span>';
+      const number = pts === undefined || pts === null ? NaN : Number(pts);
+      const display = !Number.isFinite(number) ? '—'
+        : (Number.isInteger(number) ? number.toString() : number.toFixed(2));
+      valueEl.textContent = display;
       el.classList.add('active');
       resizeOverlayToContent();
     }
@@ -1371,6 +1776,10 @@
     document.getElementById('shop-btn').addEventListener('click', () => openDrawer('shop'));
     document.getElementById('rank-btn').addEventListener('click', () => openDrawer('rank'));
     document.getElementById('attendance-btn').addEventListener('click', () => openDrawer('attendance'));
+    document.getElementById('games-btn').addEventListener('click', () => openDrawer('games'));
+    document.getElementById('wheel-spin').addEventListener('click', spinWheel);
+    document.getElementById('wheel-confirm-no').addEventListener('click', resetWheelConfirmation);
+    document.getElementById('wheel-confirm-yes').addEventListener('click', spinWheel);
     document.getElementById('attendance-prev').addEventListener('click', () => {
       if (attendanceMonth.getFullYear() === 2000 && attendanceMonth.getMonth() === 0) return;
       attendanceMonth = new Date(attendanceMonth.getFullYear(), attendanceMonth.getMonth() - 1, 1);
@@ -1388,6 +1797,9 @@
     loadStatus();
     if (previewMode && new URLSearchParams(location.search).get('attendance') === '1') {
       openDrawer('attendance');
+    }
+    if (previewMode && new URLSearchParams(location.search).get('games') === '1') {
+      openDrawer('games');
     }
     if (!previewMode) connectWs();
     interval = setInterval(() => {
