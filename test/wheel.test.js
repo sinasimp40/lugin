@@ -66,6 +66,112 @@ test('wheel configuration rejects invalid odds, duplicates and non-cent precisio
   assert.equal(parseWheel({ enabled: true, outcomes: [{ multiplier: 0, weight: 0 }, { multiplier: 1, weight: 100 }] }), null);
 });
 
+test('Auto Shutdown offers editable defaults offline but keeps drafts off Denfi Points', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-wheel-draft-'));
+  const socket = net.createServer();
+  await new Promise(resolve => socket.listen(0, '127.0.0.1', resolve));
+  const port = socket.address().port;
+  await new Promise(resolve => socket.close(resolve));
+  const child = spawn(process.execPath, ['-e', `
+    const dir=process.env.DENFI_TEST_DATA_DIR;
+    const settings=require('./src/settings-store'); settings.setAppRole('auto-shutdown'); settings.setDataDir(dir);
+    require('./src/coin-log-store').setDataDir(dir);
+    require('./src/attendance-store').setDataDir(dir);
+    require('./src/order-store').setDataDir(dir);
+    require('./server');
+  `], {
+    cwd: path.join(__dirname, '..'),
+    env: { ...process.env, PORT: String(port), DENFI_APP_ROLE: 'auto-shutdown', DENFI_TEST_DATA_DIR: dir,
+      NODE_ENV: 'test', DENFI_LISTEN_HOST: '127.0.0.1' },
+    stdio: 'ignore'
+  });
+  const request = async (route, method = 'GET', body, token) => {
+    const response = await fetch(`http://127.0.0.1:${port}${route}`, {
+      method, headers: { ...(body ? { 'content-type': 'application/json' } : {}),
+        ...(token ? { 'x-admin-token': token } : {}) },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    return { status: response.status, data: await response.json().catch(() => ({})) };
+  };
+  try {
+    let ready = false;
+    for (let i = 0; i < 60; i++) {
+      if (child.exitCode !== null) throw new Error('Auto Shutdown process exited');
+      try {
+        if ((await request('/api/admin/status')).data.appRole === 'auto-shutdown') { ready = true; break; }
+      } catch (_) {}
+      await delay(100);
+    }
+    assert.equal(ready, true);
+    const token = (await request('/api/admin/register', 'POST', { password: 'test-password' })).data.token;
+    const initial = await request('/api/admin/wheel', 'GET', null, token);
+    assert.equal(initial.status, 200);
+    assert.deepEqual(initial.data.wheel.outcomes, defaultWheel().outcomes);
+    assert.equal(initial.data.connected, false);
+    assert.equal(initial.data.draft, false);
+    const edited = { enabled: false, outcomes: [
+      { multiplier: 0, weight: 45 }, { multiplier: 0.5, weight: 10 },
+      { multiplier: 1, weight: 20 }, { multiplier: 2, weight: 15 }, { multiplier: 5, weight: 10 }
+    ] };
+    const saved = await request('/api/admin/wheel', 'POST', { ...edited, mode: 'draft' }, token);
+    assert.equal(saved.status, 200);
+    assert.equal(saved.data.draft, true);
+    assert.deepEqual((await request('/api/admin/wheel', 'GET', null, token)).data.wheel, edited);
+    assert.equal((await request('/api/admin/wheel', 'POST', { ...edited, mode: 'publish' }, token)).status, 503);
+    assert.deepEqual((await request('/api/admin/wheel', 'GET', null, token)).data.wheel, edited);
+    assert.notEqual((await request('/api/session/wheel')).status, 200, 'offline drafts cannot enable real spins');
+    const pointsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-wheel-draft-points-'));
+    const pointsSocket = net.createServer();
+    await new Promise(resolve => pointsSocket.listen(0, '127.0.0.1', resolve));
+    const pointsPort = pointsSocket.address().port;
+    await new Promise(resolve => pointsSocket.close(resolve));
+    const points = spawn(process.execPath, ['-e', `
+      const dir=process.env.DENFI_TEST_DATA_DIR;
+      const settings=require('./src/settings-store'); settings.setAppRole('points'); settings.setDataDir(dir);
+      require('./src/coin-log-store').setDataDir(dir);
+      require('./src/attendance-store').setDataDir(dir);
+      require('./src/order-store').setDataDir(dir);
+      require('./server');
+    `], {
+      cwd: path.join(__dirname, '..'),
+      env: { ...process.env, PORT: String(pointsPort), DENFI_APP_ROLE: 'points', DENFI_TEST_DATA_DIR: pointsDir,
+        NODE_ENV: 'test', DENFI_LISTEN_HOST: '127.0.0.1' },
+      stdio: 'ignore'
+    });
+    try {
+      const pointsUrl = `http://127.0.0.1:${pointsPort}`;
+      let pointsReady = false;
+      for (let i = 0; i < 60; i++) {
+        if (points.exitCode !== null) throw new Error('Denfi Points process exited');
+        try {
+          const status = await fetch(pointsUrl + '/api/admin/status').then(r => r.json());
+          if (status.appRole === 'points') { pointsReady = true; break; }
+        } catch (_) {}
+        await delay(100);
+      }
+      assert.equal(pointsReady, true);
+      assert.equal((await request('/api/admin/sync-server', 'POST', { url: pointsUrl }, token)).data.success, true);
+      const pending = (await request('/api/admin/wheel', 'GET', null, token)).data;
+      assert.equal(pending.connected, true);
+      assert.equal(pending.draft, true);
+      assert.deepEqual(pending.wheel, edited, 'reconnecting keeps the offline draft visible');
+      assert.deepEqual((await fetch(pointsUrl + '/api/sync/wheel-config').then(r => r.json())).wheel.outcomes,
+        defaultWheel().outcomes, 'reconnecting must not silently publish the draft');
+      const published = await request('/api/admin/wheel', 'POST', { ...edited, mode: 'publish' }, token);
+      assert.equal(published.status, 200);
+      assert.equal(published.data.draft, false);
+      assert.deepEqual((await fetch(pointsUrl + '/api/sync/wheel-config').then(r => r.json())).wheel, edited);
+      assert.equal((await request('/api/admin/wheel', 'GET', null, token)).data.draft, false);
+    } finally {
+      points.kill();
+      fs.rmSync(pointsDir, { recursive: true, force: true });
+    }
+  } finally {
+    child.kill();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('Points API settles once and keeps pending Telegram notifications for retry', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-wheel-api-'));
   const socket = net.createServer();

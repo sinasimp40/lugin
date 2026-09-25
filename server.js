@@ -8,7 +8,7 @@ const settings = require('./src/settings-store');
 const coinLogs = require('./src/coin-log-store');
 const orderStore = require('./src/order-store');
 const attendance = require('./src/attendance-store');
-const { parseWheel, oddsToken } = require('./src/wheel-config');
+const { defaultWheel, parseWheel, oddsToken } = require('./src/wheel-config');
 
 const appRoleInit = process.env.DENFI_APP_ROLE || 'auto-shutdown';
 settings.setAppRole(appRoleInit);
@@ -957,13 +957,17 @@ function wheelErrorResponse(res, error, ambiguous = false) {
 }
 
 app.get('/api/admin/wheel', verifyToken, async (req, res) => {
+  if (appRole === 'points') return res.json({ success: true, wheel: settings.getSettings().wheel, readOnly: true, connected: true });
+  const saved = settings.getSettings();
   try {
-    const wheel = appRole === 'points'
-      ? settings.getSettings().wheel
-      : (await fetchPointsWheel('/api/sync/wheel-config')).wheel;
-    res.json({ success: true, wheel, readOnly: appRole === 'points' });
+    const remote = await fetchPointsWheel('/api/sync/wheel-config');
+    const wheel = parseWheel(remote.wheel);
+    if (!wheel) throw new Error('Denfi Points returned invalid betting settings.');
+    // Never discard an explicitly saved offline draft when the server reconnects.
+    res.json({ success: true, wheel: saved.wheelDraft || wheel, draft: !!saved.wheelDraft, connected: true });
   } catch (error) {
-    wheelErrorResponse(res, error);
+    res.json({ success: true, wheel: saved.wheelDraft || saved.wheel || defaultWheel(),
+      draft: !!saved.wheelDraft, connected: false });
   }
 });
 
@@ -983,11 +987,22 @@ app.post('/api/admin/wheel', verifyToken, async (req, res) => {
   if (appRole !== 'auto-shutdown') return res.status(403).json({ success: false, error: 'Configure the wheel in Auto Shutdown.' });
   const wheel = parseWheel(req.body);
   if (!wheel) return res.status(400).json({ success: false, error: 'Enter 2–12 distinct multipliers (0–100x), positive percentages and a total of exactly 100%.' });
+  if (req.body.mode === 'draft') {
+    try {
+      settings.updateSettings({ wheelDraft: wheel });
+      return res.json({ success: true, wheel, draft: true, connected: false });
+    } catch (error) {
+      return res.status(500).json({ success: false, error: 'Could not save the local betting draft.' });
+    }
+  }
   try {
     const data = await fetchPointsWheel('/api/admin/kiosk-wheel', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wheel)
     });
-    res.json({ success: true, wheel: data.wheel });
+    const saved = parseWheel(data.wheel);
+    if (!saved) throw new Error('Denfi Points returned invalid betting settings.');
+    settings.updateSettings({ wheel: saved, wheelDraft: null });
+    res.json({ success: true, wheel: saved, draft: false, connected: true });
   } catch (error) {
     wheelErrorResponse(res, error);
   }

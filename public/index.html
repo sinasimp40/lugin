@@ -1898,7 +1898,7 @@
                <div class="admin-grid">
                  <div class="admin-section full-width">
                    <h3>Multipliers and winning rates</h3>
-                   <p style="font-size:11px;color:#aeb4b8;margin-bottom:12px">Each spin stakes all current-month points. These chances are private to admins; equal-sized player tiles do not change the actual odds. Denfi Points records the result.</p>
+                   <p style="font-size:11px;color:#aeb4b8;margin-bottom:12px">0× means LOSE. Each spin stakes all current-month points. These chances are private to admins; equal-sized player tiles do not change the actual odds. Denfi Points records the result.</p>
                    <div class="curfew-toggle-wrap"><label class="curfew-toggle"><input type="checkbox" id="admin-wheel-enabled" /><span class="slider"></span></label><span style="font-family:'Share Tech Mono';font-size:11px;color:#e0e0e0;letter-spacing:1px">Enable betting games</span></div>
                    <div style="display:grid;grid-template-columns:1fr 100px 34px;gap:7px;margin-top:12px;color:#8c9399;font:10px 'Share Tech Mono';letter-spacing:1px"><span>MULTIPLIER (×)</span><span>WIN RATE %</span><span></span></div>
                    <div class="wheel-admin-rows" id="admin-wheel-rows"></div>
@@ -3638,6 +3638,15 @@
 
     let adminWheel = { enabled: false, outcomes: [] };
     let adminWheelLoaded = false;
+    let adminWheelConnected = false;
+    let adminWheelDraft = false;
+    let adminWheelDirty = false;
+    let adminWheelLoadSeq = 0;
+    document.getElementById('admin-wheel-enabled').addEventListener('change', event => {
+      adminWheel.enabled = event.target.checked;
+      adminWheelDirty = true;
+      setWheelAdminReadOnly();
+    });
     function renderAdminWheel() {
       const rows = document.getElementById('admin-wheel-rows');
       rows.replaceChildren();
@@ -3652,9 +3661,9 @@
         remove.addEventListener('click', () => {
           if (adminWheel.outcomes.length <= 2) { showAdminMsg('admin-panel-msg', 'Keep at least 2 multiplier rows.', 'error'); return; }
           if (isPointsAdmin() || !adminWheelLoaded) return;
-          adminWheel.outcomes.splice(index, 1); renderAdminWheel();
+          adminWheel.outcomes.splice(index, 1); adminWheelDirty = true; renderAdminWheel();
         });
-        [multiplier, weight].forEach(input => input.addEventListener('input', () => { adminWheel.outcomes[index] = { multiplier:Number(multiplier.value), weight:Number(weight.value) }; updateWheelTotal(); }));
+        [multiplier, weight].forEach(input => input.addEventListener('input', () => { adminWheel.outcomes[index] = { multiplier:Number(multiplier.value), weight:Number(weight.value) }; adminWheelDirty = true; updateWheelTotal(); setWheelAdminReadOnly(); }));
         row.append(multiplier, weight, remove); rows.appendChild(row);
       });
       updateWheelTotal();
@@ -3668,8 +3677,14 @@
     function updateWheelTotal() {
       const total = (adminWheel.outcomes || []).reduce((sum, item) => sum + (Number(item.weight) || 0), 0);
       const el = document.getElementById('admin-wheel-total');
-      el.textContent = `TOTAL WEIGHT: ${total.toFixed(2)}% ${Math.abs(total - 100) < 0.001 ? '· VALID' : '· MUST EQUAL 100%'}`;
-      el.classList.toggle('invalid', Math.abs(total - 100) >= 0.001);
+      const outcomes = adminWheel.outcomes || [];
+      const validRows = outcomes.length >= 2 && outcomes.length <= 12 &&
+        outcomes.every(item => Number.isFinite(item.multiplier) && item.multiplier >= 0 && item.multiplier <= 100 &&
+          Number.isFinite(item.weight) && item.weight > 0 && item.weight <= 100) &&
+        new Set(outcomes.map(item => item.multiplier)).size === outcomes.length;
+      const validTotal = Math.abs(total - 100) < 0.001;
+      el.textContent = `TOTAL WEIGHT: ${total.toFixed(2)}% ${!validTotal ? '· MUST EQUAL 100%' : !validRows ? '· ENTER A POSITIVE RATE FOR EACH DISTINCT MULTIPLIER' : '· VALID'}`;
+      el.classList.toggle('invalid', !validTotal || !validRows);
     }
     function addWheelOutcome() {
       if (isPointsAdmin() || !adminWheelLoaded) return;
@@ -3678,6 +3693,7 @@
       let next = 0;
       while (taken.has(next)) next++;
       adminWheel.outcomes.push({ multiplier: next, weight: 0 });
+      adminWheelDirty = true;
       renderAdminWheel();
     }
     function isPointsAdmin() { return window._appRole === 'points'; }
@@ -3690,36 +3706,66 @@
       const save = document.querySelector('#admin-wheel-rows + .wheel-admin-total + div button[onclick="saveWheelSettings()"]');
       save.hidden = readonly;
       save.disabled = locked;
+      save.textContent = adminWheelConnected ? 'Publish to Denfi Points' : 'Save local draft';
       const note = document.getElementById('admin-wheel-status');
       if (note) note.textContent = readonly
         ? 'Read-only on Denfi Points. Betting settings can only be changed from the Auto Shutdown operator panel.'
-        : adminWheelLoaded
-          ? 'These settings are saved on Denfi Points. The displayed win rates are visible to admins only.'
-          : 'Connect Denfi Points from Runtime first, then return here to load and edit betting settings.';
+        : !adminWheelLoaded ? 'Loading betting settings…'
+        : adminWheelDirty
+          ? adminWheelConnected
+            ? 'UNSAVED CHANGES — publish to Denfi Points to apply these settings.'
+            : 'UNSAVED CHANGES — save a local draft. It will not activate betting until published to Denfi Points.'
+        : !adminWheelConnected
+          ? 'LOCAL DRAFT ONLY — you can edit and save here, but betting is not active until you connect Denfi Points in Runtime and publish this draft.'
+          : adminWheelDraft
+            ? 'LOCAL DRAFT — publish to Denfi Points to activate these changes. Publishing replaces the current server settings.'
+            : 'Saved on Denfi Points. Winning rates are private to admins. Changes require publishing.';
     }
     async function loadAdminWheel() {
       if (!adminToken) return;
+      if (adminWheelDirty) return;
+      const sequence = ++adminWheelLoadSeq;
       adminWheelLoaded = false;
-      adminWheel = { enabled: false, outcomes: [] };
       renderAdminWheel();
       try {
         const response = await fetch('/api/admin/wheel', { headers:{'x-admin-token':adminToken} });
         const data = await response.json().catch(() => ({}));
+        if (sequence !== adminWheelLoadSeq || !adminToken || adminWheelDirty) return;
         if (!response.ok || !data.success) throw new Error(data.error || 'Could not load betting game settings');
         adminWheel = data.wheel || { enabled:false, outcomes:[] };
+        adminWheelConnected = !!data.connected;
+        adminWheelDraft = !!data.draft;
+        adminWheelDirty = false;
         adminWheelLoaded = true;
         renderAdminWheel();
-      } catch (e) { showAdminMsg('admin-panel-msg', e.message || 'Betting game settings unavailable', 'error'); }
+      } catch (e) {
+        if (sequence === adminWheelLoadSeq && adminToken) showAdminMsg('admin-panel-msg', e.message || 'Betting game settings unavailable', 'error');
+      }
     }
     async function saveWheelSettings() {
       if (isPointsAdmin()) { showAdminMsg('admin-panel-msg', 'Betting settings are read-only on Denfi Points.', 'error'); return; }
-      if (!adminWheelLoaded) { showAdminMsg('admin-panel-msg', 'Connect Denfi Points and load the saved settings first.', 'error'); return; }
+      if (!adminWheelLoaded) { showAdminMsg('admin-panel-msg', 'Load the betting settings first.', 'error'); return; }
       const total = (adminWheel.outcomes || []).reduce((sum, item) => sum + (Number(item.weight) || 0), 0);
       if (!adminWheel.outcomes.length || Math.abs(total - 100) >= 0.001) { showAdminMsg('admin-panel-msg', 'Betting game weights must total exactly 100%.', 'error'); return; }
       const outcomes = adminWheel.outcomes.map(item => ({ multiplier:Number(item.multiplier), weight:Number(item.weight) }));
-      const resp = await fetch('/api/admin/wheel', { method:'POST', headers:{'Content-Type':'application/json','x-admin-token':adminToken}, body:JSON.stringify({enabled:document.getElementById('admin-wheel-enabled').checked, outcomes}) }).then(r => r.json()).catch(() => ({success:false,error:'Betting game service is offline'}));
-      if (resp.success) { adminWheel = resp.wheel || { enabled:false, outcomes }; renderAdminWheel(); showAdminMsg('admin-panel-msg','Betting game settings saved','success'); }
-      else showAdminMsg('admin-panel-msg', resp.error || 'Could not save betting game settings', 'error');
+      const resp = await fetch('/api/admin/wheel', { method:'POST', headers:{'Content-Type':'application/json','x-admin-token':adminToken}, body:JSON.stringify({enabled:document.getElementById('admin-wheel-enabled').checked, outcomes, mode:adminWheelConnected ? 'publish' : 'draft'}) }).then(async r => ({ ...await r.json(), httpStatus:r.status })).catch(() => ({success:false,error:'Betting game service is offline',httpStatus:503}));
+      if (resp.success) {
+        adminWheel = resp.wheel || { enabled:false, outcomes };
+        adminWheelDraft = !!resp.draft;
+        adminWheelConnected = !!resp.connected;
+        adminWheelDirty = false;
+        renderAdminWheel();
+        if (resp.draft) await loadAdminWheel();
+        showAdminMsg('admin-panel-msg', resp.draft ? 'Local draft saved. Connect Denfi Points in Runtime, then publish to activate it.' : 'Betting game settings published to Denfi Points.', 'success');
+      }
+      else {
+        if (resp.httpStatus === 503) {
+          adminWheelConnected = false;
+          renderAdminWheel();
+        }
+        showAdminMsg('admin-panel-msg', (resp.error || 'Could not save betting game settings') +
+          (resp.httpStatus === 503 ? ' Your edits are still on this screen; use Save local draft to keep them.' : ''), 'error');
+      }
     }
 
     function setAttendanceManaged(serverUrl) {
@@ -3971,7 +4017,11 @@
       if (!url) { showAdminMsg('admin-panel-msg', 'Enter server address', 'error'); return; }
       showAdminMsg('admin-panel-msg', 'Connecting...', 'success');
       const resp = await fetch('/api/admin/sync-server', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify({ url }) }).then(r => r.json()).catch(() => ({ success: false, error: 'Request failed' }));
-      if (resp.success) { showAdminMsg('admin-panel-msg', 'Connected to Denfi Points!', 'success'); loadSyncServerStatus(); }
+      if (resp.success) {
+        showAdminMsg('admin-panel-msg', 'Connected to Denfi Points! Open Betting Games to publish any saved draft.', 'success');
+        loadSyncServerStatus();
+        if (!adminWheelDirty) loadAdminWheel();
+      }
       else showAdminMsg('admin-panel-msg', resp.error || 'Connection failed', 'error');
     }
 
@@ -3984,6 +4034,7 @@
         showAdminMsg('admin-panel-msg', 'Found Denfi Points at ' + resp.syncServerUrl, 'success');
         document.getElementById('admin-sync-url').value = resp.syncServerUrl.replace(/^https?:\/\//, '');
         loadSyncServerStatus();
+        if (!adminWheelDirty) loadAdminWheel();
       } else {
         showAdminMsg('admin-panel-msg', resp.error || 'Not found on network', 'error');
         loadSyncServerStatus();
@@ -3992,7 +4043,14 @@
 
     async function disconnectSync() {
       const resp = await fetch('/api/admin/sync-server', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken }, body: JSON.stringify({ url: '' }) }).then(r => r.json()).catch(() => ({ success: false }));
-      if (resp.success) { showAdminMsg('admin-panel-msg', 'Disconnected', 'success'); document.getElementById('admin-sync-url').value = ''; loadSyncServerStatus(); }
+      if (resp.success) {
+        showAdminMsg('admin-panel-msg', 'Disconnected', 'success');
+        document.getElementById('admin-sync-url').value = '';
+        loadSyncServerStatus();
+        adminWheelConnected = false;
+        if (adminWheelDirty) renderAdminWheel();
+        else loadAdminWheel();
+      }
       else showAdminMsg('admin-panel-msg', resp.error || 'Failed', 'error');
     }
 
