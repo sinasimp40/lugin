@@ -124,6 +124,8 @@ test('wheel configuration rejects invalid odds, duplicates and non-cent precisio
   assert.equal(parseWheel({ enabled: true, outcomes: [{ multiplier: 2, weight: 40 }, { multiplier: 2, weight: 60 }] }), null);
   assert.equal(parseWheel({ enabled: true, outcomes: [{ multiplier: 0, weight: 33.333 }, { multiplier: 1, weight: 66.667 }] }), null);
   assert.equal(parseWheel({ enabled: true, outcomes: [{ multiplier: 0, weight: 0 }, { multiplier: 1, weight: 100 }] }), null);
+  assert.deepEqual(parseWheel({ enabled:true, outcomes:[{ multiplier:2, weight:100 }] }).outcomes,
+    [{ multiplier:2, weight:100 }], 'deleting LOSE permits one certain winning outcome');
   assert.deepEqual(
     (({ maxSpinsPerDay, allowCustomStake }) => ({ maxSpinsPerDay, allowCustomStake }))(parseWheel(defaultWheel())),
     { maxSpinsPerDay: 1, allowCustomStake: false }
@@ -139,7 +141,7 @@ test('wheel configuration rejects invalid odds, duplicates and non-cent precisio
   );
 });
 
-test('the Auto Shutdown editor derives LOSE from winning chances', () => {
+test('the Auto Shutdown editor preserves editable LOSE and requires exactly 100% chances', () => {
   const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   const start = page.indexOf('    function editableWheel(wheel) {');
   const end = page.indexOf('    function renderAdminWheel() {', start);
@@ -148,23 +150,37 @@ test('the Auto Shutdown editor derives LOSE from winning chances', () => {
     return { editableWheel, wheelEditorState };`);
   const { editableWheel } = editor(defaultWheel());
   const current = editableWheel(defaultWheel());
-  assert.equal(current.outcomes.some(item => item.multiplier === 0), false);
+  assert.deepEqual(current.outcomes[0], { multiplier:0, weight:35 });
   assert.deepEqual(editor(current).wheelEditorState(), {
-    wins: defaultWheel().outcomes.slice(1), winCents: 6500, lossCents: 3500, valid: true,
+    wins: defaultWheel().outcomes.slice(1), winCents: 6500, lossCents: 3500,
+    totalCents: 10000, valid: true,
     outcomes: defaultWheel().outcomes
   });
   const edited = editor({ ...current, outcomes: current.outcomes.map(item =>
-    item.multiplier === 1.8 ? { ...item, weight: 18 } : item) }).wheelEditorState();
-  assert.equal(edited.lossCents, 3700);
-  assert.deepEqual(parseWheel({ enabled:true, outcomes:edited.outcomes }).outcomes[0], { multiplier:0, weight:37 });
+    item.multiplier === 0 ? { ...item, weight:30 } : item) }).wheelEditorState();
+  assert.equal(edited.valid, false);
+  assert.equal(edited.lossCents, 3000);
+  assert.equal(edited.totalCents, 9500);
+  const adjusted = editor({ ...current, outcomes: current.outcomes.map(item =>
+    item.multiplier === 0 ? { ...item, weight:30 } :
+      item.multiplier === 1.5 ? { ...item, weight:25 } : item) }).wheelEditorState();
+  assert.equal(adjusted.valid, true);
+  assert.deepEqual(parseWheel({ enabled:true, outcomes:adjusted.outcomes }).outcomes[0],
+    { multiplier:0, weight:30 });
+  const withoutLoss = editor({ ...current, outcomes:current.outcomes.slice(1) }).wheelEditorState();
+  assert.equal(withoutLoss.valid, false);
+  assert.equal(withoutLoss.lossCents, 0, 'removing LOSE never silently recreates it');
   const fullWins = editor({ enabled:true, outcomes:[
     { multiplier:1.5, weight:60 }, { multiplier:2, weight:40 }
   ] }).wheelEditorState();
   assert.equal(fullWins.valid, true);
   assert.equal(fullWins.lossCents, 0);
   assert.equal(fullWins.outcomes.some(item => item.multiplier === 0), false);
+  assert.equal(editor({ enabled:true, outcomes:[{ multiplier:2, weight:100 }] }).wheelEditorState().valid, true);
   assert.equal(editor({ enabled:true, outcomes:[{ multiplier:1.5, weight:101 }] }).wheelEditorState().valid, false);
-  assert.equal(editor({ enabled:true, outcomes:[{ multiplier:0, weight:20 }, { multiplier:2, weight:20 }] }).wheelEditorState().valid, false);
+  assert.equal(editor({ enabled:true, outcomes:[{ multiplier:0, weight:20 }, { multiplier:0, weight:30 }, { multiplier:2, weight:50 }] }).wheelEditorState().valid, false);
+  assert.match(page, /Delete LOSE 0×/);
+  assert.match(page, /function addWheelLoss\(\)/);
 });
 
 test('a configured 30% multiplier wins exactly 30% of the possible tickets on each roll', t => {
@@ -316,6 +332,11 @@ test('Auto Shutdown offers editable defaults offline but keeps drafts off Denfi 
       assert.equal((await spinRequest(oldStatus.oddsToken)).status, 409, 'old odds must be reviewed again');
       const spun = await spinRequest(updatedStatus.oddsToken).then(r => r.json());
       assert.deepEqual(spun.spin.outcomes, edited.outcomes, 'new odds apply to the next spin');
+      const noLoss = { ...edited, outcomes:[{ multiplier:2, weight:100 }] };
+      const publishedNoLoss = await request('/api/admin/wheel', 'POST', { ...noLoss, mode:'publish' }, token);
+      assert.equal(publishedNoLoss.status, 200, 'operator can publish odds without LOSE');
+      assert.deepEqual((await fetch(pointsUrl + '/api/sync/wheel-config').then(r => r.json())).wheel.outcomes,
+        noLoss.outcomes, 'Denfi Points persists a deleted LOSE outcome');
     } finally {
       points.kill();
       fs.rmSync(pointsDir, { recursive: true, force: true });

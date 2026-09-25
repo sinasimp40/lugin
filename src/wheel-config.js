@@ -35,7 +35,7 @@ function parseWheel(input) {
       (input.maxSpinsPerDay !== undefined &&
         (!Number.isInteger(input.maxSpinsPerDay) || input.maxSpinsPerDay < 1 || input.maxSpinsPerDay > 100)) ||
       (input.allowCustomStake !== undefined && typeof input.allowCustomStake !== 'boolean') ||
-      !Array.isArray(input.outcomes) || input.outcomes.length < 2 || input.outcomes.length > 12) return null;
+      !Array.isArray(input.outcomes) || input.outcomes.length < 1 || input.outcomes.length > 12) return null;
   const seen = new Set();
   let total = 0;
   const outcomes = [];
