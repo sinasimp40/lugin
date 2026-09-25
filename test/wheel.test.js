@@ -4,10 +4,11 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const net = require('node:net');
+const crypto = require('node:crypto');
 const { spawn } = require('node:child_process');
 const { setTimeout: delay } = require('node:timers/promises');
 const logs = require('../src/coin-log-store');
-const { defaultWheel, currentWheel, parseWheel } = require('../src/wheel-config');
+const { defaultWheel, currentWheel, parseWheel, pickOutcome } = require('../src/wheel-config');
 
 test('full-balance settlement is idempotent, rate-proof and decreases ranking', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-wheel-ledger-'));
@@ -104,6 +105,22 @@ test('the Auto Shutdown editor derives LOSE from winning chances', () => {
   assert.equal(fullWins.outcomes.some(item => item.multiplier === 0), false);
   assert.equal(editor({ enabled:true, outcomes:[{ multiplier:1.5, weight:101 }] }).wheelEditorState().valid, false);
   assert.equal(editor({ enabled:true, outcomes:[{ multiplier:0, weight:20 }, { multiplier:2, weight:20 }] }).wheelEditorState().valid, false);
+});
+
+test('a configured 30% multiplier wins exactly 30% of the possible tickets on each roll', t => {
+  const outcomes = [
+    { multiplier: 0, weight: 50 },
+    { multiplier: 1.5, weight: 30 },
+    { multiplier: 2, weight: 20 }
+  ];
+  let ticket = 0;
+  t.mock.method(crypto, 'randomInt', () => ticket);
+  const counts = new Map();
+  for (ticket = 0; ticket < 10000; ticket++) {
+    const result = pickOutcome(outcomes);
+    counts.set(result, (counts.get(result) || 0) + 1);
+  }
+  assert.deepEqual([...counts.entries()], [[0, 5000], [1.5, 3000], [2, 2000]]);
 });
 
 test('2× pays twice the exact staked balance, including the original stake', () => {

@@ -14,3 +14,9 @@ Electron polling and foreground checks must be owned by the current session gene
 **Why:** Callbacks from a stopped poll or replaced window can arrive later and hide or transition a newer session.
 
 **How to apply:** Cancel old requests, reject callbacks that no longer own the active request/window, and exact-match normalized foreground process names before intentionally hiding the overlay.
+
+While a drawer is open, avoid shrinking the transparent Windows session window in response to changing content or periodically updated points. Reserve space for predictable controls such as betting confirmation.
+
+**Why:** Windows repaints transparent Electron windows when their bounds change; repeated resize requests can look like the whole popup is flickering even when the DOM remains mounted.
+
+**How to apply:** Prefer stable bounds during interactions; allow growth only when new content truly needs more room, and reset sizing when the drawer closes. Browser previews cannot verify the actual Windows compositor behavior.

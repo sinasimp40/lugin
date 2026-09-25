@@ -512,8 +512,9 @@
   .wheel-balance { color:#ffe2ad; font:800 17px 'Orbitron'; white-space:nowrap; }
   .wheel-warning { border:1px solid rgba(255,91,60,.65); background:rgba(122,31,18,.22); color:#ffc0a9; padding:8px 10px; font:11px/1.45 'Share Tech Mono'; margin-bottom:12px; }
   .wheel-explanation { color:#a99379; font:10px/1.4 'Share Tech Mono'; margin:-5px 0 10px; }
-  .wheel-confirm { display:none; border:1px solid #e2a443; background:#2b1d10; padding:10px; margin-bottom:9px; }
-  .wheel-confirm.active { display:block; }
+  /* Reserve confirmation space so opening it never resizes the Windows overlay. */
+  .wheel-confirm { visibility:hidden; border:1px solid #e2a443; background:#2b1d10; padding:10px; margin-bottom:9px; }
+  .wheel-confirm.active { visibility:visible; }
   .wheel-confirm-text { color:#ffe0a6; font:11px/1.4 'Share Tech Mono'; margin-bottom:8px; }
   .wheel-confirm-actions { display:flex; gap:7px; }
   .wheel-confirm-actions button { flex:1; padding:8px 5px; border:1px solid #b77829; background:#42270e; color:#ffdc9d; font:10px 'Orbitron'; cursor:pointer; }
@@ -530,7 +531,7 @@
   .wheel-stat strong { display:block; color:#ffe0a1; font:12px 'Orbitron'; margin-top:3px; }
   .wheel-spin { width:100%; padding:11px; border:1px solid #ffc264; background:linear-gradient(180deg,#f3a22d,#a8520b); color:#fff8e9; font:800 12px 'Orbitron'; letter-spacing:1px; cursor:pointer; }
   .wheel-spin:disabled { opacity:.45; cursor:not-allowed; }
-  .wheel-note { min-height:16px; margin-top:7px; color:#d8a56b; font-size:10px; line-height:1.35; text-align:center; }
+  .wheel-note { min-height:32px; margin-top:7px; color:#d8a56b; font-size:10px; line-height:1.35; text-align:center; }
   .wheel-error { display:none; margin-top:8px; padding:8px; border:1px solid #a64c3e; color:#ffaaa0; background:#2b1715; font-size:11px; line-height:1.4; }
   .wheel-error.active { display:block; }
   @media (prefers-reduced-motion: reduce) { .wheel-disc { transition:none; } }
@@ -800,6 +801,8 @@
     let wheelReelOffset = 0;
     let wheelReelAnimation = null;
     let drawerResizeTimer = null;
+    let drawerHeightFloor = 0;
+    let overlayWidth = 0;
     function wheelPendingKey(username) {
       return `denfi-wheel-pending:${String(username || '').toLowerCase()}`;
     }
@@ -896,7 +899,12 @@
         const userWidth = measureIntrinsicWidth(user);
         const pcWidth = measureIntrinsicWidth(pc);
         const logicalWidth = pointsWidth + mainPadding + statusWidth + userWidth + pcWidth + (rowGap * 2) + actionWidth + 4;
-        const targetWidth = Math.max(MIN_OVERLAY_WIDTH, Math.min(MAX_OVERLAY_WIDTH, Math.ceil(logicalWidth * OVERLAY_SCALE)));
+        const measuredWidth = Math.max(MIN_OVERLAY_WIDTH, Math.min(MAX_OVERLAY_WIDTH, Math.ceil(logicalWidth * OVERLAY_SCALE)));
+        // Keep the window steady while a drawer is open; Windows repaints transparent
+        // windows on every bounds change, including changes caused by points polling.
+        const targetWidth = activeDrawer ? Math.max(overlayWidth, measuredWidth) : measuredWidth;
+        if (targetWidth === overlayWidth) return;
+        overlayWidth = targetWidth;
 
         if (window.electronAPI && window.electronAPI.resizeSessionOverlayWidth) {
           window.electronAPI.resizeSessionOverlayWidth(targetWidth);
@@ -927,8 +935,12 @@
         const drawer = document.getElementById('drawer');
         const strip = document.getElementById('strip');
         if (!drawer || !strip || !drawer.classList.contains('active')) return;
+        const measuredHeight = drawer.offsetHeight;
+        if (measuredHeight <= drawerHeightFloor) return;
+        drawerHeightFloor = measuredHeight;
+        drawer.style.minHeight = `${drawerHeightFloor}px`;
         const targetHeight = Math.ceil(
-          (drawer.offsetHeight + strip.offsetHeight) * OVERLAY_SCALE
+          (drawerHeightFloor + strip.offsetHeight) * OVERLAY_SCALE
         );
         if (window.electronAPI && window.electronAPI.resizeSessionOverlayHeight) {
           window.electronAPI.resizeSessionOverlayHeight(targetHeight);
@@ -945,15 +957,20 @@
     }
 
     function closeDrawer() {
+      clearTimeout(drawerResizeTimer);
       resetWheelConfirmation();
       activeDrawer = null;
-      document.getElementById('drawer').classList.remove('active');
+      const drawer = document.getElementById('drawer');
+      drawer.classList.remove('active');
+      drawer.style.minHeight = '';
+      drawerHeightFloor = 0;
       document.querySelector('.overlay-shell').classList.remove('drawer-below');
       document.getElementById('shop-btn').classList.remove('active');
       document.getElementById('rank-btn').classList.remove('active');
       document.getElementById('attendance-btn').classList.remove('active');
       document.getElementById('games-btn').classList.remove('active');
       setOverlayExpanded(false);
+      resizeOverlayToContent();
     }
 
     async function openDrawer(view) {
