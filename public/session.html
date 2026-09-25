@@ -1586,8 +1586,8 @@
       if (meta && meta.period) note.textContent = 'CURRENT MONTH POINTS • ' + meta.period + ' • RESETS MONTHLY';
       list.innerHTML = '';
       if (!leaderboard.length) {
-        if (meta && meta.syncConnected === false) {
-          list.innerHTML = '<div class="empty-state">No ranking data yet.<br>Connect the Denfi Points server in Admin &gt; Runtime.</div>';
+        if (meta && meta.source === 'unavailable') {
+          list.innerHTML = '<div class="empty-state">Ranking unavailable while Denfi Points is offline.<br>Check the server connection in Admin &gt; Runtime.</div>';
         } else if (meta && meta.source === 'local-fallback') {
           list.innerHTML = '<div class="empty-state">Denfi Points did not return ranking data.<br>Showing local ranking.</div>';
         } else {
@@ -1751,6 +1751,8 @@
       document.getElementById('attendance-track').setAttribute('aria-valuenow', percent);
       document.getElementById('attendance-label').textContent = completed
         ? `DAILY COMPLETE · +${progress.points} PTS`
+        : progress.unavailable
+        ? 'DAILY PAUSED · POINTS SERVER OFFLINE'
         : progress.pending
         ? progress.mode === 'login' ? 'DAILY LOGIN · SYNC PENDING' : `DAILY ${played}/${progress.minutes}m · SYNC PENDING`
           : progress.mode === 'login' ? 'DAILY LOGIN · CHECKING' : `DAILY ${played}/${progress.minutes}m · +${progress.points} PTS`;

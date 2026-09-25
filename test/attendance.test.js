@@ -31,6 +31,46 @@ test('daily progress accumulates confirmed time across sessions but not gaps or 
   }
 });
 
+test('Points counts only short live check-in intervals, never an offline jump', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-live-attendance-'));
+  attendance.setDataDir(dir);
+  try {
+    const start = new Date(2026, 8, 24, 10, 0).getTime();
+    const sample = { username:'mem-alice', day:attendance.dayKey(start),
+      deviceId:'00000000-0000-4000-8000-000000000001' };
+    assert.equal(attendance.recordOnline(sample, start).seconds, 0);
+    assert.equal(attendance.recordOnline(sample, start + 2000).seconds, 2);
+    assert.equal(attendance.recordOnline(sample, start + 2000).seconds, 2);
+    assert.equal(attendance.recordOnline(sample, start + 3600000).seconds, 2,
+      'an hour offline cannot be reported as play time');
+    assert.equal(attendance.recordOnline(sample, start + 3602000).seconds, 4);
+    assert.equal(attendance.recordOnline({ ...sample, deviceId:'00000000-0000-4000-8000-000000000002' },
+      start + 3603000).seconds, 4, 'switching devices cannot double-count time');
+    assert.throws(() => attendance.recordOnline({ ...sample, day:attendance.dayKey(start + 86400000) }, start),
+      /Invalid live/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a kiosk sample never includes editable locally stored attendance seconds', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-attendance-sample-'));
+  attendance.setDataDir(dir);
+  try {
+    const old = attendance.record('mem-alice', true);
+    const file = path.join(dir, 'attendance.json');
+    const altered = JSON.parse(fs.readFileSync(file, 'utf8'));
+    altered.days[old.day]['mem-alice'].devices[old.deviceId] = 86400;
+    fs.writeFileSync(file, JSON.stringify(altered));
+    const sample = attendance.onlineSample('mem-alice', true);
+    assert.deepEqual(sample, { deviceId:old.deviceId, day:old.day, username:'mem-alice' });
+    assert.equal('seconds' in sample, false);
+    assert.equal(attendance.onlineSample('mem-alice', false), null);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('daily reward is unique and survives point-rate recalculation', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-award-'));
   coins.setDataDir(dir);

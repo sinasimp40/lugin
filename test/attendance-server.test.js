@@ -97,14 +97,29 @@ test('points server grants daily play-time reward once, with saved settings', as
     assert.equal((await kioskWriteOnPoints(
       { enabled: true, mode: 'login', minMinutes: 1, maxMinutes: 1, points: 3 })).code, 400);
     const invalid = await request('/api/sync/attendance', 'POST',
-      { deviceId: '00000000-0000-4000-8000-000000000001', day: '2000-01-01', username: 'mem-alice', seconds: 0 });
+      { deviceId: '00000000-0000-4000-8000-000000000001', day: '2000-01-01', username: 'mem-alice' });
     assert.equal(invalid.code, 400);
+    assert.equal((await request('/api/sync/coin-log', 'POST',
+      { username:'mem-alice', amount:-100, source:'app' })).code, 400,
+      'invalid coin events must not add Points balances');
+    assert.equal((await request('/api/sync/coin-log', 'POST',
+      { username:'mem-alice', amount:10, source:'attendance' })).code, 400,
+      'the coin endpoint cannot impersonate attendance rewards');
     const day = new Date();
     const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
-    const sample = { deviceId: '00000000-0000-4000-8000-000000000001', day: key, username: 'mem-alice', seconds: 0 };
+    const sample = { deviceId: '00000000-0000-4000-8000-000000000001', day: key, username: 'mem-alice' };
+    assert.equal((await request('/api/sync/attendance', 'POST', { ...sample, seconds: 3600 })).code, 400,
+      'old offline seconds and edited JSON cannot be uploaded for rewards');
     assert.equal((await request('/api/sync/attendance', 'POST', sample)).data.attendance.awarded, false);
-    const first = await request('/api/sync/attendance', 'POST', { ...sample, seconds: 60 });
-    const retry = await request('/api/sync/attendance', 'POST', { ...sample, seconds: 60 });
+    assert.equal((await request('/api/sync/attendance', 'POST', sample)).data.attendance.seconds, 0,
+      'rapid duplicate check-ins cannot manufacture time');
+    assert.equal((await request('/api/sync/member-points/mem-alice')).data.points, 0);
+    // Seed trusted Points-side history to test the existing reward/history rules
+    // without waiting a real minute for each integration scenario.
+    attendance.setDataDir(dir);
+    attendance.merge({ ...sample, seconds: 60 });
+    const first = await request('/api/sync/attendance', 'POST', sample);
+    const retry = await request('/api/sync/attendance', 'POST', sample);
     assert.equal(first.data.attendance.awarded, true);
     assert.equal(retry.data.attendance.awarded, true);
     assert.equal((await request('/api/sync/member-points/mem-alice')).data.points, 3);
@@ -113,33 +128,36 @@ test('points server grants daily play-time reward once, with saved settings', as
     const configureMinutes = await kioskWriteOnPoints(
       { enabled: true, mode: 'minutes', minMinutes: 1, maxMinutes: 1, points: 4 });
     assert.equal(configureMinutes.data.success, true);
-    const bob = { ...sample, username: 'mem-bob', seconds: 30 };
+    const bob = { ...sample, username: 'mem-bob' };
+    attendance.merge({ ...bob, seconds: 30 });
     const partial = await request('/api/sync/attendance', 'POST', bob);
     assert.equal(partial.data.attendance.awarded, false);
     const partialYear = await request(`/api/sync/attendance-year/mem-bob?year=${day.getFullYear()}`);
     assert.equal(partialYear.data.days[key].status, 'incomplete');
-    const complete = await request('/api/sync/attendance', 'POST', {
-      ...bob, deviceId: '00000000-0000-4000-8000-000000000002', seconds: 30
-    });
+    const secondBob = { ...bob, deviceId: '00000000-0000-4000-8000-000000000002' };
+    attendance.merge({ ...secondBob, seconds: 30 });
+    const complete = await request('/api/sync/attendance', 'POST', secondBob);
     assert.equal(complete.data.attendance.awarded, true);
-    await request('/api/sync/attendance', 'POST', { ...bob, seconds: 60 });
+    await request('/api/sync/attendance', 'POST', bob);
     assert.equal((await request('/api/sync/member-points/mem-bob')).data.points, 4);
     assert.equal((await request('/api/sync/member-points/mem-alice')).data.points, 3);
     assert.equal((await request('/api/sync/coin-logs')).data.logs.length, 2);
-    const newDevice = { ...bob, deviceId: '00000000-0000-4000-8000-000000000003', seconds: 0 };
+    const newDevice = { ...bob, deviceId: '00000000-0000-4000-8000-000000000003' };
     const restored = await request('/api/sync/attendance', 'POST', newDevice);
-    assert.equal(restored.data.attendance.seconds, 90, 'new install reads progress stored on Points');
+    assert.equal(restored.data.attendance.seconds, 60, 'new install reads progress stored on Points');
     assert.equal(restored.data.attendance.awarded, true, 'Points remembers the completed day');
-    await request('/api/sync/attendance', 'POST', { ...newDevice, seconds: 60 });
+    await request('/api/sync/attendance', 'POST', newDevice);
     assert.equal((await request('/api/sync/member-points/mem-bob')).data.points, 4,
       'new install cannot grant the same day twice');
-    const partialBeforeReinstall = { ...sample, username: 'mem-reinstall', seconds: 30 };
+    const partialBeforeReinstall = { ...sample, username: 'mem-reinstall' };
+    attendance.merge({ ...partialBeforeReinstall, seconds: 30 });
     await request('/api/sync/attendance', 'POST', partialBeforeReinstall);
     const afterReinstall = await request('/api/sync/attendance', 'POST',
-      { ...partialBeforeReinstall, deviceId: '00000000-0000-4000-8000-000000000004', seconds: 0 });
+      { ...partialBeforeReinstall, deviceId: '00000000-0000-4000-8000-000000000004' });
     assert.equal(afterReinstall.data.attendance.seconds, 30, 'unfinished time survives reinstall');
+    attendance.merge({ ...partialBeforeReinstall, deviceId: '00000000-0000-4000-8000-000000000004', seconds: 30 });
     assert.equal((await request('/api/sync/attendance', 'POST',
-      { ...partialBeforeReinstall, deviceId: '00000000-0000-4000-8000-000000000004', seconds: 30 })).data.attendance.awarded, true);
+      { ...partialBeforeReinstall, deviceId: '00000000-0000-4000-8000-000000000004' })).data.attendance.awarded, true);
     const bobYear = await request(`/api/sync/attendance-year/mem-bob?year=${day.getFullYear()}`);
     assert.equal(bobYear.data.days[key].status, 'completed');
     assert.equal(bobYear.data.days[key].points, 4);
@@ -150,13 +168,17 @@ test('points server grants daily play-time reward once, with saved settings', as
     const yesterday = new Date(day.getFullYear(), day.getMonth(), day.getDate() - 1);
     const previousKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
     const late = await request('/api/sync/attendance', 'POST',
-      { ...sample, day: previousKey, username: 'mem-carol', seconds: 60 });
-    assert.equal(late.data.attendance.awarded, false, 'yesterday had no mission configured');
+      { ...sample, day: previousKey, username: 'mem-carol' });
+    assert.equal(late.code, 400, 'past-day offline samples are not rewarded on reconnect');
     assert.equal((await request('/api/sync/coin-logs')).data.logs.length, 3);
     const carolYear = await request(`/api/sync/attendance-year/mem-carol?year=${yesterday.getFullYear()}`);
-    assert.equal(carolYear.data.days[previousKey].status, 'attended-no-mission');
+    assert.equal(carolYear.data.days[previousKey].status, 'no-mission');
     const noMissionYear = await request(`/api/sync/attendance-year/mem-nobody?year=${yesterday.getFullYear()}`);
     assert.equal(noMissionYear.data.days[previousKey].status, 'no-mission');
+    const connectedCoin = await request('/api/sync/coin-log', 'POST',
+      { username: 'mem-alice', amount: 1, source: 'vendo', timeAdded: '5 min' });
+    assert.equal(connectedCoin.code, 200, 'legitimate connected coin events still reach Points');
+    assert.equal(connectedCoin.data.log.source, 'vendo');
 
     const clientBootstrap = `
       const dir = process.env.DENFI_TEST_DATA_DIR;
@@ -271,9 +293,11 @@ test('points server grants daily play-time reward once, with saved settings', as
     assert.equal((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings.attendanceMinutes, randomConfig.minutes);
     assert.equal((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings.attendancePoints, 1.25);
     const targetSeconds = randomConfig.minutes * 60;
-    const dana = { ...sample, username: 'mem-dana', seconds: targetSeconds - 1 };
+    const dana = { ...sample, username: 'mem-dana' };
+    attendance.merge({ ...dana, seconds: targetSeconds - 1 });
     assert.equal((await request('/api/sync/attendance', 'POST', dana)).data.attendance.awarded, false);
-    assert.equal((await request('/api/sync/attendance', 'POST', { ...dana, seconds: targetSeconds })).data.attendance.awarded, true);
+    attendance.merge({ ...dana, seconds: targetSeconds });
+    assert.equal((await request('/api/sync/attendance', 'POST', dana)).data.attendance.awarded, true);
     const centralDay = (await request(`/api/sync/attendance-year/mem-dana?year=${day.getFullYear()}`)).data.days[key];
     assert.equal(centralDay.status, 'completed');
     assert.equal(centralDay.seconds, targetSeconds);

@@ -1,6 +1,6 @@
 - [Monthly points ranking](monthly-points-ranking.md) — keep historical coin logs, but calculate session rankings and member points from the current local calendar month.
 - [Shutdown timer ownership](shutdown-timer-ownership.md) — idle shutdown is main-process authoritative; startup restoration shows the lock screen without starting the idle deadline.
 - [Session visibility reliability](session-visibility-reliability.md) — reject stale logout events and require repeated hotspot confirmation before removing an active session overlay.
-- [Attendance history and network trust](attendance-trust-and-history.md) — kiosk-only mission editing, shared daily random target, original-day rewards, and no progress pairing.
+- [Attendance history and network trust](attendance-trust-and-history.md) — kiosk-only mission editing, shared daily target, and live Points-timed rewards without offline replay.
 - [Betting game presentation](betting-game-presentation.md) — present multiplier choices as equal-sized horizontal tiles without showing win rates to members.
 - [Offline betting drafts](offline-betting-drafts.md) — prepare odds on a disconnected kiosk, but require an explicit publish before changing Denfi Points.

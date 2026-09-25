@@ -36,6 +36,32 @@ function save(data) {
   }
 }
 
+function onlineSample(username, enabled) {
+  if (!enabled || !/^mem-[a-z0-9._-]{1,80}$/i.test(username || '')) return null;
+  const data = load();
+  if (!fs.existsSync(filePath)) save(data);
+  return { deviceId: data.deviceId, day: dayKey(), username };
+}
+
+// Points counts elapsed server time between live check-ins. A kiosk's locally
+// editable seconds are never accepted as proof of play time.
+function recordOnline({ deviceId, day, username }, now = Date.now()) {
+  if (!/^[a-f0-9-]{36}$/i.test(deviceId || '') ||
+      !/^mem-[a-z0-9._-]{1,80}$/i.test(username || '') ||
+      day !== dayKey(now)) throw new Error('Invalid live attendance check-in');
+  const data = load();
+  const users = data.days[day] || (data.days[day] = {});
+  const entry = users[username] || (users[username] = { devices: {} });
+  const elapsed = now - (entry.onlineLastSeenAt || 0);
+  const delta = entry.onlineLastSeenDeviceId === deviceId && elapsed >= 1000 && elapsed <= 10000
+    ? Math.min(5, Math.floor(elapsed / 1000)) : 0;
+  entry.devices[deviceId] = (entry.devices[deviceId] || 0) + delta;
+  entry.onlineLastSeenAt = now;
+  entry.onlineLastSeenDeviceId = deviceId;
+  save(data);
+  return status(username, day);
+}
+
 function record(username, enabled, now = Date.now()) {
   const day = dayKey(now);
   const valid = enabled && /^mem-[a-z0-9._-]{1,80}$/i.test(username || '');
@@ -157,4 +183,4 @@ function markAwarded(username, day, points) {
   }
 }
 
-module.exports = { setDataDir, dayKey, record, merge, status, yearEntries, markAwarded, pendingSamples, markSynced, acknowledge };
+module.exports = { setDataDir, dayKey, onlineSample, recordOnline, record, merge, status, yearEntries, markAwarded, pendingSamples, markSynced, acknowledge };

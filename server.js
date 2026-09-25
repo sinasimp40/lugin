@@ -1452,10 +1452,10 @@ async function getSessionLeaderboard() {
     }
   }
   return {
-    leaderboard: coinLogs.getLeaderboard(5, settings.getSettings().pointRates || [], period),
-    source: syncServerUrl ? 'local-fallback' : 'local',
+    leaderboard: [],
+    source: 'unavailable',
     period,
-    syncConnected: !!syncServerUrl,
+    syncConnected: false,
     syncError
   };
 }
@@ -2040,13 +2040,7 @@ async function fetchRemotePoints(username) {
 }
 
 async function getMemberPointsAuto(username) {
-  const s = settings.getSettings();
-  const local = coinLogs.getMemberPoints(username, s.pointRates || []);
-  if (syncServerUrl) {
-    const remote = await fetchRemotePoints(username);
-    if (remote !== null) return remote;
-  }
-  return local;
+  return fetchRemotePoints(username);
 }
 
 async function syncCoinLog(logEntry) {
@@ -2068,11 +2062,14 @@ async function syncCoinLog(logEntry) {
   }
 }
 
-app.post('/api/sync/coin-log', express.json(), (req, res) => {
+app.post('/api/sync/coin-log', authorizeKioskMission, (req, res) => {
+  if (appRole !== 'points') return res.status(404).end();
   try {
     const entry = req.body;
-    if (!entry || !entry.username || !entry.amount) {
-      return res.status(400).json({ error: 'Missing fields' });
+    if (!entry || typeof entry.username !== 'string' || !/^mem-[a-z0-9._-]{1,80}$/i.test(entry.username) ||
+        typeof entry.amount !== 'number' || !Number.isFinite(entry.amount) ||
+        entry.amount <= 0 || entry.amount > 10000 || !['app', 'vendo'].includes(entry.source)) {
+      return res.status(400).json({ error: 'Invalid coin event' });
     }
     const s = settings.getSettings();
     const log = coinLogs.appendLog({
@@ -2118,11 +2115,17 @@ app.get('/api/sync/attendance-config', (req, res) => {
   res.json(attendanceConfig());
 });
 
-app.post('/api/sync/attendance', (req, res) => {
+app.post('/api/sync/attendance', authorizeKioskMission, (req, res) => {
   if (appRole !== 'points') return res.status(404).end();
+  if (!settings.getSettings().attendanceEnabled) {
+    return res.status(403).json({ success: false, error: 'Attendance mission is disabled.' });
+  }
   try {
     const sample = req.body;
-    attendance.merge(sample);
+    if (!sample || Object.hasOwn(sample, 'seconds')) {
+      return res.status(400).json({ success: false, error: 'Offline attendance progress cannot earn points.' });
+    }
+    attendance.recordOnline(sample);
     res.json({ success: true, attendance: attendanceResult(sample.username, sample.day) });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -2193,7 +2196,7 @@ app.get('/api/session/attendance', async (req, res) => {
       return res.status(503).json({ success: false, error: 'Denfi Points attendance history is unavailable. Try again later.' });
     }
   }
-  res.json({ ...attendanceYear(username, year), username, source: 'local' });
+  return res.status(503).json({ success: false, error: 'Denfi Points attendance history is unavailable. Try again later.' });
 });
 
 async function activeWheelMember(req, res) {
@@ -2260,45 +2263,20 @@ app.post('/api/session/wheel/spin', requireLocalWheelPlayer, async (req, res) =>
 
 async function updateAttendanceFromSession(data) {
   const config = attendanceConfig();
-  const sample = attendance.record(
+  const sample = attendance.onlineSample(
     data.isLogin && Number(data.sessionTimeLeft) > 0 ? data.username : '', config.enabled
   );
-  if (syncServerUrl && attendanceConfigReady) void flushPendingAttendance();
   if (!sample) return null;
-  if (syncServerUrl) {
-    if (!attendanceConfigReady) {
-      const progress = attendance.status(sample.username, sample.day);
-      return { ...progress, ...config, points: progress.awardedPoints ?? config.points, pending: true };
-    }
-    try {
-      const body = await fetchAttendance('/api/sync/attendance', sample);
-      if (!body.success || !body.attendance) throw new Error('Invalid Denfi Points attendance response');
-      attendance.acknowledge(sample, body.attendance);
-      return body.attendance;
-    } catch (err) {
-      console.log('[Attendance] Sync pending:', err.message);
-      const progress = attendance.status(sample.username, sample.day);
-      return { ...progress, ...config, points: progress.awardedPoints ?? config.points, pending: true };
-    }
+  if (!syncServerUrl || !attendanceConfigReady) {
+    return { ...config, seconds: 0, awarded: false, unavailable: true };
   }
-  return attendanceResult(sample.username, sample.day);
-}
-
-let attendanceFlushInFlight = false;
-async function flushPendingAttendance() {
-  if (attendanceFlushInFlight || !syncServerUrl || !attendanceConfigReady) return;
-  attendanceFlushInFlight = true;
   try {
-    const previousDays = attendance.pendingSamples().filter(sample => sample.day !== attendance.dayKey());
-    for (const sample of previousDays) {
-      const result = await fetchAttendance('/api/sync/attendance', sample);
-      if (!result.success) break;
-      attendance.acknowledge(sample, result.attendance);
-    }
+    const body = await fetchAttendance('/api/sync/attendance', sample);
+    if (!body.success || !body.attendance) throw new Error('Invalid Denfi Points attendance response');
+    return body.attendance;
   } catch (err) {
-    console.log('[Attendance] Past-day sync pending:', err.message);
-  } finally {
-    attendanceFlushInFlight = false;
+    console.log('[Attendance] Points unavailable; attendance time not counted:', err.message);
+    return { ...config, seconds: 0, awarded: false, unavailable: true };
   }
 }
 
@@ -2636,11 +2614,7 @@ async function pollHotspotForWs() {
         }
       }
 
-      data.memberPoints = coinLogs.getMemberPoints(data.username, s.pointRates || []);
-      if (syncServerUrl) {
-        const remote = await fetchRemotePoints(data.username);
-        if (remote !== null) data.memberPoints = remote;
-      }
+      data.memberPoints = await getMemberPointsAuto(data.username);
     }
 
     lastSessionData = data;

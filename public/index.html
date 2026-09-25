@@ -2835,6 +2835,8 @@
       document.getElementById('session-attendance-bar').setAttribute('aria-valuenow', percent);
       document.getElementById('session-attendance-label').textContent = progress.awarded
         ? `DAILY COMPLETE · +${progress.points} PTS`
+        : progress.unavailable
+        ? 'DAILY PAUSED · POINTS SERVER OFFLINE'
         : progress.pending
         ? `DAILY ${played}/${progress.minutes}m · SYNC PENDING`
         : `DAILY ${played}/${progress.minutes}m · +${progress.points} PTS`;
