@@ -1051,6 +1051,7 @@ function showSessionWindow(onShown) {
       nodeIntegration: false,
       contextIsolation: true,
       autoplayPolicy: 'no-user-gesture-required',
+      backgroundThrottling: false,
       preload: require('path').join(__dirname, 'preload.js'),
     },
   });
@@ -1132,13 +1133,20 @@ function showSessionWindow(onShown) {
   function restoreSessionOverlay() {
     if (currentState !== 'logged-in' || sessionWindow !== managedSessionWindow || !managedSessionWindow || managedSessionWindow.isDestroyed() || sessionHiddenForGame) return;
     try {
-      managedSessionWindow.setSkipTaskbar(true);
-      managedSessionWindow.setAlwaysOnTop(true, 'screen-saver');
+      // Reasserting topmost + moveTop on every 500ms guard tick repaints the
+      // transparent Windows window, flashing drawers and skipping reel frames.
+      let recovered = false;
+      if (!managedSessionWindow.isAlwaysOnTop()) {
+        managedSessionWindow.setAlwaysOnTop(true, 'screen-saver');
+        recovered = true;
+      }
       if (!managedSessionWindow.isVisible() || managedSessionWindow.isMinimized()) {
+        managedSessionWindow.setSkipTaskbar(true);
         managedSessionWindow.restore();
         managedSessionWindow.showInactive();
+        recovered = true;
       }
-      managedSessionWindow.moveTop();
+      if (recovered) managedSessionWindow.moveTop();
     } catch (_) {}
   }
 

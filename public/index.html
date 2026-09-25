@@ -1507,6 +1507,8 @@
     .wheel-admin-rows { display:flex; flex-direction:column; gap:6px; margin:10px 0; }
     .wheel-admin-row { display:grid; grid-template-columns:1fr 100px 34px; gap:7px; align-items:center; }
     .wheel-admin-row input { width:100%; }
+    .wheel-admin-loss { color:#ffba58; font:11px 'Share Tech Mono'; }
+    .wheel-admin-loss strong { font:12px 'Share Tech Mono'; }
     .wheel-admin-total { font:11px 'Share Tech Mono'; color:#ffba58; margin:8px 0; }
     .wheel-admin-total.invalid { color:#ff8f80; }
     .wheel-admin-readonly { color:#858b91; font:10px/1.5 'Share Tech Mono'; border-top:1px solid #2b3035; margin-top:13px; padding-top:10px; }
@@ -1898,9 +1900,9 @@
                <div class="admin-grid">
                  <div class="admin-section full-width">
                    <h3>Multipliers and winning rates</h3>
-                   <p style="font-size:11px;color:#aeb4b8;margin-bottom:12px">0× means LOSE. Each spin stakes all current-month points. These chances are private to admins; equal-sized player tiles do not change the actual odds. Denfi Points records the result.</p>
+                    <p style="font-size:11px;color:#aeb4b8;margin-bottom:12px">Enter each winning chance. The rest automatically becomes LOSE (0×). Each spin stakes all current-month points. These chances are private to admins; equal-sized player tiles do not change the actual odds. Denfi Points records the result.</p>
                    <div class="curfew-toggle-wrap"><label class="curfew-toggle"><input type="checkbox" id="admin-wheel-enabled" /><span class="slider"></span></label><span style="font-family:'Share Tech Mono';font-size:11px;color:#e0e0e0;letter-spacing:1px">Enable betting games</span></div>
-                   <div style="display:grid;grid-template-columns:1fr 100px 34px;gap:7px;margin-top:12px;color:#8c9399;font:10px 'Share Tech Mono';letter-spacing:1px"><span>MULTIPLIER (×)</span><span>WIN RATE %</span><span></span></div>
+                    <div style="display:grid;grid-template-columns:1fr 100px 34px;gap:7px;margin-top:12px;color:#8c9399;font:10px 'Share Tech Mono';letter-spacing:1px"><span>RESULT (×)</span><span>CHANCE %</span><span></span></div>
                    <div class="wheel-admin-rows" id="admin-wheel-rows"></div>
                    <div class="wheel-admin-total" id="admin-wheel-total"></div>
                    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-admin" type="button" onclick="addWheelOutcome()">Add multiplier</button><button class="btn-admin" type="button" onclick="saveWheelSettings()">Save betting game</button></div>
@@ -3647,51 +3649,72 @@
       adminWheelDirty = true;
       setWheelAdminReadOnly();
     });
+    function editableWheel(wheel) {
+      return { enabled:!!wheel.enabled, outcomes:(wheel.outcomes || []).filter(item => Number(item.multiplier) !== 0) };
+    }
+    function wheelEditorState() {
+      const wins = (adminWheel.outcomes || [])
+        .map(item => ({ multiplier:Number(item.multiplier), weight:Number(item.weight) }));
+      const winCents = wins.reduce((sum, item) => sum + (Number.isFinite(item.weight) ? Math.round(item.weight * 100) : 0), 0);
+      const lossCents = 10000 - winCents;
+      const valid = wins.length >= 1 && wins.length <= 12 &&
+        (wins.length < 12 || lossCents === 0) && lossCents >= 0 &&
+        (lossCents > 0 || wins.length >= 2) &&
+        wins.every(item => Number.isFinite(item.multiplier) && item.multiplier >= 0.01 && item.multiplier <= 100 &&
+          Math.abs(Math.round(item.multiplier * 100) - item.multiplier * 100) < 1e-8 &&
+          Number.isFinite(item.weight) && item.weight >= 0.01 && item.weight <= 100 &&
+          Math.abs(Math.round(item.weight * 100) - item.weight * 100) < 1e-8) &&
+        new Set(wins.map(item => item.multiplier)).size === wins.length;
+      return { wins, winCents, lossCents, valid,
+        outcomes: lossCents > 0 ? [{ multiplier:0, weight:lossCents / 100 }, ...wins] : wins };
+    }
     function renderAdminWheel() {
       const rows = document.getElementById('admin-wheel-rows');
       rows.replaceChildren();
       document.getElementById('admin-wheel-enabled').checked = !!adminWheel.enabled;
+      const lossRow = document.createElement('div'); lossRow.className = 'wheel-admin-row wheel-admin-loss';
+      const lossLabel = document.createElement('span'); lossLabel.textContent = 'LOSE (0×) · automatic';
+      const lossRate = document.createElement('strong'); lossRate.id = 'admin-wheel-loss-rate';
+      lossRow.append(lossLabel, lossRate);
+      rows.appendChild(lossRow);
+      const winCount = wheelEditorState().wins.length;
       (adminWheel.outcomes || []).forEach((outcome, index) => {
         const row = document.createElement('div'); row.className = 'wheel-admin-row';
-        const multiplier = document.createElement('input'); multiplier.type = 'number'; multiplier.step = '0.01'; multiplier.min = '0'; multiplier.max = '100'; multiplier.value = Number(outcome.multiplier); multiplier.setAttribute('aria-label','Multiplier');
-        const weight = document.createElement('input'); weight.type = 'number'; weight.step = '0.01'; weight.min = '0'; weight.max = '100'; weight.value = Number(outcome.weight); weight.setAttribute('aria-label','Weight percentage');
+        const multiplier = document.createElement('input'); multiplier.type = 'number'; multiplier.step = '0.01'; multiplier.min = '0.01'; multiplier.max = '100'; multiplier.value = Number(outcome.multiplier); multiplier.setAttribute('aria-label','Winning multiplier');
+        const weight = document.createElement('input'); weight.type = 'number'; weight.step = '0.01'; weight.min = '0.01'; weight.max = '100'; weight.value = Number(outcome.weight); weight.setAttribute('aria-label','Winning chance percentage');
         const remove = document.createElement('button'); remove.className = 'btn-admin danger'; remove.type = 'button'; remove.textContent = '×'; remove.setAttribute('aria-label','Delete multiplier');
-        remove.disabled = adminWheel.outcomes.length <= 2 || isPointsAdmin() || !adminWheelLoaded;
-        remove.title = adminWheel.outcomes.length <= 2 ? 'At least 2 rows are required' : 'Delete multiplier';
+        remove.disabled = winCount <= 1 || isPointsAdmin() || !adminWheelLoaded;
+        remove.title = winCount <= 1 ? 'Keep at least one winning multiplier' : 'Delete multiplier';
         remove.addEventListener('click', () => {
-          if (adminWheel.outcomes.length <= 2) { showAdminMsg('admin-panel-msg', 'Keep at least 2 multiplier rows.', 'error'); return; }
+          if (wheelEditorState().wins.length <= 1) { showAdminMsg('admin-panel-msg', 'Keep at least one winning multiplier.', 'error'); return; }
           if (isPointsAdmin() || !adminWheelLoaded) return;
           adminWheel.outcomes.splice(index, 1); adminWheelDirty = true; renderAdminWheel();
         });
-        [multiplier, weight].forEach(input => input.addEventListener('input', () => { adminWheel.outcomes[index] = { multiplier:Number(multiplier.value), weight:Number(weight.value) }; adminWheelDirty = true; updateWheelTotal(); setWheelAdminReadOnly(); }));
+        [multiplier, weight].forEach(input => input.addEventListener('input', () => { adminWheel.outcomes[index] = { multiplier:multiplier.value === '' ? NaN : Number(multiplier.value), weight:weight.value === '' ? NaN : Number(weight.value) }; adminWheelDirty = true; updateWheelTotal(); setWheelAdminReadOnly(); }));
         row.append(multiplier, weight, remove); rows.appendChild(row);
       });
       updateWheelTotal();
       setWheelAdminReadOnly();
       const addButton = document.querySelector('#admin-wheel-rows + .wheel-admin-total + div button[onclick="addWheelOutcome()"]');
       if (addButton) {
-        addButton.disabled = isPointsAdmin() || !adminWheelLoaded || adminWheel.outcomes.length >= 12;
-        addButton.title = adminWheel.outcomes.length >= 12 ? 'Maximum 12 rows allowed' : 'Add multiplier';
+        addButton.disabled = isPointsAdmin() || !adminWheelLoaded || winCount >= 11;
+        addButton.title = winCount >= 11 ? 'Maximum 11 winning multipliers (plus automatic LOSE)' : 'Add multiplier';
       }
     }
     function updateWheelTotal() {
-      const total = (adminWheel.outcomes || []).reduce((sum, item) => sum + (Number(item.weight) || 0), 0);
+      const state = wheelEditorState();
       const el = document.getElementById('admin-wheel-total');
-      const outcomes = adminWheel.outcomes || [];
-      const validRows = outcomes.length >= 2 && outcomes.length <= 12 &&
-        outcomes.every(item => Number.isFinite(item.multiplier) && item.multiplier >= 0 && item.multiplier <= 100 &&
-          Number.isFinite(item.weight) && item.weight > 0 && item.weight <= 100) &&
-        new Set(outcomes.map(item => item.multiplier)).size === outcomes.length;
-      const validTotal = Math.abs(total - 100) < 0.001;
-      el.textContent = `TOTAL WEIGHT: ${total.toFixed(2)}% ${!validTotal ? '· MUST EQUAL 100%' : !validRows ? '· ENTER A POSITIVE RATE FOR EACH DISTINCT MULTIPLIER' : '· VALID'}`;
-      el.classList.toggle('invalid', !validTotal || !validRows);
+      document.getElementById('admin-wheel-loss-rate').textContent =
+        `${(state.lossCents / 100).toFixed(2)}%`;
+      el.textContent = `WIN CHANCE: ${(state.winCents / 100).toFixed(2)}% · LOSE: ${(state.lossCents / 100).toFixed(2)}% ${state.lossCents < 0 ? '· WIN CHANCES EXCEED 100%' : !state.valid ? '· ENTER DISTINCT MULTIPLIERS WITH POSITIVE CHANCES (MAX 2 DECIMALS)' : '· READY'}`;
+      el.classList.toggle('invalid', !state.valid);
     }
     function addWheelOutcome() {
       if (isPointsAdmin() || !adminWheelLoaded) return;
-      if (adminWheel.outcomes.length >= 12) { showAdminMsg('admin-panel-msg', 'A maximum of 12 multiplier rows is allowed.', 'error'); return; }
+      if (wheelEditorState().wins.length >= 11) { showAdminMsg('admin-panel-msg', 'A maximum of 11 winning multipliers is allowed (plus LOSE).', 'error'); return; }
       const taken = new Set(adminWheel.outcomes.map(item => Number(item.multiplier)));
-      let next = 0;
-      while (taken.has(next)) next++;
+      let next = 1.5;
+      while (taken.has(next)) next += 0.5;
       adminWheel.outcomes.push({ multiplier: next, weight: 0 });
       adminWheelDirty = true;
       renderAdminWheel();
@@ -3701,8 +3724,8 @@
       const readonly = isPointsAdmin();
       const locked = readonly || !adminWheelLoaded;
       document.getElementById('admin-wheel-enabled').disabled = locked;
-      document.querySelectorAll('#admin-wheel-rows input, #admin-wheel-rows button').forEach(el => { el.disabled = locked || (el.tagName === 'BUTTON' && adminWheel.outcomes.length <= 2); });
-      document.querySelector('#admin-wheel-rows + .wheel-admin-total + div button[onclick="addWheelOutcome()"]').disabled = locked || adminWheel.outcomes.length >= 12;
+      document.querySelectorAll('#admin-wheel-rows input, #admin-wheel-rows button').forEach(el => { el.disabled = locked || (el.tagName === 'BUTTON' && wheelEditorState().wins.length <= 1); });
+      document.querySelector('#admin-wheel-rows + .wheel-admin-total + div button[onclick="addWheelOutcome()"]').disabled = locked || wheelEditorState().wins.length >= 11;
       const save = document.querySelector('#admin-wheel-rows + .wheel-admin-total + div button[onclick="saveWheelSettings()"]');
       save.hidden = readonly;
       save.disabled = locked;
@@ -3732,7 +3755,7 @@
         const data = await response.json().catch(() => ({}));
         if (sequence !== adminWheelLoadSeq || !adminToken || adminWheelDirty) return;
         if (!response.ok || !data.success) throw new Error(data.error || 'Could not load betting game settings');
-        adminWheel = data.wheel || { enabled:false, outcomes:[] };
+        adminWheel = editableWheel(data.wheel || { enabled:false, outcomes:[] });
         adminWheelConnected = !!data.connected;
         adminWheelDraft = !!data.draft;
         adminWheelDirty = false;
@@ -3745,12 +3768,12 @@
     async function saveWheelSettings() {
       if (isPointsAdmin()) { showAdminMsg('admin-panel-msg', 'Betting settings are read-only on Denfi Points.', 'error'); return; }
       if (!adminWheelLoaded) { showAdminMsg('admin-panel-msg', 'Load the betting settings first.', 'error'); return; }
-      const total = (adminWheel.outcomes || []).reduce((sum, item) => sum + (Number(item.weight) || 0), 0);
-      if (!adminWheel.outcomes.length || Math.abs(total - 100) >= 0.001) { showAdminMsg('admin-panel-msg', 'Betting game weights must total exactly 100%.', 'error'); return; }
-      const outcomes = adminWheel.outcomes.map(item => ({ multiplier:Number(item.multiplier), weight:Number(item.weight) }));
+      const state = wheelEditorState();
+      if (!state.valid) { showAdminMsg('admin-panel-msg', 'Enter distinct winning multipliers with positive chances totaling no more than 100%. LOSE is calculated automatically.', 'error'); return; }
+      const outcomes = state.outcomes;
       const resp = await fetch('/api/admin/wheel', { method:'POST', headers:{'Content-Type':'application/json','x-admin-token':adminToken}, body:JSON.stringify({enabled:document.getElementById('admin-wheel-enabled').checked, outcomes, mode:adminWheelConnected ? 'publish' : 'draft'}) }).then(async r => ({ ...await r.json(), httpStatus:r.status })).catch(() => ({success:false,error:'Betting game service is offline',httpStatus:503}));
       if (resp.success) {
-        adminWheel = resp.wheel || { enabled:false, outcomes };
+        adminWheel = editableWheel(resp.wheel || { enabled:false, outcomes });
         adminWheelDraft = !!resp.draft;
         adminWheelConnected = !!resp.connected;
         adminWheelDirty = false;

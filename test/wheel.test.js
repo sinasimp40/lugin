@@ -78,6 +78,34 @@ test('wheel configuration rejects invalid odds, duplicates and non-cent precisio
   assert.equal(parseWheel({ enabled: true, outcomes: [{ multiplier: 0, weight: 0 }, { multiplier: 1, weight: 100 }] }), null);
 });
 
+test('the Auto Shutdown editor derives LOSE from winning chances', () => {
+  const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const start = page.indexOf('    function editableWheel(wheel) {');
+  const end = page.indexOf('    function renderAdminWheel() {', start);
+  assert.ok(start >= 0 && end > start);
+  const editor = new Function('adminWheel', `${page.slice(start, end)}
+    return { editableWheel, wheelEditorState };`);
+  const { editableWheel } = editor(defaultWheel());
+  const current = editableWheel(defaultWheel());
+  assert.equal(current.outcomes.some(item => item.multiplier === 0), false);
+  assert.deepEqual(editor(current).wheelEditorState(), {
+    wins: defaultWheel().outcomes.slice(1), winCents: 6500, lossCents: 3500, valid: true,
+    outcomes: defaultWheel().outcomes
+  });
+  const edited = editor({ ...current, outcomes: current.outcomes.map(item =>
+    item.multiplier === 1.8 ? { ...item, weight: 18 } : item) }).wheelEditorState();
+  assert.equal(edited.lossCents, 3700);
+  assert.deepEqual(parseWheel({ enabled:true, outcomes:edited.outcomes }).outcomes[0], { multiplier:0, weight:37 });
+  const fullWins = editor({ enabled:true, outcomes:[
+    { multiplier:1.5, weight:60 }, { multiplier:2, weight:40 }
+  ] }).wheelEditorState();
+  assert.equal(fullWins.valid, true);
+  assert.equal(fullWins.lossCents, 0);
+  assert.equal(fullWins.outcomes.some(item => item.multiplier === 0), false);
+  assert.equal(editor({ enabled:true, outcomes:[{ multiplier:1.5, weight:101 }] }).wheelEditorState().valid, false);
+  assert.equal(editor({ enabled:true, outcomes:[{ multiplier:0, weight:20 }, { multiplier:2, weight:20 }] }).wheelEditorState().valid, false);
+});
+
 test('2× pays twice the exact staked balance, including the original stake', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-wheel-math-'));
   try {
