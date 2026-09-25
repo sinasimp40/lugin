@@ -559,6 +559,9 @@
   .wheel-stake-choice label { display:block; margin-bottom:5px; }
   .wheel-stake-choice input { width:100%; box-sizing:border-box; padding:8px; border:1px solid #b5b00f; border-radius:3px; background:#171812; color:#fff; font:13px 'Share Tech Mono',monospace; }
   .wheel-stake-choice input:focus-visible { outline:2px solid #f4ef12; outline-offset:2px; }
+  .wheel-demo-settings { display:flex; align-items:center; gap:8px; margin:8px 0; padding:8px; border:1px dashed #8a8526; color:#f4ef12; font:10px 'Share Tech Mono',monospace; cursor:pointer; }
+  .wheel-demo-settings[hidden] { display:none; }
+  .wheel-demo-settings input { accent-color:#e3d918; }
   .demo-badge { display:inline-block; margin-left:7px; padding:2px 5px; border:1px solid rgba(244,239,18,.55); color:#f4ef12; font:8px 'Share Tech Mono'; letter-spacing:1px; vertical-align:middle; }
   .demo-badge[hidden] { display:none; }
   @media (prefers-reduced-motion: reduce) { .wheel-labels { transition:none; } }
@@ -662,6 +665,7 @@
         <div class="wheel-intro"><div class="wheel-kicker">MULTIPLIER REEL<span class="demo-badge" id="wheel-demo-badge" hidden>DEMO</span></div><div class="wheel-balance" id="wheel-balance">0 PTS</div></div>
         <div class="wheel-warning" id="wheel-warning">ONE SPIN STAKES YOUR ENTIRE BALANCE. THE SERVER LOCKS THE RESULT.</div>
         <div class="wheel-explanation">The reel is visual only. Denfi Points chooses the result; equal tiles do not mean equal chances.</div>
+        <label class="wheel-demo-settings" id="wheel-demo-settings" hidden><input id="wheel-demo-custom-stake" type="checkbox" /> CUSTOM STAKE (DEMO ONLY — NO REAL POINTS)</label>
         <div class="wheel-stake-choice" id="wheel-stake-choice" hidden><label for="wheel-stake-input">Points to stake (up to your balance)</label><input id="wheel-stake-input" type="number" min="0.01" step="0.01" inputmode="decimal" autocomplete="off" /></div>
         <div class="wheel-note" id="wheel-spins-left" aria-live="polite"></div>
         <div class="wheel-stage" aria-label="Multiplier reel"><div class="wheel-pointer" aria-hidden="true"></div><div class="wheel-disc" id="wheel-disc"><div class="wheel-labels" id="wheel-labels"></div></div></div>
@@ -1031,6 +1035,7 @@
       const custom = !!wheelData.allowCustomStake;
       const remaining = Number(wheelData.spinsRemaining);
       const exhausted = Number.isInteger(remaining) && remaining <= 0;
+      if (previewMode) document.getElementById('wheel-demo-custom-stake').disabled = wheelSpinInFlight || exhausted;
       document.getElementById('wheel-stake-choice').hidden = !custom;
       document.getElementById('wheel-warning').textContent = custom
         ? 'SPIN YOUR CHOSEN STAKE. LOSE 0× LOSES ONLY THAT STAKE.'
@@ -1134,7 +1139,8 @@
       if (!pending) document.getElementById('wheel-result').textContent = 'LOADING POINTS BALANCE...';
       if (previewMode) {
         wheelData = { enabled:true, balance:86.5, multipliers:[0,1.5,1.8,2,5],
-          oddsToken:'preview-demo-token', maxSpinsPerDay:1, spinsRemaining:1, allowCustomStake:false };
+          oddsToken:'preview-demo-token', maxSpinsPerDay:1, spinsRemaining:1,
+          allowCustomStake:document.getElementById('wheel-demo-custom-stake').checked };
         document.getElementById('wheel-demo-badge').hidden = false;
         wheelLoaded = true;
         renderWheel(true);
@@ -1222,6 +1228,7 @@
         wheelExpectedBalance = Number(Number(wheelData.balance).toFixed(2));
       }
       wheelSpinInFlight = true;
+      if (previewMode) document.getElementById('wheel-demo-custom-stake').disabled = true;
       const button = document.getElementById('wheel-spin');
       button.disabled = true; button.textContent = 'LOCKING RESULT...';
       const error = document.getElementById('wheel-error'); error.classList.remove('active');
@@ -1913,6 +1920,20 @@
     document.getElementById('attendance-btn').addEventListener('click', () => openDrawer('attendance'));
     document.getElementById('games-btn').addEventListener('click', () => openDrawer('games'));
     document.getElementById('wheel-spin').addEventListener('click', spinWheel);
+    if (previewMode) {
+      document.getElementById('wheel-demo-settings').hidden = false;
+      document.getElementById('wheel-demo-custom-stake').addEventListener('change', event => {
+        if (!wheelData || wheelSpinInFlight || wheelRequestId) {
+          event.target.checked = !!wheelData?.allowCustomStake;
+          return;
+        }
+        wheelData.allowCustomStake = event.target.checked;
+        wheelSettledStake = null;
+        document.getElementById('wheel-stake-input').value = Number(wheelData.balance).toFixed(2);
+        updateWheelControls();
+        resizeDrawerToContent();
+      });
+    }
     document.getElementById('wheel-stake-input').addEventListener('input', () => {
       wheelSettledStake = null;
       updateWheelControls();
