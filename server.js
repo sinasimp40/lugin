@@ -949,7 +949,7 @@ async function fetchPointsWheel(route, options) {
 }
 
 function wheelErrorResponse(res, error, ambiguous = false) {
-  const status = [400, 403, 404, 409].includes(error.status) ? error.status : 503;
+  const status = [400, 403, 404, 409, 429].includes(error.status) ? error.status : 503;
   return res.status(status).json({ success: false, error: error.status ? error.message :
     ambiguous
       ? 'Could not confirm the result from Denfi Points. Retry using the same spin request; do not start another spin.'
@@ -1342,7 +1342,7 @@ async function flushWheelNotifications() {
       `New balance  ${value(spin.balance)}`,
       `Played       ${new Date(spin.createdAt).toLocaleString()}`,
       '━━━━━━━━━━━━━━━━━━━━',
-      'Every spin stakes the full monthly balance.'
+      'Stake follows the saved Betting Games policy on Denfi Points.'
     ];
     const result = await sendTelegramMessage(lines.join('\n'));
     if (!result.sent) {
@@ -2222,7 +2222,14 @@ app.get('/api/session/wheel', requireLocalWheelPlayer, async (req, res) => {
   if (!member) return;
   try {
     const data = await fetchPointsWheel('/api/sync/wheel/status/' + encodeURIComponent(member.username));
-    res.json({ success: true, enabled: data.enabled, multipliers: data.multipliers, oddsToken: data.oddsToken, balance: data.balance });
+    res.json({
+      success: true, enabled: data.enabled,
+      allowCustomStake: data.allowCustomStake,
+      maxSpinsPerDay: data.maxSpinsPerDay,
+      spinsUsed: data.spinsUsed,
+      spinsRemaining: data.spinsRemaining,
+      multipliers: data.multipliers, oddsToken: data.oddsToken, balance: data.balance
+    });
   } catch (error) {
     wheelErrorResponse(res, error);
   }
@@ -2233,6 +2240,7 @@ app.post('/api/session/wheel/spin', requireLocalWheelPlayer, async (req, res) =>
   if (!member) return;
   const requestId = req.body && req.body.requestId;
   const expectedStake = req.body && req.body.expectedStake;
+  const expectedBalance = req.body && req.body.expectedBalance;
   const reviewedOddsToken = req.body && req.body.oddsToken;
   const legacyReplay = req.body && req.body.legacyReplay === true;
   if (typeof requestId !== 'string' || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(requestId)) {
@@ -2241,13 +2249,16 @@ app.post('/api/session/wheel/spin', requireLocalWheelPlayer, async (req, res) =>
   if (typeof expectedStake !== 'number' || !Number.isFinite(expectedStake) || expectedStake <= 0 ||
       !Number.isSafeInteger(Math.round(expectedStake * 100)) ||
       Math.abs(Math.round(expectedStake * 100) - expectedStake * 100) > 1e-8 ||
+      (expectedBalance !== undefined && (typeof expectedBalance !== 'number' || !Number.isFinite(expectedBalance) ||
+        expectedBalance <= 0 || !Number.isSafeInteger(Math.round(expectedBalance * 100)) ||
+        Math.abs(Math.round(expectedBalance * 100) - expectedBalance * 100) > 1e-8)) ||
       (!legacyReplay && (typeof reviewedOddsToken !== 'string' || !/^[a-f0-9]{64}$/.test(reviewedOddsToken)))) {
     return res.status(400).json({ success: false, error: 'Invalid reviewed stake or game version.' });
   }
   try {
     const data = await fetchPointsWheel('/api/sync/wheel/spin', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: member.username, station: member.station, requestId, expectedStake, oddsToken: reviewedOddsToken, legacyReplay })
+      body: JSON.stringify({ username: member.username, station: member.station, requestId, expectedStake, expectedBalance, oddsToken: reviewedOddsToken, legacyReplay })
     });
     if (data.spin.username !== member.username || data.spin.requestId !== requestId) throw new Error('Denfi Points returned an invalid spin.');
     // An unsent result is retained on Denfi Points until a kiosk with the configured bot delivers it.
@@ -2336,8 +2347,11 @@ app.get('/api/sync/wheel/status/:username', authorizeKioskMission, (req, res) =>
   if (!/^mem-[a-z0-9._-]{1,80}$/i.test(req.params.username)) return res.status(400).json({ success: false, error: 'Invalid member.' });
   try {
     const s = settings.getSettings();
+    const daily = coinLogs.getDailyWheelStatus(req.params.username, s.wheel.maxSpinsPerDay);
     res.json({
       success: true, enabled: s.wheel.enabled,
+      allowCustomStake: s.wheel.allowCustomStake,
+      ...daily,
       multipliers: s.wheel.outcomes.map(item => item.multiplier),
       oddsToken: oddsToken(s.wheel),
       balance: coinLogs.getMemberPoints(req.params.username, s.pointRates || [])
@@ -2349,12 +2363,15 @@ app.get('/api/sync/wheel/status/:username', authorizeKioskMission, (req, res) =>
 
 app.post('/api/sync/wheel/spin', authorizeKioskMission, (req, res) => {
   if (appRole !== 'points') return res.status(404).end();
-  const { username, requestId, station, expectedStake, oddsToken: reviewedOddsToken, legacyReplay } = req.body || {};
+  const { username, requestId, station, expectedStake, expectedBalance, oddsToken: reviewedOddsToken, legacyReplay } = req.body || {};
   if (typeof username !== 'string' || !/^mem-[a-z0-9._-]{1,80}$/i.test(username) ||
       typeof requestId !== 'string' || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(requestId) ||
       typeof expectedStake !== 'number' || !Number.isFinite(expectedStake) || expectedStake <= 0 ||
       !Number.isSafeInteger(Math.round(expectedStake * 100)) ||
       Math.abs(Math.round(expectedStake * 100) - expectedStake * 100) > 1e-8 ||
+      (expectedBalance !== undefined && (typeof expectedBalance !== 'number' || !Number.isFinite(expectedBalance) ||
+        expectedBalance <= 0 || !Number.isSafeInteger(Math.round(expectedBalance * 100)) ||
+        Math.abs(Math.round(expectedBalance * 100) - expectedBalance * 100) > 1e-8)) ||
       (legacyReplay !== true && (typeof reviewedOddsToken !== 'string' || !/^[a-f0-9]{64}$/.test(reviewedOddsToken)))) {
     return res.status(400).json({ success: false, error: 'Invalid member, request ID, stake or game version.' });
   }
@@ -2362,19 +2379,26 @@ app.post('/api/sync/wheel/spin', authorizeKioskMission, (req, res) => {
   if (previous && previous.username !== username) return res.status(409).json({ success: false, error: 'Spin request belongs to another member.' });
   if (legacyReplay === true && !previous) return res.status(409).json({ success: false, error: 'Game settings changed. Review before trying again.' });
   const s = settings.getSettings();
+  if (!previous && s.wheel.allowCustomStake && expectedBalance === undefined) {
+    return res.status(400).json({ success: false, error: 'The current balance snapshot is required for a custom stake.' });
+  }
   if (!previous && !s.wheel.enabled) return res.status(403).json({ success: false, error: 'Betting Games is disabled.' });
   if (!previous && reviewedOddsToken !== oddsToken(s.wheel)) {
     return res.status(409).json({ success: false, error: 'Game settings changed. Reload Betting Games and review before spinning.' });
   }
   try {
     const spin = previous || coinLogs.appendWheelSpin({
-      username, requestId, station, expectedStake, outcomes: s.wheel.outcomes, pointRates: s.pointRates || []
+      username, requestId, station, expectedStake, expectedBalance,
+      allowCustomStake: s.wheel.allowCustomStake, maxSpinsPerDay: s.wheel.maxSpinsPerDay,
+      outcomes: s.wheel.outcomes, pointRates: s.pointRates || []
     });
-    res.json({ success: true, spin });
+    const daily = coinLogs.getDailyWheelStatus(username, s.wheel.maxSpinsPerDay);
+    res.json({ success: true, spin: { ...spin, ...daily, allowCustomStake: s.wheel.allowCustomStake } });
   } catch (error) {
     const staleBalance = /Balance changed/.test(error.message);
-    const badRequest = staleBalance || /No points available|different member|too large/.test(error.message);
-    res.status(staleBalance ? 409 : badRequest ? 400 : 500).json({ success: false, error: badRequest ? error.message : 'The spin could not be recorded. Retry with the same request ID.' });
+    const badRequest = staleBalance || /No points available|different member|too large|Stake must be positive|full balance|balance snapshot/.test(error.message);
+    const status = error.status || (staleBalance ? 409 : badRequest ? 400 : 500);
+    res.status(status).json({ success: false, error: (error.status || badRequest) ? error.message : 'The spin could not be recorded. Retry with the same request ID.' });
   }
 });
 

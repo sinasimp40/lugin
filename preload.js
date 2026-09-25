@@ -8,4 +8,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSessionOverlayPlacement: () => ipcRenderer.invoke('session-overlay-placement'),
   triggerShutdown: () => ipcRenderer.send('trigger-shutdown'),
   setIdleShutdownConfig: (seconds) => ipcRenderer.send('idle-shutdown-config', seconds),
+  chooseAdminMedia: (token, accept) => ipcRenderer.invoke('choose-admin-media', token, accept),
 });

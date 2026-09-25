@@ -17,7 +17,12 @@ const LEGACY_DEFAULT_OUTCOMES = [
 ];
 
 function defaultWheel() {
-  return { enabled: true, outcomes: DEFAULT_OUTCOMES.map(item => ({ ...item })) };
+  return {
+    enabled: true,
+    maxSpinsPerDay: 1,
+    allowCustomStake: false,
+    outcomes: DEFAULT_OUTCOMES.map(item => ({ ...item }))
+  };
 }
 
 function validHundredths(value) {
@@ -27,6 +32,9 @@ function validHundredths(value) {
 
 function parseWheel(input) {
   if (!input || typeof input.enabled !== 'boolean' ||
+      (input.maxSpinsPerDay !== undefined &&
+        (!Number.isInteger(input.maxSpinsPerDay) || input.maxSpinsPerDay < 1 || input.maxSpinsPerDay > 100)) ||
+      (input.allowCustomStake !== undefined && typeof input.allowCustomStake !== 'boolean') ||
       !Array.isArray(input.outcomes) || input.outcomes.length < 2 || input.outcomes.length > 12) return null;
   const seen = new Set();
   let total = 0;
@@ -39,7 +47,12 @@ function parseWheel(input) {
     total += Math.round(item.weight * 100);
     outcomes.push({ multiplier: item.multiplier, weight: item.weight });
   }
-  return total === 10000 ? { enabled: input.enabled, outcomes } : null;
+  return total === 10000 ? {
+    enabled: input.enabled,
+    maxSpinsPerDay: input.maxSpinsPerDay === undefined ? 1 : input.maxSpinsPerDay,
+    allowCustomStake: input.allowCustomStake === undefined ? false : input.allowCustomStake,
+    outcomes
+  } : null;
 }
 
 function currentWheel(input) {
@@ -48,7 +61,7 @@ function currentWheel(input) {
   const wasLegacyDefault = wheel.outcomes.length === LEGACY_DEFAULT_OUTCOMES.length &&
     wheel.outcomes.every((item, index) => item.multiplier === LEGACY_DEFAULT_OUTCOMES[index].multiplier &&
       item.weight === LEGACY_DEFAULT_OUTCOMES[index].weight);
-  return wasLegacyDefault ? { enabled: wheel.enabled, outcomes: defaultWheel().outcomes } : wheel;
+  return wasLegacyDefault ? { ...wheel, outcomes: defaultWheel().outcomes } : wheel;
 }
 
 function pickOutcome(outcomes) {
@@ -61,7 +74,12 @@ function pickOutcome(outcomes) {
 }
 
 function oddsToken(wheel) {
-  return crypto.createHash('sha256').update(JSON.stringify(wheel.outcomes)).digest('hex');
+  return crypto.createHash('sha256').update(JSON.stringify({
+    enabled: wheel.enabled,
+    maxSpinsPerDay: wheel.maxSpinsPerDay,
+    allowCustomStake: wheel.allowCustomStake,
+    outcomes: wheel.outcomes
+  })).digest('hex');
 }
 
 module.exports = { defaultWheel, currentWheel, parseWheel, pickOutcome, oddsToken };

@@ -320,6 +320,7 @@ process.on('admin-stop-app', () => {
 });
 
 let loginWindow;
+let mediaPickerOpen = false;
 let sessionWindow;
 let isQuitting = false;
 let currentState = 'logged-out';
@@ -469,6 +470,7 @@ function performLogout() {
 }
 
 function reclaimFocus() {
+  if (mediaPickerOpen) return;
   if (loginWindow && !loginWindow.isDestroyed()) {
     try { app.focus({ steal: true }); } catch (_) {}
     loginWindow.moveTop();
@@ -863,7 +865,7 @@ function showLoginWindow(onReady, options = {}) {
   Menu.setApplicationMenu(null);
 
   function enforceLoginKiosk() {
-    if (!loginWindow || loginWindow.isDestroyed() || !isLockState()) return;
+    if (mediaPickerOpen || !loginWindow || loginWindow.isDestroyed() || !isLockState()) return;
     try {
       const bounds = screen.getPrimaryDisplay().bounds;
       if (loginWindow.isMinimized()) loginWindow.restore();
@@ -899,6 +901,7 @@ function showLoginWindow(onReady, options = {}) {
   // Force the lock screen back into view if anything minimizes or hides it
   // (e.g. Win+D / "Show desktop", Win+M, or a script calling ShowWindow).
   function forceLoginVisible() {
+    if (mediaPickerOpen) return;
     if (!loginWindow || loginWindow.isDestroyed()) return;
     if (!isLockState()) return;
     try {
@@ -992,14 +995,14 @@ function showLoginWindow(onReady, options = {}) {
     if (focusGuardInterval) return;
 
     loginWindow.on('blur', () => {
-      if (isLockState() && loginWindow && !loginWindow.isDestroyed()) {
+      if (!mediaPickerOpen && isLockState() && loginWindow && !loginWindow.isDestroyed()) {
         loginWindow.moveTop();
         loginWindow.focus();
       }
     });
 
     focusGuardInterval = setInterval(() => {
-      if (isLockState() && loginWindow && !loginWindow.isDestroyed()) {
+      if (!mediaPickerOpen && isLockState() && loginWindow && !loginWindow.isDestroyed()) {
         // Defensive: re-apply skipTaskbar every tick. Windows clears this
         // flag when explorer.exe restarts (it broadcasts TaskbarCreated and
         // re-enumerates top-level windows), which would otherwise make our
@@ -1242,6 +1245,54 @@ function showSessionWindow(onShown) {
 
   sessionWindow.loadURL(`${APP_URL}/session.html`);
 }
+
+ipcMain.handle('choose-admin-media', async (event, token, accept) => {
+  if (!loginWindow || loginWindow.isDestroyed() || event.sender !== loginWindow.webContents ||
+      new URL(event.sender.getURL()).origin !== APP_URL || mediaPickerOpen ||
+      typeof token !== 'string' || !token) return null;
+  const auth = await fetch(`${APP_URL}/api/admin/settings`, {
+    headers: { 'x-admin-token': token }, signal: AbortSignal.timeout(5000)
+  });
+  if (!auth.ok) throw new Error('Admin session expired. Log in again before choosing a file.');
+  const allowVideo = typeof accept === 'string' && accept.includes('video/');
+  const mimeTypes = {
+    '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif', '.webp': 'image/webp',
+    ...(allowVideo ? { '.mp4': 'video/mp4', '.webm': 'video/webm' } : {})
+  };
+  const parent = loginWindow;
+  mediaPickerOpen = true;
+  try {
+    // The kiosk focus guard would otherwise refocus its fullscreen parent on
+    // every blur, trapping the native chooser behind the lock screen.
+    parent.setKiosk(false);
+    parent.setAlwaysOnTop(false);
+    const { dialog } = require('electron');
+    const result = await dialog.showOpenDialog(parent, {
+      title: 'Choose media — Cancel to return to Admin',
+      properties: ['openFile'],
+      filters: [{ name: allowVideo ? 'Images and videos' : 'Images',
+        extensions: Object.keys(mimeTypes).map(ext => ext.slice(1)) }]
+    });
+    if (result.canceled || !result.filePaths?.length) return null;
+    const selected = result.filePaths[0];
+    const type = mimeTypes[path.extname(selected).toLowerCase()];
+    if (!type) throw new Error('Unsupported image or video format.');
+    const fs = require('fs/promises');
+    const stat = await fs.stat(selected);
+    if (!stat.isFile() || stat.size > 50 * 1024 * 1024) throw new Error('File too large (max 50MB).');
+    return { name: path.basename(selected), type, bytes: await fs.readFile(selected) };
+  } finally {
+    mediaPickerOpen = false;
+    if (loginWindow === parent && !parent.isDestroyed() && isLockState()) {
+      parent.setKiosk(true);
+      parent.setSkipTaskbar(true);
+      parent.setAlwaysOnTop(true, 'screen-saver');
+      parent.moveTop();
+      parent.focus();
+    }
+  }
+});
 
 ipcMain.on('session-state', (event, state) => {
   console.log('[Electron] session-state:', state);

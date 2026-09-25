@@ -133,6 +133,29 @@ function getCurrentPeriodKey() {
   return getPeriodKey(Date.now());
 }
 
+function getCalendarDayKey(value = Date.now()) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return getCalendarDayKey(Date.now());
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function getDailyWheelStatus(username, maxSpinsPerDay = 1, now = Date.now()) {
+  const max = Number.isInteger(maxSpinsPerDay) && maxSpinsPerDay >= 1 && maxSpinsPerDay <= 100
+    ? maxSpinsPerDay : 1;
+  const user = String(username || '').toLowerCase();
+  const day = getCalendarDayKey(now);
+  const spinsUsed = (load().logs || []).filter(log =>
+    log.source === 'wheel' &&
+    String(log.username || '').toLowerCase() === user &&
+    getCalendarDayKey(log.timestamp) === day
+  ).length;
+  return {
+    spinsUsed,
+    spinsRemaining: Math.max(0, max - spinsUsed),
+    maxSpinsPerDay: max
+  };
+}
+
 function getPreviousPeriodKey(periodKey) {
   const match = /^(\d{4})-(\d{2})$/.exec(String(periodKey || getCurrentPeriodKey()));
   if (!match) return getPreviousPeriodKey(getCurrentPeriodKey());
@@ -273,7 +296,10 @@ function getMemberPoints(username, pointRates, periodKey) {
   return Math.round(total * 100) / 100;
 }
 
-function appendWheelSpin({ username, requestId, station, outcomes, pointRates, expectedStake }) {
+function appendWheelSpin({
+  username, requestId, station, outcomes, pointRates, expectedStake, expectedBalance,
+  allowCustomStake = false, maxSpinsPerDay = 1
+}) {
   ensurePointsSync(pointRates);
   let spin;
   loadModifySave(data => {
@@ -283,28 +309,54 @@ function appendWheelSpin({ username, requestId, station, outcomes, pointRates, e
       spin = existing;
       return;
     }
+    const now = Date.now();
+    const today = getCalendarDayKey(now);
+    const maxSpins = Number.isInteger(maxSpinsPerDay) && maxSpinsPerDay >= 1 && maxSpinsPerDay <= 100
+      ? maxSpinsPerDay : 1;
+    const dailySpins = (data.logs || []).filter(log =>
+      log.source === 'wheel' &&
+      String(log.username || '').toLowerCase() === String(username || '').toLowerCase() &&
+      getCalendarDayKey(log.timestamp) === today
+    ).length;
+    if (dailySpins >= maxSpins) {
+      const error = new Error('You have reached the daily spin limit.');
+      error.status = 429;
+      throw error;
+    }
     const period = getCurrentPeriodKey();
     const balanceCents = (data.logs || [])
       .filter(log => log.username === username && getPeriodKey(log.timestamp) === period)
       .reduce((sum, log) => sum + Math.round((Number(log.points) || 0) * 100), 0);
-    if (expectedStake !== undefined && balanceCents !== Math.round(expectedStake * 100)) {
+    const balanceSnapshot = expectedBalance === undefined ? expectedStake : expectedBalance;
+    if (balanceSnapshot !== undefined && balanceCents !== Math.round(balanceSnapshot * 100)) {
       throw new Error('Balance changed. Reload Betting Games and review the new stake before spinning.');
     }
     if (!Number.isSafeInteger(balanceCents) || balanceCents <= 0) {
       throw new Error('No points available to spin this month.');
     }
+    if (allowCustomStake && expectedBalance === undefined) {
+      throw new Error('The current balance snapshot is required for a custom stake.');
+    }
+    const stakeCents = expectedStake === undefined ? balanceCents : Math.round(expectedStake * 100);
+    if (!Number.isSafeInteger(stakeCents) || stakeCents <= 0 || stakeCents > balanceCents) {
+      throw new Error('Stake must be positive and no greater than your current balance.');
+    }
+    if (!allowCustomStake && stakeCents !== balanceCents) {
+      throw new Error('This game requires staking your full balance.');
+    }
     const multiplier = require('./wheel-config').pickOutcome(outcomes);
-    const payoutCents = Math.round(balanceCents * multiplier);
+    const payoutCents = Math.round(stakeCents * multiplier);
     if (!Number.isSafeInteger(payoutCents)) throw new Error('Points balance is too large to spin safely.');
-    const netCents = payoutCents - balanceCents;
-    const now = Date.now();
+    const netCents = payoutCents - stakeCents;
+    const newBalanceCents = balanceCents + netCents;
+    if (!Number.isSafeInteger(newBalanceCents)) throw new Error('Points balance is too large to spin safely.');
     spin = {
       id: crypto.randomUUID(), requestId, source: 'wheel', username,
       station: String(station || 'PC').slice(0, 60), amount: 0,
       timeAdded: `Wheel ${multiplier}x`, timestamp: now, date: new Date(now).toISOString(),
       period, multiplier, outcomes: outcomes.map(item => ({ ...item })),
-      stake: balanceCents / 100, payout: payoutCents / 100,
-      points: netCents / 100, net: netCents / 100, balance: payoutCents / 100,
+      stake: stakeCents / 100, payout: payoutCents / 100,
+      points: netCents / 100, net: netCents / 100, balance: newBalanceCents / 100,
       notificationSent: false
     };
     data.logs.push(spin);
@@ -402,5 +454,7 @@ module.exports = {
   getLeaderboard,
   getPeriodKey,
   getCurrentPeriodKey,
-  getPreviousPeriodKey
+  getPreviousPeriodKey,
+  getCalendarDayKey,
+  getDailyWheelStatus
 };

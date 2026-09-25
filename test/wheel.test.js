@@ -35,7 +35,7 @@ test('full-balance settlement is idempotent, rate-proof and decreases ranking', 
     assert.throws(() => logs.appendWheelSpin({
       username: 'mem-lose', requestId: '00000000-0000-4000-8000-000000000002',
       outcomes: [{ multiplier: 2, weight: 100 }], pointRates: rates
-    }), /No points available/);
+    }), /daily spin limit/);
     const win = logs.appendWheelSpin({
       username: 'mem-win', requestId: '00000000-0000-4000-8000-000000000003', expectedStake: 4,
       outcomes: [{ multiplier: 2, weight: 100 }], pointRates: rates
@@ -58,6 +58,49 @@ test('full-balance settlement is idempotent, rate-proof and decreases ranking', 
   }
 });
 
+test('custom stakes, daily spin limits, retries and local-day rollover are enforced in the ledger', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-wheel-policy-'));
+  const originalNow = Date.now;
+  try {
+    logs.setDataDir(dir);
+    const base = new Date(2025, 5, 15, 12).getTime();
+    Date.now = () => base;
+    const rates = [{ pesos: 1, points: 1 }];
+    logs.appendLog({ username: 'mem-policy', amount: 10, ip: 'policy', mac: 'policy', timestamp: base }, rates);
+    const firstId = '00000000-0000-4000-8000-000000000051';
+    const options = {
+      username: 'mem-policy', requestId: firstId, station: 'PC',
+      expectedStake: 3, expectedBalance: 10, allowCustomStake: true, maxSpinsPerDay: 1,
+      outcomes: [{ multiplier: 2, weight: 100 }], pointRates: rates
+    };
+    const first = logs.appendWheelSpin(options);
+    assert.deepEqual([first.stake, first.payout, first.net, first.balance], [3, 6, 3, 13]);
+    assert.deepEqual(logs.getDailyWheelStatus('mem-policy', 1), {
+      spinsUsed: 1, spinsRemaining: 0, maxSpinsPerDay: 1
+    });
+    assert.equal(logs.appendWheelSpin(options).id, first.id, 'a retry does not spend another daily spin');
+    assert.throws(() => logs.appendWheelSpin({
+      ...options, requestId: '00000000-0000-4000-8000-000000000052', expectedBalance: 13
+    }), error => error.status === 429);
+
+    Date.now = () => base + 86400000;
+    assert.deepEqual(logs.getDailyWheelStatus('mem-policy', 1), {
+      spinsUsed: 0, spinsRemaining: 1, maxSpinsPerDay: 1
+    });
+    const second = logs.appendWheelSpin({
+      ...options, requestId: '00000000-0000-4000-8000-000000000053',
+      expectedStake: 2, expectedBalance: 13
+    });
+    assert.equal(second.stake, 2);
+    assert.equal(second.balance, 15);
+    assert.equal(logs.getMemberPoints('mem-policy', rates), 15,
+      'monthly ledger balance retains the un-staked points and adds only the net payout');
+  } finally {
+    Date.now = originalNow;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('wheel configuration rejects invalid odds, duplicates and non-cent precision', () => {
   assert.equal(defaultWheel().outcomes.reduce((sum, item) => sum + item.weight, 0), 100);
   assert.deepEqual(defaultWheel().outcomes, [
@@ -69,14 +112,31 @@ test('wheel configuration rejects invalid odds, duplicates and non-cent precisio
     { multiplier: 0, weight: 35 }, { multiplier: 0.5, weight: 20 },
     { multiplier: 1, weight: 20 }, { multiplier: 2, weight: 15 }, { multiplier: 5, weight: 10 }
   ] };
-  assert.deepEqual(currentWheel(legacy), { enabled: false, outcomes: defaultWheel().outcomes });
+  assert.deepEqual(currentWheel(legacy), {
+    enabled: false, maxSpinsPerDay: 1, allowCustomStake: false, outcomes: defaultWheel().outcomes
+  });
   const customized = { ...legacy, outcomes: legacy.outcomes.map((item, index) =>
     ({ ...item, weight: index === 0 ? 30 : index === 1 ? 25 : item.weight })) };
-  assert.deepEqual(currentWheel(customized), customized, 'customized rates must not be replaced');
+  assert.deepEqual(currentWheel(customized), {
+    ...customized, maxSpinsPerDay: 1, allowCustomStake: false
+  }, 'customized rates must not be replaced');
   assert.equal(parseWheel({ enabled: true, outcomes: [{ multiplier: 0, weight: 40 }, { multiplier: 2, weight: 50 }] }), null);
   assert.equal(parseWheel({ enabled: true, outcomes: [{ multiplier: 2, weight: 40 }, { multiplier: 2, weight: 60 }] }), null);
   assert.equal(parseWheel({ enabled: true, outcomes: [{ multiplier: 0, weight: 33.333 }, { multiplier: 1, weight: 66.667 }] }), null);
   assert.equal(parseWheel({ enabled: true, outcomes: [{ multiplier: 0, weight: 0 }, { multiplier: 1, weight: 100 }] }), null);
+  assert.deepEqual(
+    (({ maxSpinsPerDay, allowCustomStake }) => ({ maxSpinsPerDay, allowCustomStake }))(parseWheel(defaultWheel())),
+    { maxSpinsPerDay: 1, allowCustomStake: false }
+  );
+  assert.equal(parseWheel({ ...defaultWheel(), maxSpinsPerDay: 0 }), null);
+  assert.equal(parseWheel({ ...defaultWheel(), maxSpinsPerDay: 101 }), null);
+  assert.equal(parseWheel({ ...defaultWheel(), maxSpinsPerDay: 1.5 }), null);
+  assert.equal(parseWheel({ ...defaultWheel(), allowCustomStake: 'yes' }), null);
+  assert.notEqual(
+    require('../src/wheel-config').oddsToken(defaultWheel()),
+    require('../src/wheel-config').oddsToken({ ...defaultWheel(), allowCustomStake: true }),
+    'stake policy changes invalidate stale reviewed settings'
+  );
 });
 
 test('the Auto Shutdown editor derives LOSE from winning chances', () => {
@@ -187,7 +247,7 @@ test('Auto Shutdown offers editable defaults offline but keeps drafts off Denfi 
     assert.deepEqual(initial.data.wheel.outcomes, defaultWheel().outcomes);
     assert.equal(initial.data.connected, false);
     assert.equal(initial.data.draft, false);
-    const edited = { enabled: true, outcomes: [
+    const edited = { enabled: true, maxSpinsPerDay: 2, allowCustomStake: true, outcomes: [
       { multiplier: 0, weight: 45 }, { multiplier: 1.5, weight: 10 },
       { multiplier: 1.8, weight: 20 }, { multiplier: 2, weight: 15 }, { multiplier: 5, weight: 10 }
     ] };
@@ -245,8 +305,10 @@ test('Auto Shutdown offers editable defaults offline but keeps drafts off Denfi 
       assert.equal((await request('/api/admin/wheel', 'GET', null, token)).data.draft, false);
       const updatedStatus = await fetch(pointsUrl + '/api/sync/wheel/status/mem-configured').then(r => r.json());
       assert.deepEqual(updatedStatus.multipliers, edited.outcomes.map(item => item.multiplier));
+       assert.equal(updatedStatus.maxSpinsPerDay, 2);
+       assert.equal(updatedStatus.allowCustomStake, true);
       assert.notEqual(updatedStatus.oddsToken, oldStatus.oddsToken);
-      const attempt = { username:'mem-configured', station:'PC', requestId:'00000000-0000-4000-8000-000000000041', expectedStake:10 };
+       const attempt = { username:'mem-configured', station:'PC', requestId:'00000000-0000-4000-8000-000000000041', expectedStake:10, expectedBalance:10 };
       const spinRequest = oddsToken => fetch(pointsUrl + '/api/sync/wheel/spin', {
         method:'POST', headers:{'content-type':'application/json'},
         body:JSON.stringify({ ...attempt, oddsToken })
@@ -277,6 +339,8 @@ test('Points API settles once and keeps pending Telegram notifications for retry
     require('./src/attendance-store').setDataDir(dir);
     require('./src/order-store').setDataDir(dir);
     logs.appendLog({username:'mem-player',amount:12,ip:'a',mac:'b'},[{pesos:1,points:1}]);
+    logs.appendLog({username:'mem-custom',amount:12,ip:'c',mac:'d'},[{pesos:1,points:1}]);
+    logs.appendLog({username:'mem-full',amount:12,ip:'e',mac:'f'},[{pesos:1,points:1}]);
     s.updateSettings({pointRates:[{pesos:1,points:1}]});
     require('./server');
   `], {
@@ -308,6 +372,10 @@ test('Points API settles once and keeps pending Telegram notifications for retry
     assert.equal((await request('/api/sync/wheel-config')).data.wheel.outcomes[0].weight, 35);
     const status = (await request('/api/sync/wheel/status/mem-player')).data;
     assert.equal(status.balance, 12);
+    assert.equal(status.maxSpinsPerDay, 1);
+    assert.equal(status.allowCustomStake, false);
+    assert.equal(status.spinsUsed, 0);
+    assert.equal(status.spinsRemaining, 1);
     assert.deepEqual(status.multipliers, [0, 1.5, 1.8, 2, 5]);
     assert.equal(status.outcomes, undefined, 'player status must not disclose winning rates');
     assert.match(status.oddsToken, /^[a-f0-9]{64}$/);
@@ -330,6 +398,58 @@ test('Points API settles once and keeps pending Telegram notifications for retry
     assert.equal(first.data.spin.stake, 12);
     assert.ok(defaultWheel().outcomes.some(item => item.multiplier === first.data.spin.multiplier));
     assert.deepEqual(first.data.spin.outcomes, defaultWheel().outcomes);
+    assert.equal(first.data.spin.spinsUsed, 1);
+    assert.equal(first.data.spin.spinsRemaining, 0);
+    assert.equal((await request('/api/sync/wheel/spin', 'POST', {
+      username: 'mem-player', requestId: '00000000-0000-4000-8000-000000000012',
+      expectedStake: 1, oddsToken: status.oddsToken
+    })).status, 429, 'a member cannot exceed the published daily limit');
+
+    const customPolicy = {
+      ...defaultWheel(), maxSpinsPerDay: 2, allowCustomStake: true
+    };
+    const customConfig = await request('/api/admin/kiosk-wheel', 'POST', customPolicy);
+    assert.equal(customConfig.status, 200);
+    const customStatus = (await request('/api/sync/wheel/status/mem-custom')).data;
+    assert.equal(customStatus.maxSpinsPerDay, 2);
+    assert.equal(customStatus.allowCustomStake, true);
+    assert.notEqual(customStatus.oddsToken, status.oddsToken, 'policy changes invalidate the reviewed config token');
+    const partialId = '00000000-0000-4000-8000-000000000013';
+    const partial = (stake, balance, requestIdValue = partialId) => request('/api/sync/wheel/spin', 'POST', {
+      username: 'mem-custom', requestId: requestIdValue, expectedStake: stake,
+      ...(balance === undefined ? {} : { expectedBalance: balance }), oddsToken: customStatus.oddsToken
+    });
+    assert.equal((await partial(5, undefined)).status, 400, 'custom mode requires a balance snapshot');
+    assert.equal((await partial(13, 12)).status, 400, 'custom stake cannot exceed the current balance');
+    assert.equal((await partial(0, 12)).status, 400, 'custom stakes must be positive');
+    assert.equal((await partial(1.001, 12)).status, 400, 'custom stakes must use cent precision');
+    assert.equal((await partial(5, 11)).status, 409, 'stale balance snapshots are rejected');
+    const partialFirst = await partial(5, 12);
+    assert.equal(partialFirst.status, 200);
+    assert.equal(partialFirst.data.spin.stake, 5);
+    assert.equal(partialFirst.data.spin.spinsUsed, 1);
+    assert.equal(partialFirst.data.spin.spinsRemaining, 1);
+    assert.equal((await partial(5, 12)).data.spin.id, partialFirst.data.spin.id,
+      'retrying a settled custom stake returns the original result');
+    const afterPartial = (await request('/api/sync/wheel/status/mem-custom')).data;
+    const partialSecond = await partial(2, afterPartial.balance, '00000000-0000-4000-8000-000000000014');
+    assert.equal(partialSecond.status, 200);
+    assert.equal(partialSecond.data.spin.stake, 2);
+    assert.equal(partialSecond.data.spin.spinsUsed, 2);
+    const afterSecond = (await request('/api/sync/wheel/status/mem-custom')).data;
+    assert.equal((await partial(1, afterSecond.balance, '00000000-0000-4000-8000-000000000015')).status, 429);
+
+    const fullBalancePolicy = { ...defaultWheel(), maxSpinsPerDay: 2, allowCustomStake: false };
+    assert.equal((await request('/api/admin/kiosk-wheel', 'POST', fullBalancePolicy)).status, 200);
+    const fullStatus = (await request('/api/sync/wheel/status/mem-full')).data;
+    assert.equal((await request('/api/sync/wheel/spin', 'POST', {
+      username: 'mem-full', requestId: '00000000-0000-4000-8000-000000000016',
+      expectedStake: 5, expectedBalance: 12, oddsToken: fullStatus.oddsToken
+    })).status, 400, 'when custom stakes are disabled, partial stakes are rejected');
+    assert.equal((await request('/api/sync/wheel/spin', 'POST', {
+      username: 'mem-full', requestId: '00000000-0000-4000-8000-000000000017',
+      expectedStake: 12, oddsToken: fullStatus.oddsToken
+    })).status, 200, 'legacy full-balance requests still work without expectedBalance');
     const disabled = await request('/api/admin/kiosk-wheel', 'POST', { enabled: false, outcomes: defaultWheel().outcomes });
     assert.equal(disabled.data.wheel.enabled, false);
     const again = await request('/api/sync/wheel/spin', 'POST', {
@@ -347,13 +467,24 @@ test('Points API settles once and keeps pending Telegram notifications for retry
     assert.equal((await request('/api/sync/wheel/spin', 'POST', {
       username: 'mem-player', requestId: '00000000-0000-4000-8000-000000000010', expectedStake: 12, oddsToken: status.oddsToken
     })).status, 403);
-    assert.equal((await request('/api/sync/coin-logs')).data.logs.filter(item => item.source === 'wheel').length, 1);
+    assert.equal((await request('/api/sync/coin-logs')).data.logs
+      .filter(item => item.source === 'wheel' && item.username === 'mem-player').length, 1);
     assert.equal((await request('/api/sync/member-points/mem-player')).data.points, first.data.spin.balance);
     const claimed = (await request('/api/sync/wheel/claim-notification', 'POST')).data.claim;
     assert.equal(claimed.spin.requestId, requestId);
-    assert.equal((await request('/api/sync/wheel/claim-notification', 'POST')).data.claim, null);
+    const otherClaim = (await request('/api/sync/wheel/claim-notification', 'POST')).data.claim;
+    assert.notEqual(otherClaim.spin.requestId, requestId, 'another member may have an independent notification');
     assert.equal((await request('/api/sync/wheel/ack-notification', 'POST',
       { requestId, leaseToken: claimed.leaseToken })).data.success, true);
+    assert.equal((await request('/api/sync/wheel/ack-notification', 'POST',
+      { requestId: otherClaim.spin.requestId, leaseToken: otherClaim.leaseToken })).data.success, true);
+    const remaining = new Set(['00000000-0000-4000-8000-000000000014', '00000000-0000-4000-8000-000000000017']);
+    for (const id of remaining) {
+      const claim = (await request('/api/sync/wheel/claim-notification', 'POST')).data.claim;
+      assert.equal(claim.spin.requestId, id);
+      assert.equal((await request('/api/sync/wheel/ack-notification', 'POST',
+        { requestId:id, leaseToken:claim.leaseToken })).data.success, true);
+    }
     assert.equal((await request('/api/sync/wheel/claim-notification', 'POST')).data.claim, null);
   } finally {
     child.kill();

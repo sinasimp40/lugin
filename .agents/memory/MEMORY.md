@@ -4,3 +4,4 @@
 - [Attendance history and network trust](attendance-trust-and-history.md) — kiosk-only mission editing, shared daily target, and live Points-timed rewards without offline replay.
 - [Betting game presentation](betting-game-presentation.md) — present multiplier choices as equal-sized horizontal tiles without showing win rates to members.
 - [Offline betting drafts](offline-betting-drafts.md) — prepare odds on a disconnected kiosk, but require an explicit publish before changing Denfi Points.
+- [Kiosk media chooser](kiosk-media-chooser.md) — parent admin file dialogs to Electron and pause lock-screen focus enforcement only while the authorized chooser is open.

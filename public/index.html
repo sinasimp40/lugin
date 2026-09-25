@@ -1482,14 +1482,13 @@
     .admin-layout { flex:1; display:grid; grid-template-columns:215px minmax(0,1fr); min-height:0; }
     .admin-nav { padding:18px 12px; background:#0e1012; border-right:1px solid #292d31; }
     .admin-nav-label { padding:3px 12px 10px; color:#666d74; font:10px 'Share Tech Mono',monospace; letter-spacing:1.6px; text-transform:uppercase; }
-    .admin-tab { display:flex; align-items:center; width:100%; gap:11px; padding:11px 12px; margin:3px 0; color:#8d949a; background:transparent; border:1px solid transparent; border-radius:8px; cursor:pointer; text-align:left; font:12px 'Share Tech Mono',monospace; letter-spacing:.6px; transition:background .2s,color .2s,border-color .2s,transform .2s; }
-    .admin-tab:hover { color:#f0ece6; background:#191c1f; transform:translateX(2px); }
+    .admin-tab { display:flex; align-items:center; width:100%; gap:11px; padding:11px 12px; margin:3px 0; color:#8d949a; background:transparent; border:1px solid transparent; border-radius:8px; cursor:pointer; text-align:left; font:12px 'Share Tech Mono',monospace; letter-spacing:.6px; transition:background .2s,color .2s,border-color .2s; }
+    .admin-tab:hover { color:#f0ece6; background:#191c1f; }
     .admin-tab.active { color:#ff9a3d; background:rgba(255,120,0,.11); border-color:rgba(255,140,0,.2); }
     .admin-tab-mark { width:7px; height:7px; border:1px solid currentColor; border-radius:2px; opacity:.8; }
     .admin-workspace { min-width:0; overflow:auto; padding:25px 28px 30px; scrollbar-color:#454a4f transparent; }
-    .admin-page { display:none; animation:admin-page-in .22s ease both; }
+    .admin-page { display:none; }
     .admin-page.active { display:block; }
-    @keyframes admin-page-in { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
     .admin-page-intro { display:flex; align-items:flex-end; justify-content:space-between; gap:15px; margin-bottom:20px; }
     .admin-page-intro h2 { margin:0 !important; padding:0 !important; text-align:left !important; color:#f4f0ea !important; font-size:20px !important; letter-spacing:1px !important; text-shadow:none !important; }
     .admin-page-intro p { color:#777e84; font:11px 'Share Tech Mono',monospace; margin-top:6px; }
@@ -1900,8 +1899,11 @@
                <div class="admin-grid">
                  <div class="admin-section full-width">
                    <h3>Multipliers and winning rates</h3>
-                    <p style="font-size:11px;color:#aeb4b8;margin-bottom:12px">Enter each winning chance. The rest automatically becomes LOSE (0×). Each spin stakes all current-month points. These chances are private to admins; equal-sized player tiles do not change the actual odds. Denfi Points records the result.</p>
+                    <p style="font-size:11px;color:#aeb4b8;margin-bottom:12px">Enter each winning chance. The rest automatically becomes LOSE (0×). Denfi Points enforces the daily limit and stake settings. These chances are private to admins; equal-sized player tiles do not change the actual odds.</p>
                    <div class="curfew-toggle-wrap"><label class="curfew-toggle"><input type="checkbox" id="admin-wheel-enabled" /><span class="slider"></span></label><span style="font-family:'Share Tech Mono';font-size:11px;color:#e0e0e0;letter-spacing:1px">Enable betting games</span></div>
+                   <div class="form-group" style="margin-top:12px"><label for="admin-wheel-daily-limit">Spins per member per day</label><input type="number" id="admin-wheel-daily-limit" min="1" max="100" step="1" value="1" style="width:120px" /></div>
+                   <div class="curfew-toggle-wrap"><label class="curfew-toggle"><input type="checkbox" id="admin-wheel-custom-stake" /><span class="slider"></span></label><span style="font-family:'Share Tech Mono';font-size:11px;color:#e0e0e0;letter-spacing:1px">Allow members to choose stake amount</span></div>
+                   <p style="font-size:11px;color:#aeb4b8;margin:8px 0 12px">Off: a spin automatically stakes the full current-month balance. On: members may enter an amount up to their balance. Default is off.</p>
                     <div style="display:grid;grid-template-columns:1fr 100px 34px;gap:7px;margin-top:12px;color:#8c9399;font:10px 'Share Tech Mono';letter-spacing:1px"><span>RESULT (×)</span><span>CHANCE %</span><span></span></div>
                    <div class="wheel-admin-rows" id="admin-wheel-rows"></div>
                    <div class="wheel-admin-total" id="admin-wheel-total"></div>
@@ -1963,6 +1965,7 @@
 
   <script>
     function switchAdminView(view, button) {
+      if (button?.classList.contains('active')) return;
       document.querySelectorAll('.admin-page').forEach(function(page) {
         page.classList.toggle('active', page.id === 'admin-page-' + view);
       });
@@ -2048,6 +2051,28 @@
     let sessionWs = null;
     let wsReconnectTimer = null;
     let adminToken = null;
+    const adminMessageTimers = new Map();
+    // Native file inputs can open behind the fullscreen Electron kiosk. Use
+    // an admin-authenticated, parented desktop dialog there; browsers retain
+    // their normal chooser (including its native Cancel button).
+    document.addEventListener('click', async event => {
+      const input = event.target;
+      if (!window.electronAPI?.chooseAdminMedia ||
+          !input.matches?.('#admin-modal input[type="file"]')) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!adminToken) return;
+      try {
+        const chosen = await window.electronAPI.chooseAdminMedia(adminToken, input.accept);
+        if (!chosen) return; // Cancel/back does not change the current image.
+        const transfer = new DataTransfer();
+        transfer.items.add(new File([chosen.bytes], chosen.name, { type:chosen.type }));
+        input.files = transfer.files;
+        input.dispatchEvent(new Event('change', { bubbles:true }));
+      } catch (error) {
+        showAdminMsg('admin-panel-msg', error.message || 'Could not open the file picker.', 'error');
+      }
+    }, true);
     let secretBuffer = '';
 
     function showPcBadge(name) {
@@ -3585,7 +3610,8 @@
     function showAdminMsg(id, msg, type) {
       const el = document.getElementById(id);
       el.textContent = '> ' + msg; el.className = 'admin-msg ' + type;
-      setTimeout(() => { el.className = 'admin-msg'; }, 4000);
+      clearTimeout(adminMessageTimers.get(id));
+      adminMessageTimers.set(id, setTimeout(() => { el.className = 'admin-msg'; adminMessageTimers.delete(id); }, 4000));
     }
 
     function adminAuth() {}
@@ -3640,19 +3666,32 @@
       loadAdminWheel();
     }
 
-    let adminWheel = { enabled: false, outcomes: [] };
+    let adminWheel = { enabled: false, maxSpinsPerDay: 1, allowCustomStake: false, outcomes: [] };
     let adminWheelLoaded = false;
     let adminWheelConnected = false;
     let adminWheelDraft = false;
     let adminWheelDirty = false;
     let adminWheelLoadSeq = 0;
+    let adminWheelSaving = false;
     document.getElementById('admin-wheel-enabled').addEventListener('change', event => {
       adminWheel.enabled = event.target.checked;
       adminWheelDirty = true;
       setWheelAdminReadOnly();
     });
+    document.getElementById('admin-wheel-daily-limit').addEventListener('input', event => {
+      adminWheel.maxSpinsPerDay = event.target.value;
+      adminWheelDirty = true;
+      setWheelAdminReadOnly();
+    });
+    document.getElementById('admin-wheel-custom-stake').addEventListener('change', event => {
+      adminWheel.allowCustomStake = event.target.checked;
+      adminWheelDirty = true;
+      setWheelAdminReadOnly();
+    });
     function editableWheel(wheel) {
-      return { enabled:!!wheel.enabled, outcomes:(wheel.outcomes || []).filter(item => Number(item.multiplier) !== 0) };
+      return { enabled:!!wheel.enabled, maxSpinsPerDay:wheel.maxSpinsPerDay ?? 1,
+        allowCustomStake:!!wheel.allowCustomStake,
+        outcomes:(wheel.outcomes || []).filter(item => Number(item.multiplier) !== 0) };
     }
     function wheelEditorState() {
       const wins = (adminWheel.outcomes || [])
@@ -3674,6 +3713,8 @@
       const rows = document.getElementById('admin-wheel-rows');
       rows.replaceChildren();
       document.getElementById('admin-wheel-enabled').checked = !!adminWheel.enabled;
+      document.getElementById('admin-wheel-daily-limit').value = adminWheel.maxSpinsPerDay;
+      document.getElementById('admin-wheel-custom-stake').checked = !!adminWheel.allowCustomStake;
       const lossRow = document.createElement('div'); lossRow.className = 'wheel-admin-row wheel-admin-loss';
       const lossLabel = document.createElement('span'); lossLabel.textContent = 'LOSE (0×) · automatic';
       const lossRate = document.createElement('strong'); lossRate.id = 'admin-wheel-loss-rate';
@@ -3724,8 +3765,10 @@
     function isPointsAdmin() { return window._appRole === 'points'; }
     function setWheelAdminReadOnly() {
       const readonly = isPointsAdmin();
-      const locked = readonly || !adminWheelLoaded;
+      const locked = readonly || !adminWheelLoaded || adminWheelSaving;
       document.getElementById('admin-wheel-enabled').disabled = locked;
+      document.getElementById('admin-wheel-daily-limit').disabled = locked;
+      document.getElementById('admin-wheel-custom-stake').disabled = locked;
       document.querySelectorAll('#admin-wheel-rows input, #admin-wheel-rows button').forEach(el => { el.disabled = locked || (el.tagName === 'BUTTON' && wheelEditorState().wins.length <= 1); });
       document.querySelector('#admin-wheel-rows + .wheel-admin-total + div button[onclick="addWheelOutcome()"]').disabled = locked || wheelEditorState().wins.length >= 11;
       const save = document.querySelector('#admin-wheel-rows + .wheel-admin-total + div button[onclick="saveWheelSettings()"]');
@@ -3751,7 +3794,10 @@
       if (adminWheelDirty) return;
       const sequence = ++adminWheelLoadSeq;
       adminWheelLoaded = false;
-      renderAdminWheel();
+      // Keep the existing rows in place during a refresh instead of briefly
+      // tearing down and rebuilding every button in the admin panel.
+      if (!document.querySelector('#admin-wheel-rows .wheel-outcome-row')) renderAdminWheel();
+      else setWheelAdminReadOnly();
       try {
         const response = await fetch('/api/admin/wheel', { headers:{'x-admin-token':adminToken} });
         const data = await response.json().catch(() => ({}));
@@ -3769,11 +3815,19 @@
     }
     async function saveWheelSettings() {
       if (isPointsAdmin()) { showAdminMsg('admin-panel-msg', 'Betting settings are read-only on Denfi Points.', 'error'); return; }
-      if (!adminWheelLoaded) { showAdminMsg('admin-panel-msg', 'Load the betting settings first.', 'error'); return; }
+      if (!adminWheelLoaded || adminWheelSaving) { if (!adminWheelSaving) showAdminMsg('admin-panel-msg', 'Load the betting settings first.', 'error'); return; }
       const state = wheelEditorState();
       if (!state.valid) { showAdminMsg('admin-panel-msg', 'Enter distinct winning multipliers with positive chances totaling no more than 100%. LOSE is calculated automatically.', 'error'); return; }
+      const maxSpinsPerDay = Number(adminWheel.maxSpinsPerDay);
+      if (!Number.isInteger(maxSpinsPerDay) || maxSpinsPerDay < 1 || maxSpinsPerDay > 100) {
+        showAdminMsg('admin-panel-msg', 'Enter a daily spin limit from 1 to 100.', 'error'); return;
+      }
       const outcomes = state.outcomes;
-      const resp = await fetch('/api/admin/wheel', { method:'POST', headers:{'Content-Type':'application/json','x-admin-token':adminToken}, body:JSON.stringify({enabled:document.getElementById('admin-wheel-enabled').checked, outcomes, mode:adminWheelConnected ? 'publish' : 'draft'}) }).then(async r => ({ ...await r.json(), httpStatus:r.status })).catch(() => ({success:false,error:'Betting game service is offline',httpStatus:503}));
+      adminWheelSaving = true;
+      setWheelAdminReadOnly();
+      const resp = await fetch('/api/admin/wheel', { method:'POST', headers:{'Content-Type':'application/json','x-admin-token':adminToken}, body:JSON.stringify({enabled:adminWheel.enabled, maxSpinsPerDay, allowCustomStake:adminWheel.allowCustomStake, outcomes, mode:adminWheelConnected ? 'publish' : 'draft'}) }).then(async r => ({ ...await r.json(), httpStatus:r.status })).catch(() => ({success:false,error:'Betting game service is offline',httpStatus:503}));
+      adminWheelSaving = false;
+      setWheelAdminReadOnly();
       if (resp.success) {
         adminWheel = editableWheel(resp.wheel || { enabled:false, outcomes });
         adminWheelDraft = !!resp.draft;
