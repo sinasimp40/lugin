@@ -1876,6 +1876,7 @@
           <nav class="admin-nav" aria-label="Admin settings">
             <div class="admin-nav-label">Settings</div>
             <button class="admin-tab active" onclick="switchAdminView('runtime',this)"><span class="admin-tab-mark"></span>Runtime</button>
+             <button class="admin-tab" onclick="switchAdminView('betting',this)"><span class="admin-tab-mark"></span>Betting Games</button>
             <button class="admin-tab" onclick="switchAdminView('appearance',this)"><span class="admin-tab-mark"></span>Appearance</button>
             <button class="admin-tab" onclick="switchAdminView('behavior',this)"><span class="admin-tab-mark"></span>Applications</button>
             <button class="admin-tab" onclick="switchAdminView('advertising',this)"><span class="admin-tab-mark"></span>Advertising</button>
@@ -1890,9 +1891,23 @@
                 <div class="admin-section" id="sync-server-section"><h3>Denfi Points server</h3><div id="sync-server-status" style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;margin-bottom:8px;color:#888">checking...</div><div class="form-group"><label>Server address</label><input type="text" id="admin-sync-url" placeholder="e.g. 10.10.10.29:5000" /></div><div style="display:flex;gap:6px"><button class="btn-admin" style="flex:1" onclick="saveSyncServer()">Connect</button><button class="btn-admin" style="flex:1" onclick="autoDetectSync()">Auto-Detect</button></div><button class="btn-admin danger" style="margin-top:8px;width:100%" onclick="disconnectSync()">Disconnect</button></div>
                 <div class="admin-section"><h3>Auto shutdown timer</h3><div class="form-group"><label>Minutes until shutdown (0 = disabled)</label><input type="number" id="admin-shutdown-time" placeholder="0" min="0" max="1440" /></div><button class="btn-admin" onclick="saveShutdownTime()">Save timer</button></div>
                 <div class="admin-section"><h3>Curfew hours</h3><div class="curfew-toggle-wrap"><label class="curfew-toggle"><input type="checkbox" id="admin-curfew-enabled" /><span class="slider"></span></label><span style="font-family:'Share Tech Mono',monospace;font-size:11px;color:#e0e0e0;letter-spacing:1px">Enable curfew</span></div><div class="form-group"><label>Start time</label><input type="time" id="admin-curfew-start" value="22:00" style="color-scheme:dark" /></div><div class="form-group"><label>End time</label><input type="time" id="admin-curfew-end" value="06:00" style="color-scheme:dark" /></div><button class="btn-admin" onclick="saveCurfewSettings()">Save curfew</button></div>
-                <div class="admin-section full-width"><h3>Betting games</h3><p style="font-size:11px;color:#888;margin-bottom:8px">Members stake the entire current-month balance. The server chooses and records every result.</p><div class="curfew-toggle-wrap"><label class="curfew-toggle"><input type="checkbox" id="admin-wheel-enabled" /><span class="slider"></span></label><span style="font-family:'Share Tech Mono';font-size:11px;color:#e0e0e0;letter-spacing:1px">Enable betting games</span></div><div style="display:grid;grid-template-columns:1fr 100px 34px;gap:7px;margin-top:12px;color:#8c9399;font:10px 'Share Tech Mono';letter-spacing:1px"><span>MULTIPLIER</span><span>CHANCE %</span><span></span></div><div class="wheel-admin-rows" id="admin-wheel-rows"></div><div class="wheel-admin-total" id="admin-wheel-total"></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-admin" type="button" onclick="addWheelOutcome()">Add multiplier</button><button class="btn-admin" type="button" onclick="saveWheelSettings()">Save betting game</button></div><div class="wheel-admin-readonly">Denfi Points: read-only here. Betting game balance is supplied by the member ledger; this panel never asks for a Points password.</div></div>
               </div>
             </section>
+             <section class="admin-page" id="admin-page-betting">
+               <div class="admin-page-intro"><div><h2>Betting Games</h2><p>Configure the horizontal roll shown in the member’s Points area.</p></div></div>
+               <div class="admin-grid">
+                 <div class="admin-section full-width">
+                   <h3>Multipliers and winning rates</h3>
+                   <p style="font-size:11px;color:#aeb4b8;margin-bottom:12px">Each spin stakes all current-month points. These chances are private to admins; equal-sized player tiles do not change the actual odds. Denfi Points records the result.</p>
+                   <div class="curfew-toggle-wrap"><label class="curfew-toggle"><input type="checkbox" id="admin-wheel-enabled" /><span class="slider"></span></label><span style="font-family:'Share Tech Mono';font-size:11px;color:#e0e0e0;letter-spacing:1px">Enable betting games</span></div>
+                   <div style="display:grid;grid-template-columns:1fr 100px 34px;gap:7px;margin-top:12px;color:#8c9399;font:10px 'Share Tech Mono';letter-spacing:1px"><span>MULTIPLIER (×)</span><span>WIN RATE %</span><span></span></div>
+                   <div class="wheel-admin-rows" id="admin-wheel-rows"></div>
+                   <div class="wheel-admin-total" id="admin-wheel-total"></div>
+                   <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-admin" type="button" onclick="addWheelOutcome()">Add multiplier</button><button class="btn-admin" type="button" onclick="saveWheelSettings()">Save betting game</button></div>
+                   <div class="wheel-admin-readonly" id="admin-wheel-status">Loading saved betting settings…</div>
+                 </div>
+               </div>
+             </section>
             <section class="admin-page" id="admin-page-appearance">
               <div class="admin-page-intro"><div><h2>Appearance</h2><p>Shape the lock screen without touching the customer flow.</p></div></div>
               <div class="admin-grid">
@@ -1954,6 +1969,7 @@
       });
       var workspace = document.querySelector('.admin-workspace');
       if (workspace) workspace.scrollTop = 0;
+      if (view === 'betting' && !adminWheelLoaded) loadAdminWheel();
     }
 
     var _confirmPending = false;
@@ -3620,24 +3636,22 @@
       loadAdminWheel();
     }
 
-    let adminWheel = { enabled: true, outcomes: [
-      { multiplier: 0, weight: 35 }, { multiplier: 0.5, weight: 20 },
-      { multiplier: 1, weight: 20 }, { multiplier: 2, weight: 15 }, { multiplier: 5, weight: 10 }
-    ] };
+    let adminWheel = { enabled: false, outcomes: [] };
+    let adminWheelLoaded = false;
     function renderAdminWheel() {
       const rows = document.getElementById('admin-wheel-rows');
       rows.replaceChildren();
       document.getElementById('admin-wheel-enabled').checked = !!adminWheel.enabled;
       (adminWheel.outcomes || []).forEach((outcome, index) => {
         const row = document.createElement('div'); row.className = 'wheel-admin-row';
-        const multiplier = document.createElement('input'); multiplier.type = 'number'; multiplier.step = '0.1'; multiplier.min = '0'; multiplier.value = Number(outcome.multiplier); multiplier.setAttribute('aria-label','Multiplier');
+        const multiplier = document.createElement('input'); multiplier.type = 'number'; multiplier.step = '0.01'; multiplier.min = '0'; multiplier.max = '100'; multiplier.value = Number(outcome.multiplier); multiplier.setAttribute('aria-label','Multiplier');
         const weight = document.createElement('input'); weight.type = 'number'; weight.step = '0.01'; weight.min = '0'; weight.max = '100'; weight.value = Number(outcome.weight); weight.setAttribute('aria-label','Weight percentage');
         const remove = document.createElement('button'); remove.className = 'btn-admin danger'; remove.type = 'button'; remove.textContent = '×'; remove.setAttribute('aria-label','Delete multiplier');
-        remove.disabled = adminWheel.outcomes.length <= 2 || isPointsAdmin();
+        remove.disabled = adminWheel.outcomes.length <= 2 || isPointsAdmin() || !adminWheelLoaded;
         remove.title = adminWheel.outcomes.length <= 2 ? 'At least 2 rows are required' : 'Delete multiplier';
         remove.addEventListener('click', () => {
           if (adminWheel.outcomes.length <= 2) { showAdminMsg('admin-panel-msg', 'Keep at least 2 multiplier rows.', 'error'); return; }
-          if (isPointsAdmin()) { showAdminMsg('admin-panel-msg', 'Betting settings are read-only on Denfi Points.', 'error'); return; }
+          if (isPointsAdmin() || !adminWheelLoaded) return;
           adminWheel.outcomes.splice(index, 1); renderAdminWheel();
         });
         [multiplier, weight].forEach(input => input.addEventListener('input', () => { adminWheel.outcomes[index] = { multiplier:Number(multiplier.value), weight:Number(weight.value) }; updateWheelTotal(); }));
@@ -3647,7 +3661,7 @@
       setWheelAdminReadOnly();
       const addButton = document.querySelector('#admin-wheel-rows + .wheel-admin-total + div button[onclick="addWheelOutcome()"]');
       if (addButton) {
-        addButton.disabled = isPointsAdmin() || adminWheel.outcomes.length >= 12;
+        addButton.disabled = isPointsAdmin() || !adminWheelLoaded || adminWheel.outcomes.length >= 12;
         addButton.title = adminWheel.outcomes.length >= 12 ? 'Maximum 12 rows allowed' : 'Add multiplier';
       }
     }
@@ -3658,36 +3672,48 @@
       el.classList.toggle('invalid', Math.abs(total - 100) >= 0.001);
     }
     function addWheelOutcome() {
-      if (isPointsAdmin()) { showAdminMsg('admin-panel-msg', 'Betting settings are read-only on Denfi Points.', 'error'); return; }
+      if (isPointsAdmin() || !adminWheelLoaded) return;
       if (adminWheel.outcomes.length >= 12) { showAdminMsg('admin-panel-msg', 'A maximum of 12 multiplier rows is allowed.', 'error'); return; }
-      adminWheel.outcomes.push({ multiplier: 1, weight: 0 });
+      const taken = new Set(adminWheel.outcomes.map(item => Number(item.multiplier)));
+      let next = 0;
+      while (taken.has(next)) next++;
+      adminWheel.outcomes.push({ multiplier: next, weight: 0 });
       renderAdminWheel();
     }
     function isPointsAdmin() { return window._appRole === 'points'; }
     function setWheelAdminReadOnly() {
       const readonly = isPointsAdmin();
-      document.getElementById('admin-wheel-enabled').disabled = readonly;
-      document.querySelectorAll('#admin-wheel-rows input, #admin-wheel-rows button').forEach(el => { el.disabled = readonly; });
-      document.querySelector('#admin-wheel-rows + .wheel-admin-total + div button[onclick="addWheelOutcome()"]').disabled = readonly;
-      document.querySelector('#admin-wheel-rows + .wheel-admin-total + div button[onclick="saveWheelSettings()"]').hidden = readonly;
-      const note = document.querySelector('#admin-page-runtime .wheel-admin-readonly');
+      const locked = readonly || !adminWheelLoaded;
+      document.getElementById('admin-wheel-enabled').disabled = locked;
+      document.querySelectorAll('#admin-wheel-rows input, #admin-wheel-rows button').forEach(el => { el.disabled = locked || (el.tagName === 'BUTTON' && adminWheel.outcomes.length <= 2); });
+      document.querySelector('#admin-wheel-rows + .wheel-admin-total + div button[onclick="addWheelOutcome()"]').disabled = locked || adminWheel.outcomes.length >= 12;
+      const save = document.querySelector('#admin-wheel-rows + .wheel-admin-total + div button[onclick="saveWheelSettings()"]');
+      save.hidden = readonly;
+      save.disabled = locked;
+      const note = document.getElementById('admin-wheel-status');
       if (note) note.textContent = readonly
         ? 'Read-only on Denfi Points. Betting settings can only be changed from the Auto Shutdown operator panel.'
-        : 'Denfi Points: read-only here. Betting game balance is supplied by the member ledger; this panel never asks for a Points password.';
+        : adminWheelLoaded
+          ? 'These settings are saved on Denfi Points. The displayed win rates are visible to admins only.'
+          : 'Connect Denfi Points from Runtime first, then return here to load and edit betting settings.';
     }
     async function loadAdminWheel() {
       if (!adminToken) return;
+      adminWheelLoaded = false;
+      adminWheel = { enabled: false, outcomes: [] };
       renderAdminWheel();
       try {
         const response = await fetch('/api/admin/wheel', { headers:{'x-admin-token':adminToken} });
         const data = await response.json().catch(() => ({}));
         if (!response.ok || !data.success) throw new Error(data.error || 'Could not load betting game settings');
         adminWheel = data.wheel || { enabled:false, outcomes:[] };
+        adminWheelLoaded = true;
         renderAdminWheel();
       } catch (e) { showAdminMsg('admin-panel-msg', e.message || 'Betting game settings unavailable', 'error'); }
     }
     async function saveWheelSettings() {
       if (isPointsAdmin()) { showAdminMsg('admin-panel-msg', 'Betting settings are read-only on Denfi Points.', 'error'); return; }
+      if (!adminWheelLoaded) { showAdminMsg('admin-panel-msg', 'Connect Denfi Points and load the saved settings first.', 'error'); return; }
       const total = (adminWheel.outcomes || []).reduce((sum, item) => sum + (Number(item.weight) || 0), 0);
       if (!adminWheel.outcomes.length || Math.abs(total - 100) >= 0.001) { showAdminMsg('admin-panel-msg', 'Betting game weights must total exactly 100%.', 'error'); return; }
       const outcomes = adminWheel.outcomes.map(item => ({ multiplier:Number(item.multiplier), weight:Number(item.weight) }));

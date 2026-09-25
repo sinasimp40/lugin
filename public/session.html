@@ -548,9 +548,10 @@
   .wheel-pointer::after { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); border-left:6px solid transparent; border-right:6px solid transparent; border-top:8px solid #f4ef12; }
   .wheel-disc { position:absolute; inset:0; width:auto; height:auto; border:0; border-radius:0; background:transparent !important; box-shadow:none; transition:none; overflow:visible; }
   .wheel-disc::after { display:none; }
-  .wheel-labels { position:absolute; inset:0; display:flex; align-items:center; gap:6px; padding:0 calc(50% - 38px); width:max-content; transform:translateX(0); transition:transform 4.2s cubic-bezier(.12,.78,.18,1); }
+  .wheel-labels { position:absolute; inset:0; display:flex; align-items:center; gap:6px; padding:0 calc(50% - 38px); width:max-content; transform:translateX(0); }
   .wheel-label { position:static; flex:0 0 76px; height:64px; display:flex; align-items:center; justify-content:center; transform:none; border:1px solid rgba(244,239,18,.22); border-radius:2px; background:linear-gradient(180deg,#25261b,#171812); color:#eeeac0; font-size:16px; text-shadow:0 1px 4px #000; }
   .wheel-label.is-target { border-color:#f4ef12; color:#fffca7; background:linear-gradient(180deg,#605d10,#29280a); box-shadow:inset 0 0 0 1px rgba(244,239,18,.25); }
+  .wheel-label.is-target.is-loss { color:#ffd0bc; border-color:#ff7855; background:linear-gradient(180deg,#643126,#301510); font-size:10px; }
   .wheel-result { min-height:21px; color:#f4ef12; font-size:13px; }
   .wheel-stats { margin:8px 0; }
   .wheel-stat { border-color:rgba(244,239,18,.18); color:#88866f; }
@@ -659,7 +660,7 @@
       <div id="wheel-view" class="wheel-view">
         <div class="wheel-intro"><div class="wheel-kicker">ALL-IN MULTIPLIER REEL<span class="demo-badge" id="wheel-demo-badge" hidden>DEMO</span></div><div class="wheel-balance" id="wheel-balance">0 PTS</div></div>
         <div class="wheel-warning">ONE SPIN STAKES YOUR ENTIRE BALANCE. THE SERVER LOCKS THE RESULT.</div>
-        <div class="wheel-explanation">Numbers roll only after your confirmed request returns. Tiles are presentation, not probability.</div>
+        <div class="wheel-explanation">The reel is visual only. Denfi Points chooses the result; equal tiles do not mean equal chances.</div>
         <div class="wheel-confirm" id="wheel-confirm" role="alertdialog" aria-labelledby="wheel-confirm-text" aria-modal="false">
           <div class="wheel-confirm-text" id="wheel-confirm-text">Confirm staking your entire points balance?</div>
           <div class="wheel-confirm-actions"><button type="button" id="wheel-confirm-no">CANCEL</button><button type="button" class="wheel-confirm-yes" id="wheel-confirm-yes">STAKE ALL POINTS</button></div>
@@ -795,6 +796,7 @@
     let wheelMultipliers = [];
     let wheelOddsToken = '';
     let wheelReelOffset = 0;
+    let wheelReelAnimation = null;
     let drawerResizeTimer = null;
     function wheelPendingKey(username) {
       return `denfi-wheel-pending:${String(username || '').toLowerCase()}`;
@@ -1011,6 +1013,7 @@
     }
     function renderWheel() {
       if (!wheelData) return;
+      if (wheelReelAnimation) { wheelReelAnimation.cancel(); wheelReelAnimation = null; }
       const multipliers = Array.isArray(wheelData.multipliers) ? wheelData.multipliers : [];
       document.getElementById('wheel-balance').textContent = wheelMoney(wheelData.balance);
       document.getElementById('wheel-stake').textContent = wheelMoney(wheelData.balance);
@@ -1022,7 +1025,7 @@
       tiles.forEach((multiplier, index) => {
         const label = document.createElement('span');
         label.className = 'wheel-label';
-        label.textContent = `${Number(multiplier)}x`;
+        label.textContent = `${Number(multiplier)}×`;
         label.dataset.index = String(index);
         labels.appendChild(label);
       });
@@ -1031,6 +1034,27 @@
       void labels.offsetWidth;
       labels.style.transition = '';
       resizeDrawerToContent();
+    }
+    function beginReelRoll(multipliers) {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const labels = document.getElementById('wheel-labels');
+      if (!labels.animate) return;
+      if (wheelReelAnimation) wheelReelAnimation.cancel();
+      const cycle = Math.max(2, multipliers.length) * 82;
+      wheelReelAnimation = labels.animate([
+        { transform: `translateX(${wheelReelOffset}px)` },
+        { transform: `translateX(${wheelReelOffset - cycle}px)` }
+      ], { duration: 700, iterations: Infinity, easing: 'linear' });
+    }
+    function stopReelRoll() {
+      if (!wheelReelAnimation) return wheelReelOffset;
+      const labels = document.getElementById('wheel-labels');
+      let offset = wheelReelOffset;
+      try { offset = new DOMMatrixReadOnly(getComputedStyle(labels).transform).m41; } catch (_) {}
+      wheelReelAnimation.cancel();
+      wheelReelAnimation = null;
+      labels.style.transform = `translateX(${offset}px)`;
+      return offset;
     }
     async function loadWheel() {
       const loadSequence = ++wheelLoadSequence;
@@ -1163,10 +1187,14 @@
         wheelRequestId = wheelRequestId || createWheelRequestId();
         wheelRequestUsername = requestUsername;
         if (!recovering) writePendingWheel(requestUsername, wheelRequestId, expectedStake, wheelData.multipliers, wheelData.oddsToken);
+        beginReelRoll(wheelData.multipliers);
         let spin;
         if (previewMode) {
           await new Promise(resolve => setTimeout(resolve, 400));
-          spin = { stake: expectedStake, multiplier: 2, payout: expectedStake * 2, balance: expectedStake * 2, net: expectedStake, id:'preview-spin', createdAt:new Date().toISOString() };
+          const demoParameter = new URLSearchParams(location.search).get('result');
+          const demoChoice = demoParameter === null ? 2 : Number(demoParameter);
+          const demoMultiplier = wheelData.multipliers.includes(demoChoice) ? demoChoice : 2;
+          spin = { stake: expectedStake, multiplier: demoMultiplier, payout: expectedStake * demoMultiplier, balance: expectedStake * demoMultiplier, net: expectedStake * (demoMultiplier - 1), id:'preview-spin', createdAt:new Date().toISOString() };
         } else {
           const response = await fetch('/api/session/wheel/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
             requestId:wheelRequestId, expectedStake,
@@ -1198,6 +1226,7 @@
         }
         const sameMember = String(sessionUsername || '').toLowerCase() === String(requestUsername || '').toLowerCase();
         if (!sameMember) {
+          stopReelRoll();
           clearPendingWheel(requestUsername, wheelRequestId);
           wheelSpinInFlight = false; wheelRequestId = null; wheelRequestUsername = '';
           wheelExpectedStake = null;
@@ -1208,24 +1237,38 @@
         const visible = Array.isArray(wheelData.multipliers) && wheelData.multipliers.length ? wheelData.multipliers : [0,.5,1,2,5];
         const resultChoice = visible.findIndex(value => Number(value) === result);
         if (resultChoice < 0) throw new Error('Server returned an unknown multiplier result.');
-        const targetIndex = Math.ceil(18 / visible.length) * visible.length + resultChoice;
+        const targetIndex = Math.ceil(30 / visible.length) * visible.length + resultChoice;
         const tileWidth = 82;
         wheelReelOffset = -(targetIndex * tileWidth);
         const labels = document.getElementById('wheel-labels');
-        Array.from(labels.children).forEach((el, index) => el.classList.toggle('is-target', index === targetIndex));
-        labels.style.transition = 'none';
-        labels.style.transform = `translateX(${-Math.ceil(8 / visible.length) * visible.length * tileWidth}px)`;
-        void labels.offsetWidth;
-        labels.style.transition = '';
-        labels.style.transform = `translateX(${wheelReelOffset}px)`;
-        const settle = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 4300;
+        const fromOffset = stopReelRoll();
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const settle = reducedMotion ? 0 : 3600;
+        if (!reducedMotion && labels.animate) {
+          wheelReelAnimation = labels.animate([
+            { transform: `translateX(${fromOffset}px)` },
+            { transform: `translateX(${wheelReelOffset}px)` }
+          ], { duration: settle, easing: 'cubic-bezier(.08,.78,.12,1)', fill: 'forwards' });
+        } else {
+          labels.style.transform = `translateX(${wheelReelOffset}px)`;
+        }
         setTimeout(() => {
+          if (wheelReelAnimation) { wheelReelAnimation.cancel(); wheelReelAnimation = null; }
+          labels.style.transform = `translateX(${wheelReelOffset}px)`;
+          const chosenTile = labels.children[targetIndex];
+          if (chosenTile) {
+            chosenTile.classList.add('is-target');
+            if (result === 0) {
+              chosenTile.classList.add('is-loss');
+              chosenTile.textContent = 'LOSE 0×';
+            }
+          }
           if (String(sessionUsername || '').toLowerCase() !== String(requestUsername || '').toLowerCase()) {
             clearPendingWheel(requestUsername, wheelRequestId);
             wheelSpinInFlight = false; wheelRequestId = null; wheelRequestUsername = ''; wheelExpectedStake = null; wheelMultipliers = []; wheelOddsToken = '';
             return;
           }
-          document.getElementById('wheel-result').textContent = `${Number(spin.multiplier)}x RESULT CONFIRMED`;
+          document.getElementById('wheel-result').textContent = result === 0 ? 'LOSE — 0× RESULT CONFIRMED' : `${result}× RESULT CONFIRMED`;
           document.getElementById('wheel-stake').textContent = wheelMoney(spin.stake);
           document.getElementById('wheel-payout').textContent = wheelMoney(spin.payout);
           document.getElementById('wheel-new-balance').textContent = wheelMoney(spin.balance);
@@ -1242,6 +1285,7 @@
           resizeDrawerToContent();
         }, settle);
       } catch (e) {
+        stopReelRoll();
         if (e && e.code === 'KNOWN_NOT_SETTLED') {
           clearPendingWheel(requestUsername, wheelRequestId);
           wheelSpinInFlight = false;
