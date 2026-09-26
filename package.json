@@ -70,6 +70,10 @@
       {
         "from": "denfi-watchdog.ps1",
         "to": "denfi-watchdog.ps1"
+      },
+      {
+        "from": "denfi-watchdog-launch.vbs",
+        "to": "denfi-watchdog-launch.vbs"
       }
     ]
   },

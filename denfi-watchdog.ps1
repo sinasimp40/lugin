@@ -10,11 +10,11 @@
 # ---------------------------------------------------------------------------
 # HOW TO USE
 # ---------------------------------------------------------------------------
-#   1) Copy this file anywhere on the kiosk PC (e.g. the Desktop).
-#   2) Right-click it -> "Run with PowerShell"  (run as Administrator is best).
-#      ...or in a PowerShell window:
-#         powershell -ExecutionPolicy Bypass -File .\denfi-watchdog.ps1
-#   3) Done. It installs + starts immediately and re-arms at every logon.
+#   1) Keep denfi-watchdog-launch.vbs beside this file on the kiosk PC.
+#   2) Double-click denfi-watchdog-launch.vbs. No PowerShell window appears.
+#   3) Check watchdog-install.log in the app data folder for the result.
+#      It installs + starts immediately and re-arms at every logon.
+#      For interactive troubleshooting, run this script directly in PowerShell.
 #
 #   To remove it later:
 #         powershell -ExecutionPolicy Bypass -File .\denfi-watchdog.ps1 -Uninstall
@@ -262,29 +262,42 @@ function Invoke-Install {
   }
 
   try { if (-not (Test-Path $data)) { New-Item -ItemType Directory -Path $data -Force | Out-Null } } catch {}
-
-  # Install a stable copy of THIS script into the data folder so the task keeps
-  # working even if the operator deletes the file they ran from the Desktop.
-  $installedScript = Join-Path $data "denfi-watchdog.ps1"
-  try {
-    if ($PSCommandPath -and ((Resolve-Path $PSCommandPath).Path -ne (Join-Path $data "denfi-watchdog.ps1"))) {
-      Copy-Item -Path $PSCommandPath -Destination $installedScript -Force
-    }
-  } catch {
-    # Fall back to running from the original location if copy fails.
-    $installedScript = $PSCommandPath
+  $installLog = Join-Path $data "watchdog-install.log"
+  function Write-InstallLog([string]$message) {
+    try {
+      Add-Content -Path $installLog -Value ("[{0}] {1}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $message) -EA Stop
+    } catch {}
   }
-  if (-not (Test-Path $installedScript)) { $installedScript = $PSCommandPath }
+  Write-InstallLog "Installing watchdog for $exe"
 
-  $argLine = "-ExecutionPolicy Bypass -WindowStyle Hidden -NoProfile -File `"$installedScript`" -Watch -TargetExe `"$exe`" -DataDir `"$data`" -PollSeconds $poll"
+  # Install stable copies of both files together so the task keeps working
+  # even if the operator deletes the files they ran from the Desktop.
+  $installedScript = Join-Path $data "denfi-watchdog.ps1"
+  $installedLauncher = Join-Path $data "denfi-watchdog-launch.vbs"
+  $launcherSource = Join-Path (Split-Path -Parent $PSCommandPath) "denfi-watchdog-launch.vbs"
+  try {
+    if (-not $PSCommandPath -or -not (Test-Path $launcherSource)) {
+      throw "denfi-watchdog-launch.vbs must be beside denfi-watchdog.ps1."
+    }
+    if ($PSCommandPath -ne $installedScript) { Copy-Item -Path $PSCommandPath -Destination $installedScript -Force -EA Stop }
+    if ($launcherSource -ne $installedLauncher) { Copy-Item -Path $launcherSource -Destination $installedLauncher -Force -EA Stop }
+  } catch {
+    Write-InstallLog "FAILED to install watchdog files: $($_.Exception.Message)"
+    Write-Host "Failed to install watchdog files: $($_.Exception.Message)" -ForegroundColor Red
+    return
+  }
+
+  $argLine = "//B //Nologo `"$installedLauncher`" -Watch -TargetExe `"$exe`" -DataDir `"$data`" -PollSeconds $poll"
 
   try {
-    $action   = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $argLine
+    $action   = New-ScheduledTaskAction -Execute "wscript.exe" -Argument $argLine
     $trigger  = New-ScheduledTaskTrigger -AtLogOn
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1)
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Force -RunLevel Limited | Out-Null
+    Write-InstallLog "Scheduled task registered (windowless launcher)."
     Write-Host "Installed scheduled task '$TaskName' (runs at every logon)." -ForegroundColor Green
   } catch {
+    Write-InstallLog "FAILED to register scheduled task: $($_.Exception.Message)"
     Write-Host "Failed to register scheduled task: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "Try running this script as Administrator." -ForegroundColor Yellow
     return
@@ -292,9 +305,28 @@ function Invoke-Install {
 
   # Start it now so you do not have to log off/on.
   try {
+    # Reinstalling an older task must stop its visible PowerShell instance
+    # before starting the windowless one.
+    if ((Get-ScheduledTask -TaskName $TaskName -EA Stop).State -eq 'Running') {
+      Stop-ScheduledTask -TaskName $TaskName -EA Stop
+    }
+    $oldProcess = $null
+    for ($attempt = 0; $attempt -lt 20; $attempt++) {
+      $lock = Join-Path $data "watchdog.lock"
+      if (-not (Test-Path $lock)) { $oldProcess = $null; break }
+      $oldPid = Get-Content $lock -EA SilentlyContinue | Select-Object -First 1
+      $oldProcess = if ($oldPid -match '^\d+$') { Get-Process -Id $oldPid -EA SilentlyContinue }
+      if (-not $oldProcess -or $oldProcess.ProcessName -notmatch '^(powershell|pwsh)$') { break }
+      Start-Sleep -Milliseconds 250
+    }
+    if ($oldProcess -and $oldProcess.ProcessName -match '^(powershell|pwsh)$') {
+      throw "The previous watchdog is still running. Close its old window, then rerun the silent launcher."
+    }
     Start-ScheduledTask -TaskName $TaskName
+    Write-InstallLog "Scheduled task started. Check watchdog.log for the watchdog startup."
     Write-Host "Watchdog started now." -ForegroundColor Green
   } catch {
+    Write-InstallLog "Could not start scheduled task immediately: $($_.Exception.Message)"
     Write-Host "Could not start the task immediately: $($_.Exception.Message)" -ForegroundColor Yellow
     Write-Host "It will start automatically at the next logon." -ForegroundColor Yellow
   }
