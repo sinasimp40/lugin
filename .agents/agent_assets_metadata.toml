@@ -98,3 +98,17 @@ mtime_ms = 1790394597204
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/fefb8289-64b0-48ab-8832-dd911da3db17/ff69884c-7240-4cb4-83e7-adf1b709539e"
 storage_version_token = "1790394605596802"
 content_type = "image/png"
+
+[[outputs]]
+id = "mCExsGPCfacVGPOCV_rqf"
+uri = "file://screenshots/premium-recent-win-closeup.png"
+type = "image"
+title = "Premium recent-win popup"
+description = "Live app preview: richer gold background and crest, prominent member and multiplier, compact above the session bar."
+logical_id = "5e43d144-19ad-4781-88d1-7eddfc5e32f2"
+content_hash = "sha256:192b39e80631341c00ee23cf82a63cdcfad4f4af91b7a7045ae09312df9cc884"
+size = 181529
+mtime_ms = 1790395958276
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/5e43d144-19ad-4781-88d1-7eddfc5e32f2/5c12c354-feb7-4657-a6c6-878141a81242"
+storage_version_token = "1790395993556384"
+content_type = "image/png"

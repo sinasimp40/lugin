@@ -360,6 +360,52 @@
   .win-panel-result { display:flex; flex:none; flex-direction:column; align-items:flex-end; gap:1px; padding-left:12px; border-left:1px solid rgba(255,140,0,.2); }
   .win-panel-result strong { color:#f4ef12; font:800 26px 'Orbitron',sans-serif; line-height:1; text-shadow:0 0 10px rgba(244,239,18,.25); }
   .win-panel-result span { color:#a89e65; font:9px 'Share Tech Mono',monospace; letter-spacing:1px; }
+  .drawer.wins-drawer {
+    isolation:isolate;
+    background:
+      radial-gradient(ellipse at 76% 115%,rgba(223,136,30,.27),transparent 54%),
+      radial-gradient(ellipse at 12% -30%,rgba(255,215,121,.19),transparent 55%),
+      repeating-linear-gradient(125deg,transparent 0 9px,rgba(255,218,130,.014) 10px 11px),
+      linear-gradient(125deg,#222017 0%,#111516 58%,#171409 100%);
+    border:1px solid #a37738; border-top:3px solid #ffdf91;
+    box-shadow:0 -13px 36px rgba(0,0,0,.78),0 0 0 1px rgba(255,223,148,.12) inset,0 0 25px rgba(255,167,41,.17);
+  }
+  .drawer.wins-drawer::before {
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:-1;
+    background:linear-gradient(108deg,transparent 18%,rgba(255,224,157,.10) 38%,transparent 55%);
+  }
+  .wins-drawer .drawer-head { height:37px; padding:0 12px 0 14px; border-bottom:1px solid rgba(255,216,136,.23); background:rgba(13,12,9,.28); }
+  .wins-drawer .drawer-title { display:flex; align-items:center; gap:9px; font-size:12px; letter-spacing:2px; color:#ffdf9e; }
+  .wins-drawer .drawer-title::before {
+    content:''; width:7px; height:7px; background:#ffd277; transform:rotate(45deg);
+    box-shadow:0 0 12px #ffc253;
+  }
+  .wins-drawer .drawer-close {
+    width:30px; height:28px; padding:0; line-height:25px; border:1px solid rgba(255,207,123,.36);
+    border-radius:3px; background:rgba(255,207,123,.08); color:#ffdda0;
+    font:21px 'Share Tech Mono',monospace;
+  }
+  .wins-drawer .drawer-close:hover, .wins-drawer .drawer-close:focus-visible { background:#cd943a; color:#111; }
+  .wins-drawer .drawer-body { padding:11px 13px; }
+  .wins-drawer .win-panel { gap:11px; }
+  .wins-drawer .win-panel-crest {
+    flex:0 0 48px; width:48px; height:48px; display:grid; place-items:center;
+    color:#ffdf8f; font:26px 'Orbitron',sans-serif;
+    border:1px solid rgba(255,215,132,.77); transform:rotate(45deg) scale(.72);
+    background:linear-gradient(140deg,#79521c,#281d0d 70%); box-shadow:0 0 0 6px rgba(255,197,78,.07),0 0 20px rgba(255,174,49,.32);
+  }
+  .wins-drawer .win-panel-crest span { transform:rotate(-45deg) scale(1.4); }
+  .wins-drawer .win-panel-user-group { flex:1; display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .wins-drawer .win-panel-eyebrow { font:10px 'Share Tech Mono',monospace; letter-spacing:1.7px; color:#d0ae75; }
+  .wins-drawer .win-panel-user { color:#fff6de; font-size:21px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:0 1px 12px rgba(255,204,110,.28); }
+  .wins-drawer .win-panel-result {
+    gap:2px; min-width:90px; align-items:center; padding:7px 8px;
+    border:1px solid rgba(255,217,129,.66); border-radius:2px;
+    background:linear-gradient(145deg,#6c471a 0%,#392714 48%,#211b12 100%);
+    box-shadow:0 0 19px rgba(235,162,43,.17),0 1px 0 rgba(255,232,166,.19) inset;
+  }
+  .wins-drawer .win-panel-result strong { color:#fff0a6; font-size:32px; text-shadow:0 0 14px rgba(255,193,60,.55); }
+  .wins-drawer .win-panel-result span { color:#e9c682; font-size:8px; letter-spacing:1.3px; }
   .points-zone {
     display:none;
   }
@@ -667,7 +713,8 @@
         <div id="attendance-content"></div>
       </div>
       <div id="wins-view" class="win-panel" style="display:none" role="status" aria-live="polite">
-        <div class="win-panel-user" id="win-user"></div>
+        <div class="win-panel-crest" aria-hidden="true"><span>✦</span></div>
+        <div class="win-panel-user-group"><span class="win-panel-eyebrow">MEMBER WINNER</span><div class="win-panel-user" id="win-user"></div></div>
         <div class="win-panel-result"><strong id="win-multiplier"></strong><span>MULTIPLIER</span></div>
       </div>
       <div id="wheel-view" class="wheel-view">
@@ -1063,6 +1110,7 @@
       document.getElementById('drawer').style.minHeight = '';
       document.querySelector('.overlay-shell').classList.toggle('drawer-below', placement === 'below');
       document.getElementById('drawer').classList.add('active');
+      document.getElementById('drawer').classList.toggle('wins-drawer', view === 'wins');
       document.getElementById('shop-btn').classList.toggle('active', view === 'shop');
       document.getElementById('rank-btn').classList.toggle('active', view === 'rank');
       document.getElementById('attendance-btn').classList.toggle('active', view === 'attendance');
@@ -1074,7 +1122,7 @@
       document.getElementById('wheel-view').style.display = view === 'games' ? 'block' : 'none';
       document.getElementById('cart-bar').style.display = view === 'shop' ? 'flex' : 'none';
       document.getElementById('rank-note').style.display = view === 'rank' ? '' : 'none';
-      document.getElementById('drawer-title').textContent = view === 'shop' ? 'QUICK ORDER' : view === 'rank' ? 'TOP 5 REGULARS' : view === 'attendance' ? 'ATTENDANCE' : view === 'wins' ? 'WINNER' : 'BETTING GAMES';
+      document.getElementById('drawer-title').textContent = view === 'shop' ? 'QUICK ORDER' : view === 'rank' ? 'TOP 5 REGULARS' : view === 'attendance' ? 'ATTENDANCE' : view === 'wins' ? 'LATEST WIN' : 'BETTING GAMES';
       resizeDrawerToContent();
       if (view === 'shop') loadProducts();
       else if (view === 'rank') loadLeaderboard();

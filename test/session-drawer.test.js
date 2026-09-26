@@ -86,7 +86,7 @@ test('switching session drawers measures the new panel instead of keeping the pr
   await view.openDrawer('wins');
   flush();
   assert.equal(elements.get('wins-view').style.display, '', 'the win popup uses the shared drawer');
-  assert.equal(elements.get('drawer-title').textContent, 'WINNER');
+   assert.equal(elements.get('drawer-title').textContent, 'LATEST WIN');
   assert.equal(heights.at(-1), Math.ceil((150 + 70) * 0.72));
   view.setPending();
   view.closeDrawer();
