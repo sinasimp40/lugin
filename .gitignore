@@ -3,3 +3,6 @@ build/
 dist/
 npm-debug.log*
 data/attendance.json
+data/*.db
+data/*.db-*
+data/legacy-json-backups/

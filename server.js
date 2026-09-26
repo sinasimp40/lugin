@@ -12,6 +12,19 @@ const { defaultWheel, parseWheel, oddsToken } = require('./src/wheel-config');
 
 const appRoleInit = process.env.DENFI_APP_ROLE || 'auto-shutdown';
 settings.setAppRole(appRoleInit);
+// The desktop entry point initializes SQLite before loading this module.
+// Headless Points launches use the same storage instead of writing to JSON.
+if (appRoleInit === 'points' && !process.versions.electron &&
+    (!process.env.DENFI_TEST_DATA_DIR || process.env.DENFI_POINTS_SQLITE === '1')) {
+  const dir = process.env.DENFI_TEST_DATA_DIR || path.join(__dirname, 'data');
+  settings.setDataDir(dir);
+  coinLogs.setDataDir(dir);
+  orderStore.setDataDir(dir);
+  attendance.setDataDir(dir);
+  const db = require('./src/points-database').initialize(dir);
+  coinLogs.useSqlite(db);
+  attendance.useSqlite(db);
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -2177,14 +2190,18 @@ function attendanceConfig() {
 
 function attendanceResult(username, day) {
   const config = settings.getAttendancePolicy(day);
-  const progress = attendance.status(username, day);
-  if (config.enabled && (config.mode === 'login' || progress.seconds >= config.minutes * 60) && !progress.awarded) {
-    coinLogs.appendAttendanceAward(username, day, config.points);
-    attendance.markAwarded(username, day, config.points);
-    progress.awarded = true;
-    progress.awardedPoints = config.points;
-  }
-  return { ...progress, ...config, points: progress.awardedPoints ?? config.points };
+  const getResult = () => {
+    const progress = attendance.status(username, day);
+    if (config.enabled && (config.mode === 'login' || progress.seconds >= config.minutes * 60) && !progress.awarded) {
+      coinLogs.appendAttendanceAward(username, day, config.points);
+      attendance.markAwarded(username, day, config.points);
+      progress.awarded = true;
+      progress.awardedPoints = config.points;
+    }
+    return { ...progress, ...config, points: progress.awardedPoints ?? config.points };
+  };
+  const database = require('./src/points-database');
+  return appRole === 'points' && database.isActive() ? database.transaction(getResult) : getResult();
 }
 
 app.get('/api/sync/attendance-config', (req, res) => {

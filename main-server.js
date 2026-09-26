@@ -62,6 +62,9 @@ app.on('ready', async () => {
   attendance.setDataDir(dataDir);
 
   try {
+    const db = require('./src/points-database').initialize(dataDir);
+    coinLogs.useSqlite(db);
+    attendance.useSqlite(db);
     serverModule = require('./server');
   } catch (err) {
     console.error('[Denfi Points] Failed to start server:', err);

@@ -21,7 +21,7 @@ The application is built using Electron for the desktop client, with a Node.js (
 - **Electron Main Process (`main.js`):** Manages window creation (login, session), single instance lock, IPC communication, system hardening (blocking keys, focus guard), and auto-logout on app close.
 - **Express Server (`server.js`):** Proxies requests to `pisonet.app` (MikroTik hotspot), handles CHAP hashing, JuanFi Pisonet API proxy, and broadcasts session status via WebSocket. It also exposes admin API endpoints and ad management CRUD.
 - **Settings Store (`src/settings-store.js`):** Uses JSON files in `./data/` for storing settings like computer name, auto-shutdown timer, background/login panel images, theme colors, curfew hours, and advertisements. Employs scrypt for password hashing.
-- **Coin Log Store (`src/coin-log-store.js`):** Manages coin insertion logs, including `appendLog` (with dedup), `getLogs` (with filters), `getMemberPoints`, `deleteLog`, `recalcAllPoints`, and `ensurePointsSync`. Logs are stored in `data/coin-logs.json` with atomic writes.
+- **Coin Log Store (`src/coin-log-store.js`):** Manages coin insertion logs, including `appendLog` (with dedup), `getLogs` (with filters), `getMemberPoints`, `deleteLog`, `recalcAllPoints`, and `ensurePointsSync`. Denfi Points desktop uses `data/denfi-points.db` (SQLite), automatically importing existing `coin-logs.json` on first start; Auto Shutdown continues using its local JSON store.
 - **WebSocket Server:** Provides real-time session updates, broadcasting status and settings changes to connected clients.
 - **Pisonet Mode:** Uses JuanFi API for coin slot control (`/pisonet/avail`, `/pisonet/done`) and `/checkCoin` for real-time updates.
 - **Walk-Up Mode:** Detects session login via background polling of `/api/hotspot/login-data` and auto-shows session.
@@ -31,7 +31,7 @@ The application is built using Electron for the desktop client, with a Node.js (
 - **Security:** HMAC-SHA256 signatures for `settings.json` and `coin-logs.json` to detect tampering.
 - **Electron Hardening:** Includes single instance lock, `kiosk: true`, `globalShortcut` blocking of critical keys, focus guard, auto-shutdown, PowerShell keyboard hook, and runtime registry tweaks to disable Windows features like Task Manager and Win keys.
 - **Point System:** Supports configurable coin and point rates. Point calculation is decimal, per-transaction, using a best-match algorithm. Historical log points are recalculated on rate changes.
-- **Data Sync for Diskless/Deep Freeze:** Supports HTTP Sync to a central server or shared folder for `coin-logs.json` and `settings-server.json`.
+- **Data Sync for Diskless/Deep Freeze:** Kiosks exchange points and attendance data with Denfi Points over HTTP; do not share the SQLite file between PCs. Denfi Points imports existing `coin-logs.json` and `attendance.json` into a local database. `settings-server.json` remains JSON.
 - **App Role System:** Distinguishes between `auto-shutdown` (client) and `points` (server-only) roles using `DENFI_APP_ROLE` environment variable, leading to separate settings files (`settings-client.json`, `settings-server.json`) and different default ports.
 - **Rates Synchronization:** Auto-shutdown clients fetch and periodically sync coin/point rates from the Denfi Points server when configured.
 - **Security Fixes:** Implementation of custom confirm modals, XSS sanitization, proper form-wrapped password fields, token clearing race fix, and stop-app race condition fix.

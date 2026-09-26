@@ -183,4 +183,15 @@ function markAwarded(username, day, points) {
   }
 }
 
-module.exports = { setDataDir, dayKey, onlineSample, recordOnline, record, merge, status, yearEntries, markAwarded, pendingSamples, markSynced, acknowledge };
+module.exports = {
+  setDataDir, dayKey, onlineSample, recordOnline, record, merge, status, yearEntries,
+  markAwarded, pendingSamples, markSynced, acknowledge,
+  useSqlite(db) {
+    const store = require('./attendance-sqlite-store').createStore(db);
+    for (const name of Object.keys(module.exports)) {
+      if (name === 'setDataDir' || name === 'useSqlite') continue;
+      if (typeof store[name] !== 'function') throw new Error(`SQLite attendance store missing ${name}`);
+    }
+    for (const [name, fn] of Object.entries(store)) module.exports[name] = fn;
+  }
+};

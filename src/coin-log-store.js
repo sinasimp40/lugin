@@ -469,5 +469,13 @@ module.exports = {
   getCurrentPeriodKey,
   getPreviousPeriodKey,
   getCalendarDayKey,
-  getDailyWheelStatus
+  getDailyWheelStatus,
+  useSqlite(db) {
+    const store = require('./coin-log-sqlite-store').createStore(db);
+    for (const name of Object.keys(module.exports)) {
+      if (name === 'setDataDir' || name === 'useSqlite') continue;
+      if (typeof store[name] !== 'function') throw new Error(`SQLite coin store missing ${name}`);
+    }
+    for (const [name, fn] of Object.entries(store)) module.exports[name] = fn;
+  }
 };
