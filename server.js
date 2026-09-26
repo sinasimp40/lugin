@@ -1802,6 +1802,7 @@ let wheelWinsBaseline = null;
 let wheelWinsLastError = '';
 const announcedWheelWinIds = new Set();
 const recentWheelWinBroadcasts = new Map();
+const WHEEL_WIN_FEED_WINDOW_MS = 120000;
 
 async function pollWheelWins() {
   if (appRole !== 'auto-shutdown' || !syncServerUrl || wheelWinsFetching || !wsClients.size) return;
@@ -1812,8 +1813,9 @@ async function pollWheelWins() {
     if (source !== syncServerUrl || !Array.isArray(data.wins) ||
         !Number.isSafeInteger(data.serverTime)) return;
     // Use the Points computer's clock, not the diskless kiosk's clock.
-    // Include spins still settling when a kiosk first connects.
-    if (wheelWinsBaseline === null) wheelWinsBaseline = data.serverTime - 10000;
+    // A session can start on another PC after the reel has already finished.
+    // Match the two-minute history returned by the Points win feed.
+    if (wheelWinsBaseline === null) wheelWinsBaseline = data.serverTime - WHEEL_WIN_FEED_WINDOW_MS;
     wheelWinsLastError = '';
     for (const win of data.wins) {
       if (!win || typeof win.id !== 'string' || announcedWheelWinIds.has(win.id) ||
@@ -1821,11 +1823,14 @@ async function pollWheelWins() {
           !Number.isFinite(Number(win.multiplier)) || Number(win.multiplier) <= 1 ||
           Number(win.createdAt) < wheelWinsBaseline) continue;
       announcedWheelWinIds.add(win.id);
-      recentWheelWinBroadcasts.set(win.id, { win, receivedAt:Date.now() });
+      recentWheelWinBroadcasts.set(win.id, {
+        win,
+        expiresAt: Date.now() + Math.max(0, WHEEL_WIN_FEED_WINDOW_MS - (data.serverTime - Number(win.createdAt)))
+      });
       broadcast({ type: 'wheel-win', data: win });
     }
     for (const [id, item] of recentWheelWinBroadcasts) {
-      if (Date.now() - item.receivedAt > 15000) recentWheelWinBroadcasts.delete(id);
+      if (Date.now() >= item.expiresAt) recentWheelWinBroadcasts.delete(id);
     }
     if (announcedWheelWinIds.size > 100) {
       for (const id of Array.from(announcedWheelWinIds).slice(0, announcedWheelWinIds.size - 100)) {
@@ -2557,7 +2562,7 @@ wss.on('connection', (ws) => {
     ws.send(JSON.stringify({ type: 'status', data: lastSessionData }));
   }
   for (const item of recentWheelWinBroadcasts.values()) {
-    if (Date.now() - item.receivedAt <= 15000) {
+    if (Date.now() < item.expiresAt) {
       ws.send(JSON.stringify({ type: 'wheel-win', data: item.win }));
     }
   }

@@ -156,6 +156,11 @@ test('one Points win reaches two separate connected kiosks exactly once', { time
     const kioskPorts = [await freePort(), await freePort()];
     const pointsUrl = `http://127.0.0.1:${pointsPort}`;
     const pointsDir = await start('points', 'points', pointsPort);
+    const earlier = Date.now();
+    fs.writeFileSync(path.join(pointsDir, 'coin-logs.json'), JSON.stringify({ logs:[
+      { id:'earlier-win', source:'wheel', username:'mem-earlier', station:'PC 02',
+        multiplier:2, timestamp:earlier - 25000 }
+    ], memberPoints:{} }));
     await Promise.all(kioskPorts.map((port, i) => start('auto-shutdown', 'kiosk-' + i, port, pointsUrl)));
     const received = [[], []];
     const connected = kioskPorts.map((port, i) => new Promise((resolve, reject) => {
@@ -169,17 +174,27 @@ test('one Points win reaches two separate connected kiosks exactly once', { time
       });
     }));
     await Promise.all(connected);
+    const earlierDeadline = Date.now() + 4000;
+    while (received.some(list => !list.some(win => win.id === 'earlier-win')) && Date.now() < earlierDeadline) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.deepEqual(received.map(list => list.map(win => win.id)),
+      [['earlier-win'], ['earlier-win']],
+      'an active session joining 25 seconds after the win receives the recent winner');
     const now = Date.now();
     fs.writeFileSync(path.join(pointsDir, 'coin-logs.json'), JSON.stringify({ logs:[
+      { id:'earlier-win', source:'wheel', username:'mem-earlier', station:'PC 02',
+        multiplier:2, timestamp:earlier - 25000 },
       { id:'test-loss', source:'wheel', username:'mem-unlucky', multiplier:0, timestamp:now },
       { id:'test-win', source:'wheel', username:'mem-winner', station:'PC 04', multiplier:5, timestamp:now }
     ], memberPoints:{} }));
     const deadline = Date.now() + 11500;
-    while (received.some(list => list.length === 0) && Date.now() < deadline) {
+    while (received.some(list => list.length < 2) && Date.now() < deadline) {
       await new Promise(resolve => setTimeout(resolve, 150));
     }
     assert.deepEqual(received.map(list => list.map(win => [win.id, win.username, win.multiplier])),
-      [[['test-win','mem-winner',5]], [['test-win','mem-winner',5]]]);
+      [[['earlier-win','mem-earlier',2], ['test-win','mem-winner',5]],
+        [['earlier-win','mem-earlier',2], ['test-win','mem-winner',5]]]);
     const replayed = await new Promise((resolve, reject) => {
       const socket = new WebSocket(`ws://127.0.0.1:${kioskPorts[0]}/ws/session`);
       sockets.push(socket);
@@ -187,7 +202,7 @@ test('one Points win reaches two separate connected kiosks exactly once', { time
       socket.on('error', reject);
       socket.on('message', raw => {
         const msg = JSON.parse(raw);
-        if (msg.type === 'wheel-win') {
+        if (msg.type === 'wheel-win' && msg.data.id === 'test-win') {
           clearTimeout(timeout);
           resolve(msg.data);
         }
@@ -195,7 +210,7 @@ test('one Points win reaches two separate connected kiosks exactly once', { time
     });
     assert.equal(replayed.id, 'test-win', 'a viewer connecting just after settlement still receives the alert');
     await new Promise(resolve => setTimeout(resolve, 2200));
-    assert.deepEqual(received.map(list => list.length), [1, 1], 'polling does not replay the same win');
+    assert.deepEqual(received.map(list => list.length), [2, 2], 'polling does not replay the same win');
   } finally {
     for (const socket of sockets) socket.close();
     for (const child of children) child.kill();
