@@ -28,3 +28,31 @@ mtime_ms = 1790393762200
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/10d1b81b-d112-415e-812f-de9973825623/e4858456-6c1d-4824-805e-c4d28e0ceb15"
 storage_version_token = "1790393794646104"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "4IzA-bkmFa1b_jujNz7Tw"
+uri = "file://screenshots/win-popup-closeup.png"
+type = "image"
+title = "Revised win popup — close-up"
+description = "The winner and multiplier appear in the same closable panel used by Order and Ranking."
+logical_id = "0b228eb6-2e66-4713-832c-9de701b5b9e8"
+content_hash = "sha256:5231c61a35ea83357f6aa6af2a6529cd2e4d00d7c64b7b441f140677443363cc"
+size = 174203
+mtime_ms = 1790394138236
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/0b228eb6-2e66-4713-832c-9de701b5b9e8/14738e13-5b27-45fc-83ce-9cf6d4cf6b5f"
+storage_version_token = "1790394159020446"
+content_type = "image/png"
+
+[[outputs]]
+id = "qFeVIJvU7cuQ2EbgHkjYp"
+uri = "file://screenshots/win-popup-drawer-preview.jpg"
+type = "image"
+title = "Revised win popup — desktop preview"
+description = "Safe session preview with the X button visible above the session bar."
+logical_id = "62c16111-5a1d-499b-a643-d33ca67cd3b5"
+content_hash = "sha256:79c134a566816f086155b4055fffcb57f8e50fb084be8d94eb2985943b8cef5b"
+size = 36808
+mtime_ms = 1790394102672
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/62c16111-5a1d-499b-a643-d33ca67cd3b5/6773e896-3e8d-490b-be27-754fa1c03ae6"
+storage_version_token = "1790394160384079"
+content_type = "image/jpeg"

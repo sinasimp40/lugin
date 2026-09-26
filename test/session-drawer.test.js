@@ -17,6 +17,7 @@ test('switching session drawers measures the new panel instead of keeping the pr
   const classes = () => ({
     values: new Set(),
     add(name) { this.values.add(name); },
+    remove(name) { this.values.delete(name); },
     contains(name) { return this.values.has(name); },
     toggle(name, active) { if (active) this.add(name); else this.values.delete(name); }
   });
@@ -31,7 +32,7 @@ test('switching session drawers measures the new panel instead of keeping the pr
   for (const id of ['shop-btn', 'rank-btn', 'attendance-btn', 'games-btn']) {
     elements.set(id, { classList:classes() });
   }
-  for (const id of ['store-view', 'rank-view', 'attendance-view', 'wheel-view', 'cart-bar', 'rank-note', 'drawer-title']) {
+  for (const id of ['store-view', 'rank-view', 'attendance-view', 'wins-view', 'wheel-view', 'cart-bar', 'rank-note', 'drawer-title']) {
     elements.set(id, { style:{}, textContent:'' });
   }
   const document = {
@@ -42,15 +43,20 @@ test('switching session drawers measures the new panel instead of keeping the pr
   window.parent = window;
   const view = new Function('document', 'window', 'setTimeout', 'clearTimeout', 'requestAnimationFrame', `
     let activeDrawer = null, drawerHeightFloor = 0, drawerResizeTimer = null;
+    let displayedWinNotice = null, sessionUsername = 'mem-current', timeLeft = 100;
+    const queuedWinNotices = [];
     const previewMode = true, OVERLAY_SCALE = 0.72;
     ${page.slice(resizeStart, resizeEnd)}
+    ${page.slice(resizeEnd, openStart)}
     ${page.slice(openStart, openEnd)}
     function loadProducts() {}
     function loadLeaderboard() {}
     function loadAttendance() {}
     function loadWheel() {}
-    function closeDrawer() {}
-    return { openDrawer, resizeDrawerToContent, floor:() => drawerHeightFloor };
+    function setOverlayExpanded() {}
+    function resizeOverlayToContent() {}
+    function showNextWinNotice() {}
+    return { openDrawer, closeDrawer, resizeDrawerToContent, floor:() => drawerHeightFloor, active:() => activeDrawer };
   `)(document, window,
     callback => { queued = callback; return 1; }, () => { queued = null; }, callback => callback());
   const flush = () => { const callback = queued; queued = null; if (callback) callback(); };
@@ -73,4 +79,13 @@ test('switching session drawers measures the new panel instead of keeping the pr
   flush();
   assert.equal(heights.at(-1), Math.ceil((240 + 70) * 0.72));
   assert.equal(view.floor(), 240);
+  contentHeight = 150;
+  await view.openDrawer('wins');
+  flush();
+  assert.equal(elements.get('wins-view').style.display, '', 'the win popup uses the shared drawer');
+  assert.equal(elements.get('drawer-title').textContent, 'RECENT WIN');
+  assert.equal(heights.at(-1), Math.ceil((150 + 70) * 0.72));
+  view.closeDrawer();
+  assert.equal(view.active(), null, 'the shared X closes the win popup');
+  assert.equal(drawer.classList.contains('active'), false);
 });

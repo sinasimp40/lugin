@@ -38,52 +38,63 @@ test('session notifications deduplicate wins and hold the spinning member until 
   const start = page.indexOf('    const seenWinNoticeIds = new Set();');
   const end = page.indexOf('    function wheelPendingKey(', start);
   assert.ok(start >= 0 && end > start);
-  const notice = { hidden:true };
   const winner = { textContent:'' };
   const multiplier = { textContent:'' };
-  const nodes = { 'win-notice':notice, 'win-user':winner, 'win-multiplier':multiplier };
+  const nodes = { 'win-user':winner, 'win-multiplier':multiplier };
   let pending = false;
-  let timer;
-  const state = new Function('document', 'setTimeout', 'readPendingWheel', `
+  const state = new Function('document', 'readPendingWheel', `
     let sessionUsername = 'mem-current', timeLeft = 100, wheelRequestId = 'spin-one';
+    let activeDrawer = null;
     const previewMode = false;
+    function openDrawer(view) { activeDrawer = view; }
+    function closeDrawer() {
+      if (activeDrawer === 'wins') displayedWinNotice = null;
+      activeDrawer = null;
+      showNextWinNotice();
+    }
     ${page.slice(start, end)}
     return {
       receiveWinNotice, releaseDeferredWinNotices, ready:finishInitialSessionStatus,
       done:() => { wheelRequestId = null; },
-      logout:() => { sessionUsername = ''; },
+      close:closeDrawer,
+      setDrawer:view => { activeDrawer = view; },
       current:() => ({
-        hidden:document.getElementById('win-notice').hidden,
+        drawer:activeDrawer,
         winner:document.getElementById('win-user').textContent,
         multiplier:document.getElementById('win-multiplier').textContent
       })
     };
-  `)({ getElementById:id => nodes[id] }, fn => { timer = fn; return 1; }, () => pending ? {} : null);
+  `)({ getElementById:id => nodes[id] }, () => pending ? {} : null);
   state.receiveWinNotice({ id:'early', username:'mem-other', multiplier:2 });
-  assert.equal(state.current().hidden, true, 'events received before the first session status are held');
+  assert.equal(state.current().drawer, null, 'events received before the first session status are held');
   state.ready();
+  assert.equal(state.current().drawer, 'wins');
   assert.equal(state.current().winner, 'mem-other');
-  timer();
-  assert.equal(state.current().hidden, true);
+  state.close();
+  assert.equal(state.current().drawer, null);
   const own = { id:'own', username:'mem-current', multiplier:5 };
   state.receiveWinNotice(own);
-  assert.equal(state.current().hidden, true, 'the active spinner must not see the win early');
+  assert.equal(state.current().drawer, null, 'the active spinner must not see the win early');
   state.receiveWinNotice(own);
   state.receiveWinNotice({ id:'lose', username:'mem-loss', multiplier:0 });
-  assert.equal(state.current().hidden, true);
+  assert.equal(state.current().drawer, null);
   state.done();
   state.releaseDeferredWinNotices('mem-current');
-  assert.deepEqual(state.current(), { hidden:false, winner:'mem-current', multiplier:'5×' });
-  timer();
-  assert.equal(state.current().hidden, true);
+  assert.deepEqual(state.current(), { drawer:'wins', winner:'mem-current', multiplier:'5×' });
+  state.close();
+  assert.equal(state.current().drawer, null);
+  state.setDrawer('shop');
   state.receiveWinNotice({ id:'other', username:'mem-other', multiplier:2 });
+  assert.equal(state.current().drawer, 'shop', 'a new win does not interrupt an open Order panel');
+  state.close();
+  assert.equal(state.current().drawer, 'wins', 'the queued announcement opens when Order closes');
   assert.equal(state.current().winner, 'mem-other', 'another PC displays the winner and multiplier');
   state.receiveWinNotice({ id:'other', username:'mem-other', multiplier:2 });
-  timer();
-  assert.equal(state.current().hidden, true, 'one event cannot reopen the notice twice');
+  state.close();
+  assert.equal(state.current().drawer, null, 'one event cannot reopen the popup twice');
   pending = true;
   state.receiveWinNotice({ id:'stored', username:'mem-current', multiplier:3 });
-  assert.equal(state.current().hidden, true, 'a persisted retry must not reveal the result');
+  assert.equal(state.current().drawer, null, 'a persisted retry must not reveal the result');
 });
 
 test('one Points win reaches two separate connected kiosks exactly once', { timeout:20000 }, async () => {

@@ -71,7 +71,7 @@ The application is built using Electron for the desktop client, with a Node.js (
 - The kiosk syncs measured progress to Denfi Points, which awards the points. Both machines should use the same local timezone. If the points server is unreachable, the kiosk saves progress and displays "SYNC PENDING"; unsynced prior days are retried for up to 30 days when the kiosk next connects. Historical awards use the server's mission rules for their original day.
 
 ## Betting Games win alerts
-- A positive spin result (multiplier greater than 1×) on Denfi Points appears once in each connected Auto Shutdown session bar, showing the member and multiplier. Losing or break-even spins do not generate alerts. The winning kiosk waits for its reel to reveal the result before showing its own alert.
+- A positive spin result (multiplier greater than 1×) on Denfi Points opens a closable popup above each connected Auto Shutdown session bar, using the same drawer and X button as Order and Ranking. It shows the member and multiplier; losing or break-even spins do not generate alerts. The winning kiosk waits for its reel to reveal the result before showing its own alert, and an already-open session tool is not interrupted.
 - Update both Denfi Points and all Auto Shutdown PCs to enable this feature. Kiosks read recent wins from Denfi Points over the existing trusted LAN connection; offline PCs cannot display live alerts, and results older than two minutes are not replayed after a long disconnection.
 
 ## Building the Windows App
