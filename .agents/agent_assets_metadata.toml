@@ -56,3 +56,31 @@ mtime_ms = 1790394102672
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/62c16111-5a1d-499b-a643-d33ca67cd3b5/6773e896-3e8d-490b-be27-754fa1c03ae6"
 storage_version_token = "1790394160384079"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "3j6OQhCVag-OaobYDJ8_d"
+uri = "file://screenshots/compact-win-closeup.png"
+type = "image"
+title = "Compact win popup — one winner"
+description = "The shortened winner panel, with the member and multiplier side by side."
+logical_id = "6d0f6d23-f6ad-4a40-859c-f1061bae3142"
+content_hash = "sha256:b24023397be91548d3b1f90b4fe403e1453f032cc83fec65a55bd071c4b38ae1"
+size = 146132
+mtime_ms = 1790394363136
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/6d0f6d23-f6ad-4a40-859c-f1061bae3142/aae33bd7-e9d4-4f65-92eb-74dc7a05cc9b"
+storage_version_token = "1790394423222950"
+content_type = "image/png"
+
+[[outputs]]
+id = "lAQvZqR_e91SSJnYEu8Uj"
+uri = "file://screenshots/two-wins-closeup.png"
+type = "image"
+title = "Two wins in quick succession"
+description = "The first winner stays visible; +1 and NEXT appear in the header for the second win."
+logical_id = "39358b19-17fc-4976-a331-0acf04a5d44b"
+content_hash = "sha256:3fd96a64ba022892ef4d82a3d2fb19671105214526fce18d2ade3bd8b7a98fe2"
+size = 154869
+mtime_ms = 1790394413964
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/39358b19-17fc-4976-a331-0acf04a5d44b/bc316ea9-c8e1-4878-a720-5efc68dad6f9"
+storage_version_token = "1790394424583010"
+content_type = "image/png"

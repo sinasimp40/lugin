@@ -32,7 +32,7 @@ test('switching session drawers measures the new panel instead of keeping the pr
   for (const id of ['shop-btn', 'rank-btn', 'attendance-btn', 'games-btn']) {
     elements.set(id, { classList:classes() });
   }
-  for (const id of ['store-view', 'rank-view', 'attendance-view', 'wins-view', 'wheel-view', 'cart-bar', 'rank-note', 'drawer-title']) {
+  for (const id of ['store-view', 'rank-view', 'attendance-view', 'wins-view', 'wheel-view', 'cart-bar', 'rank-note', 'drawer-title', 'win-queue', 'win-queue-count']) {
     elements.set(id, { style:{}, textContent:'' });
   }
   const document = {
@@ -56,7 +56,12 @@ test('switching session drawers measures the new panel instead of keeping the pr
     function setOverlayExpanded() {}
     function resizeOverlayToContent() {}
     function showNextWinNotice() {}
-    return { openDrawer, closeDrawer, resizeDrawerToContent, floor:() => drawerHeightFloor, active:() => activeDrawer };
+    function updateWinQueueIndicator() {}
+    return {
+      openDrawer, closeDrawer, resizeDrawerToContent, floor:() => drawerHeightFloor,
+      active:() => activeDrawer, queueWin:() => queuedWinNotices.push({ id:'another-win' }),
+      queued:() => queuedWinNotices.length
+    };
   `)(document, window,
     callback => { queued = callback; return 1; }, () => { queued = null; }, callback => callback());
   const flush = () => { const callback = queued; queued = null; if (callback) callback(); };
@@ -83,9 +88,11 @@ test('switching session drawers measures the new panel instead of keeping the pr
   await view.openDrawer('wins');
   flush();
   assert.equal(elements.get('wins-view').style.display, '', 'the win popup uses the shared drawer');
-  assert.equal(elements.get('drawer-title').textContent, 'RECENT WIN');
+  assert.equal(elements.get('drawer-title').textContent, 'WINNER');
   assert.equal(heights.at(-1), Math.ceil((150 + 70) * 0.72));
+  view.queueWin();
   view.closeDrawer();
   assert.equal(view.active(), null, 'the shared X closes the win popup');
+  assert.equal(view.queued(), 0, 'the shared X clears pending wins too');
   assert.equal(drawer.classList.contains('active'), false);
 });

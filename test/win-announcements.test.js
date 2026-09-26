@@ -40,28 +40,35 @@ test('session notifications deduplicate wins and hold the spinning member until 
   assert.ok(start >= 0 && end > start);
   const winner = { textContent:'' };
   const multiplier = { textContent:'' };
-  const nodes = { 'win-user':winner, 'win-multiplier':multiplier };
+  const queue = { hidden:true };
+  const count = { textContent:'' };
+  const nodes = { 'win-user':winner, 'win-multiplier':multiplier, 'win-queue':queue, 'win-queue-count':count };
   let pending = false;
   const state = new Function('document', 'readPendingWheel', `
     let sessionUsername = 'mem-current', timeLeft = 100, wheelRequestId = 'spin-one';
     let activeDrawer = null;
     const previewMode = false;
-    function openDrawer(view) { activeDrawer = view; }
+    function openDrawer(view) { activeDrawer = view; updateWinQueueIndicator(); }
     function closeDrawer() {
-      if (activeDrawer === 'wins') displayedWinNotice = null;
+      if (activeDrawer === 'wins') {
+        displayedWinNotice = null;
+        queuedWinNotices.length = 0;
+      }
       activeDrawer = null;
+      updateWinQueueIndicator();
       showNextWinNotice();
     }
     ${page.slice(start, end)}
     return {
       receiveWinNotice, releaseDeferredWinNotices, ready:finishInitialSessionStatus,
       done:() => { wheelRequestId = null; },
-      close:closeDrawer,
+      close:closeDrawer, next:advanceWinNotice,
       setDrawer:view => { activeDrawer = view; },
       current:() => ({
         drawer:activeDrawer,
         winner:document.getElementById('win-user').textContent,
-        multiplier:document.getElementById('win-multiplier').textContent
+        multiplier:document.getElementById('win-multiplier').textContent,
+        queued:document.getElementById('win-queue').hidden ? 0 : Number(document.getElementById('win-queue-count').textContent.slice(1))
       })
     };
   `)({ getElementById:id => nodes[id] }, () => pending ? {} : null);
@@ -80,7 +87,7 @@ test('session notifications deduplicate wins and hold the spinning member until 
   assert.equal(state.current().drawer, null);
   state.done();
   state.releaseDeferredWinNotices('mem-current');
-  assert.deepEqual(state.current(), { drawer:'wins', winner:'mem-current', multiplier:'5×' });
+  assert.deepEqual(state.current(), { drawer:'wins', winner:'mem-current', multiplier:'5×', queued:0 });
   state.close();
   assert.equal(state.current().drawer, null);
   state.setDrawer('shop');
@@ -90,8 +97,19 @@ test('session notifications deduplicate wins and hold the spinning member until 
   assert.equal(state.current().drawer, 'wins', 'the queued announcement opens when Order closes');
   assert.equal(state.current().winner, 'mem-other', 'another PC displays the winner and multiplier');
   state.receiveWinNotice({ id:'other', username:'mem-other', multiplier:2 });
+  state.receiveWinNotice({ id:'next', username:'mem-diana', multiplier:3 });
+  assert.deepEqual(state.current(), { drawer:'wins', winner:'mem-other', multiplier:'2×', queued:1 },
+    'a second win is indicated without covering the first');
+  state.next();
+  assert.deepEqual(state.current(), { drawer:'wins', winner:'mem-diana', multiplier:'3×', queued:0 },
+    'NEXT swaps results in the existing popup');
   state.close();
   assert.equal(state.current().drawer, null, 'one event cannot reopen the popup twice');
+  state.receiveWinNotice({ id:'third', username:'mem-third', multiplier:5 });
+  state.receiveWinNotice({ id:'fourth', username:'mem-fourth', multiplier:2 });
+  assert.equal(state.current().queued, 1);
+  state.close();
+  assert.equal(state.current().drawer, null, 'X dismisses the entire pending stack');
   pending = true;
   state.receiveWinNotice({ id:'stored', username:'mem-current', multiplier:3 });
   assert.equal(state.current().drawer, null, 'a persisted retry must not reveal the result');

@@ -64,6 +64,7 @@
       for (const option of ['attendance', 'games', 'win']) {
         if (requestedPreview.get(option) === '1') frameParams.set(option, '1');
       }
+      if (requestedPreview.get('win') === '2') frameParams.set('win', '2');
       document.getElementById('session-frame').src = '/session.html?' + frameParams.toString();
     </script>
   </main>

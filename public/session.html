@@ -313,7 +313,12 @@
   .overlay-shell.drawer-below .drawer { top:96px; bottom:auto; }
   .drawer-head { display:flex; justify-content:space-between; align-items:center; padding:11px 13px; border-bottom:1px solid rgba(255,140,0,.18); }
   .drawer-title { font:800 16px 'Orbitron',monospace; letter-spacing:1px; color:#ffb13d; }
+  .drawer-controls { display:flex; align-items:center; gap:9px; }
   .drawer-close { border:0; background:transparent; color:#a98a68; font-size:22px; cursor:pointer; padding:0 4px; }
+  .win-queue { display:flex; align-items:center; gap:6px; color:#ffb13d; font:12px 'Share Tech Mono',monospace; }
+  .win-queue[hidden] { display:none; }
+  .win-next { border:1px solid rgba(255,140,0,.4); background:#241a0e; color:#ffd08a; padding:5px 8px; font:700 11px 'Orbitron',sans-serif; cursor:pointer; }
+  .win-next:hover, .win-next:focus-visible { background:#473019; color:#fff; }
   .drawer-body {
     flex:0 0 auto;
     min-height:0;
@@ -355,11 +360,11 @@
     border-right:1px solid rgba(255,140,0,.65);
     border-radius:2px;
   }
-  .win-panel { padding:10px 12px 13px; text-align:center; background:radial-gradient(ellipse at top,rgba(244,239,18,.08),transparent 72%); }
-  .win-panel-label { color:#a89e65; font:10px 'Share Tech Mono',monospace; letter-spacing:1px; }
-  .win-panel-user { margin:8px 0 2px; overflow-wrap:anywhere; color:#fff9d0; font:800 18px 'Orbitron',sans-serif; }
-  .win-panel-result { color:#f4ef12; font:800 29px 'Orbitron',sans-serif; text-shadow:0 0 14px rgba(244,239,18,.4); }
-  .win-panel-caption { color:#a89e65; font:10px 'Share Tech Mono',monospace; }
+  .win-panel { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; }
+  .win-panel-user { min-width:0; overflow-wrap:anywhere; color:#fff9d0; font:800 18px 'Orbitron',sans-serif; line-height:1.3; }
+  .win-panel-result { display:flex; flex:none; flex-direction:column; align-items:flex-end; gap:1px; padding-left:12px; border-left:1px solid rgba(255,140,0,.2); }
+  .win-panel-result strong { color:#f4ef12; font:800 26px 'Orbitron',sans-serif; line-height:1; text-shadow:0 0 10px rgba(244,239,18,.25); }
+  .win-panel-result span { color:#a89e65; font:9px 'Share Tech Mono',monospace; letter-spacing:1px; }
   .points-zone {
     display:none;
   }
@@ -646,7 +651,13 @@
   <section class="drawer" id="drawer" aria-label="Session tools">
     <header class="drawer-head">
       <div class="drawer-title" id="drawer-title">QUICK ORDER</div>
-      <button class="drawer-close" id="drawer-close" type="button" aria-label="Close">&times;</button>
+      <div class="drawer-controls">
+        <div class="win-queue" id="win-queue" hidden>
+          <span id="win-queue-count"></span>
+          <button class="win-next" id="win-next" type="button">NEXT</button>
+        </div>
+        <button class="drawer-close" id="drawer-close" type="button" aria-label="Close">&times;</button>
+      </div>
     </header>
     <div class="drawer-body">
       <div id="store-view">
@@ -667,10 +678,8 @@
         <div id="attendance-content"></div>
       </div>
       <div id="wins-view" class="win-panel" style="display:none" role="status" aria-live="polite">
-        <div class="win-panel-label">BETTING GAMES · WINNER</div>
         <div class="win-panel-user" id="win-user"></div>
-        <div class="win-panel-result" id="win-multiplier"></div>
-        <div class="win-panel-caption">MULTIPLIER RESULT</div>
+        <div class="win-panel-result"><strong id="win-multiplier"></strong><span>MULTIPLIER</span></div>
       </div>
       <div id="wheel-view" class="wheel-view">
         <div class="wheel-intro"><div class="wheel-kicker">MULTIPLIER REEL<span class="demo-badge" id="wheel-demo-badge" hidden>DEMO</span></div><div class="wheel-balance" id="wheel-balance">0 PTS</div></div>
@@ -822,12 +831,25 @@
     const earlyWinNotices = new Map();
     let initialSessionStatusKnown = false;
     let displayedWinNotice = null;
+    function updateWinQueueIndicator() {
+      const count = queuedWinNotices.length;
+      document.getElementById('win-queue').hidden = activeDrawer !== 'wins' || count === 0;
+      document.getElementById('win-queue-count').textContent = `+${count}`;
+    }
+    function displayWinNotice(win) {
+      displayedWinNotice = win;
+      document.getElementById('win-user').textContent = win.username;
+      document.getElementById('win-multiplier').textContent = `${win.multiplier}×`;
+      updateWinQueueIndicator();
+    }
+    function advanceWinNotice() {
+      if (activeDrawer !== 'wins' || !queuedWinNotices.length) return;
+      displayWinNotice(queuedWinNotices.shift());
+    }
     function showNextWinNotice() {
       if (activeDrawer || displayedWinNotice || !queuedWinNotices.length ||
           !sessionUsername || timeLeft <= 0) return;
-      displayedWinNotice = queuedWinNotices.shift();
-      document.getElementById('win-user').textContent = displayedWinNotice.username;
-      document.getElementById('win-multiplier').textContent = `${displayedWinNotice.multiplier}×`;
+      displayWinNotice(queuedWinNotices.shift());
       void openDrawer('wins');
     }
     function receiveWinNotice(win) {
@@ -849,6 +871,7 @@
       }
       if (queuedWinNotices.length < 6) queuedWinNotices.push(win);
       showNextWinNotice();
+      updateWinQueueIndicator();
     }
     function finishInitialSessionStatus() {
       initialSessionStatusKnown = true;
@@ -863,6 +886,7 @@
         if (queuedWinNotices.length < 6) queuedWinNotices.push(win);
       }
       showNextWinNotice();
+      updateWinQueueIndicator();
     }
     function wheelPendingKey(username) {
       return `denfi-wheel-pending:${String(username || '').toLowerCase()}`;
@@ -1014,8 +1038,12 @@
 
     function closeDrawer() {
       clearTimeout(drawerResizeTimer);
-      if (activeDrawer === 'wins') displayedWinNotice = null;
+      if (activeDrawer === 'wins') {
+        displayedWinNotice = null;
+        queuedWinNotices.length = 0;
+      }
       activeDrawer = null;
+      updateWinQueueIndicator();
       const drawer = document.getElementById('drawer');
       drawer.classList.remove('active');
       drawer.style.minHeight = '';
@@ -1035,8 +1063,12 @@
 
     async function openDrawer(view) {
       if (activeDrawer === view) { closeDrawer(); return; }
-      if (activeDrawer === 'wins') displayedWinNotice = null;
+      if (activeDrawer === 'wins') {
+        displayedWinNotice = null;
+        queuedWinNotices.length = 0;
+      }
       activeDrawer = view;
+      updateWinQueueIndicator();
       let placement = 'above';
       if (!previewMode && window.electronAPI && window.electronAPI.getSessionOverlayPlacement) {
         try { placement = await window.electronAPI.getSessionOverlayPlacement(); } catch (_) {}
@@ -1060,7 +1092,7 @@
       document.getElementById('wheel-view').style.display = view === 'games' ? 'block' : 'none';
       document.getElementById('cart-bar').style.display = view === 'shop' ? 'flex' : 'none';
       document.getElementById('rank-note').style.display = view === 'rank' ? '' : 'none';
-      document.getElementById('drawer-title').textContent = view === 'shop' ? 'QUICK ORDER' : view === 'rank' ? 'TOP 5 REGULARS' : view === 'attendance' ? 'ATTENDANCE' : view === 'wins' ? 'RECENT WIN' : 'BETTING GAMES';
+      document.getElementById('drawer-title').textContent = view === 'shop' ? 'QUICK ORDER' : view === 'rank' ? 'TOP 5 REGULARS' : view === 'attendance' ? 'ATTENDANCE' : view === 'wins' ? 'WINNER' : 'BETTING GAMES';
       resizeDrawerToContent();
       if (view === 'shop') loadProducts();
       else if (view === 'rank') loadLeaderboard();
@@ -2078,14 +2110,19 @@
       loadAttendance(attendanceMonth);
     });
     document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+    document.getElementById('win-next').addEventListener('click', advanceWinNotice);
     document.getElementById('clear-cart').addEventListener('click', () => { cart = {}; renderCart(); });
     document.getElementById('place-order').addEventListener('click', placeOrder);
 
     loadStatus();
-    if (previewMode && new URLSearchParams(location.search).get('win') === '1') {
-      setTimeout(() => receiveWinNotice({
-        id:'demo-win', username:'mem-carlo', multiplier:5, station:'PC 04'
-      }), 350);
+    const demoWinCount = new URLSearchParams(location.search).get('win');
+    if (previewMode && (demoWinCount === '1' || demoWinCount === '2')) {
+      setTimeout(() => {
+        receiveWinNotice({ id:'demo-win', username:'mem-carlo', multiplier:5, station:'PC 04' });
+        if (demoWinCount === '2') receiveWinNotice({
+          id:'demo-win-2', username:'mem-diana', multiplier:2, station:'PC 09'
+        });
+      }, 350);
     }
     if (previewMode && new URLSearchParams(location.search).get('attendance') === '1') {
       openDrawer('attendance');
