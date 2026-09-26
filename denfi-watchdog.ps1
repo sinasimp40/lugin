@@ -325,7 +325,25 @@ function Invoke-Install {
       Start-Sleep -Milliseconds 250
     }
     if ($oldProcess -and $oldProcess.ProcessName -match '^(powershell|pwsh)$') {
-      throw "The previous watchdog is still running. Close its old window, then rerun the silent launcher."
+      # An older, manually launched watchdog may outlive the Scheduled Task.
+      # Only stop it if its actual command line proves this is OUR watcher;
+      # the lock file alone is not enough to safely terminate a PowerShell PID.
+      $details = Get-CimInstance Win32_Process -Filter "ProcessId = $oldPid" -EA Stop
+      $commandLine = [string]$details.CommandLine
+      if (-not $details -or $details.Name -notmatch '^(powershell|pwsh)\.exe$' -or
+          $commandLine.IndexOf('denfi-watchdog.ps1', [System.StringComparison]::OrdinalIgnoreCase) -lt 0 -or
+          $commandLine.IndexOf('-Watch', [System.StringComparison]::OrdinalIgnoreCase) -lt 0 -or
+          $commandLine.IndexOf($exe, [System.StringComparison]::OrdinalIgnoreCase) -lt 0) {
+        throw "An existing PowerShell process owns watchdog.lock, but its command line could not be verified as this watchdog. Refusing to stop it."
+      }
+      Write-InstallLog "Stopping verified previous watchdog (PID=$oldPid) for silent handover."
+      Stop-Process -Id $oldPid -Force -EA Stop
+      for ($attempt = 0; $attempt -lt 20 -and (Get-Process -Id $oldPid -EA SilentlyContinue); $attempt++) {
+        Start-Sleep -Milliseconds 250
+      }
+      if (Get-Process -Id $oldPid -EA SilentlyContinue) {
+        throw "The previous watchdog did not exit during handover."
+      }
     }
     Start-ScheduledTask -TaskName $TaskName
     # Start-ScheduledTask only confirms the launch request. Verify that the
