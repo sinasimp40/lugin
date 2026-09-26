@@ -20,3 +20,9 @@ Do not show a spin's changed points balance in any member-facing session display
 **Why:** Denfi Points may settle a spin before the reel finishes; an early live points update reveals whether the member won or lost before the result appears.
 
 **How to apply:** Review new session balance consumers and retry paths for premature disclosure; the session should reveal the confirmed balance with the reel result, and an unconfirmed retry must not expose it beforehand.
+
+Cross-PC win announcements must originate from the shared Points ledger, not from the winning kiosk's local WebSocket. Only positive net results are public, and the winner's own session must not display the announcement until its reel reveals the outcome.
+
+**Why:** Each diskless kiosk has a separate local session server; a local-only event cannot reach the other PCs. Announcing directly on settlement would also spoil the winning member's reel.
+
+**How to apply:** Keep announcements idempotent by spin identity, tolerate session WebSocket startup and reconnect races, and never include private odds or financial details in the shared feed.

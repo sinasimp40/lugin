@@ -59,9 +59,12 @@
     </div>
     <iframe class="session-frame" id="session-frame" title="Interactive Denfi session overlay" src="/session.html?preview=1"></iframe>
     <script>
-      if (new URLSearchParams(location.search).get('attendance') === '1') {
-        document.getElementById('session-frame').src = '/session.html?preview=1&attendance=1';
+      const requestedPreview = new URLSearchParams(location.search);
+      const frameParams = new URLSearchParams({ preview:'1' });
+      for (const option of ['attendance', 'games', 'win']) {
+        if (requestedPreview.get(option) === '1') frameParams.set(option, '1');
       }
+      document.getElementById('session-frame').src = '/session.html?' + frameParams.toString();
     </script>
   </main>
   <script>

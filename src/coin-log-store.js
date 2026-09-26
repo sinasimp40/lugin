@@ -376,6 +376,18 @@ function getWheelSpin(requestId) {
   return log ? publicWheelSpin(log) : null;
 }
 
+function getRecentWheelWins(since, now = Date.now()) {
+  const earliest = Math.max(now - 120000, since);
+  return (load().logs || [])
+    .filter(log => log.source === 'wheel' && Number(log.multiplier) > 1 &&
+      Number(log.timestamp) >= earliest && Number(log.timestamp) <= now - 6000)
+    .slice(-30)
+    .map(log => ({
+      id: log.id, username: log.username, station: log.station,
+      multiplier: log.multiplier, createdAt: log.timestamp
+    }));
+}
+
 function claimWheelNotification() {
   let claim = null;
   const now = Date.now();
@@ -449,6 +461,7 @@ module.exports = {
   getMemberPoints,
   appendWheelSpin,
   getWheelSpin,
+  getRecentWheelWins,
   claimWheelNotification,
   acknowledgeWheelNotification,
   getLeaderboard,

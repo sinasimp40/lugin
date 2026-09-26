@@ -355,6 +355,21 @@
     border-right:1px solid rgba(255,140,0,.65);
     border-radius:2px;
   }
+  .win-notice {
+    position:absolute; z-index:12; top:8px; bottom:8px; left:92px; right:132px;
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    min-width:0; padding:5px 9px;
+    border:1px solid #f4ef12; border-left:4px solid #f4ef12; border-radius:3px;
+    background:linear-gradient(115deg,#22250b,#111609 80%);
+    box-shadow:0 0 17px rgba(244,239,18,.32), inset 0 0 12px rgba(244,239,18,.09);
+    color:#fff; font-family:'Share Tech Mono',monospace;
+    -webkit-app-region:no-drag; pointer-events:none;
+  }
+  .win-notice[hidden] { display:none; }
+  .win-copy { display:flex; flex-direction:column; justify-content:center; gap:3px; min-width:0; }
+  .win-kicker { color:#f4ef12; font:800 9px 'Orbitron',sans-serif; letter-spacing:1px; }
+  .win-user { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
+  .win-multiplier { flex-shrink:0; color:#f4ef12; font:800 20px 'Orbitron',sans-serif; }
   .points-zone {
     display:none;
   }
@@ -629,6 +644,10 @@
         <div class="attendance-track" role="progressbar" id="attendance-track" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="attendance-fill" id="attendance-fill"></div></div>
       </div>
     </div>
+      <div class="win-notice" id="win-notice" role="status" aria-live="polite" hidden>
+        <div class="win-copy"><span class="win-kicker">WIN ALERT</span><span class="win-user" id="win-user"></span></div>
+        <strong class="win-multiplier" id="win-multiplier"></strong>
+      </div>
       <div class="action-area">
         <div class="quick-actions">
           <button class="quick-btn" id="shop-btn" type="button">ORDER</button>
@@ -805,6 +824,59 @@
     let drawerResizeTimer = null;
     let drawerHeightFloor = 0;
     let overlayWidth = 0;
+    const seenWinNoticeIds = new Set();
+    const queuedWinNotices = [];
+    const deferredWinNotices = new Map();
+    const earlyWinNotices = new Map();
+    let initialSessionStatusKnown = false;
+    let winNoticeTimer = null;
+    function showNextWinNotice() {
+      if (winNoticeTimer || !queuedWinNotices.length) return;
+      const win = queuedWinNotices.shift();
+      document.getElementById('win-user').textContent = win.username;
+      document.getElementById('win-multiplier').textContent = `${win.multiplier}×`;
+      document.getElementById('win-notice').hidden = false;
+      if (previewMode && new URLSearchParams(location.search).get('win') === '1') return;
+      winNoticeTimer = setTimeout(() => {
+        document.getElementById('win-notice').hidden = true;
+        winNoticeTimer = null;
+        showNextWinNotice();
+      }, 6500);
+    }
+    function receiveWinNotice(win) {
+      if (!win || typeof win.id !== 'string' || !/^mem-[a-z0-9._-]{1,80}$/i.test(win.username || '') ||
+          !Number.isFinite(Number(win.multiplier)) || Number(win.multiplier) <= 1 ||
+          seenWinNoticeIds.has(win.id)) return;
+      if (!initialSessionStatusKnown) {
+        if (earlyWinNotices.size >= 6) earlyWinNotices.delete(earlyWinNotices.keys().next().value);
+        earlyWinNotices.set(win.id, win);
+        return;
+      }
+      if (!sessionUsername || timeLeft <= 0) return;
+      seenWinNoticeIds.add(win.id);
+      if (seenWinNoticeIds.size > 100) seenWinNoticeIds.delete(seenWinNoticeIds.values().next().value);
+      if (String(win.username).toLowerCase() === String(sessionUsername).toLowerCase() &&
+          (wheelRequestId || readPendingWheel(sessionUsername))) {
+        deferredWinNotices.set(win.id, win);
+        return;
+      }
+      if (queuedWinNotices.length < 6) queuedWinNotices.push(win);
+      showNextWinNotice();
+    }
+    function finishInitialSessionStatus() {
+      initialSessionStatusKnown = true;
+      const early = Array.from(earlyWinNotices.values());
+      earlyWinNotices.clear();
+      for (const win of early) receiveWinNotice(win);
+    }
+    function releaseDeferredWinNotices(username) {
+      for (const [id, win] of deferredWinNotices) {
+        if (String(win.username).toLowerCase() !== String(username).toLowerCase()) continue;
+        deferredWinNotices.delete(id);
+        if (queuedWinNotices.length < 6) queuedWinNotices.push(win);
+      }
+      showNextWinNotice();
+    }
     function wheelPendingKey(username) {
       return `denfi-wheel-pending:${String(username || '').toLowerCase()}`;
     }
@@ -1315,6 +1387,7 @@
         const sameMember = String(sessionUsername || '').toLowerCase() === String(requestUsername || '').toLowerCase();
         if (!sameMember) {
           stopReelRoll();
+          releaseDeferredWinNotices(requestUsername);
           clearPendingWheel(requestUsername, wheelRequestId);
           wheelSpinInFlight = false; wheelRequestId = null; wheelRequestUsername = '';
           wheelExpectedStake = null; wheelExpectedBalance = null;
@@ -1353,6 +1426,7 @@
             }
           }
           if (String(sessionUsername || '').toLowerCase() !== String(requestUsername || '').toLowerCase()) {
+            releaseDeferredWinNotices(requestUsername);
             clearPendingWheel(requestUsername, wheelRequestId);
             wheelSpinInFlight = false; wheelRequestId = null; wheelRequestUsername = ''; wheelExpectedStake = null; wheelMultipliers = []; wheelOddsToken = '';
             return;
@@ -1374,6 +1448,7 @@
             : Math.max(0, Number(wheelData.spinsRemaining) - 1);
           if (previewMode) demoWheelState = { ...wheelData };
           setPoints(spin.balance, true);
+          releaseDeferredWinNotices(requestUsername);
           wheelSpinInFlight = false; wheelRequestId = null; wheelRequestUsername = '';
           wheelExpectedStake = null; wheelExpectedBalance = null; wheelMultipliers = []; wheelOddsToken = '';
           if (wheelData.allowCustomStake) {
@@ -1386,6 +1461,7 @@
       } catch (e) {
         stopReelRoll();
         if (e && e.code === 'KNOWN_NOT_SETTLED') {
+          deferredWinNotices.clear();
           clearPendingWheel(requestUsername, wheelRequestId);
           wheelSpinInFlight = false;
           wheelRequestId = null;
@@ -1755,11 +1831,24 @@
               updateAttendanceButton();
               updateTimer();
               checkExpiryLogout();
+              finishInitialSessionStatus();
+            } else {
+              initialSessionStatusKnown = true;
+              earlyWinNotices.clear();
             }
           } else if (msg.type === 'settings' && activeDrawer === 'shop') {
             loadProducts();
+          } else if (msg.type === 'wheel-win') {
+            receiveWinNotice(msg.data);
           } else if (msg.type === 'logged-out') {
             sessionUsername = '';
+            initialSessionStatusKnown = true;
+            earlyWinNotices.clear();
+            deferredWinNotices.clear();
+            queuedWinNotices.length = 0;
+            if (winNoticeTimer) clearTimeout(winNoticeTimer);
+            winNoticeTimer = null;
+            document.getElementById('win-notice').hidden = true;
             updateAttendanceButton();
             setPoints(null);
             setAttendance(null);
@@ -1847,6 +1936,7 @@
         setAttendance({ enabled: true, seconds: 1800, minutes: 60, points: 5, awarded: false });
         updateAttendanceButton();
         updateTimer();
+        finishInitialSessionStatus();
         return;
       }
       try {
@@ -1875,6 +1965,10 @@
           updateAttendanceButton();
           updateTimer();
           checkExpiryLogout();
+          finishInitialSessionStatus();
+        } else {
+          initialSessionStatusKnown = true;
+          earlyWinNotices.clear();
         }
       } catch (e) {}
     }
@@ -1996,6 +2090,11 @@
     document.getElementById('place-order').addEventListener('click', placeOrder);
 
     loadStatus();
+    if (previewMode && new URLSearchParams(location.search).get('win') === '1') {
+      setTimeout(() => receiveWinNotice({
+        id:'demo-win', username:'mem-carlo', multiplier:5, station:'PC 04'
+      }), 350);
+    }
     if (previewMode && new URLSearchParams(location.search).get('attendance') === '1') {
       openDrawer('attendance');
     }

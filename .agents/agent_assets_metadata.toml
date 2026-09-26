@@ -1,0 +1,30 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "_bbNxbMwb5ekMuYX_rIfB"
+uri = "file://screenshots/win-alert-closeup.png"
+type = "image"
+title = "Win alert — close-up"
+description = "Zoomed view of the session bar showing a sample member win and 5× multiplier."
+logical_id = "12bf2997-3ca9-44aa-8314-10fbae232e45"
+content_hash = "sha256:d055121bc6ddee2b01604fb71bc1fbf37b2f391b0fdbf600d9c18930dc8f0bf3"
+size = 151812
+mtime_ms = 1790393771820
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/12bf2997-3ca9-44aa-8314-10fbae232e45/5ccef595-9faa-4587-8192-500ccc4f24d9"
+storage_version_token = "1790393793290467"
+content_type = "image/png"
+
+[[outputs]]
+id = "j3cRFdIKJnsULX0FFJ1yF"
+uri = "file://screenshots/win-alert-desktop-preview.jpg"
+type = "image"
+title = "Win alert — desktop preview"
+description = "Safe demo of the popup at the compact Windows session-overlay size."
+logical_id = "10d1b81b-d112-415e-812f-de9973825623"
+content_hash = "sha256:01f5119760107a2e199b2c5035f3607568b92cae037adb6ef6bfb028740cec1b"
+size = 30885
+mtime_ms = 1790393762200
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/10d1b81b-d112-415e-812f-de9973825623/e4858456-6c1d-4824-805e-c4d28e0ceb15"
+storage_version_token = "1790393794646104"
+content_type = "image/jpeg"

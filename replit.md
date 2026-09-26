@@ -70,6 +70,10 @@ The application is built using Electron for the desktop client, with a Node.js (
 - When a kiosk is connected to Denfi Points, change the shared mission in the Auto Shutdown admin panel; Denfi Points displays it read-only. No additional attendance pairing key is required: kiosks use the existing Denfi Points connection. Attendance sync is not authenticated; keep Denfi Points on a trusted private network, never publicly expose its sync endpoints, and understand that any device able to reach them could submit false attendance reports.
 - The kiosk syncs measured progress to Denfi Points, which awards the points. Both machines should use the same local timezone. If the points server is unreachable, the kiosk saves progress and displays "SYNC PENDING"; unsynced prior days are retried for up to 30 days when the kiosk next connects. Historical awards use the server's mission rules for their original day.
 
+## Betting Games win alerts
+- A positive spin result (multiplier greater than 1×) on Denfi Points appears once in each connected Auto Shutdown session bar, showing the member and multiplier. Losing or break-even spins do not generate alerts. The winning kiosk waits for its reel to reveal the result before showing its own alert.
+- Update both Denfi Points and all Auto Shutdown PCs to enable this feature. Kiosks read recent wins from Denfi Points over the existing trusted LAN connection; offline PCs cannot display live alerts, and results older than two minutes are not replayed after a long disconnection.
+
 ## Building the Windows App
 - Install Node.js 22.12 or newer.
 - Run `npm install`.

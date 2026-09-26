@@ -1783,13 +1783,66 @@ let syncRatesInterval = null;
 let attendanceConfigInterval = null;
 let attendanceConfigRevision = 0;
 let attendanceConfigReady = false;
+let wheelWinsPollTimer = null;
+let wheelWinsFetching = false;
+let wheelWinsBaseline = null;
+let wheelWinsLastError = '';
+const announcedWheelWinIds = new Set();
+const recentWheelWinBroadcasts = new Map();
+
+async function pollWheelWins() {
+  if (appRole !== 'auto-shutdown' || !syncServerUrl || wheelWinsFetching || !wsClients.size) return;
+  wheelWinsFetching = true;
+  const source = syncServerUrl;
+  try {
+    const data = await fetchPointsWheel('/api/sync/wheel/wins');
+    if (source !== syncServerUrl || !Array.isArray(data.wins) ||
+        !Number.isSafeInteger(data.serverTime)) return;
+    // Use the Points computer's clock, not the diskless kiosk's clock.
+    // Include spins still settling when a kiosk first connects.
+    if (wheelWinsBaseline === null) wheelWinsBaseline = data.serverTime - 10000;
+    wheelWinsLastError = '';
+    for (const win of data.wins) {
+      if (!win || typeof win.id !== 'string' || announcedWheelWinIds.has(win.id) ||
+          !/^mem-[a-z0-9._-]{1,80}$/i.test(win.username || '') ||
+          !Number.isFinite(Number(win.multiplier)) || Number(win.multiplier) <= 1 ||
+          Number(win.createdAt) < wheelWinsBaseline) continue;
+      announcedWheelWinIds.add(win.id);
+      recentWheelWinBroadcasts.set(win.id, { win, receivedAt:Date.now() });
+      broadcast({ type: 'wheel-win', data: win });
+    }
+    for (const [id, item] of recentWheelWinBroadcasts) {
+      if (Date.now() - item.receivedAt > 15000) recentWheelWinBroadcasts.delete(id);
+    }
+    if (announcedWheelWinIds.size > 100) {
+      for (const id of Array.from(announcedWheelWinIds).slice(0, announcedWheelWinIds.size - 100)) {
+        announcedWheelWinIds.delete(id);
+      }
+    }
+  } catch (error) {
+    if (source === syncServerUrl && error.message !== wheelWinsLastError) {
+      wheelWinsLastError = error.message;
+      console.log('[Wheel wins] Waiting for compatible Denfi Points:', error.message);
+    }
+  } finally {
+    wheelWinsFetching = false;
+  }
+}
 
 function setSyncServer(url, persist) {
   attendanceConfigRevision++;
   attendanceConfigReady = false;
-  syncServerUrl = (url || '').trim().replace(/\/+$/, '');
+  const nextUrl = (url || '').trim().replace(/\/+$/, '');
+  if (nextUrl !== syncServerUrl) {
+    wheelWinsBaseline = null;
+    announcedWheelWinIds.clear();
+    recentWheelWinBroadcasts.clear();
+    wheelWinsLastError = '';
+  }
+  syncServerUrl = nextUrl;
   if (syncRatesInterval) { clearInterval(syncRatesInterval); syncRatesInterval = null; }
   if (attendanceConfigInterval) { clearInterval(attendanceConfigInterval); attendanceConfigInterval = null; }
+  if (wheelWinsPollTimer) { clearInterval(wheelWinsPollTimer); wheelWinsPollTimer = null; }
   if (persist) {
     settings.updateSettings({ syncServerUrl });
     if (isElectron && appRole === 'auto-shutdown') {
@@ -1799,6 +1852,10 @@ function setSyncServer(url, persist) {
   }
   if (syncServerUrl) {
     console.log('[Sync] Data server URL:', syncServerUrl);
+    if (appRole === 'auto-shutdown') {
+      wheelWinsPollTimer = setInterval(() => { void pollWheelWins(); }, 2000);
+      wheelWinsPollTimer.unref();
+    }
     syncRatesFromServer();
     syncRatesInterval = setInterval(syncRatesFromServer, 5 * 60 * 1000);
     const attendanceReady = syncAttendanceConfigFromServer();
@@ -2422,6 +2479,20 @@ app.post('/api/sync/wheel/spin', authorizeKioskMission, (req, res) => {
   }
 });
 
+app.get('/api/sync/wheel/wins', authorizeKioskMission, (req, res) => {
+  if (appRole !== 'points') return res.status(404).end();
+  const since = req.query.since === undefined ? 0 : Number(req.query.since);
+  if (!Number.isSafeInteger(since) || since < 0) {
+    return res.status(400).json({ success: false, error: 'Invalid win feed cursor.' });
+  }
+  try {
+    const serverTime = Date.now();
+    res.json({ success: true, serverTime, wins: coinLogs.getRecentWheelWins(since, serverTime) });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Could not read recent wheel wins.' });
+  }
+});
+
 app.post('/api/sync/wheel/claim-notification', authorizeKioskMission, (req, res) => {
   if (appRole !== 'points') return res.status(404).end();
   try {
@@ -2468,6 +2539,11 @@ wss.on('connection', (ws) => {
   if (lastSessionData) {
     ws.send(JSON.stringify({ type: 'status', data: lastSessionData }));
   }
+  for (const item of recentWheelWinBroadcasts.values()) {
+    if (Date.now() - item.receivedAt <= 15000) {
+      ws.send(JSON.stringify({ type: 'wheel-win', data: item.win }));
+    }
+  }
 
   ws.on('close', () => {
     wsClients.delete(ws);
@@ -2481,6 +2557,7 @@ wss.on('connection', (ws) => {
   });
 
   if (wsClients.size === 1) startWsPolling();
+  if (appRole === 'auto-shutdown') void pollWheelWins();
 });
 
 function broadcast(msg) {
