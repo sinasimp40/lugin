@@ -258,7 +258,7 @@ function Invoke-Install {
 
   if ($exe -eq "") {
     Write-Host "ERROR: Watchdog target path is empty." -ForegroundColor Red
-    return
+    exit 1
   }
 
   try { if (-not (Test-Path $data)) { New-Item -ItemType Directory -Path $data -Force | Out-Null } } catch {}
@@ -269,6 +269,10 @@ function Invoke-Install {
     } catch {}
   }
   Write-InstallLog "Installing watchdog for $exe"
+  if (-not (Test-Path $exe -PathType Leaf)) {
+    Write-InstallLog "FAILED: target executable not found: $exe"
+    exit 1
+  }
 
   # Install stable copies of both files together so the task keeps working
   # even if the operator deletes the files they ran from the Desktop.
@@ -284,13 +288,14 @@ function Invoke-Install {
   } catch {
     Write-InstallLog "FAILED to install watchdog files: $($_.Exception.Message)"
     Write-Host "Failed to install watchdog files: $($_.Exception.Message)" -ForegroundColor Red
-    return
+    exit 1
   }
 
   $argLine = "//B //Nologo `"$installedLauncher`" -Watch -TargetExe `"$exe`" -DataDir `"$data`" -PollSeconds $poll"
 
   try {
-    $action   = New-ScheduledTaskAction -Execute "wscript.exe" -Argument $argLine
+    $wscript = Join-Path $env:SystemRoot "System32\wscript.exe"
+    $action   = New-ScheduledTaskAction -Execute $wscript -Argument $argLine
     $trigger  = New-ScheduledTaskTrigger -AtLogOn
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1)
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Force -RunLevel Limited | Out-Null
@@ -300,7 +305,7 @@ function Invoke-Install {
     Write-InstallLog "FAILED to register scheduled task: $($_.Exception.Message)"
     Write-Host "Failed to register scheduled task: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "Try running this script as Administrator." -ForegroundColor Yellow
-    return
+    exit 1
   }
 
   # Start it now so you do not have to log off/on.
@@ -323,12 +328,28 @@ function Invoke-Install {
       throw "The previous watchdog is still running. Close its old window, then rerun the silent launcher."
     }
     Start-ScheduledTask -TaskName $TaskName
-    Write-InstallLog "Scheduled task started. Check watchdog.log for the watchdog startup."
+    # Start-ScheduledTask only confirms the launch request. Verify that the
+    # independent monitor really started before reporting success.
+    $watching = $false
+    for ($attempt = 0; $attempt -lt 60; $attempt++) {
+      $taskState = (Get-ScheduledTask -TaskName $TaskName -EA Stop).State
+      $watchPid = Get-Content (Join-Path $data "watchdog.lock") -EA SilentlyContinue | Select-Object -First 1
+      $watchProcess = if ($watchPid -match '^\d+$') { Get-Process -Id $watchPid -EA SilentlyContinue }
+      if ($taskState -eq 'Running' -and $watchProcess -and $watchProcess.ProcessName -match '^(powershell|pwsh)$') {
+        $watching = $true
+        break
+      }
+      Start-Sleep -Milliseconds 500
+    }
+    if (-not $watching) {
+      throw "The scheduled task did not start a running watchdog. Check watchdog.log and Task Scheduler."
+    }
+    Write-InstallLog "Watchdog confirmed running (PID=$watchPid)."
     Write-Host "Watchdog started now." -ForegroundColor Green
   } catch {
-    Write-InstallLog "Could not start scheduled task immediately: $($_.Exception.Message)"
-    Write-Host "Could not start the task immediately: $($_.Exception.Message)" -ForegroundColor Yellow
-    Write-Host "It will start automatically at the next logon." -ForegroundColor Yellow
+    Write-InstallLog "FAILED to start watchdog: $($_.Exception.Message)"
+    Write-Host "Failed to start watchdog: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
   }
 
   Write-Host ""
