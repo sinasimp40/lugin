@@ -15,8 +15,8 @@ Electron polling and foreground checks must be owned by the current session gene
 
 **How to apply:** Cancel old requests, reject callbacks that no longer own the active request/window, and exact-match normalized foreground process names before intentionally hiding the overlay.
 
-While a drawer is open, avoid shrinking the transparent Windows session window in response to changing content or periodically updated points. Reserve space for predictable controls such as betting confirmation.
+While a drawer is open, avoid shrinking the transparent Windows session window in response to changing content or periodically updated points within that drawer. Reserve space for predictable controls such as betting confirmation. Reset the size floor when switching to a different drawer.
 
-**Why:** Windows repaints transparent Electron windows when their bounds change; repeated resize requests can look like the whole popup is flickering even when the DOM remains mounted.
+**Why:** Windows repaints transparent Electron windows when their bounds change; repeated resize requests can look like the whole popup is flickering even when the DOM remains mounted. But carrying a tall game's size floor into a shorter Order, Ranking, or Attendance panel leaves a large empty window.
 
-**How to apply:** Prefer stable bounds during interactions; allow growth only when new content truly needs more room, and reset sizing when the drawer closes. Browser previews cannot verify the actual Windows compositor behavior.
+**How to apply:** Prefer stable bounds during interactions; allow growth only when new content truly needs more room, and measure afresh on a panel switch or close. Browser previews cannot verify the actual Windows compositor behavior.

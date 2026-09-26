@@ -924,9 +924,11 @@
 
     function resizeDrawerToContent() {
       if (!activeDrawer) return;
+      const requestedView = activeDrawer;
       clearTimeout(drawerResizeTimer);
       drawerResizeTimer = setTimeout(() => {
        requestAnimationFrame(() => {
+        if (activeDrawer !== requestedView) return;
         const drawer = document.getElementById('drawer');
         const strip = document.getElementById('strip');
         if (!drawer || !strip || !drawer.classList.contains('active')) return;
@@ -975,6 +977,11 @@
         try { placement = await window.electronAPI.getSessionOverlayPlacement(); } catch (_) {}
       }
       if (activeDrawer !== view) return;
+      // Keep the height steady while using one panel, but do not carry a
+      // taller panel's minimum height into the next one.
+      clearTimeout(drawerResizeTimer);
+      drawerHeightFloor = 0;
+      document.getElementById('drawer').style.minHeight = '';
       document.querySelector('.overlay-shell').classList.toggle('drawer-below', placement === 'below');
       document.getElementById('drawer').classList.add('active');
       document.getElementById('shop-btn').classList.toggle('active', view === 'shop');
