@@ -1180,10 +1180,14 @@
           if (pending) {
             wheelData.oddsToken = pending.oddsToken;
             wheelData.multipliers = pending.multipliers;
+             // A retry has not revealed its result yet. Do not show the
+             // already-settled server balance in the game panel either.
+             wheelData.balance = pending.expectedBalance;
           }
           document.getElementById('wheel-demo-badge').hidden = true;
         wheelLoaded = true;
         renderWheel(true);
+        setPoints(data.balance);
         if (data.enabled === false) {
           if (!pending) {
             document.getElementById('wheel-result').textContent = 'WHEEL CURRENTLY OFFLINE';
@@ -1362,7 +1366,7 @@
           wheelData.spinsRemaining = Number.isInteger(spin.spinsRemaining) ? spin.spinsRemaining
             : Math.max(0, Number(wheelData.spinsRemaining) - 1);
           if (previewMode) demoWheelState = { ...wheelData };
-          setPoints(spin.balance);
+          setPoints(spin.balance, true);
           wheelSpinInFlight = false; wheelRequestId = null; wheelRequestUsername = '';
           wheelExpectedStake = null; wheelExpectedBalance = null; wheelMultipliers = []; wheelOddsToken = '';
           if (wheelData.allowCustomStake) {
@@ -1776,7 +1780,14 @@
       resizeOverlayToContent();
     }
 
-    function setPoints(pts) {
+    function setPoints(pts, confirmedWheelResult = false) {
+      // Denfi Points settles before the reel finishes. Live status messages
+      // must not reveal the new balance (and therefore the outcome) early.
+      // Also keep an unconfirmed request hidden until its retry is resolved.
+      const sameWheelMember = wheelRequestId && wheelRequestUsername &&
+        String(sessionUsername || '').toLowerCase() === String(wheelRequestUsername).toLowerCase();
+      if (!confirmedWheelResult && sessionUsername &&
+          (sameWheelMember || readPendingWheel(sessionUsername))) return;
       const el = document.getElementById('points-zone');
       const valueEl = document.getElementById('points-value');
       const isMember = sessionUsername && sessionUsername.toLowerCase().startsWith('mem-');

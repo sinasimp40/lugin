@@ -220,6 +220,45 @@ test('the member session keeps a chosen stake after wins and caps it when balanc
   assert.equal(input.value, '13.00', 'full-balance policy still stakes all points');
 });
 
+test('live points updates cannot reveal a pending reel result early', () => {
+  const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'session.html'), 'utf8');
+  const start = page.indexOf('    function setPoints(pts, confirmedWheelResult = false)');
+  const end = page.indexOf('    function setAttendance(', start);
+  assert.ok(start >= 0 && end > start);
+  const pointsZone = { classList:{ add(){}, remove(){} } };
+  const value = { textContent:'' };
+  let storedPending = false;
+  const view = new Function('document', 'readPendingWheel', 'resizeOverlayToContent', `
+    let sessionUsername = 'mem-first', wheelRequestId = 'request-one', wheelRequestUsername = 'mem-first';
+    ${page.slice(start, end)}
+    return {
+      setPoints,
+      finish:() => { wheelRequestId = null; wheelRequestUsername = ''; },
+      switchMember:name => { sessionUsername = name; }
+    };`)({
+      getElementById:id => id === 'points-zone' ? pointsZone : value
+    }, () => storedPending ? { requestId:'stored-request' } : null, () => {});
+  view.setPoints(10, true);
+  view.setPoints(20);
+  assert.equal(value.textContent, '10', 'live settlement stays hidden while the reel spins');
+  view.setPoints(null);
+  assert.equal(value.textContent, '10', 'an interim missing balance does not overwrite the display');
+  view.setPoints(20, true);
+  assert.equal(value.textContent, '20', 'confirmed result becomes visible at reveal');
+  view.finish();
+  view.setPoints(21);
+  assert.equal(value.textContent, '21', 'subsequent live balance updates resume');
+  storedPending = true;
+  view.setPoints(31);
+  assert.equal(value.textContent, '21', 'an unconfirmed retry cannot reveal a persisted result');
+  storedPending = false;
+  view.setPoints(31);
+  assert.equal(value.textContent, '31');
+  view.switchMember('mem-second');
+  view.setPoints(7);
+  assert.equal(value.textContent, '7', 'another member never inherits a hidden balance');
+});
+
 test('a configured 30% multiplier wins exactly 30% of the possible tickets on each roll', t => {
   const outcomes = [
     { multiplier: 0, weight: 50 },

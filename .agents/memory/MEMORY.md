@@ -2,7 +2,7 @@
 - [Shutdown timer ownership](shutdown-timer-ownership.md) — idle shutdown is main-process authoritative; startup restoration shows the lock screen without starting the idle deadline.
 - [Session visibility reliability](session-visibility-reliability.md) — reject stale logout events and require repeated hotspot confirmation before removing an active session overlay.
 - [Attendance history and network trust](attendance-trust-and-history.md) — kiosk-only mission editing, shared daily target, and live Points-timed rewards without offline replay.
-- [Betting game presentation](betting-game-presentation.md) — equal-sized member tiles keep odds private; operators directly control LOSE and all chances must total 100%.
+- [Betting game presentation](betting-game-presentation.md) — private odds, operator-controlled LOSE, and member points held until the reel reveals its result.
 - [Betting policy compatibility](betting-policy-compatibility.md) — old Points builds may acknowledge writes while dropping newer spin/stake settings; verify before claiming a policy is live.
 - [Offline betting drafts](offline-betting-drafts.md) — prepare odds on a disconnected kiosk, but require an explicit publish before changing Denfi Points.
 - [Kiosk media chooser](kiosk-media-chooser.md) — parent admin file dialogs to Electron and pause lock-screen focus enforcement only while the authorized chooser is open.
