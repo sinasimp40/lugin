@@ -32,7 +32,7 @@ test('switching session drawers measures the new panel instead of keeping the pr
   for (const id of ['shop-btn', 'rank-btn', 'attendance-btn', 'games-btn']) {
     elements.set(id, { classList:classes() });
   }
-  for (const id of ['store-view', 'rank-view', 'attendance-view', 'wins-view', 'wheel-view', 'cart-bar', 'rank-note', 'drawer-title', 'win-queue', 'win-queue-count']) {
+  for (const id of ['store-view', 'rank-view', 'attendance-view', 'wins-view', 'wheel-view', 'cart-bar', 'rank-note', 'drawer-title']) {
     elements.set(id, { style:{}, textContent:'' });
   }
   const document = {
@@ -43,8 +43,7 @@ test('switching session drawers measures the new panel instead of keeping the pr
   window.parent = window;
   const view = new Function('document', 'window', 'setTimeout', 'clearTimeout', 'requestAnimationFrame', `
     let activeDrawer = null, drawerHeightFloor = 0, drawerResizeTimer = null;
-    let displayedWinNotice = null, sessionUsername = 'mem-current', timeLeft = 100;
-    const queuedWinNotices = [];
+    let displayedWinNotice = null, pendingWinNotice = null, sessionUsername = 'mem-current', timeLeft = 100;
     const previewMode = true, OVERLAY_SCALE = 0.72;
     ${page.slice(resizeStart, resizeEnd)}
     ${page.slice(resizeEnd, openStart)}
@@ -55,12 +54,11 @@ test('switching session drawers measures the new panel instead of keeping the pr
     function loadWheel() {}
     function setOverlayExpanded() {}
     function resizeOverlayToContent() {}
-    function showNextWinNotice() {}
-    function updateWinQueueIndicator() {}
+    function showLatestWinNotice() {}
     return {
       openDrawer, closeDrawer, resizeDrawerToContent, floor:() => drawerHeightFloor,
-      active:() => activeDrawer, queueWin:() => queuedWinNotices.push({ id:'another-win' }),
-      queued:() => queuedWinNotices.length
+      active:() => activeDrawer, setPending:() => { pendingWinNotice = { id:'another-win' }; },
+      pending:() => pendingWinNotice
     };
   `)(document, window,
     callback => { queued = callback; return 1; }, () => { queued = null; }, callback => callback());
@@ -90,9 +88,9 @@ test('switching session drawers measures the new panel instead of keeping the pr
   assert.equal(elements.get('wins-view').style.display, '', 'the win popup uses the shared drawer');
   assert.equal(elements.get('drawer-title').textContent, 'WINNER');
   assert.equal(heights.at(-1), Math.ceil((150 + 70) * 0.72));
-  view.queueWin();
+  view.setPending();
   view.closeDrawer();
   assert.equal(view.active(), null, 'the shared X closes the win popup');
-  assert.equal(view.queued(), 0, 'the shared X clears pending wins too');
+  assert.equal(view.pending(), null, 'the shared X clears a pending win too');
   assert.equal(drawer.classList.contains('active'), false);
 });

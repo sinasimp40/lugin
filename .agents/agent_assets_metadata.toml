@@ -84,3 +84,17 @@ mtime_ms = 1790394413964
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/39358b19-17fc-4976-a331-0acf04a5d44b/bc316ea9-c8e1-4878-a720-5efc68dad6f9"
 storage_version_token = "1790394424583010"
 content_type = "image/png"
+
+[[outputs]]
+id = "RJN5werT-d8MKjjIESkbu"
+uri = "file://screenshots/latest-win-closeup.png"
+type = "image"
+title = "Latest win replaces previous winner"
+description = "In the two-win demo, mem-diana 2× immediately replaces mem-carlo 5× in the same compact popup; no queue or NEXT button."
+logical_id = "fefb8289-64b0-48ab-8832-dd911da3db17"
+content_hash = "sha256:ce5ecae1740a407fd5605989e66c48619921ee0869428d358889f64b8991472b"
+size = 144981
+mtime_ms = 1790394597204
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/fefb8289-64b0-48ab-8832-dd911da3db17/ff69884c-7240-4cb4-83e7-adf1b709539e"
+storage_version_token = "1790394605596802"
+content_type = "image/png"

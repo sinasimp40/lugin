@@ -313,12 +313,7 @@
   .overlay-shell.drawer-below .drawer { top:96px; bottom:auto; }
   .drawer-head { display:flex; justify-content:space-between; align-items:center; padding:11px 13px; border-bottom:1px solid rgba(255,140,0,.18); }
   .drawer-title { font:800 16px 'Orbitron',monospace; letter-spacing:1px; color:#ffb13d; }
-  .drawer-controls { display:flex; align-items:center; gap:9px; }
   .drawer-close { border:0; background:transparent; color:#a98a68; font-size:22px; cursor:pointer; padding:0 4px; }
-  .win-queue { display:flex; align-items:center; gap:6px; color:#ffb13d; font:12px 'Share Tech Mono',monospace; }
-  .win-queue[hidden] { display:none; }
-  .win-next { border:1px solid rgba(255,140,0,.4); background:#241a0e; color:#ffd08a; padding:5px 8px; font:700 11px 'Orbitron',sans-serif; cursor:pointer; }
-  .win-next:hover, .win-next:focus-visible { background:#473019; color:#fff; }
   .drawer-body {
     flex:0 0 auto;
     min-height:0;
@@ -651,13 +646,7 @@
   <section class="drawer" id="drawer" aria-label="Session tools">
     <header class="drawer-head">
       <div class="drawer-title" id="drawer-title">QUICK ORDER</div>
-      <div class="drawer-controls">
-        <div class="win-queue" id="win-queue" hidden>
-          <span id="win-queue-count"></span>
-          <button class="win-next" id="win-next" type="button">NEXT</button>
-        </div>
-        <button class="drawer-close" id="drawer-close" type="button" aria-label="Close">&times;</button>
-      </div>
+      <button class="drawer-close" id="drawer-close" type="button" aria-label="Close">&times;</button>
     </header>
     <div class="drawer-body">
       <div id="store-view">
@@ -826,35 +815,37 @@
     let drawerHeightFloor = 0;
     let overlayWidth = 0;
     const seenWinNoticeIds = new Set();
-    const queuedWinNotices = [];
     const deferredWinNotices = new Map();
     const earlyWinNotices = new Map();
     let initialSessionStatusKnown = false;
     let displayedWinNotice = null;
-    function updateWinQueueIndicator() {
-      const count = queuedWinNotices.length;
-      document.getElementById('win-queue').hidden = activeDrawer !== 'wins' || count === 0;
-      document.getElementById('win-queue-count').textContent = `+${count}`;
-    }
+    let pendingWinNotice = null;
+    let latestWinNoticeTime = 0;
     function displayWinNotice(win) {
       displayedWinNotice = win;
       document.getElementById('win-user').textContent = win.username;
       document.getElementById('win-multiplier').textContent = `${win.multiplier}×`;
-      updateWinQueueIndicator();
     }
-    function advanceWinNotice() {
-      if (activeDrawer !== 'wins' || !queuedWinNotices.length) return;
-      displayWinNotice(queuedWinNotices.shift());
-    }
-    function showNextWinNotice() {
-      if (activeDrawer || displayedWinNotice || !queuedWinNotices.length ||
+    function showLatestWinNotice() {
+      if (activeDrawer || !pendingWinNotice ||
           !sessionUsername || timeLeft <= 0) return;
-      displayWinNotice(queuedWinNotices.shift());
+      displayWinNotice(pendingWinNotice);
+      pendingWinNotice = null;
       void openDrawer('wins');
+    }
+    function acceptWinNotice(win) {
+      if (win.createdAt < latestWinNoticeTime) return;
+      latestWinNoticeTime = win.createdAt;
+      if (activeDrawer === 'wins') displayWinNotice(win);
+      else {
+        pendingWinNotice = win;
+        showLatestWinNotice();
+      }
     }
     function receiveWinNotice(win) {
       if (!win || typeof win.id !== 'string' || !/^mem-[a-z0-9._-]{1,80}$/i.test(win.username || '') ||
           !Number.isFinite(Number(win.multiplier)) || Number(win.multiplier) <= 1 ||
+          !Number.isSafeInteger(win.createdAt) || win.createdAt <= 0 ||
           seenWinNoticeIds.has(win.id)) return;
       if (!initialSessionStatusKnown) {
         if (earlyWinNotices.size >= 6) earlyWinNotices.delete(earlyWinNotices.keys().next().value);
@@ -869,9 +860,7 @@
         deferredWinNotices.set(win.id, win);
         return;
       }
-      if (queuedWinNotices.length < 6) queuedWinNotices.push(win);
-      showNextWinNotice();
-      updateWinQueueIndicator();
+      acceptWinNotice(win);
     }
     function finishInitialSessionStatus() {
       initialSessionStatusKnown = true;
@@ -883,10 +872,8 @@
       for (const [id, win] of deferredWinNotices) {
         if (String(win.username).toLowerCase() !== String(username).toLowerCase()) continue;
         deferredWinNotices.delete(id);
-        if (queuedWinNotices.length < 6) queuedWinNotices.push(win);
+        acceptWinNotice(win);
       }
-      showNextWinNotice();
-      updateWinQueueIndicator();
     }
     function wheelPendingKey(username) {
       return `denfi-wheel-pending:${String(username || '').toLowerCase()}`;
@@ -1040,10 +1027,9 @@
       clearTimeout(drawerResizeTimer);
       if (activeDrawer === 'wins') {
         displayedWinNotice = null;
-        queuedWinNotices.length = 0;
+        pendingWinNotice = null;
       }
       activeDrawer = null;
-      updateWinQueueIndicator();
       const drawer = document.getElementById('drawer');
       drawer.classList.remove('active');
       drawer.style.minHeight = '';
@@ -1053,8 +1039,8 @@
       document.getElementById('rank-btn').classList.remove('active');
       document.getElementById('attendance-btn').classList.remove('active');
       document.getElementById('games-btn').classList.remove('active');
-      if (queuedWinNotices.length && sessionUsername && timeLeft > 0) {
-        showNextWinNotice();
+      if (pendingWinNotice && sessionUsername && timeLeft > 0) {
+        showLatestWinNotice();
         return;
       }
       setOverlayExpanded(false);
@@ -1063,12 +1049,8 @@
 
     async function openDrawer(view) {
       if (activeDrawer === view) { closeDrawer(); return; }
-      if (activeDrawer === 'wins') {
-        displayedWinNotice = null;
-        queuedWinNotices.length = 0;
-      }
+      if (activeDrawer === 'wins') displayedWinNotice = null;
       activeDrawer = view;
-      updateWinQueueIndicator();
       let placement = 'above';
       if (!previewMode && window.electronAPI && window.electronAPI.getSessionOverlayPlacement) {
         try { placement = await window.electronAPI.getSessionOverlayPlacement(); } catch (_) {}
@@ -1871,7 +1853,8 @@
             initialSessionStatusKnown = true;
             earlyWinNotices.clear();
             deferredWinNotices.clear();
-            queuedWinNotices.length = 0;
+            pendingWinNotice = null;
+            latestWinNoticeTime = 0;
             if (activeDrawer === 'wins') closeDrawer();
             updateAttendanceButton();
             setPoints(null);
@@ -2110,7 +2093,6 @@
       loadAttendance(attendanceMonth);
     });
     document.getElementById('drawer-close').addEventListener('click', closeDrawer);
-    document.getElementById('win-next').addEventListener('click', advanceWinNotice);
     document.getElementById('clear-cart').addEventListener('click', () => { cart = {}; renderCart(); });
     document.getElementById('place-order').addEventListener('click', placeOrder);
 
@@ -2118,9 +2100,10 @@
     const demoWinCount = new URLSearchParams(location.search).get('win');
     if (previewMode && (demoWinCount === '1' || demoWinCount === '2')) {
       setTimeout(() => {
-        receiveWinNotice({ id:'demo-win', username:'mem-carlo', multiplier:5, station:'PC 04' });
+        const demoTime = Date.now();
+        receiveWinNotice({ id:'demo-win', username:'mem-carlo', multiplier:5, station:'PC 04', createdAt:demoTime - 1000 });
         if (demoWinCount === '2') receiveWinNotice({
-          id:'demo-win-2', username:'mem-diana', multiplier:2, station:'PC 09'
+          id:'demo-win-2', username:'mem-diana', multiplier:2, station:'PC 09', createdAt:demoTime
         });
       }, 350);
     }
