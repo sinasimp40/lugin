@@ -796,6 +796,8 @@
     let wheelExpectedStake = null;
     let wheelExpectedBalance = null;
     let wheelSettledStake = null;
+    let wheelStakeMember = null;
+    let demoWheelState = null;
     let wheelMultipliers = [];
     let wheelOddsToken = '';
     let wheelReelOffset = 0;
@@ -1019,6 +1021,7 @@
     }
 
     function wheelMoney(value) {
+      if (value === null || value === undefined || value === '') return '—';
       const n = Number(value);
       return Number.isFinite(n) ? n.toFixed(2) + ' PTS' : '—';
     }
@@ -1031,6 +1034,20 @@
       const stake = Number(value);
       return /^\d+(?:\.\d{1,2})?$/.test(value) && Number.isSafeInteger(Math.round(stake * 100)) &&
         stake >= 0.01 && stake <= balance ? stake : null;
+    }
+    function nextWheelStakeValue(previous, balance, keepSelection) {
+      const available = Number(balance);
+      if (!Number.isFinite(available) || available < 0.01) return '';
+      if (!keepSelection) return available.toFixed(2);
+      if (previous === '') return '';
+      return Number(previous) > available ? available.toFixed(2) : previous;
+    }
+    function syncWheelStakeInput() {
+      const member = previewMode ? 'preview' : String(sessionUsername || '').toLowerCase();
+      const input = document.getElementById('wheel-stake-input');
+      input.value = nextWheelStakeValue(input.value, wheelData.balance,
+        wheelStakeMember === member && !!wheelData.allowCustomStake);
+      wheelStakeMember = member;
     }
     function updateWheelControls() {
       if (!wheelData) return;
@@ -1048,9 +1065,8 @@
         : '';
       input.max = Number.isFinite(Number(wheelData.balance)) ? Number(wheelData.balance).toFixed(2) : '';
       input.disabled = wheelSpinInFlight || !!wheelRequestId || !wheelLoaded || exhausted;
-      const stake = wheelRequestId ? wheelExpectedStake
-        : wheelSettledStake !== null ? wheelSettledStake : selectedWheelStake();
-      document.getElementById('wheel-stake-label').textContent = wheelSettledStake !== null ? 'LAST STAKE' : 'STAKE';
+      const stake = wheelRequestId ? wheelExpectedStake : selectedWheelStake();
+      document.getElementById('wheel-stake-label').textContent = wheelSettledStake !== null ? 'NEXT STAKE' : 'STAKE';
       document.getElementById('wheel-stake').textContent = wheelMoney(stake);
       const button = document.getElementById('wheel-spin');
       if (!wheelSpinInFlight) {
@@ -1068,7 +1084,7 @@
       document.getElementById('wheel-balance').textContent = wheelMoney(wheelData.balance);
       if (resetStake) {
         wheelSettledStake = null;
-        document.getElementById('wheel-stake-input').value = Number(wheelData.balance).toFixed(2);
+        syncWheelStakeInput();
       }
       updateWheelControls();
       const labels = document.getElementById('wheel-labels');
@@ -1141,14 +1157,16 @@
       document.getElementById('wheel-spin').disabled = true;
       if (!pending) document.getElementById('wheel-result').textContent = 'LOADING POINTS BALANCE...';
       if (previewMode) {
-        wheelData = { enabled:true, balance:86.5, multipliers:[0,1.5,1.8,2,5],
+        wheelData = demoWheelState ? { ...demoWheelState } : { enabled:true, balance:86.5, multipliers:[0,1.5,1.8,2,5],
           oddsToken:'preview-demo-token', maxSpinsPerDay:1, spinsRemaining:1,
           allowCustomStake:document.getElementById('wheel-demo-custom-stake').checked };
+        wheelData.allowCustomStake = document.getElementById('wheel-demo-custom-stake').checked;
         document.getElementById('wheel-demo-badge').hidden = false;
         wheelLoaded = true;
         renderWheel(true);
         if (!pending) {
-          document.getElementById('wheel-result').textContent = 'READY FOR A HIGH-STAKES SPIN';
+          document.getElementById('wheel-result').textContent = wheelData.spinsRemaining <= 0
+            ? 'DAILY SPIN LIMIT REACHED' : 'READY FOR A HIGH-STAKES SPIN';
         }
         return;
       }
@@ -1343,10 +1361,14 @@
           wheelSettledStake = Number(spin.stake);
           wheelData.spinsRemaining = Number.isInteger(spin.spinsRemaining) ? spin.spinsRemaining
             : Math.max(0, Number(wheelData.spinsRemaining) - 1);
+          if (previewMode) demoWheelState = { ...wheelData };
           setPoints(spin.balance);
           wheelSpinInFlight = false; wheelRequestId = null; wheelRequestUsername = '';
           wheelExpectedStake = null; wheelExpectedBalance = null; wheelMultipliers = []; wheelOddsToken = '';
-          if (wheelData.allowCustomStake) document.getElementById('wheel-stake-input').value = Number(wheelData.balance).toFixed(2);
+          if (wheelData.allowCustomStake) {
+            document.getElementById('wheel-stake-input').value = nextWheelStakeValue(
+              Number(spin.stake).toFixed(2), wheelData.balance, true);
+          }
           updateWheelControls();
           resizeDrawerToContent();
         }, settle);

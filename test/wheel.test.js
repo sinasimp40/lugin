@@ -184,6 +184,42 @@ test('the Auto Shutdown editor preserves editable LOSE and requires exactly 100%
   assert.match(page, /function addWheelLoss\(\)/);
 });
 
+test('the member session keeps a chosen stake after wins and caps it when balance drops', () => {
+  const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'session.html'), 'utf8');
+  const start = page.indexOf('    function nextWheelStakeValue(');
+  const end = page.indexOf('    function updateWheelControls()', start);
+  assert.ok(start >= 0 && end > start);
+  const input = { value:'' };
+  const editor = new Function('document', `
+    let previewMode = false, sessionUsername = 'mem-first', wheelStakeMember = null;
+    let wheelData = { balance:15, allowCustomStake:true };
+    ${page.slice(start, end)}
+    return {
+      sync:syncWheelStakeInput,
+      select:value => { document.getElementById('wheel-stake-input').value = value; },
+      setBalance:value => { wheelData.balance = value; },
+      setMember:value => { sessionUsername = value; },
+      setCustom:value => { wheelData.allowCustomStake = value; }
+    };`)({ getElementById:() => input });
+  editor.sync();
+  assert.equal(input.value, '15.00', 'first visit defaults to the available balance');
+  editor.select('4.00');
+  editor.setBalance(23);
+  editor.sync();
+  assert.equal(input.value, '4.00', 'a win does not change the chosen stake');
+  editor.setBalance(2);
+  editor.sync();
+  assert.equal(input.value, '2.00', 'after a loss, the stake cannot exceed the balance');
+  editor.setMember('mem-second');
+  editor.setBalance(10);
+  editor.sync();
+  assert.equal(input.value, '10.00', 'another member does not inherit the prior stake');
+  editor.setCustom(false);
+  editor.setBalance(13);
+  editor.sync();
+  assert.equal(input.value, '13.00', 'full-balance policy still stakes all points');
+});
+
 test('a configured 30% multiplier wins exactly 30% of the possible tickets on each roll', t => {
   const outcomes = [
     { multiplier: 0, weight: 50 },
