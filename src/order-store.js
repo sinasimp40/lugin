@@ -48,6 +48,9 @@ function createOrder(order) {
     items: order.items,
     total: order.total,
     status: 'pending',
+    timeLeft: order.timeLeft,
+    telegramStatus: 'pending',
+    telegramAttempts: 0,
     createdAt: Date.now(),
   };
   data.orders.unshift(created);
@@ -58,6 +61,26 @@ function createOrder(order) {
 
 function getOrders() {
   return load().orders.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+function getPendingTelegramOrders() {
+  // Older orders have no delivery state. Do not replay them: some were already
+  // delivered before this queue existed.
+  return getOrders().filter(order =>
+    order.status === 'pending' && order.telegramStatus === 'pending').reverse();
+}
+
+function updateTelegramDelivery(id, result) {
+  const data = load();
+  const order = data.orders.find(item => item.id === id);
+  if (!order) return null;
+  order.telegramStatus = result.sent ? 'sent' : 'pending';
+  order.telegramAttempts = (order.telegramAttempts || 0) + 1;
+  order.telegramLastAttemptAt = Date.now();
+  if (result.sent) delete order.telegramLastError;
+  else order.telegramLastError = String(result.error || 'Telegram delivery failed').slice(0, 200);
+  save(data);
+  return order;
 }
 
 function updateOrderStatus(id, status) {
@@ -79,4 +102,7 @@ function deleteOrder(id) {
   return true;
 }
 
-module.exports = { setDataDir, createOrder, getOrders, updateOrderStatus, deleteOrder };
+module.exports = {
+  setDataDir, createOrder, getOrders, getPendingTelegramOrders,
+  updateTelegramDelivery, updateOrderStatus, deleteOrder
+};

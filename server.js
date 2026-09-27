@@ -1265,9 +1265,21 @@ app.post('/api/session/orders', (req, res) => {
     station: session.pc || settings.getSettings().computerName || 'PC',
     items,
     total,
+    timeLeft: session.timeLeft,
   });
-  const telegramSent = await sendTelegramOrderNotification(order, session);
-  res.json({ success: true, order, telegramSent });
+  let delivery = { sent: false };
+  try {
+    delivery = await deliverTelegramOrderNotification(order);
+  } catch (error) {
+    // The order was already saved. Keep it queued rather than suggesting that
+    // the customer retry the purchase and create a duplicate.
+    console.log('[Orders] Delivery will retry:', order.id, error.message);
+  }
+  const telegram = settings.getTelegramSettings();
+  res.json({
+    success: true, order, telegramSent: delivery.sent,
+    telegramConfigured: !!(telegram.botToken && telegram.channelId)
+  });
   }).catch(error => {
     console.log('[Orders] Session validation failed:', error.message);
     if (!res.headersSent) res.status(503).json({ success: false, error: 'Could not verify the active session' });
@@ -1297,25 +1309,61 @@ function formatSessionTime(seconds) {
   return [hours, minutes, secs].map(part => String(part).padStart(2, '0')).join(':');
 }
 
-async function sendTelegramOrderNotification(order, session) {
+async function sendTelegramOrderNotification(order) {
   const itemLines = order.items.map(item =>
     `- ${item.name} x${item.quantity} — ₱${(item.price * item.quantity).toFixed(2)}`
   );
   const text = [
     'NEW KIOSK ORDER',
     '',
+    `ORDER ID: ${order.id}`,
     `PC: ${order.station}`,
     `USERNAME: ${order.username}`,
-    `TIME LEFT: ${formatSessionTime(session.timeLeft)}`,
+    `TIME LEFT: ${formatSessionTime(order.timeLeft)}`,
     `ORDER TIME: ${new Date(order.createdAt).toLocaleString()}`,
     '',
     ...itemLines,
     '',
     `TOTAL: ₱${Number(order.total).toFixed(2)}`,
   ].join('\n');
-  const result = await sendTelegramMessage(text);
-  return result.sent;
+  return sendTelegramMessage(text);
 }
+
+const orderNotificationsInFlight = new Set();
+async function deliverTelegramOrderNotification(order) {
+  if (orderNotificationsInFlight.has(order.id)) return { sent: false, error: 'Delivery in progress' };
+  orderNotificationsInFlight.add(order.id);
+  try {
+    const current = orderStore.getOrders().find(item => item.id === order.id);
+    if (!current || current.status !== 'pending' || current.telegramStatus !== 'pending') {
+      return { sent: current?.telegramStatus === 'sent', error: 'Order no longer awaiting delivery' };
+    }
+    const result = await sendTelegramOrderNotification(current);
+    orderStore.updateTelegramDelivery(order.id, result);
+    if (!result.sent) console.log('[Orders] Telegram delivery pending:', order.id, result.error);
+    return result;
+  } finally {
+    orderNotificationsInFlight.delete(order.id);
+  }
+}
+
+let orderNotificationFlushInFlight = false;
+async function retryPendingOrderNotifications() {
+  if (orderNotificationFlushInFlight || appRole !== 'auto-shutdown') return;
+  const telegram = settings.getTelegramSettings();
+  if (!telegram.botToken || !telegram.channelId) return;
+  orderNotificationFlushInFlight = true;
+  try {
+    for (const order of orderStore.getPendingTelegramOrders().slice(0, 10)) {
+      await deliverTelegramOrderNotification(order);
+    }
+  } catch (error) {
+    console.log('[Orders] Telegram retry error:', error.message);
+  } finally {
+    orderNotificationFlushInFlight = false;
+  }
+}
+setInterval(() => { void retryPendingOrderNotifications(); }, 15000).unref();
 
 async function sendTelegramMessage(text) {
   const telegram = settings.getTelegramSettings();

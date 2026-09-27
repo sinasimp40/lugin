@@ -1741,7 +1741,11 @@
         if (!data.success) throw new Error(data.error || 'Order failed');
         cart = {};
         renderCart();
-        showOrderToast('ORDER SENT — PLEASE WAIT AT YOUR PC');
+        showOrderToast(data.telegramSent
+          ? 'ORDER SENT — PLEASE WAIT AT YOUR PC'
+          : data.telegramConfigured === false
+            ? 'ORDER SAVED — TELEGRAM NOT SET UP ON THIS PC'
+            : 'ORDER SAVED — TELEGRAM PENDING; RETRYING', !data.telegramSent);
       } catch (error) {
         showOrderToast(error.message || 'Could not send order', true);
       } finally {
@@ -1757,7 +1761,7 @@
       toast.style.borderColor = isError ? '#a64235' : '#3d8b48';
       toast.style.color = isError ? '#ff8f80' : '#8cdf97';
       toast.classList.add('active');
-      setTimeout(() => toast.classList.remove('active'), 3000);
+      setTimeout(() => toast.classList.remove('active'), isError ? 6000 : 3000);
     }
 
     async function loadLeaderboard() {
