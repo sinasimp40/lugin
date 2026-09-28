@@ -7,4 +7,3 @@
 - [Offline betting drafts](offline-betting-drafts.md) — prepare odds on a disconnected kiosk, but require an explicit publish before changing Denfi Points.
 - [Kiosk media chooser](kiosk-media-chooser.md) — parent admin file dialogs to Electron and pause lock-screen focus enforcement only while the authorized chooser is open.
 - [Windows installer on this workspace](windows-installer-build.md) — the Linux Wine setup can package Windows files but fails while finalizing the NSIS installer.
-- [Session overlay footprint](session-overlay-footprint.md) — keep the persistent display and tool popups compact; broad decks and tall sidecars obscure gameplay.
