@@ -1,0 +1,422 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "_bbNxbMwb5ekMuYX_rIfB"
+uri = "file://screenshots/win-alert-closeup.png"
+type = "image"
+title = "Win alert — close-up"
+description = "Zoomed view of the session bar showing a sample member win and 5× multiplier."
+logical_id = "12bf2997-3ca9-44aa-8314-10fbae232e45"
+content_hash = "sha256:d055121bc6ddee2b01604fb71bc1fbf37b2f391b0fdbf600d9c18930dc8f0bf3"
+size = 151812
+mtime_ms = 1790393771820
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/12bf2997-3ca9-44aa-8314-10fbae232e45/5ccef595-9faa-4587-8192-500ccc4f24d9"
+storage_version_token = "1790393793290467"
+content_type = "image/png"
+
+[[outputs]]
+id = "j3cRFdIKJnsULX0FFJ1yF"
+uri = "file://screenshots/win-alert-desktop-preview.jpg"
+type = "image"
+title = "Win alert — desktop preview"
+description = "Safe demo of the popup at the compact Windows session-overlay size."
+logical_id = "10d1b81b-d112-415e-812f-de9973825623"
+content_hash = "sha256:01f5119760107a2e199b2c5035f3607568b92cae037adb6ef6bfb028740cec1b"
+size = 30885
+mtime_ms = 1790393762200
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/10d1b81b-d112-415e-812f-de9973825623/e4858456-6c1d-4824-805e-c4d28e0ceb15"
+storage_version_token = "1790393794646104"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "4IzA-bkmFa1b_jujNz7Tw"
+uri = "file://screenshots/win-popup-closeup.png"
+type = "image"
+title = "Revised win popup — close-up"
+description = "The winner and multiplier appear in the same closable panel used by Order and Ranking."
+logical_id = "0b228eb6-2e66-4713-832c-9de701b5b9e8"
+content_hash = "sha256:5231c61a35ea83357f6aa6af2a6529cd2e4d00d7c64b7b441f140677443363cc"
+size = 174203
+mtime_ms = 1790394138236
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/0b228eb6-2e66-4713-832c-9de701b5b9e8/14738e13-5b27-45fc-83ce-9cf6d4cf6b5f"
+storage_version_token = "1790394159020446"
+content_type = "image/png"
+
+[[outputs]]
+id = "qFeVIJvU7cuQ2EbgHkjYp"
+uri = "file://screenshots/win-popup-drawer-preview.jpg"
+type = "image"
+title = "Revised win popup — desktop preview"
+description = "Safe session preview with the X button visible above the session bar."
+logical_id = "62c16111-5a1d-499b-a643-d33ca67cd3b5"
+content_hash = "sha256:79c134a566816f086155b4055fffcb57f8e50fb084be8d94eb2985943b8cef5b"
+size = 36808
+mtime_ms = 1790394102672
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/62c16111-5a1d-499b-a643-d33ca67cd3b5/6773e896-3e8d-490b-be27-754fa1c03ae6"
+storage_version_token = "1790394160384079"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "3j6OQhCVag-OaobYDJ8_d"
+uri = "file://screenshots/compact-win-closeup.png"
+type = "image"
+title = "Compact win popup — one winner"
+description = "The shortened winner panel, with the member and multiplier side by side."
+logical_id = "6d0f6d23-f6ad-4a40-859c-f1061bae3142"
+content_hash = "sha256:b24023397be91548d3b1f90b4fe403e1453f032cc83fec65a55bd071c4b38ae1"
+size = 146132
+mtime_ms = 1790394363136
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/6d0f6d23-f6ad-4a40-859c-f1061bae3142/aae33bd7-e9d4-4f65-92eb-74dc7a05cc9b"
+storage_version_token = "1790394423222950"
+content_type = "image/png"
+
+[[outputs]]
+id = "lAQvZqR_e91SSJnYEu8Uj"
+uri = "file://screenshots/two-wins-closeup.png"
+type = "image"
+title = "Two wins in quick succession"
+description = "The first winner stays visible; +1 and NEXT appear in the header for the second win."
+logical_id = "39358b19-17fc-4976-a331-0acf04a5d44b"
+content_hash = "sha256:3fd96a64ba022892ef4d82a3d2fb19671105214526fce18d2ade3bd8b7a98fe2"
+size = 154869
+mtime_ms = 1790394413964
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/39358b19-17fc-4976-a331-0acf04a5d44b/bc316ea9-c8e1-4878-a720-5efc68dad6f9"
+storage_version_token = "1790394424583010"
+content_type = "image/png"
+
+[[outputs]]
+id = "RJN5werT-d8MKjjIESkbu"
+uri = "file://screenshots/latest-win-closeup.png"
+type = "image"
+title = "Latest win replaces previous winner"
+description = "In the two-win demo, mem-diana 2× immediately replaces mem-carlo 5× in the same compact popup; no queue or NEXT button."
+logical_id = "fefb8289-64b0-48ab-8832-dd911da3db17"
+content_hash = "sha256:ce5ecae1740a407fd5605989e66c48619921ee0869428d358889f64b8991472b"
+size = 144981
+mtime_ms = 1790394597204
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/fefb8289-64b0-48ab-8832-dd911da3db17/ff69884c-7240-4cb4-83e7-adf1b709539e"
+storage_version_token = "1790394605596802"
+content_type = "image/png"
+
+[[outputs]]
+id = "mCExsGPCfacVGPOCV_rqf"
+uri = "file://screenshots/premium-recent-win-closeup.png"
+type = "image"
+title = "Premium recent-win popup"
+description = "Live app preview: richer gold background and crest, prominent member and multiplier, compact above the session bar."
+logical_id = "5e43d144-19ad-4781-88d1-7eddfc5e32f2"
+content_hash = "sha256:192b39e80631341c00ee23cf82a63cdcfad4f4af91b7a7045ae09312df9cc884"
+size = 181529
+mtime_ms = 1790395958276
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:fec4de20-d750-4ef2-9bfd-deddecf5b260/5e43d144-19ad-4781-88d1-7eddfc5e32f2/5c12c354-feb7-4657-a6c6-878141a81242"
+storage_version_token = "1790395993556384"
+content_type = "image/png"
+
+[[outputs]]
+id = "zFU1jRFCep2heWj3CAAYy"
+uri = "file://.local/updates/withdrawal-diskless/Denfi-Withdrawal-Diskless-Update.zip"
+type = "unspecified"
+title = "Denfi diskless withdrawal update"
+description = "Four-file update for existing Windows Withdrawal builds, with instructions and checksums. Apply to the Points server and persistent Auto Shutdown image. Preserves settings and balances; not a new installer."
+logical_id = "721234a9-7940-41c5-b44d-546b4ea87788"
+content_hash = "sha256:488b2b33bba49e1cb63394e9c116e4f0cad4c7ab00e611f3a7ce6d6ea794864a"
+size = 63830
+mtime_ms = 1790905687947
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/721234a9-7940-41c5-b44d-546b4ea87788/f0354500-d392-4b46-b5df-3d97cdb2ae1b"
+storage_version_token = "1790905751685521"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "dFx_moqj56DKRWHUFU59P"
+uri = "file://.local/updates/withdrawal-diskless/Denfi-Withdrawal-Password-Login-Update.zip"
+type = "unspecified"
+title = "Denfi password-login diskless update"
+description = "Updated six-file package with controller-compatible username/password token handling and a no-coins admin login check. Includes server and shared-image instructions; preserves settings, keys and balances."
+logical_id = "83bd7c63-81ec-4cf5-87a5-88e424a8371e"
+content_hash = "sha256:c1c1e2276537eaa58d556c014640ba880ce2d32942404cdf3d09a76610aeefea"
+size = 71092
+mtime_ms = 1790907434615
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/83bd7c63-81ec-4cf5-87a5-88e424a8371e/6c93f9dd-a350-4528-8a6b-02ddc114ecc4"
+storage_version_token = "1790907481987213"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "5DrUZcfyk9mU_aBUaeJPs"
+uri = "file://.local/releases/cooldown/Denfi-Points-Part-1-Exe.zip"
+type = "unspecified"
+title = "Points — Part 1: Windows .exe"
+description = "Requires Points Part 2. Extract both ZIPs into the SAME Points folder, preserving existing data. Not a Setup installer; update this server first."
+logical_id = "26823c1a-92b5-49c4-aaba-c37f1cec4120"
+content_hash = "sha256:43633fbe063764ce3aebae9986e71267299e15478335bd94eece39a94965b28a"
+size = 95834720
+mtime_ms = 1790910175413
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/26823c1a-92b5-49c4-aaba-c37f1cec4120/d39a2819-4fdb-4d71-bc97-86417ab25470"
+storage_version_token = "1790910246353190"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "Tu3AuIrxo0BmKHpzHZYVY"
+uri = "file://.local/releases/cooldown/Denfi-Points-Part-2-Required-Files.zip"
+type = "unspecified"
+title = "Points — Part 2: Required files"
+description = "Required companion DLLs, resources and updated application code. Extract into the SAME folder as Points Part 1. Includes update and safe countdown-demo instructions."
+logical_id = "382975ed-759f-4a5b-815c-01a0518c788c"
+content_hash = "sha256:547bc6a411b39c233b16df8ad88017ec693f4a40240eb316a16ff1f33e44886a"
+size = 48365423
+mtime_ms = 1790910175413
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/382975ed-759f-4a5b-815c-01a0518c788c/5b838602-2fdf-4495-a4e8-41cd57972076"
+storage_version_token = "1790910247635519"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "uzGVma4Z7YNiiQq6xRt3u"
+uri = "file://.local/releases/cooldown/Denfi-Auto-Shutdown-Part-1-Exe.zip"
+type = "unspecified"
+title = "Auto Shutdown — Part 1: Windows .exe"
+description = "Requires Auto Shutdown Part 2. Extract both ZIPs into the SAME client app folder. Update the persistent diskless image after Points. Not a Setup installer."
+logical_id = "5f9c2073-317b-4921-9d89-6f299fefea7d"
+content_hash = "sha256:cf7d2d1bcc3b76e4574d21703f4de478236eb3fd793f2d37ef858aa9374e0be6"
+size = 95834747
+mtime_ms = 1790910202033
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/5f9c2073-317b-4921-9d89-6f299fefea7d/320865a0-037f-42f4-894a-9f2a1b966536"
+storage_version_token = "1790910249373991"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "yZLbdGAePzzoi_0eIb_nO"
+uri = "file://.local/releases/cooldown/Denfi-Auto-Shutdown-Part-2-Required-Files.zip"
+type = "unspecified"
+title = "Auto Shutdown — Part 2: Required files"
+description = "Required companion DLLs, resources and client countdown code. Extract into the SAME folder as Auto Shutdown Part 1, preserving settings/data/path files. Includes README."
+logical_id = "8c7928fe-8419-4e5d-bbdf-e543a446872f"
+content_hash = "sha256:a39e5f2a1af7b65ad092960776f9fc178baddbab3343b5b90f801596f6028da7"
+size = 48445967
+mtime_ms = 1790910202033
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/8c7928fe-8419-4e5d-bbdf-e543a446872f/8682d565-f211-4b08-bb45-5a202a0fd3f2"
+storage_version_token = "1790910250563878"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "MxTwbfsvdMezeocJMCwbO"
+uri = "file://.local/screenshots/withdrawal-countdown.jpg"
+type = "image"
+title = "Withdrawal countdown — actual screen"
+description = "The amber bar above AMOUNT shows the shared countdown. The button on the right shows WAIT Ns and is disabled until Points confirms the machine is ready. This screenshot is from the safe demo."
+logical_id = "cf5e43b0-4d6b-4b93-9863-f0185a124450"
+content_hash = "sha256:fdf3f6469383005a75ef63309af529d89176e946a98869fb5bf88eccdefc83e0"
+size = 28679
+mtime_ms = 1790911175553
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/cf5e43b0-4d6b-4b93-9863-f0185a124450/3e4f30da-f572-4b7c-a48a-702cb01eb919"
+storage_version_token = "1790911198923084"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "lK-1uicDcgCIy6d9CC-yd"
+uri = "file://attached_assets/generated_audio/mem-jane-welcome-test.mp3"
+type = "audio"
+title = "Mem Jane Welcome — Voice Test"
+description = "A test voice saying: “Mem Jane, welcome to Denfi Computer.” No app code was changed."
+logical_id = "23f46fa3-03be-4d13-bdb9-523554f655a4"
+content_hash = "sha256:8f0fa3875d526a6c73c3815c6675e44cfd2f0cb3396125c5ababd338fdc3861c"
+size = 42675
+mtime_ms = 1790945260643
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/23f46fa3-03be-4d13-bdb9-523554f655a4/e1b2e31a-d054-4694-ac61-1f5e703c57cf"
+storage_version_token = "1790945263844586"
+content_type = "audio/mpeg"
+
+[[outputs]]
+id = "40RTloqCoHKz8btJ9YIDw"
+uri = "file://attached_assets/generated_audio/hi-balong-welcome-test.mp3"
+type = "audio"
+title = "Hi Balong — Welcome Voice Test"
+description = "A test voice saying: “Hi Balong, welcome to Denfi Computer Shop.” No app code was changed."
+logical_id = "1763a1f5-f2c6-4590-a14a-fee3359726fa"
+content_hash = "sha256:11e36d8c30acd25e0e1d7d6050f5a986d566b27989b8dadb4747d2910a278afd"
+size = 47273
+mtime_ms = 1790945535590
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/1763a1f5-f2c6-4590-a14a-fee3359726fa/c9e4056e-df1c-4df2-8e8e-5eda1c44bd66"
+storage_version_token = "1790945539000442"
+content_type = "audio/mpeg"
+
+[[outputs]]
+id = "VQvq7rIZPzXkx49yCfV3V"
+uri = "file://attached_assets/generated_audio/pc12-time-extension-test.mp3"
+type = "audio"
+title = "PC 12 — Time Extension Voice Test"
+description = "A test voice saying: “PC 12, your time has been extended by 30 minutes.” No app code was changed."
+logical_id = "b457ca48-1cd4-479c-a408-dbb324754445"
+content_hash = "sha256:6c8861d93321087db4b571a6762b519f3d9aca6d6723d15e5fb9e7f18d0f62ca"
+size = 59812
+mtime_ms = 1790945824591
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/b457ca48-1cd4-479c-a408-dbb324754445/248b93a1-bdd8-49a4-a50f-7d9cb2b407bf"
+storage_version_token = "1790945830672038"
+content_type = "audio/mpeg"
+
+[[outputs]]
+id = "eO5GowttjDJdISnw7px_G"
+uri = "file://attached_assets/voice-samples/betting-voice-test.html"
+type = "html"
+title = "Win & Loss — Local Voice Samples"
+description = "Download and open this sample in Edge or Chrome on your Windows PC, then click Play Win or Play Loss. It uses your installed English voice only. No app code changes, voice API, or connection to Denfi."
+logical_id = "a8d68271-166b-4429-85ce-0782c03d9172"
+content_hash = "sha256:cfa40ac1ec6bc3395ca4af067187cd3db813f91db9e4a8bf0f2d4765b5a52100"
+size = 5422
+mtime_ms = 1790946461351
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/a8d68271-166b-4429-85ce-0782c03d9172/ae8e0e79-c73e-4327-869b-3932ecc31359"
+storage_version_token = "1790946505184466"
+content_type = "text/html"
+
+[[outputs]]
+id = "YKSsmdlKNU9qbfkQtHwfS"
+uri = "file://attached_assets/voice-samples/denfi-voice-test.html"
+type = "html"
+title = "Denfi — Slower Voice Test"
+description = "Updated standalone test: slower speech, a separate name-speed slider, and pauses around the member name. Choose your installed local voice and play welcome, logout, extension, win or loss. Download and open in Edge or Chrome on Windows. Your app code is unchanged."
+logical_id = "3b45aca9-9ada-46bd-af07-81548c5ec92a"
+content_hash = "sha256:afe0040d9ad70f7aabb0aaa83bcd73e947ef77576adb79244fdb5228f55e93f4"
+size = 13383
+mtime_ms = 1790947291975
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/3b45aca9-9ada-46bd-af07-81548c5ec92a/844ab0e9-0cd7-4acb-8a68-d0b4bc782ea6"
+storage_version_token = "1790947356180532"
+content_type = "text/html"
+
+[[outputs]]
+id = "MQQNg296LWhZr_nfRCAWT"
+uri = "file://attached_assets/voice-samples/denfi-ai-voice-test.html"
+type = "html"
+title = "Corrected Voice Test — DEN PIE"
+description = "Kokoro Heart at 1.0×. Welcome and logout recordings now use the requested DEN PIE pronunciation; custom Kokoro text uses the same override."
+logical_id = "e170c66e-e0eb-4ad6-83a1-350d0b2de8eb"
+content_hash = "sha256:3ea4bccbff0cedccff3965443e08afb57b364e105ab278660f12818fe9ef9e59"
+size = 373514
+mtime_ms = 1790949306707
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/e170c66e-e0eb-4ad6-83a1-350d0b2de8eb/55cd43a8-3452-4d37-8b3e-8faf4fc619d1"
+storage_version_token = "1790949324916290"
+content_type = "text/html"
+
+[[outputs]]
+id = "Z5Uc2B5HuSBsyHal0eq2U"
+uri = "file://attached_assets/voice-samples/chatterbox-welcome.mp3"
+type = "audio"
+title = "Chatterbox — BALONG welcome sample"
+description = "Hi Balong, welcome to Denfi Computer Shop. Default Chatterbox model voice, intensity 0.8."
+logical_id = "d2a768ca-ff86-4c77-b4fb-bed3eca9987a"
+content_hash = "sha256:fad51a8a29cdb41ba3153560dc81bfac499f5bc9c52457b22f0d3fd605d280ed"
+size = 27885
+mtime_ms = 1790948327031
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/d2a768ca-ff86-4c77-b4fb-bed3eca9987a/488ec8b6-a280-4f06-8fce-b06dd570c5b6"
+storage_version_token = "1790948539699318"
+content_type = "audio/mpeg"
+
+[[outputs]]
+id = "WXFxFcpqw2UXNbCPdouoW"
+uri = "file://attached_assets/voice-samples/kokoro-welcome.mp3"
+type = "audio"
+title = "Kokoro — BALONG welcome sample"
+description = "Same welcome sentence using Kokoro Heart at normal generation speed."
+logical_id = "ecbd7195-4163-465f-99c6-9e94ed2ddd51"
+content_hash = "sha256:4410c1b6b82399cba407344b9baeb7b283ed7ad11d7f249fe3d4abd45889803f"
+size = 27693
+mtime_ms = 1790948414543
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/ecbd7195-4163-465f-99c6-9e94ed2ddd51/3e892c83-e1aa-4f88-befb-0b66f8dd3659"
+storage_version_token = "1790948540271779"
+content_type = "audio/mpeg"
+
+[[outputs]]
+id = "eiwhKGLWWm4FNLfES9tU_"
+uri = "file://attached_assets/voice-samples/kokoro-welcome-den-fee.mp3"
+type = "audio"
+title = "Updated Heart welcome — Den-fee pronunciation"
+description = "Kokoro Heart at 1.0×: Hi Balong, welcome to Denfi Computer Shop. Regenerated with a clearer fee syllable."
+logical_id = "6c96134a-3e6a-477e-924f-d3c048ecea95"
+content_hash = "sha256:cc5a63a008266d3357b73ab1fbd972679edeb56cdbb2b9c0c5572c7b4c30e154"
+size = 27885
+mtime_ms = 1790949141867
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/6c96134a-3e6a-477e-924f-d3c048ecea95/3ee2f377-cd03-4fba-8567-ce039b38ee09"
+storage_version_token = "1790949205950450"
+content_type = "audio/mpeg"
+
+[[outputs]]
+id = "DZrSyDlN2XYpjlKHAxu7-"
+uri = "file://attached_assets/voice-samples/kokoro-welcome-den-pie.mp3"
+type = "audio"
+title = "Heart welcome — DEN PIE"
+description = "Regenerated welcome sample: Hi Balong, welcome to DEN PIE Computer Shop. Kokoro Heart, speed 1.0×."
+logical_id = "88ce22af-e5db-4ffe-96b5-bf6a72d791e3"
+content_hash = "sha256:c303c203d764ce668aabb2c6db0ade832ce26e04ca19d1bb5911f58f3cb5a97c"
+size = 28653
+mtime_ms = 1790949305715
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/88ce22af-e5db-4ffe-96b5-bf6a72d791e3/50c38ed0-7d31-4c32-b1e2-23ff8000dfd1"
+storage_version_token = "1790949325452250"
+content_type = "audio/mpeg"
+
+[[outputs]]
+id = "EaekBwMYCMHKY50CkJO43"
+uri = "file://releases/denfi-offline-voice/Denfi-Offline-Voice-Part-1-of-3.zip"
+type = "unspecified"
+title = "Denfi smaller Windows app — Part 1 of 3"
+description = "New smaller build. Download all three NEW matching parts and extract into one empty folder. Do not mix with the earlier ZIPs. Preserve existing data/configuration when upgrading."
+logical_id = "4fe5fbb7-8d1e-47c0-95a9-07f159dc0e8f"
+content_hash = "sha256:18074ceffd198b240a9b44ced2b90c8114152d63ac5fdc3edcb148a08dbe89bc"
+size = 98980532
+mtime_ms = 1791030118852
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/4fe5fbb7-8d1e-47c0-95a9-07f159dc0e8f/64174e7e-2dd9-4262-9c11-0acceb2aaeb0"
+storage_version_token = "1791030266996520"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "AQWXRyRuVAbfqSLggh6Ou"
+uri = "file://releases/denfi-offline-voice/Denfi-Offline-Voice-Part-2-of-3.zip"
+type = "unspecified"
+title = "Denfi smaller Windows app — Part 2 of 3"
+description = "New smaller build. Download all three NEW matching parts and extract into one empty folder. Do not mix with the earlier ZIPs. Preserve existing data/configuration when upgrading."
+logical_id = "3d658560-5ba9-4629-ba2e-1f48e9d7fc86"
+content_hash = "sha256:f66cce67e58e0dc18011b6cfe7ff44beba918585c9890ac33c026001becf7e45"
+size = 98979720
+mtime_ms = 1791030129944
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/3d658560-5ba9-4629-ba2e-1f48e9d7fc86/95d08045-5fa0-47a5-9744-fdbc41888f9b"
+storage_version_token = "1791030268414916"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "fHZdU5OY7pmmyLCqjxwa1"
+uri = "file://releases/denfi-offline-voice/Denfi-Offline-Voice-Part-3-of-3.zip"
+type = "unspecified"
+title = "Denfi smaller Windows app — Part 3 of 3"
+description = "New smaller build. Download all three NEW matching parts and extract into one empty folder. Do not mix with the earlier ZIPs. Preserve existing data/configuration when upgrading."
+logical_id = "62238e16-32b4-442f-8778-e1b7541cf04b"
+content_hash = "sha256:4393cce5b00d896481358c0483552ccf3f1d576528034c56e3792e089529b800"
+size = 51929993
+mtime_ms = 1791030137400
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/62238e16-32b4-442f-8778-e1b7541cf04b/b7a884d9-94f9-46a0-8614-7eb436832311"
+storage_version_token = "1791030269563845"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "r79XwcTfAgnc_44Ebbthl"
+uri = "file://screenshots/order-popup-redesign.jpg"
+type = "image"
+title = "Redesigned order popups"
+description = "Preparing and ready-for-pickup popups, checked at the actual kiosk scale above and below the footer."
+logical_id = "35d67765-c22c-437f-a221-9c63bbb76d22"
+content_hash = "sha256:71cdb3d4538024d89ae50ec563b2a01a58e0d5d727e9b5a6047ca922fdf848bf"
+size = 95838
+mtime_ms = 1791287727553
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/35d67765-c22c-437f-a221-9c63bbb76d22/63335dba-6a24-4f35-b7df-f94dfadc67f9"
+storage_version_token = "1791287758482201"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "l8WP5Nrqp5JemqVMb8pcz"
+uri = "file://screenshots/order-popup-docking.jpg"
+type = "image"
+title = "Full-width order popups — no gap"
+description = "Preparing and pickup popups aligned with the entire session bar, including the withdrawal button, above and below the bar."
+logical_id = "a38609b9-9fa4-4594-998b-a2eefb60899c"
+content_hash = "sha256:21f308f1e5f025acf8166fd6c96f2424179668c06dfa37e9035493bf2caa372b"
+size = 95901
+mtime_ms = 1791287968964
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/a38609b9-9fa4-4594-998b-a2eefb60899c/88b59022-9918-44bc-8934-3ceffecdc5f3"
+storage_version_token = "1791287994448879"
+content_type = "image/jpeg"

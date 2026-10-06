@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard - MikroTik Hotspot</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="dashboard-body">
+  <div class="dashboard-container">
+    <!-- Header -->
+    <div class="dash-header">
+      <div class="dash-user-info">
+        <div class="dash-avatar">&#128100;</div>
+        <div>
+          <div class="dash-username" id="dash-username">Loading...</div>
+          <div class="dash-profile" id="dash-profile">Profile: —</div>
+        </div>
+      </div>
+      <button class="btn btn-sm btn-danger" id="logout-btn">Logout</button>
+    </div>
+
+    <!-- Status Cards -->
+    <div class="cards-grid">
+      <div class="card card-blue">
+        <div class="card-label">Uptime</div>
+        <div class="card-value" id="uptime-display">—</div>
+      </div>
+      <div class="card card-green">
+        <div class="card-label">Status</div>
+        <div class="card-value" id="status-display">Online</div>
+      </div>
+      <div class="card card-orange" id="limit-card">
+        <div class="card-label">Time Limit</div>
+        <div class="card-value" id="limit-display">Unlimited</div>
+      </div>
+      <div class="card card-purple">
+        <div class="card-label">IP Address</div>
+        <div class="card-value small" id="ip-display">—</div>
+      </div>
+    </div>
+
+    <!-- Countdown Section -->
+    <div id="countdown-section" class="countdown-section hidden">
+      <div class="countdown-header">
+        <span id="countdown-icon">&#9201;</span> Time Remaining
+      </div>
+      <div class="countdown-timer" id="countdown-display">00:00:00</div>
+      <div class="countdown-bar-wrap">
+        <div class="countdown-bar" id="countdown-bar"></div>
+      </div>
+      <div class="countdown-warning hidden" id="countdown-warning">
+        &#9888; Less than 10 minutes remaining!
+      </div>
+      <div class="countdown-critical hidden" id="countdown-critical">
+        &#128680; CRITICAL — Session ending soon!
+      </div>
+    </div>
+
+    <!-- Add Time Panel -->
+    <div class="add-time-panel" id="add-time-panel">
+      <div class="panel-title">&#43; Add More Time</div>
+      <div class="time-buttons">
+        <button class="btn btn-outline btn-sm" onclick="addTime(30)">+30 min</button>
+        <button class="btn btn-outline btn-sm" onclick="addTime(60)">+1 hr</button>
+        <button class="btn btn-outline btn-sm" onclick="addTime(120)">+2 hr</button>
+        <button class="btn btn-outline btn-sm" onclick="addTime(180)">+3 hr</button>
+      </div>
+      <div class="custom-time-row">
+        <input type="number" id="custom-minutes" placeholder="Custom minutes" min="1" max="10080" />
+        <button class="btn btn-primary btn-sm" onclick="addTimeCustom()">Add</button>
+      </div>
+    </div>
+
+    <!-- Network Stats -->
+    <div class="stats-panel">
+      <div class="panel-title">&#128225; Network Stats</div>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <span class="stat-label">&#11015; Download</span>
+          <span class="stat-value" id="bytes-in">—</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">&#11014; Upload</span>
+          <span class="stat-value" id="bytes-out">—</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">&#128270; MAC</span>
+          <span class="stat-value small-text" id="mac-display">—</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">&#128204; Profile</span>
+          <span class="stat-value" id="profile-display">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="status-bar" class="status-bar hidden"></div>
+  </div>
+
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

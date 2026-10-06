@@ -1,0 +1,12 @@
+Kokoro-82M ONNX assets are from onnx-community/Kokoro-82M-v1.0-ONNX
+Hugging Face revision: 1939ad2a8e416c0acfeecc08a694d14ef25f2231
+The model and voice weights are Apache-2.0 licensed.
+Kokoro JavaScript implementation: kokoro-js 1.2.1, Apache-2.0.
+ONNX Runtime Node.js dependency: onnxruntime-node 1.21.0, MIT.
+The matching upstream license is provided in LICENSE-KOKORO.txt.
+Kokoro license source: https://raw.githubusercontent.com/hexgrad/kokoro/main/LICENSE; SHA-256: c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4.
+Phonemizer wrapper: phonemizer 1.2.1, Apache-2.0; npm source commit 6835144b7ee9043129222549c1ed2f6a27216278 (https://github.com/xenova/phonemizer.js/tree/6835144b7ee9043129222549c1ed2f6a27216278).
+The phonemizer 1.2.1 package embeds eSpeak NG as compiled WebAssembly; eSpeak NG is GPL-3.0.
+eSpeak NG source: https://github.com/espeak-ng/espeak-ng; its COPYING license is provided in LICENSE-ESPEAK-NG.txt (SHA-256 8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903).
+The published phonemizer artifact does not identify the exact eSpeak NG source revision used to build its embedded WebAssembly; no specific eSpeak NG version is asserted.
+Assets were downloaded and SHA-256 verified by this script.

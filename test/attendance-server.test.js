@@ -1,0 +1,466 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const net = require('node:net');
+const http = require('node:http');
+const { spawn } = require('node:child_process');
+const { setTimeout: delay } = require('node:timers/promises');
+const attendance = require('../src/attendance-store');
+
+async function freePort() {
+  const socket = net.createServer();
+  await new Promise(resolve => socket.listen(0, '127.0.0.1', resolve));
+  const port = socket.address().port;
+  await new Promise(resolve => socket.close(resolve));
+  return port;
+}
+
+test('points server grants daily play-time reward once, with saved settings', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-attendance-api-'));
+  const clientDir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-attendance-client-'));
+  const port = await freePort();
+  const clientPort = await freePort();
+  const bootstrap = `
+    const dir = process.env.DENFI_TEST_DATA_DIR;
+    const settings = require('./src/settings-store');
+    settings.setAppRole('points');
+    settings.setDataDir(dir);
+    settings.updateSettings({ attendanceMode: 'login', attendanceEnabled: false });
+    require('./src/coin-log-store').setDataDir(dir);
+    require('./src/attendance-store').setDataDir(dir);
+    require('./src/order-store').setDataDir(dir);
+    require('./server');
+  `;
+  const child = spawn(process.execPath, ['-e', bootstrap], {
+    cwd: path.join(__dirname, '..'),
+    env: { ...process.env, PORT: String(port), DENFI_APP_ROLE: 'points', DENFI_TEST_DATA_DIR: dir,
+      NODE_ENV: 'test', DENFI_LISTEN_HOST: '127.0.0.1' },
+    stdio: 'ignore'
+  });
+  const url = `http://127.0.0.1:${port}`;
+  let client;
+  let responseLossProxy;
+  async function request(endpoint, method = 'GET', body, token) {
+    const payload = body ? JSON.stringify(body) : '';
+    const response = await fetch(url + endpoint, {
+      method,
+      headers: {
+        ...(body ? { 'content-type': 'application/json' } : {}),
+        ...(token ? { 'x-admin-token': token } : {})
+      },
+      body: body ? payload : undefined
+    });
+    return { code: response.status, data: await response.json() };
+  }
+  try {
+    let ready = false;
+    for (let n = 0; n < 60; n++) {
+      if (child.exitCode !== null) throw new Error('Points server exited before ready');
+      try {
+        const status = await request('/api/admin/status');
+        if (status.data.appRole === 'points') { ready = true; break; }
+      } catch (_) {}
+      await delay(100);
+    }
+    assert.ok(ready, 'points server started');
+    assert.equal((await request('/api/sync/attendance-config')).data.mode, 'minutes',
+      'Points upgrades a persisted login mission on startup');
+    const register = await request('/api/admin/register', 'POST', { password: 'test-password' });
+    assert.equal(register.data.success, true);
+    const token = register.data.token;
+    async function kioskWriteOnPoints(input) {
+      const expectedMission = (await request('/api/sync/attendance-config')).data;
+      return request('/api/admin/kiosk-attendance', 'POST', { ...input, expectedMission }, token);
+    }
+    function missionFromSettings(s) {
+      return {
+        enabled: s.attendanceEnabled, mode: s.attendanceMode,
+        minMinutes: s.attendanceMinMinutes, maxMinutes: s.attendanceMaxMinutes,
+        minutes: s.attendanceMinutes, points: s.attendancePoints,
+        targetSeed: s.attendanceTargetSeed
+      };
+    }
+    const deniedPointsEdit = await request('/api/admin/attendance', 'POST',
+      { enabled: true, mode: 'minutes', minutes: 1, points: 3 }, token);
+    assert.equal(deniedPointsEdit.code, 403, 'Points admin cannot change the shared mission');
+    assert.equal((await request('/api/sync/attendance-config')).data.enabled, false);
+    const genericEdit = await request('/api/admin/settings', 'POST',
+      { attendanceEnabled: true, attendanceMinMinutes: 2, attendanceMaxMinutes: 4,
+        attendanceTargetSeed: '0'.repeat(32) }, token);
+    assert.equal(genericEdit.data.settings.attendanceEnabled, false, 'generic settings cannot bypass mission ownership');
+    const configure = await kioskWriteOnPoints(
+      { enabled: true, mode: 'minutes', minMinutes: 1, maxMinutes: 1, points: 3 });
+    assert.equal(configure.data.success, true);
+    assert.equal((await request('/api/sync/attendance-config')).data.mode, 'minutes');
+    assert.equal((await kioskWriteOnPoints(
+      { enabled: true, mode: 'login', minMinutes: 1, maxMinutes: 1, points: 3 })).code, 400);
+    const invalid = await request('/api/sync/attendance', 'POST',
+      { deviceId: '00000000-0000-4000-8000-000000000001', day: '2000-01-01', username: 'mem-alice' });
+    assert.equal(invalid.code, 400);
+    assert.equal((await request('/api/sync/coin-log', 'POST',
+      { username:'mem-alice', amount:-100, source:'app' })).code, 400,
+      'invalid coin events must not add Points balances');
+    assert.equal((await request('/api/sync/coin-log', 'POST',
+      { username:'mem-alice', amount:10, source:'attendance' })).code, 400,
+      'the coin endpoint cannot impersonate attendance rewards');
+    const day = new Date();
+    const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+    const sample = { deviceId: '00000000-0000-4000-8000-000000000001', day: key, username: 'mem-alice' };
+    assert.equal((await request('/api/sync/attendance', 'POST', { ...sample, seconds: 3600 })).code, 400,
+      'old offline seconds and edited JSON cannot be uploaded for rewards');
+    assert.equal((await request('/api/sync/attendance', 'POST', sample)).data.attendance.awarded, false);
+    assert.equal((await request('/api/sync/attendance', 'POST', sample)).data.attendance.seconds, 0,
+      'rapid duplicate check-ins cannot manufacture time');
+    assert.equal((await request('/api/sync/member-points/mem-alice')).data.points, 0);
+    // Seed trusted Points-side history to test the existing reward/history rules
+    // without waiting a real minute for each integration scenario.
+    attendance.setDataDir(dir);
+    attendance.merge({ ...sample, seconds: 60 });
+    const first = await request('/api/sync/attendance', 'POST', sample);
+    const retry = await request('/api/sync/attendance', 'POST', sample);
+    assert.equal(first.data.attendance.awarded, true);
+    assert.equal(retry.data.attendance.awarded, true);
+    assert.equal((await request('/api/sync/member-points/mem-alice')).data.points, 3);
+    assert.equal((await request('/api/sync/coin-logs')).data.logs.length, 1);
+
+    const configureMinutes = await kioskWriteOnPoints(
+      { enabled: true, mode: 'minutes', minMinutes: 1, maxMinutes: 1, points: 4 });
+    assert.equal(configureMinutes.data.success, true);
+    const bob = { ...sample, username: 'mem-bob' };
+    attendance.merge({ ...bob, seconds: 30 });
+    const partial = await request('/api/sync/attendance', 'POST', bob);
+    assert.equal(partial.data.attendance.awarded, false);
+    const partialYear = await request(`/api/sync/attendance-year/mem-bob?year=${day.getFullYear()}`);
+    assert.equal(partialYear.data.days[key].status, 'incomplete');
+    const secondBob = { ...bob, deviceId: '00000000-0000-4000-8000-000000000002' };
+    attendance.merge({ ...secondBob, seconds: 30 });
+    const complete = await request('/api/sync/attendance', 'POST', secondBob);
+    assert.equal(complete.data.attendance.awarded, true);
+    await request('/api/sync/attendance', 'POST', bob);
+    assert.equal((await request('/api/sync/member-points/mem-bob')).data.points, 4);
+    assert.equal((await request('/api/sync/member-points/mem-alice')).data.points, 3);
+    assert.equal((await request('/api/sync/coin-logs')).data.logs.length, 2);
+    const newDevice = { ...bob, deviceId: '00000000-0000-4000-8000-000000000003' };
+    const restored = await request('/api/sync/attendance', 'POST', newDevice);
+    assert.equal(restored.data.attendance.seconds, 60, 'new install reads progress stored on Points');
+    assert.equal(restored.data.attendance.awarded, true, 'Points remembers the completed day');
+    await request('/api/sync/attendance', 'POST', newDevice);
+    assert.equal((await request('/api/sync/member-points/mem-bob')).data.points, 4,
+      'new install cannot grant the same day twice');
+    const partialBeforeReinstall = { ...sample, username: 'mem-reinstall' };
+    attendance.merge({ ...partialBeforeReinstall, seconds: 30 });
+    await request('/api/sync/attendance', 'POST', partialBeforeReinstall);
+    const afterReinstall = await request('/api/sync/attendance', 'POST',
+      { ...partialBeforeReinstall, deviceId: '00000000-0000-4000-8000-000000000004' });
+    assert.equal(afterReinstall.data.attendance.seconds, 30, 'unfinished time survives reinstall');
+    attendance.merge({ ...partialBeforeReinstall, deviceId: '00000000-0000-4000-8000-000000000004', seconds: 30 });
+    assert.equal((await request('/api/sync/attendance', 'POST',
+      { ...partialBeforeReinstall, deviceId: '00000000-0000-4000-8000-000000000004' })).data.attendance.awarded, true);
+    const bobYear = await request(`/api/sync/attendance-year/mem-bob?year=${day.getFullYear()}`);
+    assert.equal(bobYear.data.days[key].status, 'completed');
+    assert.equal(bobYear.data.days[key].points, 4);
+    const absentYear = await request(`/api/sync/attendance-year/mem-nobody?year=${day.getFullYear()}`);
+    assert.equal(absentYear.data.days[key].status, 'absent');
+    assert.equal(Object.keys(absentYear.data.days).length,
+      new Date(day.getFullYear(), 1, 29).getMonth() === 1 ? 366 : 365);
+    const yesterday = new Date(day.getFullYear(), day.getMonth(), day.getDate() - 1);
+    const previousKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+    const late = await request('/api/sync/attendance', 'POST',
+      { ...sample, day: previousKey, username: 'mem-carol' });
+    assert.equal(late.code, 400, 'past-day offline samples are not rewarded on reconnect');
+    assert.equal((await request('/api/sync/coin-logs')).data.logs.length, 3);
+    const carolYear = await request(`/api/sync/attendance-year/mem-carol?year=${yesterday.getFullYear()}`);
+    assert.equal(carolYear.data.days[previousKey].status, 'no-mission');
+    const noMissionYear = await request(`/api/sync/attendance-year/mem-nobody?year=${yesterday.getFullYear()}`);
+    assert.equal(noMissionYear.data.days[previousKey].status, 'no-mission');
+    const connectedCoin = await request('/api/sync/coin-log', 'POST',
+      { username: 'mem-alice', amount: 1, source: 'vendo', timeAdded: '5 min' });
+    assert.equal(connectedCoin.code, 200, 'legitimate connected coin events still reach Points');
+    assert.equal(connectedCoin.data.log.source, 'vendo');
+
+    const clientBootstrap = `
+      const dir = process.env.DENFI_TEST_DATA_DIR;
+      require('./src/settings-store').setAppRole('auto-shutdown');
+      require('./src/settings-store').setDataDir(dir);
+      require('./src/coin-log-store').setDataDir(dir);
+      require('./src/attendance-store').setDataDir(dir);
+      require('./src/order-store').setDataDir(dir);
+      require('./server');
+    `;
+    client = spawn(process.execPath, ['-e', clientBootstrap], {
+      cwd: path.join(__dirname, '..'),
+      env: { ...process.env, PORT: String(clientPort), DENFI_APP_ROLE: 'auto-shutdown',
+        DENFI_TEST_DATA_DIR: clientDir },
+      stdio: 'ignore'
+    });
+    async function clientRequest(endpoint, method = 'GET', body, adminToken) {
+      const response = await fetch(`http://127.0.0.1:${clientPort}${endpoint}`, {
+        method,
+        headers: { ...(body ? { 'content-type': 'application/json' } : {}),
+          ...(adminToken ? { 'x-admin-token': adminToken } : {}) },
+        body: body ? JSON.stringify(body) : undefined
+      });
+      return { code: response.status, data: await response.json() };
+    }
+    let clientReady = false;
+    for (let n = 0; n < 60; n++) {
+      if (client.exitCode !== null) throw new Error('Kiosk server exited before ready');
+      try {
+        const status = await clientRequest('/api/admin/status');
+        if (status.data.appRole === 'auto-shutdown') { clientReady = true; break; }
+      } catch (_) {}
+      await delay(100);
+    }
+    assert.ok(clientReady, 'kiosk server started');
+    const kioskToken = (await clientRequest('/api/admin/register', 'POST',
+      { password: 'kiosk-password' })).data.token;
+    assert.equal((await clientRequest('/api/admin/sync-server', 'POST',
+      { url }, kioskToken)).data.connected, true);
+    let clientSettings;
+    for (let n = 0; n < 30; n++) {
+      clientSettings = (await clientRequest('/api/admin/settings', 'GET',
+        undefined, kioskToken)).data.settings;
+      if (clientSettings.attendanceMode === 'minutes' && clientSettings.attendancePoints === 4) break;
+      await delay(100);
+    }
+    assert.equal(clientSettings.attendanceMode, 'minutes');
+    assert.equal(clientSettings.attendancePoints, 4);
+
+    const sharedMission = { enabled: true, mode: 'minutes', minMinutes: 8, maxMinutes: 8, points: 2.75 };
+    const withoutKioskAdmin = await clientRequest('/api/admin/attendance', 'POST', sharedMission);
+    assert.equal(withoutKioskAdmin.code, 401, 'editing still requires the local kiosk admin login');
+    assert.equal((await request('/api/sync/attendance-config')).data.mode, 'minutes');
+    assert.equal((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings.attendancePoints, 4);
+
+    const saveFromKiosk = await clientRequest('/api/admin/attendance', 'POST',
+      { ...sharedMission, expectedMission: missionFromSettings(clientSettings) }, kioskToken);
+    assert.equal(saveFromKiosk.code, 200);
+    assert.equal(saveFromKiosk.data.settings.attendanceEnabled, true);
+    assert.equal(saveFromKiosk.data.settings.attendanceMode, 'minutes');
+    assert.equal(saveFromKiosk.data.settings.attendanceMinutes, 8);
+    assert.equal(saveFromKiosk.data.settings.attendanceMinMinutes, 8);
+    assert.equal(saveFromKiosk.data.settings.attendanceMaxMinutes, 8);
+    assert.equal(saveFromKiosk.data.settings.attendancePoints, 2.75);
+    const pointsSettings = (await request('/api/admin/settings', 'GET', undefined, token)).data.settings;
+    assert.equal(pointsSettings.attendanceEnabled, true);
+    assert.equal(pointsSettings.attendanceMode, 'minutes');
+    assert.equal(pointsSettings.attendanceMinutes, 8);
+    assert.equal(pointsSettings.attendancePoints, 2.75);
+    assert.equal((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings.attendanceMode, 'minutes');
+    assert.equal((await request('/api/sync/attendance-config')).data.points, 2.75);
+
+    const pointsChanged = await request('/api/admin/attendance', 'POST',
+      { enabled: false, mode: 'minutes', minutes: 3, points: 5.5 }, token);
+    assert.equal(pointsChanged.code, 403);
+    assert.equal((await request('/api/sync/attendance-config')).data.mode, 'minutes');
+    const oldMission = (await request('/api/sync/attendance-config')).data;
+    const otherKioskChanged = await kioskWriteOnPoints(
+      { enabled: false, mode: 'minutes', minMinutes: 3, maxMinutes: 3, points: 5.5 });
+    assert.equal(otherKioskChanged.data.success, true);
+    const staleEdit = await request('/api/admin/kiosk-attendance', 'POST',
+      { enabled: true, mode: 'minutes', minMinutes: 8, maxMinutes: 8, points: 2.75,
+        expectedMission: oldMission }, token);
+    assert.equal(staleEdit.code, 409, 'stale save cannot overwrite another kiosk');
+    let mirrored;
+    for (let n = 0; n < 50; n++) {
+      mirrored = (await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings;
+      if (!mirrored.attendanceEnabled && mirrored.attendanceMinutes === 3 && mirrored.attendancePoints === 5.5) break;
+      await delay(100);
+    }
+    assert.equal(mirrored.attendanceEnabled, false, 'Points changes propagate to another kiosk');
+    assert.equal(mirrored.attendanceMode, 'minutes');
+    assert.equal(mirrored.attendanceMinutes, 3);
+    assert.equal(mirrored.attendancePoints, 5.5);
+    const staleFormSave = await clientRequest('/api/admin/attendance', 'POST',
+      { ...sharedMission, expectedMission: oldMission }, kioskToken);
+    assert.equal(staleFormSave.code, 409, 'open kiosk form must be reloaded after the mission changes');
+    const refreshed = await clientRequest('/api/admin/attendance-current', 'GET', undefined, kioskToken);
+    assert.equal(refreshed.data.settings.attendancePoints, 5.5);
+
+    const sharedMinutes = await clientRequest('/api/admin/attendance', 'POST',
+      { enabled: true, mode: 'minutes', minMinutes: 2, maxMinutes: 4, points: 1.25,
+        expectedMission: missionFromSettings(mirrored) }, kioskToken);
+    assert.equal(sharedMinutes.code, 200);
+    const randomConfig = (await request('/api/sync/attendance-config')).data;
+    assert.ok(randomConfig.minutes >= 2 && randomConfig.minutes <= 4);
+    assert.equal(randomConfig.minMinutes, 2);
+    assert.equal(randomConfig.maxMinutes, 4);
+    assert.equal((await request('/api/sync/attendance-config')).data.minutes, randomConfig.minutes,
+      'shared daily target does not reroll on refresh');
+    assert.equal(sharedMinutes.data.settings.attendanceMinutes, randomConfig.minutes);
+    assert.equal((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings.attendanceMinutes, randomConfig.minutes);
+    assert.equal((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings.attendancePoints, 1.25);
+    const targetSeconds = randomConfig.minutes * 60;
+    const dana = { ...sample, username: 'mem-dana' };
+    attendance.merge({ ...dana, seconds: targetSeconds - 1 });
+    assert.equal((await request('/api/sync/attendance', 'POST', dana)).data.attendance.awarded, false);
+    attendance.merge({ ...dana, seconds: targetSeconds });
+    assert.equal((await request('/api/sync/attendance', 'POST', dana)).data.attendance.awarded, true);
+    const centralDay = (await request(`/api/sync/attendance-year/mem-dana?year=${day.getFullYear()}`)).data.days[key];
+    assert.equal(centralDay.status, 'completed');
+    assert.equal(centralDay.seconds, targetSeconds);
+    assert.equal(centralDay.goalSeconds, targetSeconds);
+    assert.equal(centralDay.points, 1.25);
+    attendance.setDataDir(dir);
+    assert.equal(attendance.status('mem-dana', key).seconds, targetSeconds, 'progress is persisted by Denfi Points');
+    assert.equal(attendance.status('mem-dana', key).awardedPoints, 1.25);
+
+    const proxyPort = await freePort();
+    let proxySaveMode = 'lost-reply';
+    responseLossProxy = http.createServer(async (req, res) => {
+      try {
+        if (req.url === '/api/admin/login') {
+          res.writeHead(500).end('Mission saves must not send the Points admin password');
+          return;
+        }
+        if (req.method === 'POST' && req.url === '/api/admin/kiosk-attendance' &&
+            proxySaveMode === 'unsupported') {
+          res.writeHead(404, { 'content-type': 'text/html' }).end('<h1>Old Denfi Points version</h1>');
+          return;
+        }
+        const chunks = [];
+        for await (const chunk of req) chunks.push(chunk);
+        const upstream = await fetch(url + req.url, {
+          method: req.method,
+          headers: {
+            'content-type': 'application/json',
+            ...(req.headers['x-admin-token'] ? { 'x-admin-token': req.headers['x-admin-token'] } : {})
+          },
+          body: chunks.length ? Buffer.concat(chunks) : undefined
+        });
+        const body = await upstream.text();
+        if (req.method === 'POST' && req.url === '/api/admin/kiosk-attendance') {
+          if (proxySaveMode === 'bad-gateway') {
+            res.writeHead(502, { 'content-type': 'application/json' }).end('{"error":"gateway timed out"}');
+            return;
+          }
+          res.destroy(); // Points committed the mission, but its reply was lost.
+          return;
+        }
+        res.writeHead(upstream.status, { 'content-type': 'application/json' });
+        res.end(body);
+      } catch (_) {
+        if (!res.destroyed) res.writeHead(502).end();
+      }
+    });
+    await new Promise(resolve => responseLossProxy.listen(proxyPort, '127.0.0.1', resolve));
+    const proxyUrl = `http://127.0.0.1:${proxyPort}`;
+    assert.equal((await clientRequest('/api/admin/sync-server', 'POST',
+      { url: proxyUrl }, kioskToken)).data.connected, true);
+    const lostReply = await clientRequest('/api/admin/attendance', 'POST',
+      { enabled: true, mode: 'minutes', minMinutes: 4, maxMinutes: 4, points: 6.75,
+        expectedMission: missionFromSettings((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings) }, kioskToken);
+    assert.equal(lostReply.data.success, true, 'read back a mission committed before response loss');
+    assert.equal((await request('/api/sync/attendance-config')).data.minutes, 4);
+    assert.equal((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings.attendancePoints, 6.75);
+    proxySaveMode = 'bad-gateway';
+    const committedDespite502 = await clientRequest('/api/admin/attendance', 'POST',
+      { enabled: true, mode: 'minutes', minMinutes: 5, maxMinutes: 5, points: 7.25,
+        expectedMission: missionFromSettings((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings) }, kioskToken);
+    assert.equal(committedDespite502.data.success, true, 'read back a mission committed before a proxy 502');
+    assert.equal((await request('/api/sync/attendance-config')).data.minutes, 5);
+    proxySaveMode = 'unsupported';
+    const oldServer = await clientRequest('/api/admin/attendance', 'POST',
+      { enabled: true, mode: 'minutes', minMinutes: 6, maxMinutes: 6, points: 7.75,
+        expectedMission: missionFromSettings((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings) }, kioskToken);
+    assert.equal(oldServer.code, 502);
+    assert.match(oldServer.data.error, /Update its desktop server/);
+    assert.equal((await request('/api/sync/attendance-config')).data.minutes, 5,
+      'an unsupported Points server does not change the local mission');
+    assert.equal((await clientRequest('/api/admin/sync-server', 'POST',
+      { url }, kioskToken)).data.connected, true);
+    responseLossProxy.closeAllConnections();
+    await new Promise(resolve => responseLossProxy.close(resolve));
+    responseLossProxy = null;
+
+    const withoutMember = await clientRequest(`/api/session/attendance?year=${day.getFullYear()}`);
+    assert.equal(withoutMember.code, 503, 'year view requires a confirmed active hotspot session');
+
+    child.kill();
+    await new Promise(resolve => child.once('exit', resolve));
+    const offline = await clientRequest('/api/admin/attendance', 'POST',
+      sharedMission, kioskToken);
+    assert.equal(offline.code, 503, 'no silent local save when Denfi Points is unavailable');
+    assert.equal((await clientRequest('/api/admin/attendance-current', 'GET', undefined, kioskToken)).code, 503,
+      'reload does not pretend an offline cached mission is current');
+    assert.equal((await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings.attendanceMode, 'minutes');
+    assert.equal((await clientRequest('/api/admin/sync-server', 'POST', { url: '' }, kioskToken)).data.connected, false);
+    const localSave = await clientRequest('/api/admin/attendance', 'POST',
+      { enabled: false, mode: 'minutes', minMinutes: 12, maxMinutes: 12, points: 0 }, kioskToken);
+    assert.equal(localSave.data.success, true, 'standalone kiosk can still save all attendance fields');
+    const localSettings = (await clientRequest('/api/admin/settings', 'GET', undefined, kioskToken)).data.settings;
+    assert.equal(localSettings.attendanceEnabled, false);
+    assert.equal(localSettings.attendanceMode, 'minutes');
+    assert.equal(localSettings.attendanceMinutes, 12);
+    assert.equal(localSettings.attendanceMinMinutes, 12);
+    assert.equal(localSettings.attendanceMaxMinutes, 12);
+    assert.equal(localSettings.attendancePoints, 0);
+  } finally {
+    if (responseLossProxy) {
+      responseLossProxy.closeAllConnections();
+      await new Promise(resolve => responseLossProxy.close(resolve));
+    }
+    if (client && client.exitCode === null) {
+      client.kill();
+      await new Promise(resolve => client.once('exit', resolve));
+    }
+    if (child.exitCode === null && child.signalCode === null) {
+      child.kill();
+      await new Promise(resolve => child.once('exit', resolve));
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(clientDir, { recursive: true, force: true });
+  }
+});
+
+test('connected kiosk converts a cached login mission while Points is offline', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-attendance-offline-upgrade-'));
+  const port = await freePort();
+  const bootstrap = `
+    const dir = process.env.DENFI_TEST_DATA_DIR;
+    const settings = require('./src/settings-store');
+    settings.setAppRole('auto-shutdown');
+    settings.setDataDir(dir);
+    settings.updateSettings({ attendanceEnabled: true, attendanceMode: 'login',
+      attendanceMinutes: 2, syncServerUrl: 'http://127.0.0.1:1' });
+    require('./src/coin-log-store').setDataDir(dir);
+    require('./src/attendance-store').setDataDir(dir);
+    require('./src/order-store').setDataDir(dir);
+    require('./server');
+  `;
+  const kiosk = spawn(process.execPath, ['-e', bootstrap], {
+    cwd: path.join(__dirname, '..'),
+    env: { ...process.env, PORT: String(port), DENFI_APP_ROLE: 'auto-shutdown',
+      DENFI_TEST_DATA_DIR: dir },
+    stdio: 'ignore'
+  });
+  try {
+    let ready = false;
+    for (let n = 0; n < 60; n++) {
+      if (kiosk.exitCode !== null) throw new Error('Kiosk exited before ready');
+      try {
+        const status = await fetch(`http://127.0.0.1:${port}/api/admin/status`);
+        if (status.ok) { ready = true; break; }
+      } catch (_) {}
+      await delay(100);
+    }
+    assert.equal(ready, true);
+    const registered = await fetch(`http://127.0.0.1:${port}/api/admin/register`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: 'test-password' })
+    }).then(r => r.json());
+    const current = await fetch(`http://127.0.0.1:${port}/api/admin/settings`, {
+      headers: { 'x-admin-token': registered.token }
+    }).then(r => r.json());
+    assert.equal(current.settings.attendanceMode, 'minutes');
+    assert.equal(current.settings.syncServerUrl, 'http://127.0.0.1:1');
+  } finally {
+    if (kiosk.exitCode === null && kiosk.signalCode === null) {
+      kiosk.kill();
+      await new Promise(resolve => kiosk.once('exit', resolve));
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

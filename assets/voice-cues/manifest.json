@@ -1,0 +1,42 @@
+{
+  "voice": "af_heart",
+  "speed": 1,
+  "entries": {
+    "welcome": {
+      "text": "Welcome to Den Pie Computer Shop.",
+      "sha256": "4cc74f2bd7f5292622cfd72be632b4ff8f8dc5b32c450337935eb733c701d672"
+    },
+    "logout": {
+      "text": "You are now logged out.",
+      "sha256": "56f9af9a84eed4b4342f58c9f7c135ee6c624fff0bb3e26c706d3a4bd56cfb1e"
+    },
+    "extended": {
+      "text": "Your time has been extended.",
+      "sha256": "89f8c4b7baefbcc73ea166eddb8d3c41fe3270913f05dbe526c9b71904dcabe3"
+    },
+    "win": {
+      "text": "Congratulations! We have a winner.",
+      "sha256": "78320e4df80b180653a977fcfd96c3bb93569065f399c8d0606b3099458df2c6"
+    },
+    "loss": {
+      "text": "You lost this round.",
+      "sha256": "147d671822f3e15a36902ffee79732cecdb7b5ebc348a2c31ce95712bd189973"
+    },
+    "even": {
+      "text": "This round has ended.",
+      "sha256": "f5875ae3865c99ccb3ad16dbb2050c26a28b0554186d4d4aa1d1d98af2c8a1f8"
+    },
+    "order-preparing": {
+      "text": "Your order has been received and is being prepared. Please wait.",
+      "sha256": "ddad079ae1e6ef24d460879eed359f1602cbbb5dcfeb6e111c09e74a6b298484"
+    },
+    "order-ready": {
+      "text": "Your order is ready for pickup.",
+      "sha256": "2ac6180518a5f7588b4ec447a64752f2f8c0ed7fb3270f08587482d28b3ee675"
+    },
+    "order-complete": {
+      "text": "Your order is complete.",
+      "sha256": "d125a350e0d43f961eb51c439f67ca9b3ef58333c9bba41f3139fb642b578391"
+    }
+  }
+}

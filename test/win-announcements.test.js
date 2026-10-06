@@ -1,0 +1,219 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const net = require('node:net');
+const { spawn } = require('node:child_process');
+const WebSocket = require('ws');
+
+test('Points exposes only recent, revealed, positive wheel wins without financial details', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-win-feed-'));
+  try {
+    const logs = require('../src/coin-log-store');
+    logs.setDataDir(dir);
+    const now = Date.now();
+    fs.writeFileSync(path.join(dir, 'coin-logs.json'), JSON.stringify({ logs:[
+      { id:'old', source:'wheel', username:'mem-old', multiplier:5, timestamp:now - 150000 },
+      { id:'loss', source:'wheel', username:'mem-loss', multiplier:0, timestamp:now - 9000 },
+      { id:'even', source:'wheel', username:'mem-even', multiplier:1, timestamp:now - 9000 },
+      { id:'pending', source:'wheel', username:'mem-pending', multiplier:3, timestamp:now - 3000 },
+      { id:'win', source:'wheel', username:'mem-winner', station:'PC 04',
+        multiplier:2, timestamp:now - 7000, stake:10, balance:20 }
+    ] }));
+    assert.deepEqual(logs.getRecentWheelWins(now - 30000, now), [{
+      id:'win', username:'mem-winner', station:'PC 04', multiplier:2, createdAt:now - 7000
+    }]);
+    assert.deepEqual(logs.getRecentWheelWins(0, now), [{
+      id:'win', username:'mem-winner', station:'PC 04', multiplier:2, createdAt:now - 7000
+    }]);
+    assert.deepEqual(logs.getRecentWheelWins(now - 5000, now), []);
+  } finally {
+    fs.rmSync(dir, { recursive:true, force:true });
+  }
+});
+
+test('session popup replaces older wins immediately and holds the spinner until reveal', () => {
+  const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'session.html'), 'utf8');
+  const start = page.indexOf('    const seenWinNoticeIds = new Set();');
+  const end = page.indexOf('    function wheelPendingKey(', start);
+  assert.ok(start >= 0 && end > start);
+  const winner = { textContent:'' };
+  const multiplier = { textContent:'' };
+  const nodes = { 'win-user':winner, 'win-multiplier':multiplier };
+  let pending = false;
+  const state = new Function('document', 'readPendingWheel', `
+    let sessionUsername = 'mem-current', timeLeft = 100, wheelRequestId = 'spin-one';
+    let activeDrawer = null;
+    function openDrawer(view) { activeDrawer = view; }
+    function closeDrawer() {
+      if (activeDrawer === 'wins') {
+        displayedWinNotice = null;
+        pendingWinNotice = null;
+      }
+      activeDrawer = null;
+      showLatestWinNotice();
+    }
+    ${page.slice(start, end)}
+    return {
+      receiveWinNotice, releaseDeferredWinNotices, ready:finishInitialSessionStatus,
+      done:() => { wheelRequestId = null; },
+      spin:() => { wheelRequestId = 'spin-two'; },
+      close:closeDrawer,
+      setDrawer:view => { activeDrawer = view; },
+      current:() => ({
+        drawer:activeDrawer,
+        winner:document.getElementById('win-user').textContent,
+        multiplier:document.getElementById('win-multiplier').textContent
+      })
+    };
+  `)({ getElementById:id => nodes[id] }, () => pending ? {} : null);
+  state.receiveWinNotice({ id:'early', username:'mem-other', multiplier:2, createdAt:100 });
+  assert.equal(state.current().drawer, null, 'events received before the first session status are held');
+  state.ready();
+  assert.equal(state.current().drawer, 'wins');
+  assert.equal(state.current().winner, 'mem-other');
+  state.close();
+  assert.equal(state.current().drawer, null);
+  const own = { id:'own', username:'mem-current', multiplier:5, createdAt:200 };
+  state.receiveWinNotice(own);
+  assert.equal(state.current().drawer, null, 'the active spinner must not see the win early');
+  state.receiveWinNotice(own);
+  state.receiveWinNotice({ id:'lose', username:'mem-loss', multiplier:0, createdAt:210 });
+  assert.equal(state.current().drawer, null);
+  state.done();
+  state.releaseDeferredWinNotices('mem-current');
+  assert.deepEqual(state.current(), { drawer:'wins', winner:'mem-current', multiplier:'5×' });
+  state.close();
+  assert.equal(state.current().drawer, null);
+  state.setDrawer('shop');
+  state.receiveWinNotice({ id:'other', username:'mem-other', multiplier:2, createdAt:300 });
+  state.receiveWinNotice({ id:'newer', username:'mem-newer', multiplier:3, createdAt:400 });
+  assert.equal(state.current().drawer, 'shop', 'a new win does not interrupt an open Order panel');
+  state.close();
+  assert.deepEqual(state.current(), { drawer:'wins', winner:'mem-newer', multiplier:'3×' },
+    'only the newest win opens after Order closes');
+  state.receiveWinNotice({ id:'latest', username:'mem-diana', multiplier:5, createdAt:600 });
+  assert.deepEqual(state.current(), { drawer:'wins', winner:'mem-diana', multiplier:'5×' },
+    'a later win immediately replaces the visible winner without closing the popup');
+  state.receiveWinNotice({ id:'stale', username:'mem-stale', multiplier:2, createdAt:500 });
+  state.receiveWinNotice({ id:'latest', username:'mem-diana', multiplier:5, createdAt:600 });
+  assert.equal(state.current().winner, 'mem-diana', 'out-of-order or duplicate wins cannot replace the latest');
+  state.spin();
+  state.receiveWinNotice({ id:'deferred', username:'mem-current', multiplier:3, createdAt:650 });
+  state.receiveWinNotice({ id:'still-latest', username:'mem-fresh', multiplier:2, createdAt:700 });
+  state.done();
+  state.releaseDeferredWinNotices('mem-current');
+  assert.equal(state.current().winner, 'mem-fresh', 'an older deferred win cannot replace a newer one');
+  state.close();
+  assert.equal(state.current().drawer, null, 'X closes the popup and does not reopen an older win');
+  pending = true;
+  state.receiveWinNotice({ id:'stored', username:'mem-current', multiplier:3, createdAt:800 });
+  assert.equal(state.current().drawer, null, 'a persisted retry must not reveal the result');
+});
+
+test('one Points win reaches two separate connected kiosks exactly once', { timeout:20000 }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-two-kiosks-'));
+  const children = [];
+  const sockets = [];
+  async function freePort() {
+    const socket = net.createServer();
+    await new Promise(resolve => socket.listen(0, '127.0.0.1', resolve));
+    const port = socket.address().port;
+    await new Promise(resolve => socket.close(resolve));
+    return port;
+  }
+  async function start(role, name, port, pointsUrl = '') {
+    const dataDir = path.join(dir, name);
+    const child = spawn(process.execPath, ['-e', `
+      const settings = require('./src/settings-store');
+      settings.setAppRole(${JSON.stringify(role)});
+      settings.setDataDir(process.env.DENFI_TEST_DATA_DIR);
+      if (process.env.TEST_POINTS_URL) settings.updateSettings({ syncServerUrl:process.env.TEST_POINTS_URL });
+      require('./src/coin-log-store').setDataDir(process.env.DENFI_TEST_DATA_DIR);
+      require('./src/attendance-store').setDataDir(process.env.DENFI_TEST_DATA_DIR);
+      require('./src/order-store').setDataDir(process.env.DENFI_TEST_DATA_DIR);
+      require('./server');
+    `], {
+      cwd:path.join(__dirname, '..'),
+      env:{ ...process.env, PORT:String(port), NODE_ENV:'test', DENFI_APP_ROLE:role,
+        DENFI_LISTEN_HOST:'127.0.0.1', DENFI_TEST_DATA_DIR:dataDir, TEST_POINTS_URL:pointsUrl },
+      stdio:'ignore'
+    });
+    children.push(child);
+    for (let i = 0; i < 60; i++) {
+      if (child.exitCode !== null) throw new Error(name + ' exited unexpectedly');
+      try {
+        const res = await fetch(`http://127.0.0.1:${port}/api/admin/status`);
+        if ((await res.json()).appRole === role) return dataDir;
+      } catch (_) {}
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    throw new Error(name + ' did not start');
+  }
+  try {
+    const pointsPort = await freePort();
+    const kioskPorts = [await freePort(), await freePort()];
+    const pointsUrl = `http://127.0.0.1:${pointsPort}`;
+    const pointsDir = await start('points', 'points', pointsPort);
+    const earlier = Date.now();
+    fs.writeFileSync(path.join(pointsDir, 'coin-logs.json'), JSON.stringify({ logs:[
+      { id:'earlier-win', source:'wheel', username:'mem-earlier', station:'PC 02',
+        multiplier:2, timestamp:earlier - 25000 }
+    ], memberPoints:{} }));
+    await Promise.all(kioskPorts.map((port, i) => start('auto-shutdown', 'kiosk-' + i, port, pointsUrl)));
+    const received = [[], []];
+    const connected = kioskPorts.map((port, i) => new Promise((resolve, reject) => {
+      const socket = new WebSocket(`ws://127.0.0.1:${port}/ws/session`);
+      sockets.push(socket);
+      socket.on('open', resolve);
+      socket.on('error', reject);
+      socket.on('message', raw => {
+        const msg = JSON.parse(raw);
+        if (msg.type === 'wheel-win') received[i].push(msg.data);
+      });
+    }));
+    await Promise.all(connected);
+    const earlierDeadline = Date.now() + 4000;
+    while (received.some(list => !list.some(win => win.id === 'earlier-win')) && Date.now() < earlierDeadline) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.deepEqual(received.map(list => list.map(win => win.id)),
+      [['earlier-win'], ['earlier-win']],
+      'an active session joining 25 seconds after the win receives the recent winner');
+    const now = Date.now();
+    fs.writeFileSync(path.join(pointsDir, 'coin-logs.json'), JSON.stringify({ logs:[
+      { id:'earlier-win', source:'wheel', username:'mem-earlier', station:'PC 02',
+        multiplier:2, timestamp:earlier - 25000 },
+      { id:'test-loss', source:'wheel', username:'mem-unlucky', multiplier:0, timestamp:now },
+      { id:'test-win', source:'wheel', username:'mem-winner', station:'PC 04', multiplier:5, timestamp:now }
+    ], memberPoints:{} }));
+    const deadline = Date.now() + 11500;
+    while (received.some(list => list.length < 2) && Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 150));
+    }
+    assert.deepEqual(received.map(list => list.map(win => [win.id, win.username, win.multiplier])),
+      [[['earlier-win','mem-earlier',2], ['test-win','mem-winner',5]],
+        [['earlier-win','mem-earlier',2], ['test-win','mem-winner',5]]]);
+    const replayed = await new Promise((resolve, reject) => {
+      const socket = new WebSocket(`ws://127.0.0.1:${kioskPorts[0]}/ws/session`);
+      sockets.push(socket);
+      const timeout = setTimeout(() => reject(new Error('recent win not replayed to a reconnecting viewer')), 2000);
+      socket.on('error', reject);
+      socket.on('message', raw => {
+        const msg = JSON.parse(raw);
+        if (msg.type === 'wheel-win' && msg.data.id === 'test-win') {
+          clearTimeout(timeout);
+          resolve(msg.data);
+        }
+      });
+    });
+    assert.equal(replayed.id, 'test-win', 'a viewer connecting just after settlement still receives the alert');
+    await new Promise(resolve => setTimeout(resolve, 2200));
+    assert.deepEqual(received.map(list => list.length), [2, 2], 'polling does not replay the same win');
+  } finally {
+    for (const socket of sockets) socket.close();
+    for (const child of children) child.kill();
+    fs.rmSync(dir, { recursive:true, force:true });
+  }
+});

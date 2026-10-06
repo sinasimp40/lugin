@@ -1,0 +1,50 @@
+{
+  "appId": "com.denfi.points",
+  "productName": "Denfi Points",
+  "icon": "icon.ico",
+  "directories": {
+    "buildResources": "build"
+  },
+  "asar": false,
+  "extraMetadata": {
+    "main": "main-server.js"
+  },
+  "win": {
+    "target": "nsis",
+    "requestedExecutionLevel": "asInvoker",
+    "icon": "icon.ico",
+    "executableName": "denfi-points"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "perMachine": true,
+    "deleteAppDataOnUninstall": false,
+    "artifactName": "Denfi Points Setup.${ext}",
+    "shortcutName": "Denfi Points",
+    "uninstallDisplayName": "Denfi Points",
+    "installerIcon": "icon.ico",
+    "uninstallerIcon": "icon.ico"
+  },
+  "files": [
+    "main-server.js",
+    "server.js",
+    "src/**/*",
+    "public/**/*",
+    "build/**/*",
+    "icon.ico",
+    "icon.png",
+    "node_modules/**/*",
+    "!node_modules/.cache",
+    "!node_modules/electron",
+    "!node_modules/electron-builder",
+    "!node_modules/kokoro-js/**/*",
+    "!node_modules/phonemizer/**/*",
+    "!node_modules/@huggingface/**/*",
+    "!node_modules/onnxruntime-node/**/*",
+    "!node_modules/onnxruntime-web/**/*",
+    "!node_modules/onnxruntime-common/**/*",
+    "!node_modules/sharp/**/*",
+    "!node_modules/@img/**/*"
+  ]
+}

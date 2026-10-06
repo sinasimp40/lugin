@@ -1,0 +1,56 @@
+.manual-points-panel {
+  border: 1px solid rgba(255, 215, 64, .25);
+  background: rgba(255, 215, 64, .04);
+  border-radius: 5px;
+  margin-bottom: 16px;
+  padding: 12px;
+}
+.manual-points-panel summary {
+  color: #ffd740;
+  cursor: pointer;
+  font: 11px 'Orbitron', monospace;
+  letter-spacing: 1px;
+}
+.manual-points-panel p,
+.manual-points-state,
+.manual-points-message {
+  font: 12px/1.5 'Share Tech Mono', monospace;
+  color: #aaa;
+  margin: 10px 0;
+}
+.manual-points-fields {
+  display: grid;
+  grid-template-columns: minmax(150px, 2fr) minmax(130px, 1fr) minmax(100px, 1fr);
+  gap: 10px;
+}
+.manual-points-fields .form-group { margin-bottom: 0; min-width: 0; }
+.manual-points-panel select,
+.manual-points-panel textarea {
+  box-sizing: border-box;
+  width: 100%;
+  background: #10131b;
+  color: #e0e0e0;
+  border: 1px solid var(--dark-border);
+  border-radius: 4px;
+  font: 12px 'Share Tech Mono', monospace;
+  padding: 10px;
+}
+.manual-points-panel textarea { min-height: 65px; resize: vertical; }
+.manual-points-state { color: #ffd740; }
+.manual-points-message.error { color: #ff8080; }
+.manual-points-message.success { color: #81c784; }
+.manual-points-panel :disabled { opacity: .65; cursor: wait; }
+.manual-points-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.manual-points-actions span { font: 11px 'Share Tech Mono', monospace; color: #888; }
+.manual-points-adjust-member {
+  background: transparent;
+  border: 1px solid rgba(255, 215, 64, .35);
+  color: #ffd740;
+  padding: 3px 6px;
+  border-radius: 3px;
+  font: 9px 'Share Tech Mono', monospace;
+  cursor: pointer;
+}
+@media (max-width: 620px) {
+  .manual-points-fields { grid-template-columns: 1fr; }
+}

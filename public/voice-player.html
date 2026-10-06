@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Denfi background audio</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; media-src blob:"></head>
+<body>
+<script>
+'use strict';
+let audio = null;
+let source = null;
+window.denfiVoicePlayer.onAudio(async packet => {
+  const { token, wav } = packet || {};
+  if (typeof token !== 'string' || !wav || wav.byteLength < 44 || wav.byteLength > 10 * 1024 * 1024) {
+    window.denfiVoicePlayer.acknowledge(token, 'error', 'Invalid audio packet');
+    return;
+  }
+  if (audio) audio.pause();
+  if (source) URL.revokeObjectURL(source);
+  source = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
+  const player = new Audio(source);
+  audio = player;
+  player.volume = 1;
+  player.playbackRate = 1;
+  player.onended = () => window.denfiVoicePlayer.acknowledge(token, 'ended');
+  player.onerror = () => window.denfiVoicePlayer.acknowledge(token, 'error', 'Audio output could not play the WAV');
+  try {
+    await player.play();
+    window.denfiVoicePlayer.acknowledge(token, 'playing');
+  } catch (error) { window.denfiVoicePlayer.acknowledge(token, 'error', error.message); }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+- [Monthly points ranking](monthly-points-ranking.md) — only rankings reset monthly; spendable member balances carry over, and historical credits/debits remain intact.
+- [Shutdown timer ownership](shutdown-timer-ownership.md) — idle shutdown is main-process authoritative; startup restoration shows the lock screen without starting the idle deadline.
+- [Session visibility reliability](session-visibility-reliability.md) — reject stale logout events and require repeated hotspot confirmation before removing an active session overlay.
+- [Attendance history and network trust](attendance-trust-and-history.md) — kiosk-only mission editing, shared daily target, and live Points-timed rewards without offline replay.
+- [Betting game presentation](betting-game-presentation.md) — private odds, operator-controlled LOSE, and member points held until the reel reveals its result.
+- [Betting policy compatibility](betting-policy-compatibility.md) — old Points builds may acknowledge writes while dropping newer spin/stake settings; verify before claiming a policy is live.
+- [Offline betting drafts](offline-betting-drafts.md) — prepare odds on a disconnected kiosk, but require an explicit publish before changing Denfi Points.
+- [Kiosk media chooser](kiosk-media-chooser.md) — parent admin file dialogs to Electron and pause lock-screen focus enforcement only while the authorized chooser is open.
+- [Windows installer on this workspace](windows-installer-build.md) — the Linux Wine setup can package Windows files but fails while finalizing the NSIS installer.
+- [Cash withdrawal rules](cash-withdrawal-rules.md) — 1 point = ₱1, whole-number withdrawals, shared Points control, and operator checks for uncertain coin releases.
+- [Testing fixture lifecycle](testing-fixture-lifecycle.md) — temporary HTTP servers need a managed lifetime across browser-testing calls.
+- [Voice announcement preferences](voice-announcement-preferences.md) — names must be easy to hear; the owner disliked rushed, flat local speech.
+- [Free voice hosting limits](free-voice-hosting-limits.md) — free model licenses do not mean unlimited demo hosting; distinguish offline clip playback from offline generation.
+- [Order confirmations](order-confirmation-policy.md) — same-message Telegram handoff, private Heart voice, closable status notices, shared-bot coordination, and small-overlay checks.
+- [Telegram duplicates](telegram-duplicate-policy.md) — prioritize no duplicate sends over automatic retry of uncertain delivery; update Points and every kiosk together.
+- [Workspace cleanup](workspace-cleanup.md) — completed demos and generated releases are disposable; preserve runtime screens, offline voice, data, and recovery history.

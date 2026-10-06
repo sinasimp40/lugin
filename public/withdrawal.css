@@ -1,0 +1,32 @@
+#withdraw-btn.active { border-color:#fff0a8; box-shadow:0 0 8px rgba(255,190,65,.3); }
+.withdraw-machine { padding:9px 10px; margin:8px 0; border:1px solid #947139; border-radius:3px; background:#302719; color:#ffda94; font:11px/1.5 'Share Tech Mono',monospace; }
+.withdraw-machine[hidden] { display:none; }
+.withdraw-machine[data-state="unconfirmed"] { border-color:#9c583f; background:#30201a; color:#ffb997; }
+#withdrawal-amount:disabled { opacity:.55; cursor:not-allowed; }
+.withdraw-admin-section { max-width:900px; }
+.withdraw-admin-copy { color:#a6a19a; font-size:11px; line-height:1.55; margin:0 0 12px; }
+.withdraw-admin-status { min-height:18px; margin:8px 0 12px; padding:8px 10px; border:1px solid #333b3b; background:#101416; color:#c8b990; font:11px/1.45 'Share Tech Mono',monospace; }
+.withdraw-admin-status[data-state="error"] { border-color:#884537; color:#ffc0aa; }
+.withdraw-admin-status[data-state="success"] { border-color:#527745; color:#a9df9c; }
+.withdraw-admin-toggle { display:flex; align-items:center; gap:8px; margin:10px 0 14px; color:#f3d894; font:12px 'Share Tech Mono',monospace; }
+.withdraw-admin-toggle input { accent-color:#f2a332; }
+#admin-withdrawal-form > label:not(.withdraw-admin-toggle),.withdraw-admin-grid label { display:block; color:#d2c5aa; font:11px 'Share Tech Mono',monospace; margin:10px 0; }
+#admin-withdrawal-form input:not([type="checkbox"]) { display:block; width:100%; margin-top:5px; padding:9px 10px; border:1px solid #383b38; border-radius:3px; background:#101214; color:#f0e9db; font:12px 'Share Tech Mono',monospace; }
+.withdraw-admin-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.withdraw-admin-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin:9px 0; }
+.withdraw-admin-auth-row { display:grid; grid-template-columns:minmax(150px,220px) minmax(220px,360px); align-items:center; gap:10px; margin:10px 0; color:#d2c5aa; font:11px 'Share Tech Mono',monospace; }
+.withdraw-admin-auth-row input { width:100%; padding:9px 10px; border:1px solid #383b38; border-radius:3px; background:#101214; color:#f0e9db; font:12px 'Share Tech Mono',monospace; }
+.withdraw-admin-auth-row input:focus-visible { outline:1px solid #efa33c; }
+#admin-withdrawal-authorize:disabled { opacity:.45; cursor:not-allowed; }
+.withdrawal-table-wrap { width:100%; overflow:auto; }
+.withdrawal-table { width:100%; border-collapse:collapse; min-width:800px; font:10px/1.45 'Share Tech Mono',monospace; }
+.withdrawal-table th { color:#e8c581; text-align:left; font-size:9px; letter-spacing:.5px; background:#171717; }
+.withdrawal-table th,.withdrawal-table td { padding:8px; border-bottom:1px solid #30302c; vertical-align:top; }
+.withdrawal-table td { color:#c6beb0; }
+.withdrawal-status-tag { display:inline-block; padding:2px 5px; border:1px solid #6b5732; color:#f0ca7a; text-transform:uppercase; }
+.withdrawal-status-tag[data-status="success"] { color:#9fdb9b; border-color:#476d45; }
+.withdrawal-status-tag[data-status="failed"] { color:#ffac99; border-color:#75423a; }
+.withdrawal-resolve { min-width:96px; margin:2px; padding:5px; border:1px solid #a57a36; background:#332610; color:#f8d990; cursor:pointer; font:10px 'Share Tech Mono',monospace; }
+.withdrawal-resolve:disabled,#admin-withdrawal-save:disabled { opacity:.42; cursor:not-allowed; }
+.withdrawal-row-unconfirmed { background:rgba(255,163,49,.045); }
+@media(max-width:700px) { .withdraw-admin-grid { grid-template-columns:1fr; } .withdraw-admin-auth-row { grid-template-columns:1fr; } }

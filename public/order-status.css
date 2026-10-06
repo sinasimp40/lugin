@@ -1,0 +1,356 @@
+:root {
+  --denfi-ink: #171916;
+  --denfi-panel: #20231f;
+  --denfi-panel-raised: #282b25;
+  --denfi-line: rgba(233, 176, 92, .24);
+  --denfi-muted: #aaa692;
+  --denfi-paper: #f1e7d1;
+  --denfi-amber: #e7aa4e;
+  --denfi-green: #8bc29a;
+}
+
+.denfi-order-stack {
+  position: fixed;
+  z-index: 10020;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(88px, calc(env(safe-area-inset-bottom) + 74px));
+  display: grid;
+  width: min(360px, calc(100vw - 28px));
+  gap: 10px;
+  pointer-events: none;
+  font-family: "Share Tech Mono", "Courier New", monospace;
+  color: var(--denfi-paper);
+}
+
+.denfi-order-card {
+  position: relative;
+  overflow: hidden;
+  padding: 15px 16px 14px;
+  border: 1px solid var(--denfi-line);
+  border-left: 3px solid var(--denfi-amber);
+  background:
+    linear-gradient(115deg, rgba(233, 176, 92, .065), transparent 50%),
+    rgba(25, 27, 24, .97);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .3);
+  pointer-events: auto;
+  animation: denfi-order-enter .28s cubic-bezier(.2,.8,.2,1) both;
+  backdrop-filter: blur(12px);
+}
+
+.denfi-order-card[data-status="ready"] {
+  border-left-color: var(--denfi-green);
+  background:
+    linear-gradient(115deg, rgba(139, 194, 154, .09), transparent 56%),
+    rgba(25, 27, 24, .97);
+}
+
+.denfi-order-card.denfi-order-exit { animation: denfi-order-exit .18s ease-in both; }
+.denfi-order-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+.denfi-order-state { display:flex; align-items:center; gap:8px; color:var(--denfi-amber); font:700 10px/1.2 "Orbitron", "Courier New", monospace; letter-spacing:1.1px; }
+.denfi-order-card[data-status="ready"] .denfi-order-state { color:var(--denfi-green); }
+.denfi-order-state::before { content:""; width:7px; height:7px; border:1px solid currentColor; background:currentColor; box-shadow:0 0 0 3px rgba(231,170,78,.1); }
+.denfi-order-card[data-status="ready"] .denfi-order-state::before { box-shadow:0 0 0 3px rgba(139,194,154,.12); }
+.denfi-order-close {
+  display:grid; place-items:center; flex:0 0 26px; width:26px; height:26px;
+  border:1px solid rgba(241,231,209,.2); background:transparent; color:var(--denfi-muted);
+  font:400 18px/1 "Share Tech Mono", monospace; cursor:pointer;
+}
+.denfi-order-close:hover,.denfi-order-close:focus-visible { border-color:var(--denfi-amber); color:var(--denfi-paper); outline:none; }
+.denfi-order-message { max-width:30em; margin:0 0 12px; color:#e9e2d3; font-size:13px; line-height:1.5; }
+.denfi-order-detail {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding-top:10px; border-top:1px solid rgba(241,231,209,.1); color:var(--denfi-muted); font-size:10px;
+}
+.denfi-order-name { overflow:hidden; color:var(--denfi-paper); text-overflow:ellipsis; white-space:nowrap; }
+.denfi-order-total { flex:0 0 auto; color:var(--denfi-amber); font-weight:700; }
+.denfi-order-items { margin-top:8px; color:#c5bda9; font-size:11px; line-height:1.5; }
+.denfi-order-id { margin-top:7px; color:#807d70; font-size:9px; letter-spacing:.7px; }
+.denfi-order-reminder { margin-top:10px; color:var(--denfi-muted); font-size:10px; line-height:1.45; }
+.denfi-order-reminder[role="alert"] { color:#ffb5a6; }
+.denfi-order-complete {
+  display:block; width:100%; min-height:36px; margin-top:10px; padding:9px 12px;
+  border:1px solid var(--denfi-green); border-radius:3px; background:#284a32;
+  color:#e9ffec; font:700 11px "Share Tech Mono", "Courier New", monospace;
+  cursor:pointer; -webkit-app-region:no-drag;
+}
+.denfi-order-complete:hover { background:#345d40; }
+.denfi-order-complete:focus-visible { outline:2px solid #e9ffec; outline-offset:3px; }
+.denfi-order-complete:disabled { opacity:.6; cursor:wait; }
+
+.overlay-shell .denfi-order-stack--session {
+  position:absolute;
+  z-index:80;
+  top:auto;
+  right:0;
+  bottom:var(--denfi-order-strip-height, 96px);
+  left:0;
+  width:100%;
+  max-height:none;
+}
+.overlay-shell.drawer-below .denfi-order-stack--session { top:var(--denfi-order-strip-height, 96px); bottom:auto; }
+.overlay-shell.order-drawer-active:not(.drawer-below) .denfi-order-stack--session { top:0; bottom:auto; }
+.overlay-shell.order-drawer-active.drawer-below .denfi-order-stack--session { top:auto; bottom:0; }
+
+@keyframes denfi-order-enter { from { opacity:0; transform:translateY(9px); } to { opacity:1; transform:translateY(0); } }
+@keyframes denfi-order-exit { to { opacity:0; transform:translateY(5px); } }
+@media (prefers-reduced-motion: reduce) {
+  .denfi-order-card,.denfi-order-card.denfi-order-exit { animation:none; }
+}
+@media (max-width: 520px) {
+  .denfi-order-stack { right:10px; bottom:max(82px, calc(env(safe-area-inset-bottom) + 68px)); width:calc(100vw - 20px); }
+  .denfi-order-card { padding:13px 14px 12px; }
+}
+
+/* Standalone order-status simulation */
+.order-preview-page {
+  min-height:100dvh;
+  margin:0;
+  overflow-x:hidden;
+  background:#191b18;
+  color:#efe5d0;
+  font-family:"Share Tech Mono","Courier New",monospace;
+}
+.order-preview-page * { box-sizing:border-box; }
+.order-preview-page::before {
+  position:fixed; inset:0; z-index:0; content:""; pointer-events:none;
+  background-image:linear-gradient(rgba(231,170,78,.025) 1px, transparent 1px),linear-gradient(90deg,rgba(231,170,78,.025) 1px,transparent 1px);
+  background-size:28px 28px;
+  mask-image:linear-gradient(to bottom,black,transparent 85%);
+}
+.order-preview-wrap { position:relative; z-index:1; width:min(1120px,calc(100% - 36px)); margin:0 auto; padding:42px 0 64px; }
+.order-preview-head { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; padding-bottom:23px; border-bottom:1px solid rgba(231,170,78,.25); }
+.order-preview-brand { color:#e7aa4e; font:700 11px/1.3 "Orbitron","Courier New",monospace; letter-spacing:2px; }
+.order-preview-head h1 { margin:10px 0 7px; font:600 clamp(27px,4vw,42px)/1.1 "Orbitron","Courier New",monospace; letter-spacing:-1.3px; }
+.order-preview-head p { margin:0; max-width:550px; color:#bcb6a6; font-size:13px; line-height:1.6; }
+.order-preview-badge { padding:8px 10px; border:1px solid rgba(231,170,78,.38); color:#e7aa4e; font:700 9px "Orbitron","Courier New",monospace; letter-spacing:1.2px; white-space:nowrap; }
+.order-preview-layout { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr); gap:20px; margin-top:22px; align-items:start; }
+.order-preview-panel { border:1px solid rgba(231,170,78,.2); background:rgba(32,35,31,.92); }
+.order-preview-panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border-bottom:1px solid rgba(231,170,78,.15); }
+.order-preview-panel-head h2 { margin:0; color:#d5c9ac; font:700 10px "Orbitron","Courier New",monospace; letter-spacing:1.4px; }
+.order-preview-panel-head span { color:#838171; font-size:10px; }
+.order-preview-content { padding:16px; }
+.mock-message { border:1px solid rgba(231,170,78,.24); background:#181a17; padding:15px; }
+.mock-message-title { display:flex; justify-content:space-between; gap:12px; color:#e7aa4e; font:700 10px "Orbitron","Courier New",monospace; letter-spacing:1px; }
+.mock-message-copy { margin:12px 0 15px; color:#e1d7c2; font-size:12px; line-height:1.65; white-space:pre-line; }
+.mock-message-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.order-preview-button {
+  min-height:38px; padding:0 13px; border:1px solid rgba(231,170,78,.58); background:#815315; color:#fff0d4;
+  font:700 9px "Orbitron","Courier New",monospace; letter-spacing:.7px; cursor:pointer;
+}
+.order-preview-button:hover:not(:disabled) { background:#9a6823; }
+.order-preview-button:focus-visible { outline:2px solid #edc47f; outline-offset:2px; }
+.order-preview-button.secondary { background:transparent; color:#d0c3a7; border-color:rgba(239,229,208,.2); }
+.order-preview-button:disabled { opacity:.42; cursor:not-allowed; }
+.order-preview-controls { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.order-preview-note { margin:13px 0 0; color:#8e8a7b; font-size:10px; line-height:1.6; }
+.simulation-label { color:#e7aa4e; font-size:9px; letter-spacing:1px; text-transform:uppercase; }
+.speech-box { min-height:90px; padding:13px; border:1px solid rgba(139,194,154,.22); background:rgba(139,194,154,.045); color:#d7e5d6; font-size:12px; line-height:1.65; }
+.speech-toggle { display:flex; align-items:center; gap:9px; margin-top:13px; color:#bcb6a6; font-size:11px; cursor:pointer; }
+.speech-toggle input { accent-color:#8bc29a; width:15px; height:15px; }
+.speech-caption { margin:7px 0 0; color:#817f73; font-size:10px; }
+.status-preview-zone { position:relative; min-height:225px; padding:12px; background:rgba(18,20,18,.35); }
+.status-preview-zone .denfi-order-stack { position:relative; inset:auto; width:100%; }
+.status-preview-zone .denfi-order-card { animation-duration:.22s; }
+.order-preview-footer { margin-top:22px; color:#777568; font-size:10px; line-height:1.7; }
+.order-preview-link { color:#e7aa4e; text-decoration:none; }
+.order-preview-link:hover { text-decoration:underline; }
+@media(max-width:760px) {
+  .order-preview-wrap { width:calc(100% - 24px); padding-top:26px; }
+  .order-preview-head { flex-direction:column; gap:14px; }
+  .order-preview-layout { grid-template-columns:1fr; }
+}
+
+/*
+ * Kiosk order cards: warm, high-contrast paper against the dark footer.
+ * These rules are intentionally limited to the order component so the
+ * session strip and its controls retain their existing presentation.
+ */
+.denfi-order-stack {
+  color-scheme: light;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #252b25;
+}
+
+.denfi-order-card {
+  box-sizing: border-box;
+  padding: 17px 18px 16px;
+  overflow: hidden;
+  border: 1px solid rgba(63, 76, 59, .22);
+  border-left: 5px solid #c58730;
+  border-radius: 12px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.64), transparent 54%),
+    #f3eddf;
+  box-shadow:
+    0 15px 34px rgba(0, 0, 0, .36),
+    0 2px 0 rgba(255,255,255,.55) inset,
+    0 0 0 1px rgba(23, 25, 22, .12);
+  color: #252b25;
+  backdrop-filter: blur(12px);
+}
+
+.denfi-order-card[data-status="ready"] {
+  border-color: rgba(55, 92, 63, .3);
+  border-left-color: #47734e;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.7), transparent 56%),
+    #eef1e5;
+}
+
+/* Dock the card to the full session strip, including the withdrawal button. */
+.overlay-shell .denfi-order-card { border-radius:12px 12px 0 0; }
+.overlay-shell.drawer-below .denfi-order-card { border-radius:0 0 12px 12px; }
+
+.denfi-order-top {
+  min-height: 29px;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.denfi-order-state {
+  gap: 10px;
+  color: #83500f;
+  font: 750 18px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif;
+  letter-spacing: .4px;
+}
+
+.denfi-order-card[data-status="ready"] .denfi-order-state {
+  color: #315c3a;
+}
+
+.denfi-order-state::before {
+  width: 9px;
+  height: 9px;
+  border: 0;
+  border-radius: 50%;
+  background: #bd7c22;
+  box-shadow: 0 0 0 4px rgba(189,124,34,.14);
+  content: "";
+}
+
+.denfi-order-card[data-status="ready"] .denfi-order-state::before {
+  background: #44774d;
+  box-shadow: 0 0 0 4px rgba(68,119,77,.15);
+}
+
+.denfi-order-close {
+  flex-basis: 30px;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(58, 64, 54, .2);
+  border-radius: 8px;
+  background: rgba(67, 71, 58, .045);
+  color: #666b5e;
+  font: 500 17px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.denfi-order-close:hover,
+.denfi-order-close:focus-visible {
+  border-color: #b87822;
+  background: rgba(184,120,34,.1);
+  color: #563a17;
+  outline: none;
+}
+
+.denfi-order-message {
+  max-width: 29em;
+  margin: 0 0 14px;
+  color: #282e27;
+  font-size: 16px;
+  font-weight: 550;
+  line-height: 1.42;
+}
+
+.denfi-order-detail {
+  gap: 10px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(54, 62, 49, .14);
+  color: #62685b;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.denfi-order-name {
+  color: #333a30;
+  font-weight: 650;
+}
+
+.denfi-order-total {
+  color: #855515;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.denfi-order-items {
+  margin-top: 9px;
+  color: #50574a;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.denfi-order-id {
+  margin-top: 8px;
+  color: #777b6e;
+  font: 600 10px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif;
+  letter-spacing: 1.05px;
+}
+
+.denfi-order-reminder {
+  margin-top: 12px;
+  color: #53614f;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.denfi-order-reminder[role="alert"] {
+  color: #a23c2f;
+}
+
+.denfi-order-complete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+  margin-top: 13px;
+  padding: 12px 16px;
+  border: 1px solid #456c48;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #4e8054, #3c6945);
+  box-shadow: 0 2px 0 rgba(31,69,37,.2), 0 1px 0 rgba(255,255,255,.18) inset;
+  color: #fff9e9;
+  font: 750 15px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif;
+  letter-spacing: .15px;
+  cursor: pointer;
+  transition: transform .14s ease;
+}
+
+.denfi-order-complete:hover:not(:disabled) {
+  background: linear-gradient(180deg, #5a8d60, #47774f);
+  box-shadow: 0 4px 10px rgba(44,83,49,.2), 0 1px 0 rgba(255,255,255,.2) inset;
+}
+
+.denfi-order-complete:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.denfi-order-complete:focus-visible {
+  outline: 3px solid #a4c58d;
+  outline-offset: 3px;
+}
+
+.denfi-order-complete:disabled {
+  opacity: .72;
+}
+
+@media (max-width: 520px) {
+  .denfi-order-card { padding: 15px 15px 14px; }
+  .denfi-order-message { font-size: 15px; }
+  .denfi-order-complete { min-height: 48px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .denfi-order-complete {
+    transition: none;
+  }
+}

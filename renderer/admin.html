@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel - MikroTik Hotspot</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="admin-body">
+  <div class="admin-container">
+    <div class="admin-header">
+      <h2>&#9881; Admin Panel</h2>
+      <div class="admin-header-actions">
+        <button class="btn btn-sm btn-outline" id="refresh-btn">&#8635; Refresh</button>
+        <button class="btn btn-sm btn-secondary" id="back-btn">&#8592; Back</button>
+      </div>
+    </div>
+
+    <div class="admin-tabs">
+      <button class="tab-btn active" data-tab="users">Users</button>
+      <button class="tab-btn" data-tab="active">Active Sessions</button>
+      <button class="tab-btn" data-tab="profiles">Profiles</button>
+      <button class="tab-btn" data-tab="setup">Setup Guide</button>
+    </div>
+
+    <div id="tab-users" class="tab-content active">
+      <div class="table-toolbar">
+        <input type="text" id="search-users" placeholder="&#128269; Search users..." class="search-input" />
+        <button class="btn btn-primary btn-sm" id="add-user-btn">&#43; Add User</button>
+      </div>
+      <div id="users-table-wrap">
+        <div class="loading-msg">Loading users...</div>
+      </div>
+    </div>
+
+    <div id="tab-active" class="tab-content">
+      <div class="active-summary" id="active-summary">Active sessions: —</div>
+      <div id="active-table-wrap">
+        <div class="loading-msg">Loading active sessions...</div>
+      </div>
+    </div>
+
+    <div id="tab-profiles" class="tab-content">
+      <div id="profiles-wrap">
+        <div class="loading-msg">Loading profiles...</div>
+      </div>
+    </div>
+
+    <div id="tab-setup" class="tab-content">
+      <div class="setup-guide">
+        <h3>&#128209; MikroTik Hotspot Setup Guide</h3>
+
+        <div class="guide-step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>Enable Hotspot Server</strong>
+            <p>Go to <code>IP &gt; Hotspot &gt; Hotspot Setup</code> and follow the wizard. Select the LAN interface (e.g., <code>bridge1</code> or <code>ether2</code>).</p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>Create Hotspot User Profiles</strong>
+            <p>Go to <code>IP &gt; Hotspot &gt; User Profiles</code>. Create profiles like <code>1hour</code>, <code>daily</code>, <code>vip</code>. Set <strong>Session Timeout</strong> and <strong>Rate Limit</strong> per profile.</p>
+            <pre>Name: 1hour
+Session Timeout: 01:00:00
+Rate Limit: 2M/2M</pre>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>Configure Hotspot Server Profile</strong>
+            <p>Go to <code>IP &gt; Hotspot &gt; Server Profiles</code>. Set your <strong>DNS Name</strong> (the login page URL clients see). Enable <code>HTTPS</code> if needed.</p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <strong>Hotspot Login Files (Optional)</strong>
+            <p>Default login pages are in <code>Files &gt; hotspot</code>. You can customize <code>login.html</code>, <code>status.html</code>, and <code>logout.html</code>. This app manages users via API — no custom page required.</p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <strong>Enable API Access</strong>
+            <p>Go to <code>IP &gt; Services</code>. Make sure <strong>API (port 8728)</strong> or <strong>API-SSL (port 8729)</strong> is enabled. Create a dedicated admin user in <code>System &gt; Users</code> with <code>full</code> group for this app.</p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="step-num">6</div>
+          <div class="step-body">
+            <strong>Connect This App to Your Router</strong>
+            <p>Go to <strong>Settings</strong> (gear icon on the login page). Enter your router's IP, API port, username, and password. Click <em>Test Connection</em>.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="status-bar" class="status-bar hidden"></div>
+  </div>
+
+  <!-- Add/Edit User Modal -->
+  <div id="user-modal" class="modal hidden">
+    <div class="modal-overlay" id="modal-overlay"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-title">Add User</h3>
+        <button class="modal-close" id="modal-close">&#10005;</button>
+      </div>
+      <form id="modal-form">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="modal-username" placeholder="Username" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="modal-password" placeholder="Password" />
+        </div>
+        <div class="form-group">
+          <label>Profile</label>
+          <select id="modal-profile">
+            <option value="default">default</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Time Limit</label>
+          <input type="text" id="modal-limit" placeholder="e.g. 1h, 30m, 2h30m" />
+        </div>
+        <div class="form-group">
+          <label>Comment</label>
+          <input type="text" id="modal-comment" placeholder="Optional note" />
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="modal-submit">Create User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/admin.js"></script>
+</body>
+</html>

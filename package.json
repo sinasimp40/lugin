@@ -1,0 +1,127 @@
+{
+  "name": "denfi-auto-shutdown",
+  "version": "1.0.2",
+  "description": "Denfi Auto Shutdown",
+  "main": "main.js",
+  "scripts": {
+    "start": "node server.js",
+    "electron": "electron .",
+    "prebuild": "node -e \"const fs=require('fs'),p=require('path');const bd=p.join(__dirname,'build');if(!fs.existsSync(bd))fs.mkdirSync(bd);['icon.ico','icon.png'].forEach(f=>{const src=p.join(__dirname,'public',f),dst=p.join(bd,f);if(fs.existsSync(src)&&!fs.existsSync(dst))fs.copyFileSync(src,dst);const rootDst=p.join(__dirname,f);if(fs.existsSync(src)&&!fs.existsSync(rootDst))fs.copyFileSync(src,rootDst)});console.log('Icons ready:',fs.readdirSync(bd))\" && node scripts/prepare-voice-cues.cjs",
+    "build": "npm run prebuild && node scripts/prepare-windows-sharp.cjs && electron-builder --win --x64",
+    "build:points": "npm run prebuild && electron-builder --win --x64 --config electron-builder-points.json",
+    "build:all": "npm run build && npm run build:points"
+  },
+  "build": {
+    "appId": "com.denfi.autoshutdown",
+    "productName": "Denfi Auto Shutdown",
+    "icon": "icon.ico",
+    "directories": {
+      "buildResources": "build"
+    },
+    "asar": false,
+    "electronLanguages": ["en-US"],
+    "win": {
+      "target": "nsis",
+      "requestedExecutionLevel": "asInvoker",
+      "icon": "icon.ico",
+      "executableName": "denfi-auto-shutdown"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "Denfi Auto Shutdown Setup.${ext}",
+      "shortcutName": "Denfi Auto Shutdown",
+      "uninstallDisplayName": "Denfi Auto Shutdown",
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "server.js",
+      "src/**/*",
+      "public/**/*",
+      "build/**/*",
+      "icon.ico",
+      "icon.png",
+      "kiosk-setup.bat",
+      "kiosk-disable.bat",
+      "node_modules/**/*",
+      "!node_modules/.cache",
+      "!node_modules/electron",
+      "!node_modules/electron-builder",
+      "!node_modules/**/*.map",
+      "!node_modules/onnxruntime-web/**/*",
+      "!node_modules/@huggingface/transformers/dist/transformers.web*",
+      "!node_modules/@huggingface/transformers/dist/transformers.min*",
+      "!node_modules/@huggingface/transformers/dist/*.wasm",
+      "!node_modules/onnxruntime-node/bin/napi-v3/linux/**",
+      "!node_modules/onnxruntime-node/bin/napi-v3/darwin/**",
+      "!node_modules/onnxruntime-node/bin/napi-v3/win32/arm64/**",
+      "!node_modules/@img/sharp-linux-*/**",
+      "!node_modules/@img/sharp-libvips-linux*/**",
+      "node_modules/@img/sharp-win32-x64/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "assets/voice-cues",
+        "to": "voice-cues"
+      },
+      {
+        "from": "kiosk-setup.bat",
+        "to": "kiosk-setup.bat"
+      },
+      {
+        "from": "kiosk-disable.bat",
+        "to": "kiosk-disable.bat"
+      },
+      {
+        "from": "assets/kokoro",
+        "to": "kokoro"
+      }
+    ],
+    "extraFiles": [
+      {
+        "from": "voice-check.bat",
+        "to": "voice-check.bat"
+      },
+      {
+        "from": "denfi-data-path.txt",
+        "to": "denfi-data-path.txt"
+      },
+      {
+        "from": "denfi-watchdog.ps1",
+        "to": "denfi-watchdog.ps1"
+      },
+      {
+        "from": "denfi-watchdog-launch.vbs",
+        "to": "denfi-watchdog-launch.vbs"
+      }
+    ]
+  },
+  "keywords": [
+    "denfi",
+    "auto-shutdown",
+    "hotspot",
+    "mikrotik"
+  ],
+  "author": "Denfi",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "kokoro-js": "1.2.1",
+    "ws": "^8.22.0"
+  },
+  "optionalDependencies": {
+    "@img/sharp-win32-x64": "0.34.5"
+  },
+  "devDependencies": {
+    "electron": "^41.0.4",
+    "electron-builder": "^26.15.3"
+  }
+}

@@ -1,0 +1,25 @@
+node_modules/
+build/
+dist/
+npm-debug.log*
+data/attendance.json
+data/*.db
+data/*.db-*
+data/legacy-json-backups/
+.cache/electron/
+.cache/electron-builder/
+.local/releases/
+screenshots/
+attached_assets/generated_audio/
+attached_assets/voice-samples/
+
+# Local tools, private runtime data, and references are not Windows app source.
+.cache/
+.local/
+artifacts/
+attached_assets/
+data/
+*.zip
+*.7z
+*.exe
+*.log
