@@ -4,7 +4,7 @@
 - [Attendance history and network trust](attendance-trust-and-history.md) — kiosk-only mission editing, shared daily target, and live Points-timed rewards without offline replay.
 - [Betting game presentation](betting-game-presentation.md) — private odds, exclusive wheel/dice/off, confirmed two-dice rules, and balances held until the result.
 - [Betting policy compatibility](betting-policy-compatibility.md) — old Points builds may acknowledge writes while dropping newer spin/stake settings; verify before claiming a policy is live.
-- [Offline betting drafts](offline-betting-drafts.md) — prepare odds on a disconnected kiosk, but require an explicit publish before changing Denfi Points.
+- [Offline betting drafts](offline-betting-drafts.md) — hide local-draft, reload, and test-link controls in Auto Shutdown Betting; shared settings still require explicit publishing.
 - [Kiosk media chooser](kiosk-media-chooser.md) — parent admin file dialogs to Electron and pause lock-screen focus enforcement only while the authorized chooser is open.
 - [Windows installer on this workspace](windows-installer-build.md) — the Linux Wine setup can package Windows files but fails while finalizing the NSIS installer.
 - [Cash withdrawal rules](cash-withdrawal-rules.md) — 1 point = ₱1, whole-number withdrawals, shared Points control, and operator checks for uncertain coin releases.

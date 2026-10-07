@@ -1935,7 +1935,7 @@
                <div class="admin-grid">
                  <div class="admin-section full-width">
                    <h3>Member game policy</h3>
-                   <p style="font-size:11px;color:#aeb4b8;margin-bottom:12px">Choose one game for the session bar, or turn games off. Wheel and High / Low Dice are mutually exclusive. Publishing requires a verified Denfi Points connection; offline saves remain drafts.</p>
+                   <p style="font-size:11px;color:#aeb4b8;margin-bottom:12px">Choose one game for the session bar, or turn games off. Wheel and High / Low Dice are mutually exclusive. Publishing requires a verified Denfi Points connection.</p>
                    <div class="form-group" style="max-width:360px"><label for="admin-wheel-game">Game available to members</label><select id="admin-wheel-game" style="width:100%;padding:10px;background:#101114;color:#f3d58b;border:1px solid #5b452b"><option value="off">Games off</option><option value="wheel">Multiplier wheel</option><option value="dice">High / Low Dice</option></select></div>
                    <div class="dice-admin-rates" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0;padding:12px;border:1px solid rgba(255,174,56,.2);background:rgba(255,174,56,.035)">
                      <div class="form-group" style="margin:0"><label for="admin-dice-win-rate">Dice win rate (%)</label><input id="admin-dice-win-rate" type="number" min="0" max="100" step="0.01" value="50" /></div>
@@ -1954,11 +1954,9 @@
                    <div class="wheel-admin-total" id="admin-wheel-total"></div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-admin" type="button" onclick="addWheelOutcome()">Add multiplier</button><button class="btn-admin" type="button" id="admin-wheel-add-loss" onclick="addWheelLoss()">Add LOSE (0×)</button></div>
                     </div>
-                    <div id="admin-game-actions" style="margin-top:16px"><button class="btn-admin" id="admin-wheel-save" type="button" onclick="saveWheelSettings()">Save betting game</button></div>
+                    <div id="admin-game-actions" hidden style="margin-top:16px"><button class="btn-admin" id="admin-wheel-save" type="button" onclick="saveWheelSettings()">Publish to Denfi Points</button></div>
                    <div class="wheel-policy-status" id="admin-wheel-active-policy" role="status" aria-live="polite">Checking the active Denfi Points policy…</div>
-                   <div class="wheel-admin-readonly" id="admin-wheel-status">Loading saved betting settings…</div>
-                   <button class="btn-admin danger" id="admin-wheel-reload" type="button" onclick="loadAdminWheel(true)" style="margin-top:8px">Reload latest policy and discard these edits</button>
-                   <div style="margin-top:12px"><a href="/session-games-test.html" target="_blank" rel="noopener" style="color:#f4ef12;font:11px 'Share Tech Mono',monospace">Open session game test bench (fake points only)</a></div>
+                   <div class="wheel-admin-readonly" id="admin-wheel-status" hidden></div>
                  </div>
                </div>
              </section>
@@ -3893,9 +3891,6 @@
       const readonly = isPointsAdmin();
       const locked = readonly || !adminWheelLoaded || adminWheelSaving;
       document.getElementById('admin-wheel-enabled').disabled = locked;
-      const reloadPolicy = document.getElementById('admin-wheel-reload');
-      reloadPolicy.hidden = readonly;
-      reloadPolicy.disabled = !adminWheelLoaded || adminWheelSaving;
       document.getElementById('admin-wheel-game').disabled = locked;
       document.getElementById('admin-dice-win-rate').disabled = locked;
       document.getElementById('admin-dice-lose-rate').disabled = locked;
@@ -3908,11 +3903,11 @@
       document.getElementById('admin-wheel-add-loss').disabled = locked || adminWheel.outcomes.length >= 12 ||
         adminWheel.outcomes.some(item => Number(item.multiplier) === 0);
       const save = document.getElementById('admin-wheel-save');
-      save.hidden = readonly;
+      save.hidden = readonly || !adminWheelConnected;
+      document.getElementById('admin-game-actions').hidden = save.hidden;
       save.disabled = locked || (adminWheelConnected && (!adminWheelSupportsPolicy || !adminWheelSupportsGames));
-      save.textContent = adminWheelConnected
-        ? !adminWheelSupportsPolicy || !adminWheelSupportsGames ? 'Update Denfi Points .exe first' : 'Publish to Denfi Points'
-        : 'Save local draft (not live)';
+      save.textContent = adminWheelConnected && (!adminWheelSupportsPolicy || !adminWheelSupportsGames)
+        ? 'Update Denfi Points .exe first' : 'Publish to Denfi Points';
       const activePolicy = document.getElementById('admin-wheel-active-policy');
       if (adminWheelConnected && adminWheelActive) {
         const live = adminWheelActive.enabled && !adminWheelDraft && !adminWheelDirty && adminWheelSupportsPolicy;
@@ -3925,25 +3920,20 @@
             adminWheelDraft || adminWheelDirty ? ' Your edits here are NOT LIVE until published.' : '');
       } else {
         activePolicy.classList.remove('live');
-        activePolicy.textContent = 'NOT VERIFIED LIVE — Denfi Points is disconnected. Saving here makes a local draft only. Connect Denfi Points in Runtime, then return and publish.';
+        activePolicy.textContent = 'Denfi Points is disconnected. Connect in Runtime to publish betting settings.';
       }
       const note = document.getElementById('admin-wheel-status');
-      if (note) note.textContent = readonly
-        ? 'Read-only on Denfi Points. Betting settings can only be changed from the Auto Shutdown operator panel.'
-        : !adminWheelLoaded ? 'Loading betting settings…'
-        : adminWheelDirty
-          ? adminWheelConnected
-            ? 'UNSAVED CHANGES — publish to Denfi Points to apply these settings.'
-            : 'UNSAVED CHANGES — save a local draft. It will not activate betting until published to Denfi Points.'
-        : !adminWheelConnected
-          ? 'LOCAL DRAFT ONLY — you can edit and save here, but betting is not active until you connect Denfi Points in Runtime and publish this draft.'
-          : adminWheelDraft
-            ? 'LOCAL DRAFT — publish to Denfi Points to activate these changes. Publishing replaces the current server settings.'
-            : 'Saved on Denfi Points. Winning rates are private to admins. Changes require publishing.';
+      if (note) {
+        note.hidden = !readonly;
+        note.textContent = readonly
+          ? 'Read-only on Denfi Points. Betting settings can only be changed from the Auto Shutdown operator panel.'
+          : '';
+      }
     }
     async function loadAdminWheel(force = false) {
       if (!adminToken) return;
-      if (adminWheelDirty && !force) return;
+      if (adminWheelDirty && !force && adminWheelConnected) return;
+      const keepOfflineEdits = adminWheelDirty && !force;
       const sequence = ++adminWheelLoadSeq;
       adminWheelLoaded = false;
       // Keep the existing rows in place during a refresh instead of briefly
@@ -3953,16 +3943,16 @@
       try {
         const response = await fetch('/api/admin/wheel', { headers:{'x-admin-token':adminToken} });
         const data = await response.json().catch(() => ({}));
-        if (sequence !== adminWheelLoadSeq || !adminToken || adminWheelDirty && !force) return;
+        if (sequence !== adminWheelLoadSeq || !adminToken || adminWheelDirty && !force && !keepOfflineEdits) return;
         if (!response.ok || !data.success) throw new Error(data.error || 'Could not load betting game settings');
-        adminWheel = editableWheel(data.wheel || { enabled:false, outcomes:[] });
+        if (!keepOfflineEdits) adminWheel = editableWheel(data.wheel || { enabled:false, outcomes:[] });
         adminWheelConnected = !!data.connected;
         adminWheelDraft = !!data.draft;
         adminWheelActive = data.activeWheel || null;
         adminWheelActiveOddsToken = typeof data.activeOddsToken === 'string' ? data.activeOddsToken : '';
         adminWheelSupportsPolicy = !!data.pointsSupportsPolicy || isPointsAdmin();
         adminWheelSupportsGames = !!data.pointsSupportsGames || isPointsAdmin();
-        adminWheelDirty = false;
+        if (!keepOfflineEdits) adminWheelDirty = false;
         adminWheelLoaded = true;
         renderAdminWheel();
       } catch (e) {
@@ -3976,6 +3966,7 @@
     async function saveWheelSettings() {
       if (isPointsAdmin()) { showAdminMsg('admin-panel-msg', 'Betting settings are read-only on Denfi Points.', 'error'); return; }
       if (!adminWheelLoaded || adminWheelSaving) { if (!adminWheelSaving) showAdminMsg('admin-panel-msg', 'Load the betting settings first.', 'error'); return; }
+      if (!adminWheelConnected) { showAdminMsg('admin-panel-msg', 'Connect Denfi Points in Runtime before publishing betting settings.', 'error'); return; }
       const state = wheelEditorState();
       if (!state.valid) { showAdminMsg('admin-panel-msg', 'Enter distinct outcomes with positive chances totaling exactly 100%. Edit other chances after changing or deleting LOSE (0×).', 'error'); return; }
       const winRate = Number(adminWheel.dice.winRate), loseRate = Number(adminWheel.dice.loseRate);
@@ -3988,7 +3979,7 @@
         showAdminMsg('admin-panel-msg', 'Enter a daily spin limit from 1 to 100.', 'error'); return;
       }
       const outcomes = state.outcomes;
-      const mode = adminWheelConnected ? 'publish' : 'draft';
+      const mode = 'publish';
       if (mode === 'publish' && !adminWheelActiveOddsToken) {
         showAdminMsg('admin-panel-msg', 'The active policy version could not be verified. Reload betting settings before publishing.', 'error');
         return;
@@ -4014,7 +4005,7 @@
       }
       else {
         if (resp.httpStatus === 409) {
-          showAdminMsg('admin-panel-msg', `${resp.error || 'The active betting policy changed on another PC.'} Your edits remain on this screen. Compare them, then use “Reload latest policy and discard these edits” before applying changes again.`, 'error');
+          showAdminMsg('admin-panel-msg', `${resp.error || 'The active betting policy changed on another PC.'} Your edits remain on this screen. Refresh the page to discard them and load the latest settings before publishing again.`, 'error');
           return;
         }
         if (resp.httpStatus === 503) {
@@ -4023,7 +4014,7 @@
           renderAdminWheel();
         }
         showAdminMsg('admin-panel-msg', (resp.error || 'Could not save betting game settings') +
-          (resp.httpStatus === 503 ? ' Your edits are still on this screen; use Save local draft to keep them.' : ''), 'error');
+          (resp.httpStatus === 503 ? ' Your edits remain on this screen. Reconnect Denfi Points before publishing.' : ''), 'error');
       }
     }
 

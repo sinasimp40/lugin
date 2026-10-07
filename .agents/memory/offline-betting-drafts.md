@@ -1,10 +1,16 @@
 ---
 name: Offline betting drafts
-description: Why disconnected Auto Shutdown may prepare betting odds without activating them.
+description: Offline betting compatibility and the owner's simplified Auto Shutdown Betting panel.
 ---
 
-Auto Shutdown may let an authenticated operator edit and persist a local betting draft while Denfi Points is unavailable. A local draft must never become the source for member spins. On reconnection, preserve the draft but require the operator to explicitly publish it to Denfi Points; do not silently overwrite live server settings.
+The owner requested removal of the offline “Save local draft” action, unsaved/local-draft notice, “Reload latest policy and discard these edits” button, and fake-points test-bench link from Auto Shutdown → Betting. Keep the live Publish action available when connected; do not reintroduce these removed controls.
 
-**Why:** Operators need to configure the requested defaults before connecting the Points machine, but offline edits can be stale when a different kiosk or server admin has changed the live odds.
+**Why:** The user explicitly asked to remove these items from this admin panel.
 
-**How to apply:** Keep offline save, reconnect, and live publish as visibly distinct states in future changes to betting configuration. Gameplay and balances remain authoritative on Denfi Points.
+**How to apply:** Simplify the Auto Shutdown admin surface without deleting the standalone test page or existing saved configurations. Refreshing the page may discard edits and reload the shared policy after a publishing conflict.
+
+Previously saved drafts and backend draft compatibility must never activate member betting automatically. Denfi Points remains authoritative; require explicit verified publishing before local settings affect live games.
+
+**Why:** Offline edits can be stale after another kiosk changes the shared policy. Removing UI controls does not authorize deleting stored drafts or auto-publishing them.
+
+**How to apply:** Preserve saved configurations and the central publishing safety checks; do not treat offline edits as live settings.
