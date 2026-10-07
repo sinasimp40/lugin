@@ -57,6 +57,12 @@ Cross-PC win announcements must originate from the shared Points ledger, not fro
 
 **How to apply:** Keep announcements idempotent by spin identity, tolerate session WebSocket startup and reconnect races, and never include private odds or financial details in the shared feed.
 
+Keep a visible, roughly five-second dice rolling phase before showing the result or updated balance, including on Windows PCs with animation effects disabled. Reduced-motion mode should change faces without rapid spatial tumbling, not skip straight to the result.
+
+**Why:** The owner reported that the built Windows app did not visibly roll the dice and showed the result too quickly. Windows reduced-motion preferences can bypass the normal animation path.
+
+**How to apply:** Preserve the minimum reveal delay in every rendering mode and keep server-confirmed faces, balances, and announcements held until the roll finishes. Browser checks should explicitly cover reduced motion; they do not prove packaged Windows behavior.
+
 The owner describes betting as “offline gambling, not real money—it’s points for my computer shop.”
 
 **Why:** The owner corrected the cash-gambling interpretation while discussing voice samples.

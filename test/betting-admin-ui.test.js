@@ -20,20 +20,60 @@ function state(overrides = {}) {
 }
 function render(options) {
   const nodes = new Map();
+  const choices = ['off','wheel','dice','random'].map(game => ({
+    dataset: { bettingGame: game }, setAttribute(name, value) { this[name] = value; }
+  }));
   const node = id => {
     if (!nodes.has(id)) nodes.set(id, { classList: { toggle() {}, remove() {} } });
     return nodes.get(id);
   };
   const document = { getElementById: node, querySelector: () => node('add'),
-    querySelectorAll: () => [] };
+    querySelectorAll: selector => selector === '#admin-game-choices button' ? choices : [] };
   const start = page.indexOf('    function setWheelAdminReadOnly()');
   const end = page.indexOf('    async function loadAdminWheel(', start);
   assert.ok(start >= 0 && end > start);
   new Function('document', 'state', 'wheelEditorState', bindings +
     page.slice(start, end) + ';setWheelAdminReadOnly();')(
     document, options, () => ({ wins: [{ multiplier: 2 }] }));
+  node.choices = choices;
   return node;
 }
+
+test('game choices use persistent page buttons instead of a native kiosk popup', () => {
+  assert.match(page, /<select id="admin-wheel-game" hidden aria-hidden="true" tabindex="-1"/);
+  for (const game of ['off','wheel','dice','random']) {
+    assert.match(page, new RegExp(`data-betting-game="${game}"`));
+    const nodes = render(state({ adminWheel: { enabled:game !== 'off', game, outcomes:[] } }));
+    assert.deepEqual(nodes.choices.filter(button => button['aria-pressed'] === 'true').map(button => button.dataset.bettingGame), [game]);
+    assert.ok(nodes.choices.every(button => button.disabled === false));
+  }
+  for (const options of [{ role:'points' }, { adminWheelLoaded:false }, { adminWheelSaving:true }]) {
+    assert.ok(render(state(options)).choices.every(button => button.disabled === true));
+  }
+});
+
+test('game buttons reuse the policy change handler and respect read-only/loading/saving locks', () => {
+  const start = page.indexOf('    function chooseAdminGame(');
+  const end = page.indexOf('    function bettingEditorVisibility(', start);
+  const select = { disabled:false, value:'wheel', dispatchEvent(event) { this.event = event; } };
+  const choose = new Function('document', 'state', bindings + page.slice(start, end) + ';return chooseAdminGame;');
+  for (const game of ['off','wheel','dice','random']) {
+    choose({ getElementById:() => select }, state())(game);
+    assert.equal(select.value, game);
+    assert.equal(select.event.type, 'change');
+    assert.equal(select.event.bubbles, true);
+  }
+  for (const options of [{ role:'points' }, { adminWheelLoaded:false }, { adminWheelSaving:true }]) {
+    select.value = 'wheel'; select.event = null;
+    choose({ getElementById:() => select }, state(options))('dice');
+    assert.equal(select.value, 'wheel');
+    assert.equal(select.event, null);
+  }
+  select.value = 'wheel'; select.event = null; select.disabled = true;
+  choose({ getElementById:() => select }, state())('dice');
+  assert.equal(select.event, null);
+  assert.equal(select.value, 'wheel');
+});
 
 test('Auto Shutdown betting removes draft notices, reload button and test link', () => {
   const node = render(state());

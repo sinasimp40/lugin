@@ -1501,6 +1501,9 @@
     .admin-section .form-group { margin-bottom:12px; }
     .admin-section input:not([type="color"]):not([type="file"]), .admin-box input:not([type="color"]):not([type="file"]) { border:1px solid #343a3f; border-radius:6px; background:#0f1113; padding:10px 11px; color:#eee; transition:border-color .2s,box-shadow .2s,background .2s; }
     .admin-section input:focus { border-color:#ff8c24 !important; background:#131619 !important; box-shadow:0 0 0 3px rgba(255,128,0,.11) !important; }
+    #admin-wheel-game[hidden] { display:none !important; }
+    #admin-game-choices button[aria-pressed="true"] { background:#ff8c24; color:#17110b; border-color:#ffac59; }
+    #admin-game-choices button:focus-visible { outline:2px solid #ffac59; outline-offset:3px; }
     .admin-section label, #admin-auth-view label { color:#8c9399; font-size:10px; letter-spacing:1.1px; }
     .admin-msg { border-radius:7px; margin:0 28px 0; padding:10px 13px; }
     #admin-panel-msg { margin:14px 28px 0; }
@@ -1937,7 +1940,16 @@
                  <div class="admin-section full-width">
                    <h3>Member game policy</h3>
                    <p style="font-size:11px;color:#aeb4b8;margin-bottom:12px">Choose one game for the session bar, or turn games off. Wheel and High / Low Dice are mutually exclusive. Publishing requires a verified Denfi Points connection.</p>
-                   <div class="form-group" style="max-width:360px"><label for="admin-wheel-game">Game available to members</label><select id="admin-wheel-game" style="width:100%;padding:10px;background:#101114;color:#f3d58b;border:1px solid #5b452b"><option value="off">Games off</option><option value="wheel">Multiplier wheel</option><option value="dice">High / Low Dice</option><option value="random">Random daily (Wheel or Dice)</option></select></div>
+                   <div class="form-group"><label id="admin-game-choice-label">Game available to members</label>
+                     <!-- Keep the policy binding, but never open a native Windows popup in the focus-guarded kiosk. -->
+                     <select id="admin-wheel-game" hidden aria-hidden="true" tabindex="-1"><option value="off">Games off</option><option value="wheel">Multiplier wheel</option><option value="dice">High / Low Dice</option><option value="random">Random daily (Wheel or Dice)</option></select>
+                     <div id="admin-game-choices" role="group" aria-labelledby="admin-game-choice-label" style="display:flex;flex-wrap:wrap;gap:8px">
+                       <button class="btn-admin" type="button" data-betting-game="off" aria-pressed="false" disabled onclick="chooseAdminGame('off')">Games off</button>
+                       <button class="btn-admin" type="button" data-betting-game="wheel" aria-pressed="false" disabled onclick="chooseAdminGame('wheel')">Wheel</button>
+                       <button class="btn-admin" type="button" data-betting-game="dice" aria-pressed="false" disabled onclick="chooseAdminGame('dice')">High / Low Dice</button>
+                       <button class="btn-admin" type="button" data-betting-game="random" aria-pressed="false" disabled onclick="chooseAdminGame('random')">Random daily</button>
+                     </div>
+                   </div>
                    <p id="admin-random-game-note" hidden style="font-size:11px;color:#aeb4b8;margin:8px 0">Denfi Points chooses one game for the whole shop each day, with equal chances of Wheel or Dice. It changes at midnight on the Points machine. Games may repeat on consecutive days. Configure both games below.</p>
                    <div class="dice-admin-rates" id="admin-dice-settings" hidden style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0;padding:12px;border:1px solid rgba(255,174,56,.2);background:rgba(255,174,56,.035)">
                      <div class="form-group" style="margin:0"><label for="admin-dice-win-rate">Dice win rate (%)</label><input id="admin-dice-win-rate" type="number" min="0" max="100" step="0.01" value="50" /></div>
@@ -3799,6 +3811,13 @@
       adminWheelDirty = true;
       setWheelAdminReadOnly();
     });
+    function chooseAdminGame(game) {
+      const select = document.getElementById('admin-wheel-game');
+      if (select.disabled || isPointsAdmin() || !adminWheelLoaded || adminWheelSaving ||
+          !['off','wheel','dice','random'].includes(game)) return;
+      select.value = game;
+      select.dispatchEvent(new Event('change', { bubbles:true }));
+    }
     function bettingEditorVisibility(game, enabled) {
       return {
         dice: !!enabled && (game === 'dice' || game === 'random'),
@@ -3907,6 +3926,11 @@
       const locked = readonly || !adminWheelLoaded || adminWheelSaving;
       document.getElementById('admin-wheel-enabled').disabled = locked;
       document.getElementById('admin-wheel-game').disabled = locked;
+      const selectedGame = adminWheel.enabled ? adminWheel.game : 'off';
+      document.querySelectorAll('#admin-game-choices button').forEach(button => {
+        button.disabled = locked;
+        button.setAttribute('aria-pressed', String(button.dataset.bettingGame === selectedGame));
+      });
       document.getElementById('admin-dice-win-rate').disabled = locked;
       document.getElementById('admin-dice-lose-rate').disabled = locked;
       document.getElementById('admin-wheel-daily-limit').disabled = locked;
