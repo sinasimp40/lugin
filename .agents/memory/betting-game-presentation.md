@@ -9,11 +9,11 @@ The member-facing Spin the Wheel display should use a horizontal multiplier roll
 
 **How to apply:** Maintain this distinction when changing animation, player APIs, or admin controls; admins still need to set percentages, while players should see only possible multipliers and the actual server result.
 
-HIGH / LOW DICE is alongside Spin the Wheel, not a replacement. Only one game may be enabled at a time; both may be disabled. The user confirmed TWO dice: LOW is 2–6, HIGH is 8–12, 7 always loses, and a win returns 2× INCLUDING the original stake. Dice winning/losing percentages are admin-only and saved centrally on Denfi Points for every PC.
+HIGH / LOW DICE is alongside Spin the Wheel, not a replacement. Only one game may be enabled at a time; both may be disabled. The user confirmed TWO dice and clarified that LOW is 2–7 and HIGH is 8–12: 7 wins on LOW and loses on HIGH, with no tie. A win returns 2× INCLUDING the original stake. Dice winning/losing percentages are admin-only and saved centrally on Denfi Points for every PC.
 
-**Why:** These are the owner's explicitly confirmed game and operating rules, rather than assumptions about a conventional dice game.
+**Why:** These are the owner's explicitly confirmed game and operating rules. They chose “LOW wins: LOW is 2–7, HIGH is 8–12,” replacing the earlier losing-seven rule.
 
-**How to apply:** Preserve the exact ranges, losing seven, inclusive payout, and exclusive game selection when changing admin controls, member screens, settlement, or fake-points testing.
+**How to apply:** Preserve the exact ranges, inclusive payout, and exclusive game selection when changing admin controls, member screens, settlement, or fake-points testing. Previously settled results retain their original payouts; rule changes do not authorize rewriting history.
 
 Random daily should choose one member game for the whole shop per Points calendar day, rather than choosing separately on each PC or each page load. Wheel and Dice are the current choices; a random game may repeat on consecutive days.
 

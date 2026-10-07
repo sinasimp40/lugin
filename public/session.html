@@ -805,7 +805,7 @@
         <div class="wheel-stake-choice" id="wheel-stake-choice" hidden><label for="wheel-stake-input">Stake</label><input id="wheel-stake-input" type="number" min="0.01" step="0.01" inputmode="decimal" autocomplete="off" /></div>
         <div class="wheel-note" id="wheel-spins-left" aria-live="polite"></div>
         <div class="dice-choice-row" role="group" aria-label="Choose a dice total">
-          <button class="dice-choice" data-choice="low" aria-pressed="true" type="button"><span>LOW</span><small>Roll 2–6 · Win ×2</small></button>
+          <button class="dice-choice" data-choice="low" aria-pressed="true" type="button"><span>LOW</span><small>Roll 2–7 · Win ×2</small></button>
           <button class="dice-choice" data-choice="high" aria-pressed="false" type="button"><span>HIGH</span><small>Roll 8–12 · Win ×2</small></button>
         </div>
         <div class="wheel-stage" aria-label="Multiplier reel"><div class="wheel-pointer" aria-hidden="true"></div><div class="wheel-disc" id="wheel-disc"><div class="wheel-labels" id="wheel-labels"></div></div></div>
@@ -1449,12 +1449,25 @@
     }
     function diceOutcomeText(choice, total, multiplier) {
       if (multiplier === 2) return `WIN ×2 · ${choice.toUpperCase()}`;
-      return total === 7 ? 'LOSE · SEVEN' : `LOSE · ${choice.toUpperCase()} MISSED`;
+      return `LOSE · ${choice.toUpperCase()} MISSED`;
+    }
+    function diceReceiptValid(spin, choice, allowLegacy = false) {
+      const dice = Array.isArray(spin.dice) ? spin.dice.map(Number) : [];
+      const total = Number(spin.total), multiplier = Number(spin.multiplier);
+      // Previously settled sevens keep their original result and payout.
+      const oldSeven = allowLegacy && spin.rulesVersion === undefined &&
+        total === 7 && spin.result === 'seven' && multiplier === 0;
+      const result = oldSeven ? 'seven' : total <= 7 ? 'low' : 'high';
+      return dice.length === 2 && dice.every(value => Number.isInteger(value) && value >= 1 && value <= 6) &&
+        dice[0] + dice[1] === total && [0,2].includes(multiplier) &&
+        spin.game === 'dice' && spin.choice === choice && spin.result === result &&
+        (multiplier === 2) === (result === choice);
     }
     function updateWheelControls() {
       if (!wheelData) return;
       const game = wheelData.game === 'dice' ? 'dice' : 'wheel';
-      const gameEnabled = wheelData.enabled !== false && !wheelData.unavailable;
+      const needsDiceUpdate = game === 'dice' && !previewMode && wheelData.diceRules?.rulesVersion !== 2;
+      const gameEnabled = wheelData.enabled !== false && !wheelData.unavailable && !needsDiceUpdate;
       document.getElementById('wheel-view').dataset.game = game;
       document.getElementById('wheel-kicker').childNodes[0].textContent = game === 'dice' ? 'HIGH / LOW DICE' : 'MULTIPLIER REEL';
       document.querySelectorAll('.dice-choice').forEach(button => {
@@ -1472,7 +1485,8 @@
       }
       document.getElementById('wheel-stake-choice').hidden = !custom;
       document.getElementById('wheel-warning').textContent = game === 'dice'
-        ? `2–6 LOW · 8–12 HIGH · 7 ALWAYS LOSES · WIN RETURNS 2× ${custom ? 'STAKE.' : 'FULL BALANCE.'}`
+        ? needsDiceUpdate ? 'UPDATE DENFI POINTS TO ENABLE LOW 2–7 / HIGH 8–12.'
+          : `2–7 LOW · 8–12 HIGH · WIN RETURNS 2× ${custom ? 'STAKE.' : 'FULL BALANCE.'}`
         : custom ? '0× LOSES YOUR STAKE.' : 'FULL BALANCE AT STAKE. 0× LOSES IT.';
       document.getElementById('wheel-spins-left').textContent = Number.isInteger(remaining)
         ? `${Math.max(0, remaining)} SPINS LEFT TODAY`
@@ -1486,7 +1500,7 @@
       if (!wheelSpinInFlight) {
         button.disabled = !wheelLoaded || (!wheelRequestId &&
           (!gameEnabled || exhausted || selectedWheelStake() === null));
-        button.textContent = wheelRequestId ? 'RETRY SAME REQUEST' : !gameEnabled ? 'GAMES OFFLINE' : exhausted ? 'DAILY LIMIT REACHED' : game === 'dice' ? `ROLL ${wheelChoice.toUpperCase()}` : 'SPIN';
+        button.textContent = wheelRequestId ? 'RETRY SAME REQUEST' : needsDiceUpdate ? 'UPDATE DENFI POINTS' : !gameEnabled ? 'GAMES OFFLINE' : exhausted ? 'DAILY LIMIT REACHED' : game === 'dice' ? `ROLL ${wheelChoice.toUpperCase()}` : 'SPIN';
       }
     }
     function renderWheel(resetStake = false) {
@@ -1733,9 +1747,9 @@
             else if (demoOutcome === 'loss') dice = requestChoice === 'high' ? [2,3] : [4,5];
             else dice = requestChoice === 'high' ? [4,5] : [2,3];
             const total = dice[0] + dice[1];
-            const won = total !== 7 && (requestChoice === 'high' ? total >= 8 : total <= 6);
+            const won = requestChoice === 'high' ? total >= 8 : total <= 7;
             const multiplier = won ? 2 : 0;
-            spin = { game:'dice', choice:requestChoice, dice, total, result:total === 7 ? 'seven' : won ? requestChoice : requestChoice === 'high' ? 'low' : 'high',
+            spin = { game:'dice', choice:requestChoice, dice, total, result:total <= 7 ? 'low' : 'high', rulesVersion:2,
               multiplier, stake:expectedStake, payout:expectedStake * multiplier,
               balance:expectedBalance + expectedStake * (multiplier - 1), net:expectedStake * (multiplier - 1), id:'preview-dice', createdAt:new Date().toISOString() };
           } else {
@@ -1791,11 +1805,7 @@
           const dice = Array.isArray(spin.dice) ? spin.dice.map(Number) : [];
           const total = Number(spin.total);
           const multiplier = Number(spin.multiplier);
-          const result = total < 7 ? 'low' : total > 7 ? 'high' : 'seven';
-          if (dice.length !== 2 || dice.some(value => !Number.isInteger(value) || value < 1 || value > 6) ||
-              dice[0] + dice[1] !== total || ![0,2].includes(multiplier) ||
-              spin.game !== 'dice' || spin.choice !== requestChoice || spin.result !== result ||
-              (multiplier === 2) !== (result === requestChoice)) {
+          if (!diceReceiptValid(spin, requestChoice, recovering)) {
             throw new Error('Dice result was incomplete. Retry the same request; no new stake will be taken.');
           }
           button.textContent = 'ROLLING DICE...';

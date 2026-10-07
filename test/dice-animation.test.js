@@ -13,12 +13,31 @@ test('dice presentation has readable ranges, centered dice without a total, and 
   assert.equal(label('low', 5, 2), 'WIN ×2 · LOW');
   assert.equal(label('high', 10, 2), 'WIN ×2 · HIGH');
   assert.equal(label('low', 10, 0), 'LOSE · LOW MISSED');
-  assert.equal(label('high', 7, 0), 'LOSE · SEVEN');
+  assert.equal(label('low', 7, 2), 'WIN ×2 · LOW');
+  assert.equal(label('high', 7, 0), 'LOSE · HIGH MISSED');
   assert.doesNotMatch(page, /dice-total|dice-sum/);
-  assert.match(page, /Roll 2–6 · Win ×2/);
+  assert.match(page, /Roll 2–7 · Win ×2/);
   assert.match(page, /Roll 8–12 · Win ×2/);
   assert.match(page, /\.dice-choice small[^}]+14px\/1\.4/);
   assert.match(page, /\.dice-stage[^}]+justify-content:center/);
+});
+
+test('seven wins on LOW, loses on HIGH, and old settled losses are accepted only for recovery', () => {
+  const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'session.html'), 'utf8');
+  const start = page.indexOf('    function diceReceiptValid(');
+  const end = page.indexOf('    function updateWheelControls()', start);
+  const valid = new Function(page.slice(start, end) + ';return diceReceiptValid;')();
+  const seven = { game: 'dice', dice: [3,4], total: 7, result: 'low', rulesVersion: 2 };
+  assert.equal(valid({ ...seven, choice: 'low', multiplier: 2 }, 'low'), true);
+  assert.equal(valid({ ...seven, choice: 'high', multiplier: 0 }, 'high'), true);
+  assert.equal(valid({ ...seven, choice: 'low', multiplier: 0 }, 'low'), false);
+  assert.equal(valid({ ...seven, choice: 'high', multiplier: 2 }, 'high'), false);
+  const oldLoss = { ...seven, rulesVersion: undefined, result: 'seven', choice: 'low', multiplier: 0 };
+  assert.equal(valid(oldLoss, 'low'), false);
+  assert.equal(valid(oldLoss, 'low', true), true);
+  assert.equal(valid({ ...oldLoss, rulesVersion: 2 }, 'low', true), false);
+  assert.match(page, /wheelData\.diceRules\?\.rulesVersion !== 2/);
+  assert.doesNotMatch(page, /2–6 LOW|7 ALWAYS LOSES/);
 });
 
 function cube() {

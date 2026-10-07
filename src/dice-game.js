@@ -15,7 +15,7 @@ function parseDice(input) {
 }
 
 function classify(total) {
-  return total < 7 ? 'low' : total > 7 ? 'high' : 'seven';
+  return total <= 7 ? 'low' : 'high';
 }
 
 // Points chooses the monetary result. The visible dice must agree with that
@@ -33,12 +33,12 @@ function rollDice(choice, policy, randomInt = crypto.randomInt) {
   }
   const dice = pairs[randomInt(pairs.length)];
   const total = dice[0] + dice[1];
-  return { game: 'dice', choice, dice, total, result: classify(total),
+  return { game: 'dice', choice, dice, total, result: classify(total), rulesVersion: 2,
     multiplier: won ? 2 : 0 };
 }
 
 function publicDiceRules() {
-  return { diceCount: 2, low: [2, 6], high: [8, 12], losingTotal: 7, payoutMultiplier: 2 };
+  return { diceCount: 2, low: [2, 7], high: [8, 12], rulesVersion: 2, payoutMultiplier: 2 };
 }
 
 module.exports = { defaultDice, parseDice, classify, rollDice, publicDiceRules };

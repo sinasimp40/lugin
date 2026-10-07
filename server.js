@@ -1070,6 +1070,11 @@ app.post('/api/admin/wheel', verifyToken, async (req, res) => {
       error.status = 409;
       throw error;
     }
+    if (['dice', 'random'].includes(wheel.game) && before.diceRulesVersion !== 2) {
+      const error = new Error('Update Denfi Points before publishing Dice: LOW now includes 7 (2–7), and HIGH is 8–12.');
+      error.status = 409;
+      throw error;
+    }
     if (req.body.expectedOddsToken && req.body.expectedOddsToken !== remoteOddsToken(before)) {
       const error = new Error('Shared betting settings changed on another PC. Reload Betting Games before publishing.');
       error.status = 409;
@@ -2662,7 +2667,7 @@ app.get('/api/sync/wheel-config', authorizeKioskMission, (req, res) => {
   const wheel = settings.getSettings().wheel;
   const playing = pointsPlayerWheel(wheel);
   res.json({ success: true, wheel, oddsToken: pointsOddsToken(wheel), gamesPolicyVersion: 2,
-    randomDailyVersion: 1, activeGame: playing.game, randomDayKey: playing.randomDayKey });
+    randomDailyVersion: 1, diceRulesVersion: 2, activeGame: playing.game, randomDayKey: playing.randomDayKey });
 });
 
 app.get('/api/sync/wheel/status/:username', authorizeKioskMission, (req, res) => {

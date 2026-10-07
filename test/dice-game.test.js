@@ -32,10 +32,10 @@ test('dice settings validate exact percentages, fixed 2x payout and exclusive ga
   assert.notEqual(oddsToken(base), oddsToken({ ...base, dice: { ...defaultDice(), winRate: 20, loseRate: 80 } }));
 });
 
-test('every dice pair agrees with the chosen result; 7 always loses and exact odds boundaries hold', () => {
+test('every dice pair agrees with LOW 2–7 / HIGH 8–12 and exact odds boundaries hold', () => {
   for (const choice of ['low', 'high']) {
     for (const won of [true, false]) {
-      const count = won ? 15 : 21;
+      const count = (choice === 'low') === won ? 21 : 15;
       for (let pairIndex = 0; pairIndex < count; pairIndex++) {
         let calls = 0;
         const spin = rollDice(choice, defaultDice(), max => {
@@ -46,7 +46,11 @@ test('every dice pair agrees with the chosen result; 7 always loses and exact od
         assert.ok(spin.dice.every(face => Number.isInteger(face) && face >= 1 && face <= 6));
         assert.equal(spin.multiplier, won ? 2 : 0);
         assert.equal(spin.result === choice, won);
-        if (spin.total === 7) assert.equal(spin.multiplier, 0);
+        if (spin.total === 7) {
+          assert.equal(spin.result, 'low');
+          assert.equal(spin.multiplier, choice === 'low' ? 2 : 0);
+        }
+        assert.equal(spin.rulesVersion, 2);
       }
     }
   }
@@ -134,6 +138,24 @@ for (const backend of ['json', 'sqlite']) {
       assert.equal(second.balance, 21);
       assert.equal(store.getDailyWheelStatus('mem-dice-test', 2).spinsRemaining, 0);
       assert.throws(() => store.appendWheelSpin({ ...policy, requestId: crypto.randomUUID(), expectedBalance: 21 }), /daily spin limit/);
+      const originalRandom = crypto.randomInt;
+      try {
+        // Pair index 5 in the LOW pool is [1,6]: exercise actual 7 settlements.
+        crypto.randomInt = max => max === 10000 ? 0 : Math.min(5, max - 1);
+        for (const choice of ['low', 'high']) {
+          const username = `mem-seven-${choice}`;
+          store.appendLog({ username, amount: 5, ip: 'fixture', mac: 'fixture' }, rates);
+          const spin = store.appendWheelSpin({ ...policy, username, choice, requestId: crypto.randomUUID(),
+            expectedStake: 5, expectedBalance: 5,
+            dice: { winRate: choice === 'low' ? 100 : 0, loseRate: choice === 'low' ? 0 : 100, payoutMultiplier: 2 } });
+          assert.equal(spin.total, 7);
+          assert.equal(spin.result, 'low');
+          assert.equal(spin.rulesVersion, 2);
+          assert.equal(spin.multiplier, choice === 'low' ? 2 : 0);
+          assert.equal(spin.balance, choice === 'low' ? 10 : 0);
+          assert.equal(store.appendWheelSpin({ ...policy, username, choice, requestId: spin.requestId }).id, spin.id);
+        }
+      } finally { crypto.randomInt = originalRandom; }
       store.recalcAllPoints([{ pesos: 1, points: 2 }]);
       assert.equal(store.getMemberPoints('mem-dice-test'), 41);
       assert.equal(store.getWheelSpin(win.requestId).net, 3);
@@ -167,6 +189,7 @@ test('Points API switches games, hides rates, rejects stale/invalid bets, and re
     if (!logs.getMemberPoints('mem-dice-api',[{pesos:1,points:1}]))
       logs.appendLog({username:'mem-dice-api',amount:20,ip:'test',mac:'test'},[{pesos:1,points:1}]);
     s.updateSettings({pointRates:[{pesos:1,points:1}]});
+    require('node:crypto').randomInt=max=>max===10000?0:Math.min(5,max-1);
     require('./server');
   `], { cwd: path.join(__dirname, '..'), env: { ...process.env, NODE_ENV: 'test', PORT: String(port),
     DENFI_APP_ROLE: 'points', DENFI_POINTS_SQLITE: '1', DENFI_TEST_DATA_DIR: dir, DENFI_LISTEN_HOST: '127.0.0.1' }, stdio: 'ignore' });
@@ -192,7 +215,10 @@ test('Points API switches games, hides rates, rejects stale/invalid bets, and re
     assert.equal((await request('/api/sync/wheel-config')).data.oddsToken, current.oddsToken);
     assert.equal(current.game, 'dice');
     assert.deepEqual(current.multipliers, [0, 2]);
-    assert.equal(current.diceRules.losingTotal, 7);
+    assert.deepEqual(current.diceRules.low, [2, 7]);
+    assert.deepEqual(current.diceRules.high, [8, 12]);
+    assert.equal(current.diceRules.rulesVersion, 2);
+    assert.equal(current.diceRules.losingTotal, undefined);
     assert.equal(JSON.stringify(current).includes('winRate'), false);
     assert.equal(JSON.stringify(current).includes('loseRate'), false);
     assert.equal((await request('/api/admin/kiosk-wheel', { ...config, expectedOddsToken: initial.oddsToken })).status, 409);
@@ -208,6 +234,8 @@ test('Points API switches games, hides rates, rejects stale/invalid bets, and re
     assert.equal(retry.data.spin.id, first.data.spin.id);
     assert.equal(first.data.spin.balance, 23);
     assert.equal(first.data.spin.result, 'low');
+    assert.equal(first.data.spin.total, 7);
+    assert.equal(first.data.spin.multiplier, 2);
     assert.equal((await request('/api/sync/wheel/spin', { ...wager, choice: 'high' })).status, 409);
     assert.equal((await request('/api/admin/kiosk-wheel', { ...config, enabled: false })).status, 200);
     assert.equal((await request('/api/sync/wheel/spin', wager)).data.spin.id, first.data.spin.id);
