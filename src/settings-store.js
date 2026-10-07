@@ -309,6 +309,16 @@ function attendancePolicyForDay(raw, day) {
   };
 }
 
+// Server-internal only: never include this seed in settings or player APIs.
+function getDailyBettingSeed() {
+  const s = load();
+  if (typeof s.dailyBettingSeed !== 'string' || !/^[a-f0-9]{64}$/.test(s.dailyBettingSeed)) {
+    s.dailyBettingSeed = crypto.randomBytes(32).toString('hex');
+    save(s);
+  }
+  return s.dailyBettingSeed;
+}
+
 function getSettings() {
   const s = load();
   const shared = getSharedRates();
@@ -804,6 +814,7 @@ function saveAdImage(adId, fileBuffer, originalName, mimeType) {
 }
 
 module.exports = {
+  getDailyBettingSeed,
   getWithdrawalSettings,
   getWithdrawalAdminSettings,
   getWithdrawalPolicy,

@@ -634,12 +634,12 @@
   .demo-badge[hidden] { display:none; }
   .dice-choice-row { display:none; grid-template-columns:1fr 1fr; gap:9px; margin:8px 0; }
   .dice-choice {
-    min-height:58px; padding:8px; border:1px solid rgba(244,239,18,.34); border-radius:2px;
+    min-height:64px; padding:10px 12px; border:1px solid rgba(244,239,18,.34); border-radius:2px;
     background:linear-gradient(155deg,#20221b,#11130f); color:#d8d6a4; cursor:pointer;
     text-align:left; transition:transform .18s ease,border-color .18s ease,background .18s ease;
   }
   .dice-choice span { display:block; font:800 17px 'Orbitron',monospace; letter-spacing:1px; }
-  .dice-choice small { display:block; margin-top:4px; color:#8f9078; font:10px 'Share Tech Mono',monospace; }
+  .dice-choice small { display:block; margin-top:6px; color:#f1efd1; font:600 14px/1.4 Arial,sans-serif; }
   .dice-choice[data-choice="low"] span { color:#c6e3a2; }
   .dice-choice[data-choice="high"] span { color:#f4ef12; }
   .dice-choice[aria-pressed="true"] { border-color:#f4ef12; background:linear-gradient(150deg,#454516,#21210b); box-shadow:inset 0 0 0 1px rgba(244,239,18,.25); }
@@ -648,11 +648,10 @@
   .dice-stage { display:none; align-items:center; justify-content:center; gap:15px; min-height:96px; margin:7px 0 10px; border:1px solid rgba(244,239,18,.24); background:radial-gradient(ellipse at 50% 120%,rgba(244,239,18,.10),transparent 70%),#0d0e0c; }
   .dice-cube { width:57px; height:57px; display:grid; place-items:center; border:1px solid #d0c84e; border-radius:9px; background:linear-gradient(145deg,#faf6d6,#c9c28c); color:#16170c; font:900 27px 'Orbitron',monospace; box-shadow:0 4px 0 #736e3a,0 8px 18px rgba(0,0,0,.42); }
   .dice-cube.rolling { animation:dice-toss .42s ease-in-out infinite alternate; }
-  .dice-sum { min-width:58px; text-align:center; color:#f4ef12; font:800 25px 'Orbitron',monospace; }
-  .dice-sum small { display:block; margin-top:4px; color:#85856d; font:9px 'Share Tech Mono',monospace; letter-spacing:1px; }
   .wheel-view[data-game="dice"] .dice-choice-row { display:grid; }
   .wheel-view[data-game="dice"] .dice-stage { display:flex; }
   .wheel-view[data-game="dice"] .wheel-stage { display:none; }
+  .wheel-view[data-game="dice"] .wheel-result { font-size:18px; line-height:1.4; min-height:26px; }
   .demo-lab { display:none; margin:8px 0; padding:9px; border:1px dashed rgba(244,239,18,.42); background:rgba(244,239,18,.035); color:#d8d6a4; }
   .demo-lab.visible { display:block; }
   .demo-lab-title { color:#f4ef12; font:10px 'Orbitron',monospace; letter-spacing:1px; margin-bottom:7px; }
@@ -806,13 +805,12 @@
         <div class="wheel-stake-choice" id="wheel-stake-choice" hidden><label for="wheel-stake-input">Stake</label><input id="wheel-stake-input" type="number" min="0.01" step="0.01" inputmode="decimal" autocomplete="off" /></div>
         <div class="wheel-note" id="wheel-spins-left" aria-live="polite"></div>
         <div class="dice-choice-row" role="group" aria-label="Choose a dice total">
-          <button class="dice-choice" data-choice="low" aria-pressed="true" type="button"><span>LOW</span><small>2–6 · 2× return</small></button>
-          <button class="dice-choice" data-choice="high" aria-pressed="false" type="button"><span>HIGH</span><small>8–12 · 2× return</small></button>
+          <button class="dice-choice" data-choice="low" aria-pressed="true" type="button"><span>LOW</span><small>Roll 2–6 · Win ×2</small></button>
+          <button class="dice-choice" data-choice="high" aria-pressed="false" type="button"><span>HIGH</span><small>Roll 8–12 · Win ×2</small></button>
         </div>
         <div class="wheel-stage" aria-label="Multiplier reel"><div class="wheel-pointer" aria-hidden="true"></div><div class="wheel-disc" id="wheel-disc"><div class="wheel-labels" id="wheel-labels"></div></div></div>
         <div class="dice-stage" id="dice-stage" role="img" aria-label="Dice result">
           <div class="dice-cube" id="dice-one">—</div><div class="dice-cube" id="dice-two">—</div>
-          <div class="dice-sum" id="dice-total">—<small>TOTAL</small></div>
         </div>
         <div class="wheel-result" id="wheel-result" role="status" aria-live="polite">READY</div>
         <div class="wheel-stats"><div class="wheel-stat"><span id="wheel-stake-label">STAKE</span><strong id="wheel-stake">0 PTS</strong></div><div class="wheel-stat">PAYOUT<strong id="wheel-payout">—</strong></div><div class="wheel-stat">NEW BALANCE<strong id="wheel-new-balance">—</strong></div></div>
@@ -1449,6 +1447,10 @@
           wheelStakeMember === member && !!wheelData.allowCustomStake);
       wheelStakeMember = member;
     }
+    function diceOutcomeText(choice, total, multiplier) {
+      if (multiplier === 2) return `WIN ×2 · ${choice.toUpperCase()}`;
+      return total === 7 ? 'LOSE · SEVEN' : `LOSE · ${choice.toUpperCase()} MISSED`;
+    }
     function updateWheelControls() {
       if (!wheelData) return;
       const game = wheelData.game === 'dice' ? 'dice' : 'wheel';
@@ -1711,7 +1713,7 @@
         updateWheelControls();
         document.getElementById('wheel-result').textContent = requestGame === 'dice' ? 'ROLLING DICE...' : 'SPINNING...';
         if (requestGame === 'dice') {
-          document.getElementById('dice-total').innerHTML = '…<small>ROLLING</small>';
+          document.getElementById('dice-stage').setAttribute('aria-label', 'Two dice rolling');
           window.DenfiDiceAnimation.begin([
             document.getElementById('dice-one'), document.getElementById('dice-two')
           ], matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -1796,7 +1798,6 @@
               (multiplier === 2) !== (result === requestChoice)) {
             throw new Error('Dice result was incomplete. Retry the same request; no new stake will be taken.');
           }
-          document.getElementById('dice-total').innerHTML = '…<small>ROLLING</small>';
           button.textContent = 'ROLLING DICE...';
           notifyBettingVoice({ phase:'prepare', username:requestUsername, requestId:wheelRequestId, spinId:spin.id, multiplier, net:spin.net, balance:spin.balance });
           const rollingRequestId = wheelRequestId;
@@ -1813,10 +1814,11 @@
             return;
           }
           {
-            document.getElementById('dice-total').innerHTML = `${total}<small>TOTAL</small>`;
             const won = multiplier === 2;
             const resultDisplay = document.getElementById('wheel-result');
-            resultDisplay.textContent = total === 7 ? 'SEVEN · NO RETURN' : won ? `${requestChoice.toUpperCase()} HIT · 2× RETURN` : `${requestChoice.toUpperCase()} MISSED`;
+            resultDisplay.textContent = diceOutcomeText(requestChoice, total, multiplier);
+            document.getElementById('dice-stage').setAttribute('aria-label',
+              `Dice ${dice[0]} and ${dice[1]}. ${resultDisplay.textContent}`);
             resultDisplay.classList.toggle('is-loss', !won);
             document.getElementById('wheel-stake').textContent = wheelMoney(spin.stake);
             document.getElementById('wheel-payout').textContent = wheelMoney(spin.payout);

@@ -18,6 +18,11 @@ const { VoiceSessionTracker } = require('./src/session-voice-events');
 const wheelOddsSecret = crypto.randomBytes(32);
 const pointsOddsToken = wheel => oddsToken(wheel, wheelOddsSecret);
 const remoteOddsToken = remote => remote.oddsToken || oddsToken(parseWheel(remote.wheel));
+function pointsPlayerWheel(wheel, now = Date.now()) {
+  const selected = require('./src/daily-betting-game').resolveGame(
+    wheel, wheel.game === 'random' ? settings.getDailyBettingSeed() : null, now);
+  return { ...wheel, game: selected.game, randomDayKey: selected.dayKey || undefined };
+}
 
 const appRoleInit = process.env.DENFI_APP_ROLE || 'auto-shutdown';
 settings.setAppRole(appRoleInit);
@@ -987,9 +992,14 @@ function wheelErrorResponse(res, error, ambiguous = false) {
 }
 
 app.get('/api/admin/wheel', verifyToken, async (req, res) => {
-  if (appRole === 'points') return res.json({ success: true, wheel: settings.getSettings().wheel,
-    activeWheel: settings.getSettings().wheel, activeOddsToken: pointsOddsToken(settings.getSettings().wheel),
-    pointsSupportsGames: true, pointsSupportsPolicy: true, readOnly: true, connected: true });
+  if (appRole === 'points') {
+    const wheel = settings.getSettings().wheel;
+    const playing = pointsPlayerWheel(wheel);
+    return res.json({ success: true, wheel, activeWheel: wheel,
+      activeGame: playing.game, randomDayKey: playing.randomDayKey,
+      activeOddsToken: pointsOddsToken(wheel), pointsSupportsRandomDaily: true,
+      pointsSupportsGames: true, pointsSupportsPolicy: true, readOnly: true, connected: true });
+  }
   const saved = settings.getSettings();
   try {
     const remote = await fetchPointsWheel('/api/sync/wheel-config');
@@ -998,6 +1008,8 @@ app.get('/api/admin/wheel', verifyToken, async (req, res) => {
     // Never discard an explicitly saved offline draft when the server reconnects.
     res.json({ success: true, wheel: saved.wheelDraft || wheel, activeWheel:wheel,
       activeOddsToken: remoteOddsToken(remote), pointsSupportsGames: remote.gamesPolicyVersion === 2,
+      activeGame: remote.activeGame || wheel.game, randomDayKey: remote.randomDayKey,
+      pointsSupportsRandomDaily: remote.randomDailyVersion === 1,
       pointsSupportsPolicy: Number.isInteger(remote.wheel?.maxSpinsPerDay) &&
         typeof remote.wheel?.allowCustomStake === 'boolean',
       draft: !!saved.wheelDraft, connected: true });
@@ -1013,7 +1025,7 @@ app.post('/api/admin/kiosk-wheel', authorizeKioskMission, (req, res) => {
   if (!wheel) return res.status(400).json({ success: false, error: 'Enter 1–12 distinct multipliers (0–100x), positive percentages and a total of exactly 100%.' });
   const current = settings.getSettings().wheel;
   if ((req.body.expectedOddsToken && req.body.expectedOddsToken !== pointsOddsToken(current)) ||
-      (current.game === 'dice' && req.body.game === undefined)) {
+      (current.game !== 'wheel' && req.body.game === undefined)) {
     return res.status(409).json({ success: false, error: 'Shared betting settings changed. Reload Betting Games before publishing.' });
   }
   try {
@@ -1053,6 +1065,11 @@ app.post('/api/admin/wheel', verifyToken, async (req, res) => {
       error.status = 409;
       throw error;
     }
+    if (wheel.game === 'random' && before.randomDailyVersion !== 1) {
+      const error = new Error('Denfi Points does not support Random daily yet. Update the Denfi Points build before publishing this mode.');
+      error.status = 409;
+      throw error;
+    }
     if (req.body.expectedOddsToken && req.body.expectedOddsToken !== remoteOddsToken(before)) {
       const error = new Error('Shared betting settings changed on another PC. Reload Betting Games before publishing.');
       error.status = 409;
@@ -1073,6 +1090,8 @@ app.post('/api/admin/wheel', verifyToken, async (req, res) => {
     settings.updateSettings({ wheel: saved, wheelDraft: null });
     broadcastSettings();
     res.json({ success: true, wheel: saved, activeWheel:saved, activeOddsToken: remoteOddsToken(confirmed),
+      activeGame: confirmed.activeGame || saved.game, randomDayKey: confirmed.randomDayKey,
+      pointsSupportsRandomDaily: confirmed.randomDailyVersion === 1,
       pointsSupportsGames: true, draft: false, connected: true });
   } catch (error) {
     wheelErrorResponse(res, error);
@@ -2512,6 +2531,7 @@ app.get('/api/session/wheel', requireLocalWheelPlayer, async (req, res) => {
     res.json({
       success: true, enabled: data.enabled,
       game: data.game || 'wheel', diceRules: data.diceRules,
+      selectionMode: data.selectionMode, randomDayKey: data.randomDayKey,
       allowCustomStake: data.allowCustomStake,
       maxSpinsPerDay: data.maxSpinsPerDay,
       spinsUsed: data.spinsUsed,
@@ -2640,7 +2660,9 @@ app.get('/api/sync/member-points/:username', (req, res) => {
 app.get('/api/sync/wheel-config', authorizeKioskMission, (req, res) => {
   if (appRole !== 'points') return res.status(404).end();
   const wheel = settings.getSettings().wheel;
-  res.json({ success: true, wheel, oddsToken: pointsOddsToken(wheel), gamesPolicyVersion: 2 });
+  const playing = pointsPlayerWheel(wheel);
+  res.json({ success: true, wheel, oddsToken: pointsOddsToken(wheel), gamesPolicyVersion: 2,
+    randomDailyVersion: 1, activeGame: playing.game, randomDayKey: playing.randomDayKey });
 });
 
 app.get('/api/sync/wheel/status/:username', authorizeKioskMission, (req, res) => {
@@ -2648,14 +2670,16 @@ app.get('/api/sync/wheel/status/:username', authorizeKioskMission, (req, res) =>
   if (!/^mem-[a-z0-9._-]{1,80}$/i.test(req.params.username)) return res.status(400).json({ success: false, error: 'Invalid member.' });
   try {
     const s = settings.getSettings();
+    const playing = pointsPlayerWheel(s.wheel);
     const daily = coinLogs.getDailyWheelStatus(req.params.username, s.wheel.maxSpinsPerDay);
     res.json({
       success: true, enabled: s.wheel.enabled,
-      game: s.wheel.game, diceRules: require('./src/dice-game').publicDiceRules(),
+      game: playing.game, selectionMode: s.wheel.game, randomDayKey: playing.randomDayKey,
+      diceRules: require('./src/dice-game').publicDiceRules(),
       allowCustomStake: s.wheel.allowCustomStake,
       ...daily,
-      multipliers: s.wheel.game === 'dice' ? [0, 2] : s.wheel.outcomes.map(item => item.multiplier),
-      oddsToken: pointsOddsToken(s.wheel),
+      multipliers: playing.game === 'dice' ? [0, 2] : s.wheel.outcomes.map(item => item.multiplier),
+      oddsToken: pointsOddsToken(playing),
       balance: coinLogs.getMemberPoints(req.params.username, s.pointRates || [])
     });
   } catch (error) {
@@ -2689,20 +2713,22 @@ app.post('/api/sync/wheel/spin', authorizeKioskMission, (req, res) => {
   }
   if (legacyReplay === true && !previous) return res.status(409).json({ success: false, error: 'Game settings changed. Review before trying again.' });
   const s = settings.getSettings();
+  const settlementTime = Date.now();
+  const playing = pointsPlayerWheel(s.wheel, settlementTime);
   if (!previous && s.wheel.allowCustomStake && expectedBalance === undefined) {
     return res.status(400).json({ success: false, error: 'The current balance snapshot is required for a custom stake.' });
   }
   if (!previous && !s.wheel.enabled) return res.status(403).json({ success: false, error: 'Betting Games is disabled.' });
-  if (!previous && game !== s.wheel.game) {
+  if (!previous && game !== playing.game) {
     return res.status(409).json({ success: false, error: 'The active game changed. Reload Betting Games before playing.' });
   }
-  if (!previous && reviewedOddsToken !== pointsOddsToken(s.wheel)) {
+  if (!previous && reviewedOddsToken !== pointsOddsToken(playing)) {
     return res.status(409).json({ success: false, error: 'Game settings changed. Reload Betting Games and review before spinning.' });
   }
   try {
     const spin = previous || coinLogs.appendWheelSpin({
       username, requestId, station, expectedStake, expectedBalance,
-      game, choice, dice: s.wheel.dice,
+      game, choice, dice: s.wheel.dice, settlementTime,
       allowCustomStake: s.wheel.allowCustomStake, maxSpinsPerDay: s.wheel.maxSpinsPerDay,
       outcomes: s.wheel.outcomes, pointRates: s.pointRates || []
     });

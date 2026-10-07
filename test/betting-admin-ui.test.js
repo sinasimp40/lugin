@@ -4,13 +4,15 @@ const fs = require('node:fs');
 const path = require('node:path');
 const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 const bindings = `const {adminWheelLoaded, adminWheelSaving, adminWheelConnected,
-  adminWheelSupportsPolicy, adminWheelSupportsGames, adminWheelDirty,
+  adminWheelSupportsPolicy, adminWheelSupportsGames, adminWheelSupportsRandomDaily,
+  adminWheelTodayGame, adminWheelRandomDay, adminWheelDirty,
   adminWheelDraft, adminWheelActive, adminWheel} = state;
   function isPointsAdmin() { return state.role === 'points'; }`;
 function state(overrides = {}) {
   return {
     role: 'auto-shutdown', adminWheelLoaded: true, adminWheelSaving: false,
     adminWheelConnected: false, adminWheelSupportsPolicy: true, adminWheelSupportsGames: true,
+    adminWheelSupportsRandomDaily: true, adminWheelTodayGame: 'wheel', adminWheelRandomDay: '2026-10-07',
     adminWheelDirty: true, adminWheelDraft: false,
     adminWheelActive: { enabled: true, game: 'dice', maxSpinsPerDay: 5, allowCustomStake: true },
     adminWheel: { outcomes: [{ multiplier: 0 }, { multiplier: 2 }] }, ...overrides
@@ -57,6 +59,25 @@ test('connected Auto Shutdown retains Publish while Points stays read-only', () 
   assert.match(points('admin-wheel-status').textContent, /Read-only/);
 });
 
+test('betting settings visibility follows Wheel, Dice, Random daily, and Games off', () => {
+  const start = page.indexOf('    function bettingEditorVisibility(');
+  const end = page.indexOf('    function editableWheel(', start);
+  const visibility = new Function(page.slice(start, end) + ';return bettingEditorVisibility;')();
+  assert.deepEqual(visibility('wheel', true), { dice: false, wheel: true, random: false });
+  assert.deepEqual(visibility('dice', true), { dice: true, wheel: false, random: false });
+  assert.deepEqual(visibility('random', true), { dice: true, wheel: true, random: true });
+  assert.deepEqual(visibility('random', false), { dice: false, wheel: false, random: false });
+  assert.match(page, /\.dice-admin-rates\[hidden\]\s*\{\s*display:none !important/);
+  assert.match(page, /value="random">Random daily/);
+});
+
+test('Random daily blocks publishing to older Points without blocking fixed games', () => {
+  const options = state({ adminWheelConnected: true, adminWheelSupportsRandomDaily: false });
+  const wheel = { ...options.adminWheel, game: 'random' };
+  assert.equal(render({ ...options, adminWheel: wheel })('admin-wheel-save').disabled, true);
+  assert.equal(render({ ...options, adminWheel: { ...wheel, game: 'wheel' } })('admin-wheel-save').disabled, false);
+});
+
 test('offline Auto Shutdown cannot invoke a local-draft write through the removed action', async () => {
   const start = page.indexOf('    async function saveWheelSettings()');
   const end = page.indexOf('    function setAttendanceManaged(', start);
@@ -79,7 +100,8 @@ test('reconnecting makes publishing available without discarding unsubmitted off
     let adminToken = 'fixture-token', adminWheelLoadSeq = 0;
     let adminWheelDirty = true, adminWheelConnected = false, adminWheelLoaded = true;
     let adminWheel = edited, adminWheelDraft, adminWheelActive, adminWheelActiveOddsToken;
-    let adminWheelSupportsPolicy, adminWheelSupportsGames;
+    let adminWheelSupportsPolicy, adminWheelSupportsGames, adminWheelSupportsRandomDaily;
+    let adminWheelTodayGame, adminWheelRandomDay;
     const document = { querySelector: () => ({}) };
     function renderAdminWheel() {}
     function setWheelAdminReadOnly() {}

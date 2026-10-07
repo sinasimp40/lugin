@@ -15,9 +15,21 @@ HIGH / LOW DICE is alongside Spin the Wheel, not a replacement. Only one game ma
 
 **How to apply:** Preserve the exact ranges, losing seven, inclusive payout, and exclusive game selection when changing admin controls, member screens, settlement, or fake-points testing.
 
+Random daily should choose one member game for the whole shop per Points calendar day, rather than choosing separately on each PC or each page load. Wheel and Dice are the current choices; a random game may repeat on consecutive days.
+
+**Why:** The owner asked for a random available game that resets every day. Shop-wide selection preserves the existing single-active-game policy and keeps the change synchronized with the shared daily play allowance.
+
+**How to apply:** Keep the daily choice stable through reconnects and restarts. Wheel-only configuration should not display Dice rates; Dice-only configuration should not display Wheel outcomes. Random daily needs both configurations because either game may be selected.
+
 Dice should visibly roll, with a slower result reveal for suspense rather than an immediate face change.
 
 **Why:** The owner explicitly requested a rolling dice animation and a slower, more suspenseful result.
+
+The two dice should be centered without a separate numeric total. Make LOW/HIGH range descriptions easy to read and emphasize the confirmed result as WIN ×2 or LOSE.
+
+**Why:** The owner said the LOW/HIGH descriptions were hard to see and requested centered dice with a win-multiplier result instead of the total.
+
+**How to apply:** Keep these presentation changes separate from settlement, the two-dice rules, and the delayed result/balance reveal.
 
 **How to apply:** Preserve the roll and suspense when revising Dice presentation; keep points and voice behind the confirmed reveal, and respect reduced-motion settings.
 

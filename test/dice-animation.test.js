@@ -1,6 +1,25 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { begin, stop, roll } = require('../public/dice-animation');
+const fs = require('node:fs');
+const path = require('node:path');
+
+test('dice presentation has readable ranges, centered dice without a total, and explicit win/loss labels', () => {
+  const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'session.html'), 'utf8');
+  const start = page.indexOf('    function diceOutcomeText(');
+  const end = page.indexOf('    function updateWheelControls()', start);
+  assert.ok(start >= 0 && end > start);
+  const label = new Function(page.slice(start, end) + ';return diceOutcomeText;')();
+  assert.equal(label('low', 5, 2), 'WIN ×2 · LOW');
+  assert.equal(label('high', 10, 2), 'WIN ×2 · HIGH');
+  assert.equal(label('low', 10, 0), 'LOSE · LOW MISSED');
+  assert.equal(label('high', 7, 0), 'LOSE · SEVEN');
+  assert.doesNotMatch(page, /dice-total|dice-sum/);
+  assert.match(page, /Roll 2–6 · Win ×2/);
+  assert.match(page, /Roll 8–12 · Win ×2/);
+  assert.match(page, /\.dice-choice small[^}]+14px\/1\.4/);
+  assert.match(page, /\.dice-stage[^}]+justify-content:center/);
+});
 
 function cube() {
   const classes = new Set();

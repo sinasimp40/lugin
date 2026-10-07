@@ -369,9 +369,7 @@ function createStore(db) {
   }
 
   function getCalendarDayKey(value = Date.now()) {
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) return getCalendarDayKey(Date.now());
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    return require('./daily-betting-game').dayKey(value);
   }
 
   function periodBounds(periodKey) {
@@ -591,7 +589,7 @@ function createStore(db) {
 
   function appendWheelSpin({
     username, requestId, station, outcomes, pointRates, expectedStake, expectedBalance,
-    allowCustomStake = false, maxSpinsPerDay = 1, game = 'wheel', dice, choice
+    allowCustomStake = false, maxSpinsPerDay = 1, game = 'wheel', dice, choice, settlementTime
   }) {
     ensurePointsSync(pointRates);
     let spin;
@@ -606,7 +604,7 @@ function createStore(db) {
         spin = existing;
         return;
       }
-      const now = Date.now();
+      const now = settlementTime === undefined ? Date.now() : settlementTime;
       const [todayStart, tomorrowStart] = dayBounds(getCalendarDayKey(now));
       const maxSpins = Number.isInteger(maxSpinsPerDay) && maxSpinsPerDay >= 1 && maxSpinsPerDay <= 100
         ? maxSpinsPerDay : 1;

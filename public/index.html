@@ -1512,6 +1512,7 @@
     .wheel-admin-total { font:11px 'Share Tech Mono'; color:#ffba58; margin:8px 0; }
     .wheel-admin-total.invalid { color:#ff8f80; }
     .wheel-admin-readonly { color:#858b91; font:10px/1.5 'Share Tech Mono'; border-top:1px solid #2b3035; margin-top:13px; padding-top:10px; }
+    .dice-admin-rates[hidden] { display:none !important; }
     .wheel-policy-status { margin-top:12px; padding:10px; border:1px solid #765a25; border-radius:6px; background:#292214; color:#ffe0a4; font:11px/1.5 'Share Tech Mono',monospace; }
     .wheel-policy-status.live { border-color:#3d7649; background:#15271c; color:#a9e9ad; }
     .btn-admin { border-radius:6px; padding:9px 14px; color:#ff9b46; background:rgba(255,120,0,.1); border:1px solid rgba(255,140,0,.34); font-size:10px; letter-spacing:1px; transition:background .2s,border-color .2s,transform .2s,box-shadow .2s; }
@@ -1936,8 +1937,9 @@
                  <div class="admin-section full-width">
                    <h3>Member game policy</h3>
                    <p style="font-size:11px;color:#aeb4b8;margin-bottom:12px">Choose one game for the session bar, or turn games off. Wheel and High / Low Dice are mutually exclusive. Publishing requires a verified Denfi Points connection.</p>
-                   <div class="form-group" style="max-width:360px"><label for="admin-wheel-game">Game available to members</label><select id="admin-wheel-game" style="width:100%;padding:10px;background:#101114;color:#f3d58b;border:1px solid #5b452b"><option value="off">Games off</option><option value="wheel">Multiplier wheel</option><option value="dice">High / Low Dice</option></select></div>
-                   <div class="dice-admin-rates" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0;padding:12px;border:1px solid rgba(255,174,56,.2);background:rgba(255,174,56,.035)">
+                   <div class="form-group" style="max-width:360px"><label for="admin-wheel-game">Game available to members</label><select id="admin-wheel-game" style="width:100%;padding:10px;background:#101114;color:#f3d58b;border:1px solid #5b452b"><option value="off">Games off</option><option value="wheel">Multiplier wheel</option><option value="dice">High / Low Dice</option><option value="random">Random daily (Wheel or Dice)</option></select></div>
+                   <p id="admin-random-game-note" hidden style="font-size:11px;color:#aeb4b8;margin:8px 0">Denfi Points chooses one game for the whole shop each day, with equal chances of Wheel or Dice. It changes at midnight on the Points machine. Games may repeat on consecutive days. Configure both games below.</p>
+                   <div class="dice-admin-rates" id="admin-dice-settings" hidden style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0;padding:12px;border:1px solid rgba(255,174,56,.2);background:rgba(255,174,56,.035)">
                      <div class="form-group" style="margin:0"><label for="admin-dice-win-rate">Dice win rate (%)</label><input id="admin-dice-win-rate" type="number" min="0" max="100" step="0.01" value="50" /></div>
                      <div class="form-group" style="margin:0"><label for="admin-dice-lose-rate">Dice lose rate (%)</label><input id="admin-dice-lose-rate" type="number" min="0" max="100" step="0.01" value="50" /></div>
                      <div style="align-self:center;color:#b8aa8c;font:10px/1.5 'Share Tech Mono',monospace">PRIVATE ADMIN SETTINGS<br>Win + lose must equal exactly 100%. Seven always loses. A win returns 2× stake.</div>
@@ -3761,11 +3763,14 @@
     let adminWheelActive = null;
     let adminWheelSupportsPolicy = false;
     let adminWheelSupportsGames = false;
+    let adminWheelSupportsRandomDaily = false;
+    let adminWheelTodayGame = '';
+    let adminWheelRandomDay = '';
     let adminWheelActiveOddsToken = '';
     let adminWheelLoadSeq = 0;
     let adminWheelSaving = false;
     document.getElementById('admin-wheel-game').addEventListener('change', event => {
-      if (event.target.value !== 'off') adminWheel.game = event.target.value === 'dice' ? 'dice' : 'wheel';
+      if (event.target.value !== 'off') adminWheel.game = ['dice','random'].includes(event.target.value) ? event.target.value : 'wheel';
       adminWheel.enabled = event.target.value !== 'off';
       adminWheelDirty = true;
       document.getElementById('admin-wheel-enabled').checked = adminWheel.enabled;
@@ -3794,9 +3799,16 @@
       adminWheelDirty = true;
       setWheelAdminReadOnly();
     });
+    function bettingEditorVisibility(game, enabled) {
+      return {
+        dice: !!enabled && (game === 'dice' || game === 'random'),
+        wheel: !!enabled && (game === 'wheel' || game === 'random'),
+        random: !!enabled && game === 'random'
+      };
+    }
     function editableWheel(wheel) {
       return { enabled:!!wheel.enabled, maxSpinsPerDay:wheel.maxSpinsPerDay ?? 1,
-        game:wheel.game === 'dice' ? 'dice' : 'wheel',
+        game:['dice','random'].includes(wheel.game) ? wheel.game : 'wheel',
         dice:{ winRate:Number(wheel.dice?.winRate ?? 50), loseRate:Number(wheel.dice?.loseRate ?? 50), payoutMultiplier:2 },
         allowCustomStake:!!wheel.allowCustomStake,
         outcomes:(wheel.outcomes || []).map(item => ({ multiplier:Number(item.multiplier), weight:Number(item.weight) })) };
@@ -3824,7 +3836,10 @@
       document.getElementById('admin-wheel-game').value = adminWheel.enabled ? adminWheel.game : 'off';
       document.getElementById('admin-dice-win-rate').value = Number(adminWheel.dice.winRate);
       document.getElementById('admin-dice-lose-rate').value = Number(adminWheel.dice.loseRate);
-      document.getElementById('wheel-admin-wheel-settings').hidden = adminWheel.game === 'dice' && wheelEditorState().valid;
+      const visibility = bettingEditorVisibility(adminWheel.game, adminWheel.enabled);
+      document.getElementById('admin-dice-settings').hidden = !visibility.dice;
+      document.getElementById('wheel-admin-wheel-settings').hidden = !visibility.wheel;
+      document.getElementById('admin-random-game-note').hidden = !visibility.random;
       document.getElementById('admin-wheel-daily-limit').value = adminWheel.maxSpinsPerDay;
       document.getElementById('admin-wheel-custom-stake').checked = !!adminWheel.allowCustomStake;
       const winCount = wheelEditorState().wins.length;
@@ -3905,18 +3920,22 @@
       const save = document.getElementById('admin-wheel-save');
       save.hidden = readonly || !adminWheelConnected;
       document.getElementById('admin-game-actions').hidden = save.hidden;
-      save.disabled = locked || (adminWheelConnected && (!adminWheelSupportsPolicy || !adminWheelSupportsGames));
-      save.textContent = adminWheelConnected && (!adminWheelSupportsPolicy || !adminWheelSupportsGames)
+      const unsupported = !adminWheelSupportsPolicy || !adminWheelSupportsGames ||
+        adminWheel.game === 'random' && !adminWheelSupportsRandomDaily;
+      save.disabled = locked || (adminWheelConnected && unsupported);
+      save.textContent = adminWheelConnected && unsupported
         ? 'Update Denfi Points .exe first' : 'Publish to Denfi Points';
       const activePolicy = document.getElementById('admin-wheel-active-policy');
       if (adminWheelConnected && adminWheelActive) {
         const live = adminWheelActive.enabled && !adminWheelDraft && !adminWheelDirty && adminWheelSupportsPolicy;
         activePolicy.classList.toggle('live', live);
         const activeGame = adminWheelActive.enabled
-          ? adminWheelActive.game === 'dice' ? 'HIGH / LOW DICE' : 'WHEEL'
+          ? adminWheelActive.game === 'random'
+            ? `RANDOM DAILY · ${adminWheelRandomDay || 'TODAY'}: ${adminWheelTodayGame === 'dice' ? 'HIGH / LOW DICE' : 'WHEEL'}`
+            : adminWheelActive.game === 'dice' ? 'HIGH / LOW DICE' : 'WHEEL'
           : 'GAMES OFF';
         activePolicy.textContent = `${adminWheelActive.enabled ? 'LIVE' : 'SAVED'} ON DENFI POINTS: ${activeGame} · ${adminWheelActive.maxSpinsPerDay} play(s) per member/day · Custom stake ${adminWheelActive.allowCustomStake ? 'ON' : 'OFF'}.` +
-          (!adminWheelSupportsPolicy || !adminWheelSupportsGames ? ' This Denfi Points .exe is outdated; rebuild it before publishing changes.' :
+          (unsupported ? ' This Denfi Points .exe is outdated; rebuild it before publishing changes.' :
             adminWheelDraft || adminWheelDirty ? ' Your edits here are NOT LIVE until published.' : '');
       } else {
         activePolicy.classList.remove('live');
@@ -3952,6 +3971,9 @@
         adminWheelActiveOddsToken = typeof data.activeOddsToken === 'string' ? data.activeOddsToken : '';
         adminWheelSupportsPolicy = !!data.pointsSupportsPolicy || isPointsAdmin();
         adminWheelSupportsGames = !!data.pointsSupportsGames || isPointsAdmin();
+        adminWheelSupportsRandomDaily = !!data.pointsSupportsRandomDaily || isPointsAdmin();
+        adminWheelTodayGame = data.activeGame || '';
+        adminWheelRandomDay = data.randomDayKey || '';
         if (!keepOfflineEdits) adminWheelDirty = false;
         adminWheelLoaded = true;
         renderAdminWheel();
@@ -3968,11 +3990,11 @@
       if (!adminWheelLoaded || adminWheelSaving) { if (!adminWheelSaving) showAdminMsg('admin-panel-msg', 'Load the betting settings first.', 'error'); return; }
       if (!adminWheelConnected) { showAdminMsg('admin-panel-msg', 'Connect Denfi Points in Runtime before publishing betting settings.', 'error'); return; }
       const state = wheelEditorState();
-      if (!state.valid) { showAdminMsg('admin-panel-msg', 'Enter distinct outcomes with positive chances totaling exactly 100%. Edit other chances after changing or deleting LOSE (0×).', 'error'); return; }
+      if (!state.valid) { showAdminMsg('admin-panel-msg', 'Wheel chances must total exactly 100%. Select Wheel or Random daily to correct the outcomes before publishing.', 'error'); return; }
       const winRate = Number(adminWheel.dice.winRate), loseRate = Number(adminWheel.dice.loseRate);
       const winCents = Math.round(winRate * 100), loseCents = Math.round(loseRate * 100);
       if (![winRate,loseRate].every(value => Number.isFinite(value) && value >= 0 && value <= 100 && Math.abs(value * 100 - Math.round(value * 100)) < 1e-8) || winCents + loseCents !== 10000) {
-        showAdminMsg('admin-panel-msg', 'Dice win and lose rates must each have at most two decimals and total exactly 100%.', 'error'); return;
+        showAdminMsg('admin-panel-msg', 'Dice win and lose rates must each have at most two decimals and total exactly 100%. Select Dice or Random daily to correct them.', 'error'); return;
       }
       const maxSpinsPerDay = Number(adminWheel.maxSpinsPerDay);
       if (!Number.isInteger(maxSpinsPerDay) || maxSpinsPerDay < 1 || maxSpinsPerDay > 100) {
@@ -3998,6 +4020,9 @@
         adminWheelActive = resp.activeWheel || null;
         if (!resp.draft) adminWheelActiveOddsToken = typeof resp.activeOddsToken === 'string' ? resp.activeOddsToken : '';
         adminWheelSupportsPolicy = !!resp.activeWheel;
+        adminWheelSupportsRandomDaily = !!resp.pointsSupportsRandomDaily;
+        adminWheelTodayGame = resp.activeGame || '';
+        adminWheelRandomDay = resp.randomDayKey || '';
         adminWheelDirty = false;
         renderAdminWheel();
         if (resp.draft) await loadAdminWheel();

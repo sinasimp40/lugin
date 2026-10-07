@@ -35,7 +35,7 @@ function validHundredths(value) {
 
 function parseWheel(input) {
   if (!input || typeof input.enabled !== 'boolean' ||
-      (input.game !== undefined && !['wheel', 'dice'].includes(input.game)) ||
+      (input.game !== undefined && !['wheel', 'dice', 'random'].includes(input.game)) ||
       (input.dice !== undefined && !parseDice(input.dice)) ||
       (input.maxSpinsPerDay !== undefined &&
         (!Number.isInteger(input.maxSpinsPerDay) || input.maxSpinsPerDay < 1 || input.maxSpinsPerDay > 100)) ||
@@ -88,7 +88,8 @@ function oddsToken(wheel, secret) {
     dice: wheel.dice || defaultDice(),
     maxSpinsPerDay: wheel.maxSpinsPerDay,
     allowCustomStake: wheel.allowCustomStake,
-    outcomes: wheel.outcomes
+    outcomes: wheel.outcomes,
+    randomDayKey: wheel.randomDayKey
   })).digest('hex');
 }
 
