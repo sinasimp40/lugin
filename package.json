@@ -19,7 +19,9 @@
       "buildResources": "build"
     },
     "asar": false,
-    "electronLanguages": ["en-US"],
+    "electronLanguages": [
+      "en-US"
+    ],
     "win": {
       "target": "nsis",
       "requestedExecutionLevel": "asInvoker",
@@ -114,11 +116,14 @@
   },
   "dependencies": {
     "express": "^5.2.1",
-    "kokoro-js": "1.2.1",
+    "kokoro-js": "^1.2.1",
     "ws": "^8.22.0"
   },
   "optionalDependencies": {
     "@img/sharp-win32-x64": "0.34.5"
+  },
+  "overrides": {
+    "proxy-addr": "2.0.8"
   },
   "devDependencies": {
     "electron": "^41.0.4",
