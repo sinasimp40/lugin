@@ -15,6 +15,12 @@ HIGH / LOW DICE is alongside Spin the Wheel, not a replacement. Only one game ma
 
 **How to apply:** Preserve the exact ranges, losing seven, inclusive payout, and exclusive game selection when changing admin controls, member screens, settlement, or fake-points testing.
 
+Dice should visibly roll, with a slower result reveal for suspense rather than an immediate face change.
+
+**Why:** The owner explicitly requested a rolling dice animation and a slower, more suspenseful result.
+
+**How to apply:** Preserve the roll and suspense when revising Dice presentation; keep points and voice behind the confirmed reveal, and respect reduced-motion settings.
+
 Randomize reel presentation independently of the admin outcome order, without changing published odds or choosing a different monetary result.
 
 **Why:** The owner noticed the same repeating visual pattern followed the admin arrangement and requested a less predictable display.

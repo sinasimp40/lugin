@@ -1,0 +1,23 @@
+.dice-stage { perspective:700px; min-height:118px; pointer-events:none; }
+.dice-cube.dice-3d {
+  position:relative; display:block; transform-style:preserve-3d;
+  border:0; border-radius:0; background:none; box-shadow:none;
+}
+.dice-cube.dice-3d.rolling { animation:none; will-change:transform; }
+.dice-face {
+  position:absolute; inset:0; box-sizing:border-box;
+  display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr);
+  padding:10px; gap:3px; border:1px solid #b9af51; border-radius:9px;
+  background:linear-gradient(145deg,#fffbe5,#d2ca9b); backface-visibility:hidden;
+  box-shadow:inset 0 0 7px rgba(110,93,31,.18);
+}
+.dice-face-1 { transform:translateZ(28.5px); }
+.dice-face-2 { transform:rotateY(90deg) translateZ(28.5px); }
+.dice-face-3 { transform:rotateX(90deg) translateZ(28.5px); }
+.dice-face-4 { transform:rotateX(-90deg) translateZ(28.5px); }
+.dice-face-5 { transform:rotateY(-90deg) translateZ(28.5px); }
+.dice-face-6 { transform:rotateY(180deg) translateZ(28.5px); }
+.dice-pip {
+  display:block; align-self:center; justify-self:center; width:8px; height:8px;
+  border-radius:50%; background:#25271a; box-shadow:inset 0 1px 2px #090a04;
+}

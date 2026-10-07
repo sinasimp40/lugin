@@ -833,6 +833,8 @@
 
   <script src="/withdrawal-session.js"></script>
   <script src="/reel-sequence.js"></script>
+  <link rel="stylesheet" href="/dice-animation.css" />
+  <script src="/dice-animation.js"></script>
   <script src="/order-pickup-sound.js"></script>
   <script src="/order-status.js"></script>
   <script>
@@ -1462,6 +1464,10 @@
       const remaining = Number(wheelData.spinsRemaining);
       const exhausted = Number.isInteger(remaining) && remaining <= 0;
       if (previewMode) document.getElementById('wheel-demo-custom-stake').disabled = wheelSpinInFlight || exhausted;
+      if (sessionTestMode) {
+        document.getElementById('session-demo-game').disabled = wheelSpinInFlight;
+        document.getElementById('session-demo-outcome').disabled = wheelSpinInFlight;
+      }
       document.getElementById('wheel-stake-choice').hidden = !custom;
       document.getElementById('wheel-warning').textContent = game === 'dice'
         ? `2–6 LOW · 8–12 HIGH · 7 ALWAYS LOSES · WIN RETURNS 2× ${custom ? 'STAKE.' : 'FULL BALANCE.'}`
@@ -1702,7 +1708,14 @@
           writePendingWheel(requestUsername, wheelRequestId, expectedStake, expectedBalance, wheelData.multipliers || [], wheelData.oddsToken, requestGame, requestChoice);
         }
         notifyBettingVoice({ phase: 'begin', username: requestUsername, requestId: wheelRequestId, game:requestGame, ...(requestGame === 'dice' ? { choice:requestChoice } : {}) });
-        document.getElementById('wheel-result').textContent = 'SPINNING...';
+        updateWheelControls();
+        document.getElementById('wheel-result').textContent = requestGame === 'dice' ? 'ROLLING DICE...' : 'SPINNING...';
+        if (requestGame === 'dice') {
+          document.getElementById('dice-total').innerHTML = '…<small>ROLLING</small>';
+          window.DenfiDiceAnimation.begin([
+            document.getElementById('dice-one'), document.getElementById('dice-two')
+          ], matchMedia('(prefers-reduced-motion: reduce)').matches);
+        }
         if (requestGame === 'wheel') beginReelRoll(wheelData.multipliers);
         let spin;
         if (previewMode) {
@@ -1783,16 +1796,23 @@
               (multiplier === 2) !== (result === requestChoice)) {
             throw new Error('Dice result was incomplete. Retry the same request; no new stake will be taken.');
           }
-          document.getElementById('dice-one').textContent = '·';
-          document.getElementById('dice-two').textContent = '·';
           document.getElementById('dice-total').innerHTML = '…<small>ROLLING</small>';
-          document.querySelectorAll('.dice-cube').forEach(cube => cube.classList.add('rolling'));
+          button.textContent = 'ROLLING DICE...';
           notifyBettingVoice({ phase:'prepare', username:requestUsername, requestId:wheelRequestId, spinId:spin.id, multiplier, net:spin.net, balance:spin.balance });
-          const settleDice = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 760;
-          setTimeout(() => {
-            document.querySelectorAll('.dice-cube').forEach(cube => cube.classList.remove('rolling'));
-            document.getElementById('dice-one').textContent = String(dice[0]);
-            document.getElementById('dice-two').textContent = String(dice[1]);
+          const rollingRequestId = wheelRequestId;
+          await window.DenfiDiceAnimation.roll([
+            document.getElementById('dice-one'), document.getElementById('dice-two')
+          ], dice, { reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
+          if (String(sessionUsername).toLowerCase() !== String(requestUsername).toLowerCase() ||
+              wheelRequestId !== rollingRequestId) {
+            // Keep the old member's stored receipt recoverable, but never
+            // reveal their result in a replacement member's session.
+            wheelSpinInFlight = false;
+            wheelLoaded = false;
+            if (activeDrawer === 'games') await loadWheel();
+            return;
+          }
+          {
             document.getElementById('dice-total').innerHTML = `${total}<small>TOTAL</small>`;
             const won = multiplier === 2;
             const resultDisplay = document.getElementById('wheel-result');
@@ -1816,7 +1836,7 @@
             wheelExpectedStake = null; wheelExpectedBalance = null; wheelMultipliers = []; wheelOddsToken = ''; wheelRequestGame = 'wheel';
             if (wheelData.allowCustomStake) document.getElementById('wheel-stake-input').value = nextWheelStakeValue(Number(spin.stake).toFixed(2), wheelData.balance, true);
             updateWheelControls(); resizeDrawerToContent();
-          }, settleDice);
+          }
           return;
         }
         const result = Number(spin.multiplier);
@@ -1900,6 +1920,9 @@
         }, settle);
       } catch (e) {
         stopReelRoll();
+        if (requestGame === 'dice' && window.DenfiDiceAnimation) window.DenfiDiceAnimation.stop([
+          document.getElementById('dice-one'), document.getElementById('dice-two')
+        ]);
         if (e && e.code === 'KNOWN_NOT_SETTLED') {
           deferredWinNotices.clear();
           clearPendingWheel(requestUsername, wheelRequestId);
@@ -1917,6 +1940,7 @@
           return;
         }
         wheelSpinInFlight = false; button.disabled = false; button.textContent = 'RETRY SAME REQUEST';
+        updateWheelControls();
         error.textContent = previewMode && sessionTestMode ? `${e.message || 'Test result not confirmed.'} Retry the same fake request.` : 'Result not confirmed. Retry the same request';
         error.classList.add('active');
         document.getElementById('wheel-result').textContent = 'RESULT NOT CONFIRMED';
