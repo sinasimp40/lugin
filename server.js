@@ -12,6 +12,13 @@ const { defaultWheel, parseWheel, oddsToken } = require('./src/wheel-config');
 const { stationFromHotspot } = require('./src/kiosk-station');
 const { VoiceSessionTracker } = require('./src/session-voice-events');
 
+// An opaque version must not reveal dice rates through a 10,001-value hash
+// search. Points owns this key; kiosks forward its token, never its secret.
+// Restarting Points invalidates unsubmitted reviews, not settled retries.
+const wheelOddsSecret = crypto.randomBytes(32);
+const pointsOddsToken = wheel => oddsToken(wheel, wheelOddsSecret);
+const remoteOddsToken = remote => remote.oddsToken || oddsToken(parseWheel(remote.wheel));
+
 const appRoleInit = process.env.DENFI_APP_ROLE || 'auto-shutdown';
 settings.setAppRole(appRoleInit);
 // The desktop entry point initializes SQLite before loading this module.
@@ -981,7 +988,8 @@ function wheelErrorResponse(res, error, ambiguous = false) {
 
 app.get('/api/admin/wheel', verifyToken, async (req, res) => {
   if (appRole === 'points') return res.json({ success: true, wheel: settings.getSettings().wheel,
-    activeWheel: settings.getSettings().wheel, readOnly: true, connected: true });
+    activeWheel: settings.getSettings().wheel, activeOddsToken: pointsOddsToken(settings.getSettings().wheel),
+    pointsSupportsGames: true, pointsSupportsPolicy: true, readOnly: true, connected: true });
   const saved = settings.getSettings();
   try {
     const remote = await fetchPointsWheel('/api/sync/wheel-config');
@@ -989,6 +997,7 @@ app.get('/api/admin/wheel', verifyToken, async (req, res) => {
     if (!wheel) throw new Error('Denfi Points returned invalid betting settings.');
     // Never discard an explicitly saved offline draft when the server reconnects.
     res.json({ success: true, wheel: saved.wheelDraft || wheel, activeWheel:wheel,
+      activeOddsToken: remoteOddsToken(remote), pointsSupportsGames: remote.gamesPolicyVersion === 2,
       pointsSupportsPolicy: Number.isInteger(remote.wheel?.maxSpinsPerDay) &&
         typeof remote.wheel?.allowCustomStake === 'boolean',
       draft: !!saved.wheelDraft, connected: true });
@@ -1002,8 +1011,14 @@ app.post('/api/admin/kiosk-wheel', authorizeKioskMission, (req, res) => {
   if (appRole !== 'points') return res.status(404).end();
   const wheel = parseWheel(req.body);
   if (!wheel) return res.status(400).json({ success: false, error: 'Enter 1–12 distinct multipliers (0–100x), positive percentages and a total of exactly 100%.' });
+  const current = settings.getSettings().wheel;
+  if ((req.body.expectedOddsToken && req.body.expectedOddsToken !== pointsOddsToken(current)) ||
+      (current.game === 'dice' && req.body.game === undefined)) {
+    return res.status(409).json({ success: false, error: 'Shared betting settings changed. Reload Betting Games before publishing.' });
+  }
   try {
     settings.updateSettings({ wheel });
+    broadcastSettings();
     res.json({ success: true, wheel });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Denfi Points could not save the wheel.' });
@@ -1033,8 +1048,19 @@ app.post('/api/admin/wheel', verifyToken, async (req, res) => {
       error.status = 409;
       throw error;
     }
+    if ((req.body.game !== undefined || req.body.dice !== undefined) && before.gamesPolicyVersion !== 2) {
+      const error = new Error('Denfi Points is an older build without HIGH / LOW DICE. Update both .exe builds before publishing.');
+      error.status = 409;
+      throw error;
+    }
+    if (req.body.expectedOddsToken && req.body.expectedOddsToken !== remoteOddsToken(before)) {
+      const error = new Error('Shared betting settings changed on another PC. Reload Betting Games before publishing.');
+      error.status = 409;
+      throw error;
+    }
     const data = await fetchPointsWheel('/api/admin/kiosk-wheel', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wheel)
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...wheel, expectedOddsToken: remoteOddsToken(before) })
     });
     const confirmed = await fetchPointsWheel('/api/sync/wheel-config');
     const saved = parseWheel(confirmed.wheel);
@@ -1045,7 +1071,9 @@ app.post('/api/admin/wheel', verifyToken, async (req, res) => {
       throw error;
     }
     settings.updateSettings({ wheel: saved, wheelDraft: null });
-    res.json({ success: true, wheel: saved, activeWheel:saved, draft: false, connected: true });
+    broadcastSettings();
+    res.json({ success: true, wheel: saved, activeWheel:saved, activeOddsToken: remoteOddsToken(confirmed),
+      pointsSupportsGames: true, draft: false, connected: true });
   } catch (error) {
     wheelErrorResponse(res, error);
   }
@@ -1511,6 +1539,8 @@ async function flushWheelNotifications() {
     const value = amount => Number(amount).toFixed(2) + ' pts';
     const lines = [
       'DENFI POINTS  /  BETTING GAMES',
+      `GAME    ·  ${spin.game === 'dice' ? 'HIGH / LOW DICE' : 'SPIN THE WHEEL'}`,
+      ...(spin.game === 'dice' ? [`DICE    ·  ${spin.dice.join(' + ')} = ${spin.total} · ${spin.choice.toUpperCase()}`] : []),
       '━━━━━━━━━━━━━━━━━━━━',
       Number(spin.multiplier) === 0 ? 'RESULT  ·  LOSE' : `RESULT  ·  ${spin.multiplier}×`,
       '',
@@ -2481,6 +2511,7 @@ app.get('/api/session/wheel', requireLocalWheelPlayer, async (req, res) => {
     const data = await fetchPointsWheel('/api/sync/wheel/status/' + encodeURIComponent(member.username));
     res.json({
       success: true, enabled: data.enabled,
+      game: data.game || 'wheel', diceRules: data.diceRules,
       allowCustomStake: data.allowCustomStake,
       maxSpinsPerDay: data.maxSpinsPerDay,
       spinsUsed: data.spinsUsed,
@@ -2508,6 +2539,11 @@ app.post('/api/session/wheel/spin', requireLocalWheelPlayer, async (req, res) =>
   const expectedBalance = req.body && req.body.expectedBalance;
   const reviewedOddsToken = req.body && req.body.oddsToken;
   const legacyReplay = req.body && req.body.legacyReplay === true;
+  const game = req.body?.game === undefined ? 'wheel' : req.body.game;
+  const choice = req.body?.choice;
+  if (!['wheel', 'dice'].includes(game) || (game === 'dice' && !['high', 'low'].includes(choice))) {
+    return res.status(400).json({ success: false, error: 'Select HIGH or LOW before rolling the dice.' });
+  }
   if (typeof requestId !== 'string' || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(requestId)) {
     return res.status(400).json({ success: false, error: 'Invalid spin request ID.' });
   }
@@ -2523,7 +2559,7 @@ app.post('/api/session/wheel/spin', requireLocalWheelPlayer, async (req, res) =>
   try {
     const data = await fetchPointsWheel('/api/sync/wheel/spin', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: member.username, station: member.station, requestId, expectedStake, expectedBalance, oddsToken: reviewedOddsToken, legacyReplay })
+      body: JSON.stringify({ username: member.username, station: member.station, requestId, expectedStake, expectedBalance, oddsToken: reviewedOddsToken, legacyReplay, game, choice })
     });
     if (data.spin.username !== member.username || data.spin.requestId !== requestId) throw new Error('Denfi Points returned an invalid spin.');
     // An unsent result is retained on Denfi Points until a kiosk with the configured bot delivers it.
@@ -2601,9 +2637,10 @@ app.get('/api/sync/member-points/:username', (req, res) => {
   }
 });
 
-app.get('/api/sync/wheel-config', (req, res) => {
+app.get('/api/sync/wheel-config', authorizeKioskMission, (req, res) => {
   if (appRole !== 'points') return res.status(404).end();
-  res.json({ success: true, wheel: settings.getSettings().wheel });
+  const wheel = settings.getSettings().wheel;
+  res.json({ success: true, wheel, oddsToken: pointsOddsToken(wheel), gamesPolicyVersion: 2 });
 });
 
 app.get('/api/sync/wheel/status/:username', authorizeKioskMission, (req, res) => {
@@ -2614,10 +2651,11 @@ app.get('/api/sync/wheel/status/:username', authorizeKioskMission, (req, res) =>
     const daily = coinLogs.getDailyWheelStatus(req.params.username, s.wheel.maxSpinsPerDay);
     res.json({
       success: true, enabled: s.wheel.enabled,
+      game: s.wheel.game, diceRules: require('./src/dice-game').publicDiceRules(),
       allowCustomStake: s.wheel.allowCustomStake,
       ...daily,
-      multipliers: s.wheel.outcomes.map(item => item.multiplier),
-      oddsToken: oddsToken(s.wheel),
+      multipliers: s.wheel.game === 'dice' ? [0, 2] : s.wheel.outcomes.map(item => item.multiplier),
+      oddsToken: pointsOddsToken(s.wheel),
       balance: coinLogs.getMemberPoints(req.params.username, s.pointRates || [])
     });
   } catch (error) {
@@ -2628,6 +2666,11 @@ app.get('/api/sync/wheel/status/:username', authorizeKioskMission, (req, res) =>
 app.post('/api/sync/wheel/spin', authorizeKioskMission, (req, res) => {
   if (appRole !== 'points') return res.status(404).end();
   const { username, requestId, station, expectedStake, expectedBalance, oddsToken: reviewedOddsToken, legacyReplay } = req.body || {};
+  const game = req.body?.game === undefined ? 'wheel' : req.body.game;
+  const choice = req.body?.choice;
+  if (!['wheel', 'dice'].includes(game) || (game === 'dice' && !['high', 'low'].includes(choice))) {
+    return res.status(400).json({ success: false, error: 'Invalid betting game or dice choice.' });
+  }
   if (typeof username !== 'string' || !/^mem-[a-z0-9._-]{1,80}$/i.test(username) ||
       typeof requestId !== 'string' || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(requestId) ||
       typeof expectedStake !== 'number' || !Number.isFinite(expectedStake) || expectedStake <= 0 ||
@@ -2641,18 +2684,25 @@ app.post('/api/sync/wheel/spin', authorizeKioskMission, (req, res) => {
   }
   const previous = coinLogs.getWheelSpin(requestId);
   if (previous && previous.username !== username) return res.status(409).json({ success: false, error: 'Spin request belongs to another member.' });
+  if (previous && ((previous.game || 'wheel') !== game || (game === 'dice' && previous.choice !== choice))) {
+    return res.status(409).json({ success: false, error: 'Request belongs to a different game or dice choice.' });
+  }
   if (legacyReplay === true && !previous) return res.status(409).json({ success: false, error: 'Game settings changed. Review before trying again.' });
   const s = settings.getSettings();
   if (!previous && s.wheel.allowCustomStake && expectedBalance === undefined) {
     return res.status(400).json({ success: false, error: 'The current balance snapshot is required for a custom stake.' });
   }
   if (!previous && !s.wheel.enabled) return res.status(403).json({ success: false, error: 'Betting Games is disabled.' });
-  if (!previous && reviewedOddsToken !== oddsToken(s.wheel)) {
+  if (!previous && game !== s.wheel.game) {
+    return res.status(409).json({ success: false, error: 'The active game changed. Reload Betting Games before playing.' });
+  }
+  if (!previous && reviewedOddsToken !== pointsOddsToken(s.wheel)) {
     return res.status(409).json({ success: false, error: 'Game settings changed. Reload Betting Games and review before spinning.' });
   }
   try {
     const spin = previous || coinLogs.appendWheelSpin({
       username, requestId, station, expectedStake, expectedBalance,
+      game, choice, dice: s.wheel.dice,
       allowCustomStake: s.wheel.allowCustomStake, maxSpinsPerDay: s.wheel.maxSpinsPerDay,
       outcomes: s.wheel.outcomes, pointRates: s.pointRates || []
     });

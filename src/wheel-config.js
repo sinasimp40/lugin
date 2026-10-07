@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { defaultDice, parseDice } = require('./dice-game');
 
 const DEFAULT_OUTCOMES = Object.freeze([
   { multiplier: 0, weight: 35 },
@@ -19,6 +20,8 @@ const LEGACY_DEFAULT_OUTCOMES = [
 function defaultWheel() {
   return {
     enabled: true,
+    game: 'wheel',
+    dice: defaultDice(),
     maxSpinsPerDay: 1,
     allowCustomStake: false,
     outcomes: DEFAULT_OUTCOMES.map(item => ({ ...item }))
@@ -32,6 +35,8 @@ function validHundredths(value) {
 
 function parseWheel(input) {
   if (!input || typeof input.enabled !== 'boolean' ||
+      (input.game !== undefined && !['wheel', 'dice'].includes(input.game)) ||
+      (input.dice !== undefined && !parseDice(input.dice)) ||
       (input.maxSpinsPerDay !== undefined &&
         (!Number.isInteger(input.maxSpinsPerDay) || input.maxSpinsPerDay < 1 || input.maxSpinsPerDay > 100)) ||
       (input.allowCustomStake !== undefined && typeof input.allowCustomStake !== 'boolean') ||
@@ -49,6 +54,8 @@ function parseWheel(input) {
   }
   return total === 10000 ? {
     enabled: input.enabled,
+    game: input.game === undefined ? 'wheel' : input.game,
+    dice: input.dice === undefined ? defaultDice() : parseDice(input.dice),
     maxSpinsPerDay: input.maxSpinsPerDay === undefined ? 1 : input.maxSpinsPerDay,
     allowCustomStake: input.allowCustomStake === undefined ? false : input.allowCustomStake,
     outcomes
@@ -73,9 +80,12 @@ function pickOutcome(outcomes) {
   throw new Error('Invalid wheel probability distribution');
 }
 
-function oddsToken(wheel) {
-  return crypto.createHash('sha256').update(JSON.stringify({
+function oddsToken(wheel, secret) {
+  const hash = secret ? crypto.createHmac('sha256', secret) : crypto.createHash('sha256');
+  return hash.update(JSON.stringify({
     enabled: wheel.enabled,
+    game: wheel.game || 'wheel',
+    dice: wheel.dice || defaultDice(),
     maxSpinsPerDay: wheel.maxSpinsPerDay,
     allowCustomStake: wheel.allowCustomStake,
     outcomes: wheel.outcomes

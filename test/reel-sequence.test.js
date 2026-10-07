@@ -67,6 +67,7 @@ test('real renderer builds shuffled tiles and its pending animation uses the ful
       createElement: element,
     },
     DenfiReelSequence: reel,
+    matchMedia: () => ({ matches: false }),
     wheelData: { balance: 20, multipliers: [0, 1.5, 1.8, 2, 5] },
     wheelReelAnimation: null, wheelReelOffset: 0, wheelReelCycleLength: 48,
     wheelSettledStake: null, wheelMoney: String,

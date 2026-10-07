@@ -591,7 +591,7 @@ function createStore(db) {
 
   function appendWheelSpin({
     username, requestId, station, outcomes, pointRates, expectedStake, expectedBalance,
-    allowCustomStake = false, maxSpinsPerDay = 1
+    allowCustomStake = false, maxSpinsPerDay = 1, game = 'wheel', dice, choice
   }) {
     ensurePointsSync(pointRates);
     let spin;
@@ -600,6 +600,9 @@ function createStore(db) {
       if (existingRow) {
         const existing = parseLog(existingRow);
         if (existing.username !== username) throw new Error('This spin belongs to a different member.');
+        if ((existing.game || 'wheel') !== game || (game === 'dice' && existing.choice !== choice)) {
+          throw new Error('This request belongs to a different game or dice choice.');
+        }
         spin = existing;
         return;
       }
@@ -634,7 +637,9 @@ function createStore(db) {
       if (!allowCustomStake && stakeCents !== balanceCents) {
         throw new Error('This game requires staking your full balance.');
       }
-      const multiplier = require('./wheel-config').pickOutcome(outcomes);
+      if (!['wheel', 'dice'].includes(game)) throw new Error('Invalid betting game.');
+      const rolled = game === 'dice' ? require('./dice-game').rollDice(choice, dice) : null;
+      const multiplier = rolled ? rolled.multiplier : require('./wheel-config').pickOutcome(outcomes);
       const payoutCents = Math.round(stakeCents * multiplier);
       if (!Number.isSafeInteger(payoutCents)) throw new Error('Points balance is too large to spin safely.');
       const netCents = payoutCents - stakeCents;
@@ -643,7 +648,8 @@ function createStore(db) {
       spin = {
         id: crypto.randomUUID(), requestId, source: 'wheel', username,
         station: String(station || 'PC').slice(0, 60), amount: 0,
-        timeAdded: `Wheel ${multiplier}x`, timestamp: now, date: new Date(now).toISOString(),
+        timeAdded: `${game === 'dice' ? 'HIGH / LOW DICE' : 'Wheel'} ${multiplier}x`, timestamp: now, date: new Date(now).toISOString(),
+        game, ...(rolled || {}),
         period: getCurrentPeriodKey(), multiplier, outcomes: outcomes.map(item => ({ ...item })),
         stake: stakeCents / 100, payout: payoutCents / 100,
         points: netCents / 100, net: netCents / 100, balance: newBalanceCents / 100,
@@ -668,7 +674,8 @@ function createStore(db) {
     return logs.slice(-30)
       .map(log => ({
         id: log.id, username: log.username, station: log.station,
-        multiplier: log.multiplier, createdAt: log.timestamp
+        multiplier: log.multiplier, game: log.game || 'wheel',
+        ...(log.game === 'dice' ? { choice: log.choice } : {}), createdAt: log.timestamp
       }));
   }
 

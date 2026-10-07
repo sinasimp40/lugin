@@ -1,13 +1,19 @@
 ---
 name: Betting game presentation
-description: Why the member-facing game uses an equal-size horizontal reel while preserving configured odds.
+description: Confirmed dice rules, wheel presentation, private odds, and delayed balance/result disclosure.
 ---
 
-The member-facing Betting Games display should use a horizontal multiplier roll with equal-sized tiles and should not expose configured win percentages. Equal-size tiles are presentation, not a claim that results are equally likely. Keep settlement and configured probabilities authoritative on Denfi Points.
+The member-facing Spin the Wheel display should use a horizontal multiplier roll with equal-sized tiles and should not expose configured win percentages. Equal-size tiles are presentation, not a claim that results are equally likely. Keep settlement and configured probabilities authoritative on Denfi Points.
 
 **Why:** The user explicitly disliked the visibly unequal sectors of the original wheel, asked for a more balanced-looking horizontal roll, and wanted the winning rates hidden from players.
 
 **How to apply:** Maintain this distinction when changing animation, player APIs, or admin controls; admins still need to set percentages, while players should see only possible multipliers and the actual server result.
+
+HIGH / LOW DICE is alongside Spin the Wheel, not a replacement. Only one game may be enabled at a time; both may be disabled. The user confirmed TWO dice: LOW is 2–6, HIGH is 8–12, 7 always loses, and a win returns 2× INCLUDING the original stake. Dice winning/losing percentages are admin-only and saved centrally on Denfi Points for every PC.
+
+**Why:** These are the owner's explicitly confirmed game and operating rules, rather than assumptions about a conventional dice game.
+
+**How to apply:** Preserve the exact ranges, losing seven, inclusive payout, and exclusive game selection when changing admin controls, member screens, settlement, or fake-points testing.
 
 Randomize reel presentation independently of the admin outcome order, without changing published odds or choosing a different monetary result.
 

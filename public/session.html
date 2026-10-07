@@ -632,6 +632,34 @@
   .wheel-demo-settings input { accent-color:#e3d918; }
   .demo-badge { display:inline-block; margin-left:7px; padding:2px 5px; border:1px solid rgba(244,239,18,.55); color:#f4ef12; font:8px 'Share Tech Mono'; letter-spacing:1px; vertical-align:middle; }
   .demo-badge[hidden] { display:none; }
+  .dice-choice-row { display:none; grid-template-columns:1fr 1fr; gap:9px; margin:8px 0; }
+  .dice-choice {
+    min-height:58px; padding:8px; border:1px solid rgba(244,239,18,.34); border-radius:2px;
+    background:linear-gradient(155deg,#20221b,#11130f); color:#d8d6a4; cursor:pointer;
+    text-align:left; transition:transform .18s ease,border-color .18s ease,background .18s ease;
+  }
+  .dice-choice span { display:block; font:800 17px 'Orbitron',monospace; letter-spacing:1px; }
+  .dice-choice small { display:block; margin-top:4px; color:#8f9078; font:10px 'Share Tech Mono',monospace; }
+  .dice-choice[data-choice="low"] span { color:#c6e3a2; }
+  .dice-choice[data-choice="high"] span { color:#f4ef12; }
+  .dice-choice[aria-pressed="true"] { border-color:#f4ef12; background:linear-gradient(150deg,#454516,#21210b); box-shadow:inset 0 0 0 1px rgba(244,239,18,.25); }
+  .dice-choice:hover:not(:disabled) { transform:translateY(-1px); }
+  .dice-choice:disabled { opacity:.46; cursor:not-allowed; }
+  .dice-stage { display:none; align-items:center; justify-content:center; gap:15px; min-height:96px; margin:7px 0 10px; border:1px solid rgba(244,239,18,.24); background:radial-gradient(ellipse at 50% 120%,rgba(244,239,18,.10),transparent 70%),#0d0e0c; }
+  .dice-cube { width:57px; height:57px; display:grid; place-items:center; border:1px solid #d0c84e; border-radius:9px; background:linear-gradient(145deg,#faf6d6,#c9c28c); color:#16170c; font:900 27px 'Orbitron',monospace; box-shadow:0 4px 0 #736e3a,0 8px 18px rgba(0,0,0,.42); }
+  .dice-cube.rolling { animation:dice-toss .42s ease-in-out infinite alternate; }
+  .dice-sum { min-width:58px; text-align:center; color:#f4ef12; font:800 25px 'Orbitron',monospace; }
+  .dice-sum small { display:block; margin-top:4px; color:#85856d; font:9px 'Share Tech Mono',monospace; letter-spacing:1px; }
+  .wheel-view[data-game="dice"] .dice-choice-row { display:grid; }
+  .wheel-view[data-game="dice"] .dice-stage { display:flex; }
+  .wheel-view[data-game="dice"] .wheel-stage { display:none; }
+  .demo-lab { display:none; margin:8px 0; padding:9px; border:1px dashed rgba(244,239,18,.42); background:rgba(244,239,18,.035); color:#d8d6a4; }
+  .demo-lab.visible { display:block; }
+  .demo-lab-title { color:#f4ef12; font:10px 'Orbitron',monospace; letter-spacing:1px; margin-bottom:7px; }
+  .demo-lab select { width:100%; margin:0 0 6px; padding:7px; border:1px solid #5e5c24; background:#11120d; color:#f3efbb; font:11px 'Share Tech Mono',monospace; }
+  .demo-lab-note { font:9px/1.4 'Share Tech Mono',monospace; color:#a09d70; }
+  @keyframes dice-toss { from { transform:translateY(-5px) rotate(-8deg); } to { transform:translateY(3px) rotate(8deg); } }
+  @media (prefers-reduced-motion:reduce) { .dice-choice { transition:none; } .dice-cube.rolling { animation:none; } }
   @media (prefers-reduced-motion: reduce) { .wheel-labels { transition:none; } }
   .attendance-view { min-width:0; }
   .attendance-toolbar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:9px; }
@@ -766,12 +794,26 @@
         <div class="win-panel-result"><strong id="win-multiplier"></strong><span>MULTIPLIER</span></div>
       </div>
       <div id="wheel-view" class="wheel-view">
-        <div class="wheel-intro"><div class="wheel-kicker">MULTIPLIER REEL<span class="demo-badge" id="wheel-demo-badge" hidden>DEMO</span></div><div class="wheel-balance" id="wheel-balance">0 PTS</div></div>
+        <div class="wheel-intro"><div class="wheel-kicker" id="wheel-kicker">MULTIPLIER REEL<span class="demo-badge" id="wheel-demo-badge" hidden>DEMO</span></div><div class="wheel-balance" id="wheel-balance">0 PTS</div></div>
         <div class="wheel-warning" id="wheel-warning">FULL BALANCE AT STAKE. 0× LOSES IT.</div>
+        <div class="demo-lab" id="session-demo-lab">
+          <div class="demo-lab-title">SESSION SANDBOX · FAKE POINTS ONLY</div>
+          <select id="session-demo-game" aria-label="Sandbox game"><option value="wheel">Wheel</option><option value="dice">High / Low Dice</option><option value="off">Games off</option></select>
+          <select id="session-demo-outcome" aria-label="Simulated result"><option value="win">Simulate win</option><option value="loss">Simulate loss</option><option value="seven">Simulate seven</option><option value="uncertain">Uncertain request, then retry</option></select>
+          <div class="demo-lab-note">Local renderer simulation only. No Points server, voice, Telegram, or real stake calls.</div>
+        </div>
         <label class="wheel-demo-settings" id="wheel-demo-settings" hidden><input id="wheel-demo-custom-stake" type="checkbox" /> CUSTOM STAKE (DEMO ONLY — NO REAL POINTS)</label>
         <div class="wheel-stake-choice" id="wheel-stake-choice" hidden><label for="wheel-stake-input">Stake</label><input id="wheel-stake-input" type="number" min="0.01" step="0.01" inputmode="decimal" autocomplete="off" /></div>
         <div class="wheel-note" id="wheel-spins-left" aria-live="polite"></div>
+        <div class="dice-choice-row" role="group" aria-label="Choose a dice total">
+          <button class="dice-choice" data-choice="low" aria-pressed="true" type="button"><span>LOW</span><small>2–6 · 2× return</small></button>
+          <button class="dice-choice" data-choice="high" aria-pressed="false" type="button"><span>HIGH</span><small>8–12 · 2× return</small></button>
+        </div>
         <div class="wheel-stage" aria-label="Multiplier reel"><div class="wheel-pointer" aria-hidden="true"></div><div class="wheel-disc" id="wheel-disc"><div class="wheel-labels" id="wheel-labels"></div></div></div>
+        <div class="dice-stage" id="dice-stage" role="img" aria-label="Dice result">
+          <div class="dice-cube" id="dice-one">—</div><div class="dice-cube" id="dice-two">—</div>
+          <div class="dice-sum" id="dice-total">—<small>TOTAL</small></div>
+        </div>
         <div class="wheel-result" id="wheel-result" role="status" aria-live="polite">READY</div>
         <div class="wheel-stats"><div class="wheel-stat"><span id="wheel-stake-label">STAKE</span><strong id="wheel-stake">0 PTS</strong></div><div class="wheel-stat">PAYOUT<strong id="wheel-payout">—</strong></div><div class="wheel-stat">NEW BALANCE<strong id="wheel-new-balance">—</strong></div></div>
         <button class="wheel-spin" id="wheel-spin" type="button" disabled>SPIN</button>
@@ -944,6 +986,8 @@
     }
     let attendanceRequest = 0;
     let wheelData = null;
+    let wheelPolicyPollInFlight = false;
+    let wheelUiEpoch = 0;
     let wheelLoaded = false;
     let wheelSpinInFlight = false;
     let wheelRequestId = null;
@@ -956,6 +1000,11 @@
     let demoWheelState = null;
     let wheelMultipliers = [];
     let wheelOddsToken = '';
+    let wheelRequestGame = 'wheel';
+    let wheelChoice = 'low';
+    let wheelDeferredPolicy = null;
+    let demoUncertainUsed = false;
+    const sessionTestMode = previewMode && new URLSearchParams(location.search).get('test') === '1';
     let wheelReelOffset = 0;
     let wheelReelAnimation = null;
     let wheelReelCycleLength = 48;
@@ -973,6 +1022,9 @@
       displayedWinNotice = win;
       document.getElementById('win-user').textContent = win.username;
       document.getElementById('win-multiplier').textContent = `${win.multiplier}×`;
+      const gameLabel = document.querySelector('.win-panel-eyebrow');
+      const side = win.choice === 'high' ? ' HIGH' : win.choice === 'low' ? ' LOW' : '';
+      gameLabel.textContent = win.game === 'dice' ? `DICE${side} WINNER` : 'MEMBER WINNER';
     }
     function showLatestWinNotice() {
       if (activeDrawer || !pendingWinNotice ||
@@ -1035,7 +1087,7 @@
         const legacy = !pending.oddsToken && Array.isArray(pending.expectedOutcomes);
         const choices = legacy ? pending.expectedOutcomes.map(item => item.multiplier) : pending.multipliers;
         return pending && typeof pending.requestId === 'string' && Number.isFinite(Number(pending.expectedStake))
-          && Array.isArray(choices) && choices.length
+          && Array.isArray(choices) && (pending.game === 'dice' || choices.length)
           && (legacy || typeof pending.oddsToken === 'string')
           ? {
             requestId: pending.requestId,
@@ -1043,12 +1095,14 @@
             expectedBalance: Number(Number(pending.expectedBalance ?? pending.expectedStake).toFixed(2)),
             multipliers: choices.map(Number).filter(Number.isFinite),
             oddsToken: legacy ? '' : pending.oddsToken,
+            game: pending.game === 'dice' ? 'dice' : 'wheel',
+            choice: pending.choice === 'high' ? 'high' : 'low',
             legacy
           }
           : null;
       } catch (_) { return null; }
     }
-    function writePendingWheel(username, requestId, expectedStake, expectedBalance, multipliers, oddsToken) {
+    function writePendingWheel(username, requestId, expectedStake, expectedBalance, multipliers, oddsToken, game, choice) {
       if (previewMode || !username) return;
       try {
         sessionStorage.setItem(wheelPendingKey(username), JSON.stringify({
@@ -1056,7 +1110,9 @@
           expectedStake:Number(expectedStake.toFixed(2)),
           expectedBalance:Number(expectedBalance.toFixed(2)),
           multipliers: multipliers.map(Number).filter(Number.isFinite),
-          oddsToken: String(oddsToken || '')
+          oddsToken: String(oddsToken || ''),
+          game: game === 'dice' ? 'dice' : 'wheel',
+          choice: choice === 'high' ? 'high' : 'low'
         }));
       } catch (_) {}
     }
@@ -1385,21 +1441,31 @@
     function syncWheelStakeInput() {
       const member = previewMode ? 'preview' : String(sessionUsername || '').toLowerCase();
       const input = document.getElementById('wheel-stake-input');
-      input.value = nextWheelStakeValue(input.value, wheelData.balance,
-        wheelStakeMember === member && !!wheelData.allowCustomStake);
+      input.value = wheelRequestId && Number.isFinite(wheelExpectedStake) && wheelExpectedStake > 0
+        ? wheelExpectedStake.toFixed(2)
+        : nextWheelStakeValue(input.value, wheelData.balance,
+          wheelStakeMember === member && !!wheelData.allowCustomStake);
       wheelStakeMember = member;
     }
     function updateWheelControls() {
       if (!wheelData) return;
+      const game = wheelData.game === 'dice' ? 'dice' : 'wheel';
+      const gameEnabled = wheelData.enabled !== false && !wheelData.unavailable;
+      document.getElementById('wheel-view').dataset.game = game;
+      document.getElementById('wheel-kicker').childNodes[0].textContent = game === 'dice' ? 'HIGH / LOW DICE' : 'MULTIPLIER REEL';
+      document.querySelectorAll('.dice-choice').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.choice === wheelChoice));
+        button.disabled = wheelSpinInFlight || !!wheelRequestId || !wheelLoaded || !gameEnabled;
+      });
       const input = document.getElementById('wheel-stake-input');
       const custom = !!wheelData.allowCustomStake;
       const remaining = Number(wheelData.spinsRemaining);
       const exhausted = Number.isInteger(remaining) && remaining <= 0;
       if (previewMode) document.getElementById('wheel-demo-custom-stake').disabled = wheelSpinInFlight || exhausted;
       document.getElementById('wheel-stake-choice').hidden = !custom;
-      document.getElementById('wheel-warning').textContent = custom
-        ? '0× LOSES YOUR STAKE.'
-        : 'FULL BALANCE AT STAKE. 0× LOSES IT.';
+      document.getElementById('wheel-warning').textContent = game === 'dice'
+        ? `2–6 LOW · 8–12 HIGH · 7 ALWAYS LOSES · WIN RETURNS 2× ${custom ? 'STAKE.' : 'FULL BALANCE.'}`
+        : custom ? '0× LOSES YOUR STAKE.' : 'FULL BALANCE AT STAKE. 0× LOSES IT.';
       document.getElementById('wheel-spins-left').textContent = Number.isInteger(remaining)
         ? `${Math.max(0, remaining)} SPINS LEFT TODAY`
         : '';
@@ -1411,8 +1477,8 @@
       const button = document.getElementById('wheel-spin');
       if (!wheelSpinInFlight) {
         button.disabled = !wheelLoaded || (!wheelRequestId &&
-          (wheelData.enabled === false || exhausted || selectedWheelStake() === null));
-        button.textContent = wheelRequestId ? 'RETRY SPIN' : exhausted ? 'DAILY LIMIT REACHED' : 'SPIN';
+          (!gameEnabled || exhausted || selectedWheelStake() === null));
+        button.textContent = wheelRequestId ? 'RETRY SAME REQUEST' : !gameEnabled ? 'GAMES OFFLINE' : exhausted ? 'DAILY LIMIT REACHED' : game === 'dice' ? `ROLL ${wheelChoice.toUpperCase()}` : 'SPIN';
       }
     }
     function renderWheel(resetStake = false) {
@@ -1448,7 +1514,7 @@
     }
     function beginReelRoll(multipliers) {
       const labels = document.getElementById('wheel-labels');
-      if (!labels.animate) return;
+      if (!labels.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
       if (wheelReelAnimation) wheelReelAnimation.cancel();
       const cycle = wheelReelCycleLength * 82;
       wheelReelAnimation = labels.animate([
@@ -1466,7 +1532,17 @@
       labels.style.transform = `translateX(${offset}px)`;
       return offset;
     }
+    function applyDeferredWheelPolicy(spin) {
+      if (!wheelDeferredPolicy || !wheelData) return false;
+      wheelData = { ...wheelData, ...wheelDeferredPolicy, balance:Number(spin.balance) };
+      if (Number.isInteger(spin.spinsRemaining)) wheelData.spinsRemaining = spin.spinsRemaining;
+      wheelDeferredPolicy = null;
+      renderWheel(false);
+      setPoints(spin.balance, true);
+      return true;
+    }
     async function loadWheel() {
+      wheelUiEpoch++;
       if (wheelSpinInFlight) return;
       const loadSequence = ++wheelLoadSequence;
       const loadUsername = sessionUsername;
@@ -1477,20 +1553,25 @@
       error.classList.remove('active');
       const pending = readPendingWheel(sessionUsername);
       if (pending) {
+        wheelDeferredPolicy = null;
         wheelRequestId = pending.requestId;
         wheelExpectedStake = pending.expectedStake;
         wheelExpectedBalance = pending.expectedBalance;
         wheelMultipliers = pending.multipliers;
         wheelOddsToken = pending.oddsToken;
+        wheelRequestGame = pending.game;
+        wheelChoice = pending.choice;
         wheelRequestUsername = sessionUsername;
         document.getElementById('wheel-result').textContent = 'RESULT NOT CONFIRMED';
         document.getElementById('wheel-note').textContent = 'Result not confirmed. Retry the same request.';
       } else {
+        wheelDeferredPolicy = null;
         wheelRequestId = null;
         wheelExpectedStake = null;
         wheelExpectedBalance = null;
         wheelMultipliers = [];
         wheelOddsToken = '';
+        wheelRequestGame = 'wheel';
         wheelRequestUsername = '';
         document.getElementById('wheel-note').textContent = '';
       }
@@ -1499,8 +1580,13 @@
       if (!pending) document.getElementById('wheel-result').textContent = 'LOADING BALANCE...';
       if (previewMode) {
         wheelData = demoWheelState ? { ...demoWheelState } : { enabled:true, balance:86.5, multipliers:[0,1.5,1.8,2,5],
-          oddsToken:'preview-demo-token', maxSpinsPerDay:1, spinsRemaining:1,
+          game:'wheel', oddsToken:'preview-demo-token', maxSpinsPerDay:100, spinsRemaining:100,
           allowCustomStake:document.getElementById('wheel-demo-custom-stake').checked };
+        if (sessionTestMode) {
+          const selectedGame = document.getElementById('session-demo-game').value;
+          wheelData.game = selectedGame === 'off' ? 'wheel' : selectedGame;
+          wheelData.enabled = selectedGame !== 'off';
+        }
         wheelData.allowCustomStake = document.getElementById('wheel-demo-custom-stake').checked;
         document.getElementById('wheel-demo-badge').hidden = false;
         wheelLoaded = true;
@@ -1515,10 +1601,13 @@
         const response = await fetch('/api/session/wheel');
         const data = await response.json().catch(() => ({}));
         if (!isCurrentWheelView()) return;
-        if (!response.ok || !data.success) throw new Error(data.error || 'Wheel service is unavailable.');
+        if (!response.ok || !data.success) throw new Error(data.error || 'Betting game service is unavailable.');
           wheelData = data;
-          if (!Array.isArray(data.multipliers)) throw new Error('Multiplier choices are unavailable.');
+          if (data.game !== 'dice' && !Array.isArray(data.multipliers)) throw new Error('Multiplier choices are unavailable.');
           if (pending) {
+            wheelDeferredPolicy = { ...data };
+            if (pending.expectedStake < pending.expectedBalance) wheelData.allowCustomStake = true;
+            wheelData.game = pending.game;
             wheelData.oddsToken = pending.oddsToken;
             wheelData.multipliers = pending.multipliers;
              // A retry has not revealed its result yet. Do not show the
@@ -1528,10 +1617,10 @@
           document.getElementById('wheel-demo-badge').hidden = true;
         wheelLoaded = true;
         renderWheel(true);
-        setPoints(data.balance);
+        setPoints(pending ? pending.expectedBalance : data.balance);
         if (data.enabled === false) {
           if (!pending) {
-            document.getElementById('wheel-result').textContent = 'WHEEL CURRENTLY OFFLINE';
+            document.getElementById('wheel-result').textContent = 'GAMES CURRENTLY OFFLINE';
           }
         } else if (!Number.isFinite(Number(data.balance))) {
           if (!pending) {
@@ -1576,7 +1665,11 @@
     }
     async function spinWheel() {
       const recovering = !!wheelRequestId;
-      if (wheelSpinInFlight || !wheelLoaded || !wheelData || (wheelData.enabled === false && !recovering)) return;
+      if (wheelSpinInFlight || !wheelLoaded || !wheelData ||
+          (!recovering && (wheelData.enabled === false || wheelData.unavailable))) return;
+      wheelUiEpoch++;
+      const requestGame = recovering ? wheelRequestGame : (wheelData.game === 'dice' ? 'dice' : 'wheel');
+      const requestChoice = recovering ? wheelChoice : wheelChoice;
       const stake = recovering ? wheelExpectedStake : selectedWheelStake();
       const remaining = Number(wheelData.spinsRemaining);
       if (!recovering && (Number.isInteger(remaining) && remaining <= 0 || stake === null || stake <= 0)) {
@@ -1604,22 +1697,45 @@
       try {
         wheelRequestId = wheelRequestId || createWheelRequestId();
         wheelRequestUsername = requestUsername;
-        if (!recovering) writePendingWheel(requestUsername, wheelRequestId, expectedStake, expectedBalance, wheelData.multipliers, wheelData.oddsToken);
-        notifyBettingVoice({ phase: 'begin', username: requestUsername, requestId: wheelRequestId });
+        if (!recovering) {
+          wheelRequestGame = requestGame;
+          writePendingWheel(requestUsername, wheelRequestId, expectedStake, expectedBalance, wheelData.multipliers || [], wheelData.oddsToken, requestGame, requestChoice);
+        }
+        notifyBettingVoice({ phase: 'begin', username: requestUsername, requestId: wheelRequestId, game:requestGame, ...(requestGame === 'dice' ? { choice:requestChoice } : {}) });
         document.getElementById('wheel-result').textContent = 'SPINNING...';
-        beginReelRoll(wheelData.multipliers);
+        if (requestGame === 'wheel') beginReelRoll(wheelData.multipliers);
         let spin;
         if (previewMode) {
-          await new Promise(resolve => setTimeout(resolve, 400));
-          const demoParameter = new URLSearchParams(location.search).get('result');
-          const demoChoice = demoParameter === null ? 2 : Number(demoParameter);
-          const demoMultiplier = wheelData.multipliers.includes(demoChoice) ? demoChoice : 2;
-          spin = { stake: expectedStake, multiplier: demoMultiplier, payout: expectedStake * demoMultiplier,
-            balance: expectedBalance + expectedStake * (demoMultiplier - 1), net: expectedStake * (demoMultiplier - 1),
-            id:'preview-spin', createdAt:new Date().toISOString() };
+          if (sessionTestMode && document.getElementById('session-demo-outcome').value === 'uncertain' && !demoUncertainUsed) {
+            demoUncertainUsed = true;
+            throw new Error('Simulated uncertain response. The same fake request is ready to retry.');
+          }
+          await new Promise(resolve => setTimeout(resolve, 360));
+          const demoOutcome = sessionTestMode ? document.getElementById('session-demo-outcome').value : 'win';
+          if (requestGame === 'dice') {
+            let dice;
+            if (demoOutcome === 'seven') dice = [3,4];
+            else if (demoOutcome === 'loss') dice = requestChoice === 'high' ? [2,3] : [4,5];
+            else dice = requestChoice === 'high' ? [4,5] : [2,3];
+            const total = dice[0] + dice[1];
+            const won = total !== 7 && (requestChoice === 'high' ? total >= 8 : total <= 6);
+            const multiplier = won ? 2 : 0;
+            spin = { game:'dice', choice:requestChoice, dice, total, result:total === 7 ? 'seven' : won ? requestChoice : requestChoice === 'high' ? 'low' : 'high',
+              multiplier, stake:expectedStake, payout:expectedStake * multiplier,
+              balance:expectedBalance + expectedStake * (multiplier - 1), net:expectedStake * (multiplier - 1), id:'preview-dice', createdAt:new Date().toISOString() };
+          } else {
+            const demoParameter = new URLSearchParams(location.search).get('result');
+            const demoMultiplier = sessionTestMode && demoOutcome !== 'win' ? 0 :
+              (demoParameter === null ? 2 : Number(demoParameter));
+            const safeMultiplier = wheelData.multipliers.includes(demoMultiplier) ? demoMultiplier : (wheelData.multipliers.includes(2) ? 2 : wheelData.multipliers[0]);
+            spin = { game:'wheel', stake:expectedStake, multiplier:safeMultiplier, payout:expectedStake * safeMultiplier,
+              balance:expectedBalance + expectedStake * (safeMultiplier - 1), net:expectedStake * (safeMultiplier - 1),
+              id:'preview-spin', createdAt:new Date().toISOString() };
+          }
         } else {
           const response = await fetch('/api/session/wheel/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
-            requestId:wheelRequestId, expectedStake, expectedBalance,
+            requestId:wheelRequestId, expectedStake, expectedBalance, game:requestGame,
+            ...(requestGame === 'dice' ? { choice:requestChoice } : {}),
             ...(recovering && !wheelOddsToken ? { legacyReplay:true } : { oddsToken:wheelOddsToken || wheelData.oddsToken })
           }) });
           const data = await response.json().catch(() => ({}));
@@ -1628,7 +1744,7 @@
             known.code = 'KNOWN_NOT_SETTLED';
             throw known;
           }
-          if (response.status === 409 && /game settings changed/i.test(String(data.error || ''))) {
+          if (response.status === 409 && /game settings changed|active game changed/i.test(String(data.error || ''))) {
             const known = new Error('Game settings changed');
             known.code = 'KNOWN_NOT_SETTLED';
             throw known;
@@ -1656,6 +1772,53 @@
           wheelExpectedStake = null; wheelExpectedBalance = null;
           return;
         }
+        if (requestGame === 'dice') {
+          const dice = Array.isArray(spin.dice) ? spin.dice.map(Number) : [];
+          const total = Number(spin.total);
+          const multiplier = Number(spin.multiplier);
+          const result = total < 7 ? 'low' : total > 7 ? 'high' : 'seven';
+          if (dice.length !== 2 || dice.some(value => !Number.isInteger(value) || value < 1 || value > 6) ||
+              dice[0] + dice[1] !== total || ![0,2].includes(multiplier) ||
+              spin.game !== 'dice' || spin.choice !== requestChoice || spin.result !== result ||
+              (multiplier === 2) !== (result === requestChoice)) {
+            throw new Error('Dice result was incomplete. Retry the same request; no new stake will be taken.');
+          }
+          document.getElementById('dice-one').textContent = '·';
+          document.getElementById('dice-two').textContent = '·';
+          document.getElementById('dice-total').innerHTML = '…<small>ROLLING</small>';
+          document.querySelectorAll('.dice-cube').forEach(cube => cube.classList.add('rolling'));
+          notifyBettingVoice({ phase:'prepare', username:requestUsername, requestId:wheelRequestId, spinId:spin.id, multiplier, net:spin.net, balance:spin.balance });
+          const settleDice = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 760;
+          setTimeout(() => {
+            document.querySelectorAll('.dice-cube').forEach(cube => cube.classList.remove('rolling'));
+            document.getElementById('dice-one').textContent = String(dice[0]);
+            document.getElementById('dice-two').textContent = String(dice[1]);
+            document.getElementById('dice-total').innerHTML = `${total}<small>TOTAL</small>`;
+            const won = multiplier === 2;
+            const resultDisplay = document.getElementById('wheel-result');
+            resultDisplay.textContent = total === 7 ? 'SEVEN · NO RETURN' : won ? `${requestChoice.toUpperCase()} HIT · 2× RETURN` : `${requestChoice.toUpperCase()} MISSED`;
+            resultDisplay.classList.toggle('is-loss', !won);
+            document.getElementById('wheel-stake').textContent = wheelMoney(spin.stake);
+            document.getElementById('wheel-payout').textContent = wheelMoney(spin.payout);
+            document.getElementById('wheel-new-balance').textContent = wheelMoney(spin.balance);
+            document.getElementById('wheel-balance').textContent = wheelMoney(spin.balance);
+            document.getElementById('wheel-note').textContent = '';
+            clearPendingWheel(requestUsername, wheelRequestId);
+            wheelData.balance = Number(spin.balance);
+            wheelSettledStake = Number(spin.stake);
+            wheelData.spinsRemaining = Number.isInteger(spin.spinsRemaining) ? spin.spinsRemaining : Math.max(0, Number(wheelData.spinsRemaining) - 1);
+            applyDeferredWheelPolicy(spin);
+            if (previewMode) demoWheelState = { ...wheelData };
+            setPoints(spin.balance, true);
+            notifyBettingVoice({ phase:'revealed', username:requestUsername, requestId:wheelRequestId, spinId:spin.id, multiplier, net:spin.net, balance:spin.balance, game:'dice', choice:requestChoice, total });
+            releaseDeferredWinNotices(requestUsername);
+            wheelSpinInFlight = false; wheelRequestId = null; wheelRequestUsername = '';
+            wheelExpectedStake = null; wheelExpectedBalance = null; wheelMultipliers = []; wheelOddsToken = ''; wheelRequestGame = 'wheel';
+            if (wheelData.allowCustomStake) document.getElementById('wheel-stake-input').value = nextWheelStakeValue(Number(spin.stake).toFixed(2), wheelData.balance, true);
+            updateWheelControls(); resizeDrawerToContent();
+          }, settleDice);
+          return;
+        }
         const result = Number(spin.multiplier);
         if (!Number.isFinite(result)) throw new Error('Server returned an unknown multiplier result.');
         const visible = Array.isArray(wheelData.multipliers) && wheelData.multipliers.length ? wheelData.multipliers : [0,1.5,1.8,2,5];
@@ -1663,7 +1826,7 @@
         if (resultChoice < 0) throw new Error('Server returned an unknown multiplier result.');
         notifyBettingVoice({
           phase: 'prepare', username: requestUsername, requestId: wheelRequestId,
-          spinId: spin.id, multiplier: spin.multiplier, net: spin.net, balance: spin.balance
+          spinId: spin.id, multiplier: spin.multiplier, net: spin.net, balance: spin.balance, game:'wheel'
         });
         const tileWidth = 82;
         const labels = document.getElementById('wheel-labels');
@@ -1676,7 +1839,7 @@
         targetTile.className = result === 0 ? 'wheel-label is-loss' : 'wheel-label';
         targetTile.textContent = result === 0 ? 'LOSE 0×' : `${result}×`;
         wheelReelOffset = -(targetIndex * tileWidth);
-        const settle = 4200;
+        const settle = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 4200;
         document.getElementById('wheel-result').textContent = 'REVEALING...';
         button.textContent = 'SPINNING...';
         if (labels.animate) {
@@ -1717,16 +1880,17 @@
           wheelSettledStake = Number(spin.stake);
           wheelData.spinsRemaining = Number.isInteger(spin.spinsRemaining) ? spin.spinsRemaining
             : Math.max(0, Number(wheelData.spinsRemaining) - 1);
+          applyDeferredWheelPolicy(spin);
           if (previewMode) demoWheelState = { ...wheelData };
           setPoints(spin.balance, true);
           notifyBettingVoice({
             phase: 'revealed', username: requestUsername, requestId: wheelRequestId,
             spinId: spin.id, multiplier: Number(spin.multiplier), net: Number(spin.net),
-            balance: Number(spin.balance)
+            balance: Number(spin.balance), game:'wheel'
           });
           releaseDeferredWinNotices(requestUsername);
           wheelSpinInFlight = false; wheelRequestId = null; wheelRequestUsername = '';
-          wheelExpectedStake = null; wheelExpectedBalance = null; wheelMultipliers = []; wheelOddsToken = '';
+          wheelExpectedStake = null; wheelExpectedBalance = null; wheelMultipliers = []; wheelOddsToken = ''; wheelRequestGame = 'wheel';
           if (wheelData.allowCustomStake) {
             document.getElementById('wheel-stake-input').value = nextWheelStakeValue(
               Number(spin.stake).toFixed(2), wheelData.balance, true);
@@ -1753,7 +1917,7 @@
           return;
         }
         wheelSpinInFlight = false; button.disabled = false; button.textContent = 'RETRY SAME REQUEST';
-        error.textContent = 'Result not confirmed. Retry the same request';
+        error.textContent = previewMode && sessionTestMode ? `${e.message || 'Test result not confirmed.'} Retry the same fake request.` : 'Result not confirmed. Retry the same request';
         error.classList.add('active');
         document.getElementById('wheel-result').textContent = 'RESULT NOT CONFIRMED';
         document.getElementById('wheel-note').textContent = 'Result not confirmed. Retry the same request.';
@@ -2378,6 +2542,77 @@
     document.getElementById('attendance-btn').addEventListener('click', () => openDrawer('attendance'));
     document.getElementById('games-btn').addEventListener('click', () => openDrawer('games'));
     document.getElementById('wheel-spin').addEventListener('click', spinWheel);
+    document.querySelectorAll('.dice-choice').forEach(button => button.addEventListener('click', () => {
+      if (wheelSpinInFlight || wheelRequestId || !wheelLoaded) return;
+      wheelChoice = button.dataset.choice === 'high' ? 'high' : 'low';
+      document.getElementById('wheel-result').textContent = wheelData && wheelData.game === 'dice' ? `READY · ${wheelChoice.toUpperCase()}` : 'READY';
+      updateWheelControls();
+    }));
+    if (sessionTestMode) {
+      const lab = document.getElementById('session-demo-lab');
+      lab.classList.add('visible');
+      document.getElementById('wheel-demo-settings').hidden = false;
+      document.getElementById('session-demo-game').addEventListener('change', () => {
+        demoWheelState = null;
+        demoUncertainUsed = false;
+        loadWheel();
+      });
+      document.getElementById('session-demo-outcome').addEventListener('change', () => { demoUncertainUsed = false; });
+    }
+    if (!previewMode) {
+      setInterval(async () => {
+        if (wheelPolicyPollInFlight || activeDrawer !== 'games' || wheelSpinInFlight || !wheelLoaded || !wheelData) return;
+        const epoch = wheelUiEpoch;
+        const username = sessionUsername;
+        wheelPolicyPollInFlight = true;
+        try {
+          const response = await fetch('/api/session/wheel', { signal: AbortSignal.timeout(12000) });
+          const data = await response.json().catch(() => ({}));
+          if (activeDrawer !== 'games' || wheelSpinInFlight || epoch !== wheelUiEpoch || username !== sessionUsername) return;
+          if (!response.ok || !data.success) {
+            wheelData.unavailable = true;
+            updateWheelControls();
+            const error = document.getElementById('wheel-error');
+            error.textContent = data.error || 'Could not refresh shared game settings. Close and reopen Betting Games to retry.';
+            error.classList.add('active');
+            return;
+          }
+          const wasUnavailable = wheelData.unavailable;
+          wheelData.unavailable = false;
+          document.getElementById('wheel-error').classList.remove('active');
+          if (wheelRequestId) {
+            // Poll policy state while an uncertain request is waiting. Keep its
+            // original game, choice, and expected balance intact for replay.
+            wheelData.enabled = data.enabled !== false;
+            updateWheelControls();
+            return;
+          }
+          if (wasUnavailable || data.game !== wheelData.game || data.enabled !== wheelData.enabled ||
+              data.oddsToken !== wheelData.oddsToken || data.balance !== wheelData.balance ||
+              data.spinsRemaining !== wheelData.spinsRemaining) {
+            const stakePolicyChanged = data.allowCustomStake !== wheelData.allowCustomStake;
+            wheelData = { ...wheelData, ...data };
+            if (stakePolicyChanged) {
+              wheelSettledStake = null;
+              syncWheelStakeInput();
+            }
+            renderWheel(false);
+            setPoints(data.balance);
+            document.getElementById('wheel-result').textContent = data.enabled === false ? 'GAMES CURRENTLY OFFLINE' : data.game === 'dice' ? 'HIGH / LOW READY' : 'READY';
+            resizeDrawerToContent();
+          }
+        } catch (_) {
+          if (activeDrawer !== 'games' || epoch !== wheelUiEpoch || username !== sessionUsername) return;
+          if (wheelData) wheelData.unavailable = true;
+          updateWheelControls();
+          const error = document.getElementById('wheel-error');
+          error.textContent = 'Shared game settings could not be reached. Your balance and any request stay unchanged; close and reopen to retry.';
+          error.classList.add('active');
+        } finally {
+          wheelPolicyPollInFlight = false;
+        }
+      }, 2000);
+    }
     if (previewMode) {
       document.getElementById('wheel-demo-settings').hidden = false;
       document.getElementById('wheel-demo-custom-stake').addEventListener('change', event => {

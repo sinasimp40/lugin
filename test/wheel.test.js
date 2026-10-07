@@ -114,12 +114,12 @@ test('wheel configuration rejects invalid odds, duplicates and non-cent precisio
     { multiplier: 1, weight: 20 }, { multiplier: 2, weight: 15 }, { multiplier: 5, weight: 10 }
   ] };
   assert.deepEqual(currentWheel(legacy), {
-    enabled: false, maxSpinsPerDay: 1, allowCustomStake: false, outcomes: defaultWheel().outcomes
+    ...defaultWheel(), enabled: false
   });
   const customized = { ...legacy, outcomes: legacy.outcomes.map((item, index) =>
     ({ ...item, weight: index === 0 ? 30 : index === 1 ? 25 : item.weight })) };
   assert.deepEqual(currentWheel(customized), {
-    ...customized, maxSpinsPerDay: 1, allowCustomStake: false
+    ...defaultWheel(), ...customized
   }, 'customized rates must not be replaced');
   assert.equal(parseWheel({ enabled: true, outcomes: [{ multiplier: 0, weight: 40 }, { multiplier: 2, weight: 50 }] }), null);
   assert.equal(parseWheel({ enabled: true, outcomes: [{ multiplier: 2, weight: 40 }, { multiplier: 2, weight: 60 }] }), null);
@@ -192,6 +192,7 @@ test('the member session keeps a chosen stake after wins and caps it when balanc
   const input = { value:'' };
   const editor = new Function('document', `
     let previewMode = false, sessionUsername = 'mem-first', wheelStakeMember = null;
+    let wheelRequestId = null, wheelExpectedStake = null;
     let wheelData = { balance:15, allowCustomStake:true };
     ${page.slice(start, end)}
     return {
@@ -344,7 +345,7 @@ test('Auto Shutdown offers editable defaults offline but keeps drafts off Denfi 
     assert.deepEqual(initial.data.wheel.outcomes, defaultWheel().outcomes);
     assert.equal(initial.data.connected, false);
     assert.equal(initial.data.draft, false);
-    const edited = { enabled: true, maxSpinsPerDay: 2, allowCustomStake: true, outcomes: [
+    const edited = { ...defaultWheel(), enabled: true, maxSpinsPerDay: 2, allowCustomStake: true, outcomes: [
       { multiplier: 0, weight: 45 }, { multiplier: 1.5, weight: 10 },
       { multiplier: 1.8, weight: 20 }, { multiplier: 2, weight: 15 }, { multiplier: 5, weight: 10 }
     ] };

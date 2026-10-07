@@ -22,10 +22,10 @@ test('Points exposes only recent, revealed, positive wheel wins without financia
         multiplier:2, timestamp:now - 7000, stake:10, balance:20 }
     ] }));
     assert.deepEqual(logs.getRecentWheelWins(now - 30000, now), [{
-      id:'win', username:'mem-winner', station:'PC 04', multiplier:2, createdAt:now - 7000
+      id:'win', username:'mem-winner', station:'PC 04', multiplier:2, game:'wheel', createdAt:now - 7000
     }]);
     assert.deepEqual(logs.getRecentWheelWins(0, now), [{
-      id:'win', username:'mem-winner', station:'PC 04', multiplier:2, createdAt:now - 7000
+      id:'win', username:'mem-winner', station:'PC 04', multiplier:2, game:'wheel', createdAt:now - 7000
     }]);
     assert.deepEqual(logs.getRecentWheelWins(now - 5000, now), []);
   } finally {
@@ -67,7 +67,7 @@ test('session popup replaces older wins immediately and holds the spinner until 
         multiplier:document.getElementById('win-multiplier').textContent
       })
     };
-  `)({ getElementById:id => nodes[id] }, () => pending ? {} : null);
+  `)({ getElementById:id => nodes[id], querySelector:() => ({ textContent: '' }) }, () => pending ? {} : null);
   state.receiveWinNotice({ id:'early', username:'mem-other', multiplier:2, createdAt:100 });
   assert.equal(state.current().drawer, null, 'events received before the first session status are held');
   state.ready();

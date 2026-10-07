@@ -2,6 +2,8 @@
   'use strict';
   const params = new URLSearchParams(location.search);
   const demo = params.get('preview') === '1' && params.get('withdraw') === '1';
+  // Other preview pages must not initialize real withdrawal polling/actions.
+  if (params.get('preview') === '1' && !demo) return;
   const demoResult = ['success', 'failed', 'unconfirmed'].includes(params.get('result')) ? params.get('result') : 'success';
   const demoDelay = Math.max(250, Math.min(10000, Number(params.get('delay')) || 1100));
   const $ = (id) => document.getElementById(id);
