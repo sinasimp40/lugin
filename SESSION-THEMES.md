@@ -17,6 +17,6 @@ Concurrent admin changes are checked by revision. Reload if another operator sav
 
 ## What changes
 
-Halloween uses the approved transparent ghost artwork, slow 18-second back-and-forth patrol, gentle bob, teal glass styling, and existing logo effects. Reduced-motion preferences disable the ghost animation. Default disables the entire Halloween stylesheet, restoring the original appearance. Themes do not reset session time, member points, bets, attendance, withdrawal state, or open drawers.
+Halloween uses the approved transparent ghost artwork, slow 18-second back-and-forth patrol, gentle bob, teal glass styling, and existing logo effects. The same shared selection also themes the lock screen, login form, registration form, and curfew-hours screen. Reduced-motion preferences disable ghost motion. Default disables the Halloween stylesheets, restoring the original appearance and configured colors. Theme changes do not replace forms, clear typed input, alter curfew schedules, change uploaded images, or reset session time, shutdown deadlines, member points, bets, attendance, withdrawal state, or open drawers.
 
 Artwork is bundled under `public/themes` for offline operation; source credits are included there. Check artwork licensing before redistributing commercial builds. Mockup generators and standalone previews are not part of the application.

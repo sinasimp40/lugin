@@ -1537,6 +1537,8 @@
     @media (max-width:850px) { .admin-layout { grid-template-columns:1fr; } .admin-nav { display:flex; overflow:auto; gap:5px; padding:10px 14px; border-right:0; border-bottom:1px solid #292d31; } .admin-nav-label { display:none; } .admin-tab { white-space:nowrap; width:auto; } .admin-workspace { padding:18px; } }
     @media (max-width:620px) { #admin-modal .admin-box { width:96vw; height:94vh; } .admin-shell-head { padding:20px 18px 16px; } .admin-brand-title { font-size:14px; } .admin-grid,.admin-media-grid { grid-template-columns:1fr; } .admin-footer { padding:13px 18px; } #admin-panel-msg { margin-left:18px; margin-right:18px; } }
   </style>
+  <link id="session-halloween-theme" rel="stylesheet" href="/themes/halloween-lockscreen.css" media="not all">
+  <script src="/session-theme.js"></script>
 </head>
 <body>
   <div id="bg-layer"></div>
@@ -2307,6 +2309,7 @@
 
     function applySettings(s) {
       appSettings = s;
+      if (window.DenfiSessionTheme) window.DenfiSessionTheme.apply(s.sessionTheme);
       applyThemeColors(s.loginColor, s.registerColor);
       const nameEl = document.getElementById('computer-name-el');
       if (s.computerName) {

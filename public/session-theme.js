@@ -1,5 +1,7 @@
 (() => {
   'use strict';
+  // Shared by the session overlay and lock-screen renderer. Each page supplies
+  // its own theme stylesheet; toggling never replaces forms or session state.
   const link = document.getElementById('session-halloween-theme');
   if (!link) return;
   let wsThemeVersion = 0;
