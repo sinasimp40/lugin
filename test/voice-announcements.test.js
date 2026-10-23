@@ -152,6 +152,19 @@ test('public wins are spoken on every PC, including locked kiosks', async () => 
   }
 });
 
+test('a burst of more than 24 public wins remains queued and is spoken in order', async () => {
+  const h = harness();
+  active(h.coordinator);
+  for (let i = 0; i < 40; i++) {
+    assert.equal(h.coordinator.publicWin(win(`burst-${i}`, `mem-winner-${i}`)), true);
+  }
+  await idle(h.coordinator);
+  assert.equal(h.generated.length, 40);
+  assert.equal(h.played.length, 40);
+  assert.match(h.generated[0], /winner 0, you won/);
+  assert.match(h.generated.at(-1), /winner 39, you won/);
+});
+
 test('replay history is ignored while live public wins are accepted', async () => {
   const h = harness();
   assert.equal(h.coordinator.publicWin(win('history-win'), { replay: true }), false);

@@ -61,7 +61,7 @@ function formatAnnouncement(event) {
 // A single instance per PC owns event dedupe, reveal ordering, and a serial audio queue.
 // At-most-once is deliberate: do not replay partially played speech after an audio failure.
 class KioskVoiceCoordinator {
-  constructor({ generate, play, prepare, announce, interrupt, onFinished, seenFile, now = Date.now, log = console.log, maxQueue = 24 }) {
+  constructor({ generate, play, prepare, announce, interrupt, onFinished, seenFile, now = Date.now, log = console.log, maxQueue = 128 }) {
     this.generate = generate;
     this.play = play;
     this.prepare = prepare;
@@ -168,13 +168,13 @@ class KioskVoiceCoordinator {
         !Number.isFinite(Number(win.multiplier))) return false;
     const event = {
       id: `win:${win.id}`, spinId: win.id, type: 'win', username: win.username,
-      multiplier: Number(win.multiplier), expiresAt: this.now() + 90000
+      multiplier: Number(win.multiplier), expiresAt: this.now() + 300000
     };
     if (this.seen.has(event.id) || this.heldWins.has(win.id)) return false;
     const own = identity(win.username) === this.activeUsername;
     if (own && (!this.rendererStateKnown ||
         this.pendingSpin && !this.revealedSpins.has(win.id))) {
-      if (this.heldWins.size >= 24) this.heldWins.delete(this.heldWins.keys().next().value);
+      if (this.heldWins.size >= 128) this.heldWins.delete(this.heldWins.keys().next().value);
       this.heldWins.set(win.id, event);
       this.prepareSafely(event);
       return true;

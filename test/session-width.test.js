@@ -48,6 +48,23 @@ test('session width includes withdrawal button, full username and PC label', () 
   assert.ok(widths.at(-1) <= 900);
 });
 
+test('username text is measured from its full content rather than the clipped flex box', () => {
+  const start = page.indexOf('    function measureIntrinsicWidth(element)');
+  const end = page.indexOf('    function resizeOverlayToContent()', start);
+  assert.ok(start >= 0 && end > start);
+  const text = 'mem-r'.padEnd(84, 'x');
+  const user = { id:'username', textContent:text };
+  const canvas = { getContext:() => ({
+    font:'',
+    measureText:value => ({ width:value.length * 7 })
+  }) };
+  const measure = new Function('document', 'getComputedStyle', `
+    ${page.slice(start, end)}
+    return measureIntrinsicWidth;
+  `)({ createElement:() => canvas }, () => ({ font:'8px monospace', letterSpacing:'0.5px' }));
+  assert.equal(measure(user), Math.ceil(text.length * 7 + (text.length - 1) * 0.5 + 2));
+});
+
 test('open drawers keep stable width; closing allows the new username width and repeated checks do not resize', () => {
   const { nodes, widths, view } = harness();
   view.resizeOverlayToContent();

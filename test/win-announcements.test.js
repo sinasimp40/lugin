@@ -33,23 +33,27 @@ test('Points exposes only recent, revealed, positive wheel wins without financia
   }
 });
 
-test('session popup replaces older wins immediately and holds the spinner until reveal', () => {
+test('session popup retains multiple recent winners and holds the spinner until reveal', () => {
   const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'session.html'), 'utf8');
-  const start = page.indexOf('    const seenWinNoticeIds = new Set();');
+  const start = page.indexOf('    const MAX_RECENT_WIN_NOTICES =');
   const end = page.indexOf('    function wheelPendingKey(', start);
   assert.ok(start >= 0 && end > start);
-  const winner = { textContent:'' };
-  const multiplier = { textContent:'' };
-  const nodes = { 'win-user':winner, 'win-multiplier':multiplier };
+  function makeNode(id = '') {
+    return {
+      id, className:'', textContent:'', children:[],
+      replaceChildren() { this.children = []; },
+      appendChild(child) { this.children.push(child); return child; }
+    };
+  }
+  const list = makeNode('wins-view');
   let pending = false;
-  const state = new Function('document', 'readPendingWheel', `
+  const state = new Function('document', 'readPendingWheel', 'resizeDrawerToContent', `
     let sessionUsername = 'mem-current', timeLeft = 100, wheelRequestId = 'spin-one';
     let activeDrawer = null;
     function openDrawer(view) { activeDrawer = view; }
     function closeDrawer() {
       if (activeDrawer === 'wins') {
-        displayedWinNotice = null;
-        pendingWinNotice = null;
+        pendingWinNotices.clear();
       }
       activeDrawer = null;
       showLatestWinNotice();
@@ -63,16 +67,24 @@ test('session popup replaces older wins immediately and holds the spinner until 
       setDrawer:view => { activeDrawer = view; },
       current:() => ({
         drawer:activeDrawer,
-        winner:document.getElementById('win-user').textContent,
-        multiplier:document.getElementById('win-multiplier').textContent
+        winners:list.children.map(row => ({
+          username:row.children[0].textContent,
+          detail:row.children[1].textContent,
+          multiplier:row.children[2].textContent
+        }))
       })
     };
-  `)({ getElementById:id => nodes[id], querySelector:() => ({ textContent: '' }) }, () => pending ? {} : null);
+  `)({
+    getElementById:id => id === 'wins-view' ? list : makeNode(id),
+    createElement:() => makeNode()
+  }, () => pending ? {} : null, () => {});
   state.receiveWinNotice({ id:'early', username:'mem-other', multiplier:2, createdAt:100 });
   assert.equal(state.current().drawer, null, 'events received before the first session status are held');
   state.ready();
   assert.equal(state.current().drawer, 'wins');
-  assert.equal(state.current().winner, 'mem-other');
+  assert.deepEqual(state.current().winners, [{
+    username:'mem-other', detail:'WHEEL WINNER', multiplier:'2×'
+  }]);
   state.close();
   assert.equal(state.current().drawer, null);
   const own = { id:'own', username:'mem-current', multiplier:5, createdAt:200 };
@@ -83,7 +95,13 @@ test('session popup replaces older wins immediately and holds the spinner until 
   assert.equal(state.current().drawer, null);
   state.done();
   state.releaseDeferredWinNotices('mem-current');
-  assert.deepEqual(state.current(), { drawer:'wins', winner:'mem-current', multiplier:'5×' });
+  assert.deepEqual(state.current(), {
+    drawer:'wins',
+    winners:[
+      { username:'mem-current', detail:'WHEEL WINNER', multiplier:'5×' },
+      { username:'mem-other', detail:'WHEEL WINNER', multiplier:'2×' }
+    ]
+  });
   state.close();
   assert.equal(state.current().drawer, null);
   state.setDrawer('shop');
@@ -91,20 +109,29 @@ test('session popup replaces older wins immediately and holds the spinner until 
   state.receiveWinNotice({ id:'newer', username:'mem-newer', multiplier:3, createdAt:400 });
   assert.equal(state.current().drawer, 'shop', 'a new win does not interrupt an open Order panel');
   state.close();
-  assert.deepEqual(state.current(), { drawer:'wins', winner:'mem-newer', multiplier:'3×' },
-    'only the newest win opens after Order closes');
+  assert.deepEqual(state.current(), {
+    drawer:'wins',
+    winners:[
+      { username:'mem-newer', detail:'WHEEL WINNER', multiplier:'3×' },
+      { username:'mem-other', detail:'WHEEL WINNER', multiplier:'2×' },
+      { username:'mem-current', detail:'WHEEL WINNER', multiplier:'5×' }
+    ]
+  }, 'all pending winners appear after Order closes');
   state.receiveWinNotice({ id:'latest', username:'mem-diana', multiplier:5, createdAt:600 });
-  assert.deepEqual(state.current(), { drawer:'wins', winner:'mem-diana', multiplier:'5×' },
-    'a later win immediately replaces the visible winner without closing the popup');
+  assert.equal(state.current().winners[0].username, 'mem-diana',
+    'a later winner is added to the visible recent-winners list');
   state.receiveWinNotice({ id:'stale', username:'mem-stale', multiplier:2, createdAt:500 });
   state.receiveWinNotice({ id:'latest', username:'mem-diana', multiplier:5, createdAt:600 });
-  assert.equal(state.current().winner, 'mem-diana', 'out-of-order or duplicate wins cannot replace the latest');
+  assert.deepEqual(state.current().winners.slice(0, 2).map(win => win.username), ['mem-diana', 'mem-stale'],
+    'out-of-order unique wins remain visible and duplicates are suppressed');
   state.spin();
   state.receiveWinNotice({ id:'deferred', username:'mem-current', multiplier:3, createdAt:650 });
   state.receiveWinNotice({ id:'still-latest', username:'mem-fresh', multiplier:2, createdAt:700 });
   state.done();
   state.releaseDeferredWinNotices('mem-current');
-  assert.equal(state.current().winner, 'mem-fresh', 'an older deferred win cannot replace a newer one');
+  assert.equal(state.current().winners[0].username, 'mem-fresh');
+  assert.ok(state.current().winners.some(win => win.username === 'mem-current'),
+    'the deferred winner is added after the member result is revealed');
   state.close();
   assert.equal(state.current().drawer, null, 'X closes the popup and does not reopen an older win');
   pending = true;
