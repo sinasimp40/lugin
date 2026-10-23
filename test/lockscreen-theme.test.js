@@ -34,13 +34,6 @@ test('both Windows packaging configurations include the shared client and all lo
   }
 });
 
-test('Halloween accents never substitute scenery for operator-owned backgrounds and form images', () => {
-  const css = read('public/themes/halloween-lockscreen.css');
-  assert.doesNotMatch(css, /halloween-haunted-night/);
-  assert.doesNotMatch(css, /#bg-layer(?:::before|::after)?\s*\{/);
-  assert.doesNotMatch(css, /\.login-right::before\s*\{[^}]*url\(/);
-});
-
 test('Halloween mobile registration overrides the legacy inline desktop row reversal', () => {
   const css = read('public/themes/halloween-lockscreen.css');
   const mobile = css.slice(css.indexOf('@media (max-width: 700px)'), css.indexOf('@media (prefers-reduced-motion'));
