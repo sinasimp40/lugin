@@ -434,3 +434,17 @@ mtime_ms = 1792748480839
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:0ae45259-097b-42c8-94a6-be7b3123f378/0a33c2a4-f417-4a47-a403-fb0665b2f196/440539dc-ba5f-4417-b496-601e7044643f"
 storage_version_token = "1792748578752334"
 content_type = "text/html"
+
+[[outputs]]
+id = "AWZ56X4BP3lJZOFQrfbre"
+uri = "file://public/halloween-mockups/spectral-animated.html"
+type = "html"
+title = "Spectral Glass · Animated Ghost Mockup"
+description = "The transparent 3D ghost floats from one end of the session details to the other and back, with a gentle vertical bob. Original controls, full-name display, and logo effect are preserved in demo mode. Live app and EXE unchanged."
+logical_id = "662edf3b-46db-45ef-b740-3d9e0744a1af"
+content_hash = "sha256:2c4b72d45be8cc1dafd7ba9cc7f744ed3cfed5aefb8d7b289b98fdd21ee1b64c"
+size = 882823
+mtime_ms = 1792749081603
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:0ae45259-097b-42c8-94a6-be7b3123f378/662edf3b-46db-45ef-b740-3d9e0744a1af/c62bb5b3-1c62-4379-a5a6-3d42137cb6a7"
+storage_version_token = "1792749089269114"
+content_type = "text/html"

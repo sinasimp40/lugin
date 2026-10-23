@@ -76,7 +76,7 @@ if (process.argv.includes('--extract-only')) process.exit(0);
 fs.mkdirSync(output, { recursive:true });
 const themes = [
   { id:'ember', name:'Pumpkin Ember', label:'01 / LANTERN LIGHT', subtitle:'Warm amber glass, carved-pumpkin glow, dark bronze edges.', asset:'pumpkin', source:'https://www.vecteezy.com/png/27156608-3d-realistic-halloween-angry-pumpkin-isolated-on-transparent-background-halloween-black-pumpkin' },
-  { id:'spectral', name:'Spectral Glass', label:'02 / GHOST LIGHT', subtitle:'Cool translucent glass with a softly lit 3D ghost.', asset:'ghost', source:'https://www.vecteezy.com/png/87307734-cute-3d-halloween-ghost-character-isolated-on-transparent-background' },
+  { id:'spectral', name:'Spectral Glass', label:'02 / GHOST LIGHT', subtitle:'A softly lit 3D ghost floats end to end behind the session details.', asset:'ghost', source:'https://www.vecteezy.com/png/87307734-cute-3d-halloween-ghost-character-isolated-on-transparent-background' },
   { id:'moon', name:'Haunted Moon', label:'03 / MIDNIGHT SCENE', subtitle:'Moonlit depth, violet shadows, and a miniature haunted scene.', asset:'haunted', source:'https://www.vecteezy.com/png/30722780-3d-rendering-halloween-tree-pumpkin-skull-bats-and-ghost' }
 ];
 const documents = themes.map(theme => {
@@ -84,15 +84,16 @@ const documents = themes.map(theme => {
   return extracted.replace('</head>', `<style>:root{--halloween-art:url("${uri(path.join(root, `attached_assets/halloween/${theme.asset}.png`))}")}${css}</style></head>`);
 });
 const escape = value => value.replaceAll('&', '&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-const cards = themes.map((t, i) => `
-<article class="concept ${t.id}">
+const cardHtmls = themes.map((t, i) => `
+<article class="concept ${t.id}" id="${t.id}">
   <div class="card-head"><span>${t.label}</span><b>THEME ONLY</b></div>
   <h2>${t.name}</h2><p>${t.subtitle}</p>
   <div class="stage"><div class="desktop-lines"></div><span class="stage-label">LIVE SESSION PREVIEW</span>
     <iframe title="${t.name} interactive session" srcdoc="${escape(documents[i])}" sandbox="allow-scripts allow-same-origin"></iframe>
   </div>
   <footer>Try Order, Ranking, Attendance, Betting Games, or Logout.<br><a href="${t.source}" target="_blank" rel="noopener noreferrer">3D artwork source: Vecteezy</a></footer>
-</article>`).join('');
+</article>`);
+const cards = cardHtmls.join('');
 const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Denfi · Halloween session concepts</title>
 <style>
 *{box-sizing:border-box}body{margin:0;color:#f3ede5;background:#101012;font-family:Arial,sans-serif}main{max-width:1740px;margin:auto;padding:38px 28px}
@@ -130,5 +131,13 @@ window.addEventListener('message',e=>{
 });
 </script></body></html>`;
 fs.writeFileSync(path.join(output, 'index.html'), html);
+const animatedGhost = html
+  .replace('<title>Denfi · Halloween session concepts</title>', '<title>Denfi · Animated Spectral Glass mockup</title>')
+  .replace('<h1>Halloween, without changing how it works.</h1>', '<h1>Spectral Glass, now floating.</h1>')
+  .replace('Three themes built from your actual session view. Transparent 3D artwork adds depth behind the controls. Names stay fully visible. The logo still alternates every five seconds, with its restrained tilt and light sweep.',
+    'The transparent 3D ghost drifts slowly from one end of the session details to the other, then floats back. Its gentle up-and-down movement stays behind the information, clear of all buttons. Controls, full usernames, and the original logo transition are unchanged.')
+  .replace(`<section class="grid">${cards}</section>`, `<section class="grid single">${cardHtmls[1]}</section>`)
+  .replace('</style></head>', '.grid.single{display:block}.grid.single .concept{max-width:900px;margin:auto}.grid.single iframe{max-width:100%}</style></head>');
+fs.writeFileSync(path.join(output, 'spectral-animated.html'), animatedGhost);
 themes.forEach((t,i) => fs.writeFileSync(path.join(output, `${t.id}.html`), documents[i]));
 console.log(`Built 3 self-contained themes and comparison (${Math.round(Buffer.byteLength(html)/1024)} KiB).`);

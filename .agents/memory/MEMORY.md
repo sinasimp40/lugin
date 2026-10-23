@@ -17,3 +17,4 @@
 - [Session username visibility](session-username-visibility.md) — show full names by widening the bar, including with tools open; verify rendered fit and native applied bounds.
 - [Session logo motion](session-logo-motion.md) — the owner disliked strong left-right motion; keep the logo centered with only a slow, subtle 3D tilt.
 - [Mockup artifact registration](mockup-artifact-registration.md) — legacy sandbox registration failed; use isolated HTML previews without migrating the working desktop app.
+- [Halloween session theme](halloween-session-theme.md) — the owner liked Spectral Glass and requested a back-and-forth ghost animation in the mockup, not production.

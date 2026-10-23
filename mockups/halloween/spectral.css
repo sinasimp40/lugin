@@ -1,5 +1,5 @@
 /* Spectral Glass — a cool, haunted-glass treatment for the extracted strip.
-   Paint only: layout, measured dimensions, type, and existing motion stay intact. */
+   Paint only: controls and layout stay intact; ghost motion is mockup-only. */
 :root {
   --spectral-ink: #101b23;
   --spectral-deep: #14252d;
@@ -30,8 +30,9 @@
   content: "";
   position: absolute;
   top: 0;
+  left: 140px;
   right: 132px;
-  width: 82px;
+  width: auto;
   height: 100%;
   pointer-events: none;
   z-index: 1;
@@ -39,10 +40,25 @@
   background-image:
     linear-gradient(90deg, rgba(20, 38, 47, 0.2), rgba(20, 38, 47, 0.02) 48%, rgba(20, 38, 47, 0.18)),
     var(--halloween-art, url("../../attached_assets/halloween/ghost.png"));
-  background-size: 100% 100%, contain;
-  background-position: center, center;
+  background-size: 100% 100%, min(82px, 100%) auto;
+  background-position: center, 100% 50%;
   background-repeat: no-repeat;
   filter: drop-shadow(0 0 8px rgba(160, 225, 218, 0.24));
+  animation: spectral-ghost-patrol 18s ease-in-out infinite,
+    spectral-ghost-hover 4s ease-in-out infinite;
+}
+
+/* Travel is relative to the available details area, never over the buttons. */
+@keyframes spectral-ghost-patrol {
+  0%, 100% { background-position: center, 100% 50%; }
+  50% { background-position: center, 0% 50%; }
+}
+@keyframes spectral-ghost-hover {
+  0%, 100% { transform: translateY(2px); }
+  50% { transform: translateY(-2px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .strip::after { animation: none; background-position: center, 100% 50%; }
 }
 
 .neon-line-left,
