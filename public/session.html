@@ -440,12 +440,10 @@
   }
   /* Both faces share one fixed footprint: motion never resizes the native strip. */
   .points-brand-stage {
-    position:relative;
     display:grid;
     place-items:center;
     width:100%;
     height:42px;
-    perspective:240px;
     pointer-events:none;
   }
   .points-balance-face {
@@ -460,18 +458,20 @@
   }
   .points-logo-face {
     position:absolute;
-    inset:-4px 0;
+    inset:0;
     display:flex;
     align-items:center;
     justify-content:center;
     opacity:0;
     transform:translateY(6px) rotateY(-32deg) scale(.88);
     backface-visibility:hidden;
+    perspective:200px;
     transition:opacity .5s ease, transform .5s cubic-bezier(.4,0,.2,1);
   }
   .points-brand-logo {
-    width:49px;
-    height:49px;
+    width:70px;
+    height:76px;
+    max-height:86%;
     object-fit:contain;
     filter:drop-shadow(2px 3px 2px rgba(55,31,0,.3));
   }
@@ -484,19 +484,23 @@
     transform:translateY(0) rotateY(0) scale(1);
   }
   .points-zone[data-brand-face="logo"] .points-brand-logo {
-    animation:points-logo-tilt 3s ease-in-out infinite;
+    animation:points-logo-tilt 1.8s ease-in-out infinite;
+  }
+  .points-zone[data-brand-face="logo"] .games-zone-btn {
+    visibility:hidden;
+    pointer-events:none;
   }
   @keyframes points-logo-tilt {
-    0%,100% { transform:rotateX(8deg) rotateY(-12deg) rotateZ(-6deg); }
-    50% { transform:rotateX(-6deg) rotateY(14deg) rotateZ(5deg); }
+    0%,100% { transform:rotateX(10deg) rotateY(-28deg) rotateZ(-8deg); }
+    50% { transform:rotateX(-8deg) rotateY(28deg) rotateZ(8deg); }
   }
-  /* Reduced motion removes movement, not the three-second content rotation. */
+  /* Keep the explicitly requested logo tilt in both system motion modes.
+     Only the entry/exit transition follows the reduced-motion preference. */
   @media (prefers-reduced-motion:reduce) {
     .points-zone .points-balance-face,
     .points-zone .points-logo-face { transition:none; transform:none; }
     .points-zone[data-brand-face="logo"] .points-balance-face,
     .points-zone[data-brand-face="logo"] .points-logo-face { transform:none; }
-    .points-zone[data-brand-face="logo"] .points-brand-logo { animation:none; }
   }
   .main-section {
     flex:1 1 auto;
@@ -782,7 +786,7 @@
           <span class="pts-label">BALANCE</span>
         </div>
         <div class="points-logo-face" aria-hidden="true">
-          <img class="points-brand-logo" id="points-brand-logo" src="icon.png" alt="" width="49" height="49">
+          <img class="points-brand-logo" id="points-brand-logo" src="icon.png" alt="" width="70" height="76">
         </div>
       </div>
       <button class="games-zone-btn" id="games-btn" type="button">BETTING GAMES</button>

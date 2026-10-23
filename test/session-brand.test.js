@@ -71,3 +71,16 @@ test('reduced motion and control focus do not disable content rotation', () => {
   assert.doesNotMatch(html, /brand-ready/);
   assert.match(html, /<script src="session-brand\.js"><\/script>/);
 });
+
+test('logo fills the panel, visibly tilts in either motion mode, and hides the betting button without resizing', () => {
+  const html = fs.readFileSync(require.resolve('../public/session.html'), 'utf8');
+  const styles = html.slice(html.indexOf('.points-brand-stage'), html.indexOf('  .main-section {', html.indexOf('.points-brand-stage')));
+  assert.match(styles, /width:70px;\s*height:76px/);
+  assert.match(styles, /\.points-logo-face\s*\{[^}]*inset:0;/);
+  assert.match(styles, /perspective:200px/);
+  assert.match(styles, /rotateY\(-28deg\)/);
+  assert.match(styles, /rotateY\(28deg\)/);
+  assert.match(styles, /animation:points-logo-tilt 1\.8s/);
+  assert.doesNotMatch(styles, /animation:none/);
+  assert.match(styles, /data-brand-face="logo"\] \.games-zone-btn\s*\{\s*visibility:hidden;\s*pointer-events:none;/);
+});
