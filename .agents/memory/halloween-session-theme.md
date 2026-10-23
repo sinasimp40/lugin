@@ -9,9 +9,9 @@ Halloween is a shop-wide look: apply the same selection to the lock screen, logi
 
 **Why:** The owner explicitly requested matching Halloween designs on all these screens, including in Auto Shutdown's Windows executable.
 
-For lock, login, registration, and curfew, use recognizable Halloween scenery and assets rather than a teal grid with a faint ghost. Keep the separately approved session-bar design unchanged.
+For lock, login, registration, and curfew, create Halloween character through animation, transparent decorative assets, and typography—not built-in background pictures or scenery. Backgrounds and login/register images belong to the owner's Admin settings; never replace or cover them. Keep the separately approved session-bar design unchanged.
 
-**Why:** The owner rejected the subtle teal treatment as not feeling like Halloween and approved stronger pumpkins, moonlit haunted scenery, fog, and orange-purple lighting.
+**Why:** The owner rejected the faint teal treatment, then explicitly corrected the scenery approach: they can upload/change their own images in Admin and meant Halloween animations, assets, or fonts.
 
 **Why:** After approving the animated mockup, the owner requested Default/Halloween choices in Auto Shutdown's admin panel, shared through Denfi Points because the shop's PCs use a diskless setup.
 

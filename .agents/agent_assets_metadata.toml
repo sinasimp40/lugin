@@ -560,3 +560,59 @@ mtime_ms = 1792774456550
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:0ae45259-097b-42c8-94a6-be7b3123f378/191e8433-52f6-4e29-a147-0b95a0f60321/676b9c94-256b-4602-9116-6d91686c53e2"
 storage_version_token = "1792774522697176"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "CDQmzHD1Y6EJm_LP38mbQ"
+uri = "file://attached_assets/halloween-accents-lock.jpg"
+type = "image"
+title = "Halloween lock screen — no built-in wallpaper"
+description = "Bat and floating ghost accents leave the background available for your Admin-selected image or video."
+logical_id = "8091d537-2090-4b5c-ad73-68374c9943f7"
+content_hash = "sha256:0d6699048ef9ccb3a126b63ad5c234db3cfafc236ac9ac204bb2314489f3ba87"
+size = 31338
+mtime_ms = 1792774748238
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:0ae45259-097b-42c8-94a6-be7b3123f378/8091d537-2090-4b5c-ad73-68374c9943f7/070fea8b-90d7-4938-9914-41451dd1c7ea"
+storage_version_token = "1792774793889994"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "kOOXiS71K5NfP9Te3RhUY"
+uri = "file://attached_assets/halloween-accents-login.jpg"
+type = "image"
+title = "Halloween login — your image area stays available"
+description = "Animated decorations and seasonal lettering; the right panel accepts your uploaded login image."
+logical_id = "3664e6e7-3a2c-49fc-a586-b1f8fb5668c7"
+content_hash = "sha256:84de1c332c772cc7d59c3731293e5ee4ec2cce7ef968cac4c0f986773069d776"
+size = 54388
+mtime_ms = 1792774748966
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:0ae45259-097b-42c8-94a6-be7b3123f378/3664e6e7-3a2c-49fc-a586-b1f8fb5668c7/30588682-e872-4b95-8b44-1f274deafa24"
+storage_version_token = "1792774794462047"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "erFkZPjDZCo4xWXidmLdC"
+uri = "file://attached_assets/halloween-accents-register.jpg"
+type = "image"
+title = "Halloween registration — your image area stays available"
+description = "Purple accents and subtle decorations without replacing your uploaded registration art."
+logical_id = "d852f4fd-d0a7-43d1-8d83-755c9c2d0e3d"
+content_hash = "sha256:97fcb13a8a21c73dcd701eb36574f4fd9914ba31b87550143bf8b022eff9eb2d"
+size = 52725
+mtime_ms = 1792774749686
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:0ae45259-097b-42c8-94a6-be7b3123f378/d852f4fd-d0a7-43d1-8d83-755c9c2d0e3d/51a7da07-76ef-4f2c-8955-357f6528c8a7"
+storage_version_token = "1792774794955952"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "ZaK6dvCZvFYHLkeIQMfT7"
+uri = "file://attached_assets/halloween-accents-curfew.jpg"
+type = "image"
+title = "Halloween curfew — no scenery background"
+description = "Readability-first Halloween warning; the schedule shown is only a browser preview example."
+logical_id = "df5f6e79-dced-423f-8061-b8cc1e12a01e"
+content_hash = "sha256:d270e33de8f414bd8bdb906960689434e5af105e9e29ca48e12c52fab1acda7a"
+size = 44688
+mtime_ms = 1792774750262
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:0ae45259-097b-42c8-94a6-be7b3123f378/df5f6e79-dced-423f-8061-b8cc1e12a01e/7a942234-d97e-4516-a27d-139d83df27ff"
+storage_version_token = "1792774795486401"
+content_type = "image/jpeg"

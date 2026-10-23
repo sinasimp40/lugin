@@ -29,10 +29,16 @@ test('both Windows packaging configurations include the shared client and all lo
     assert.equal(config.files.some(pattern => /^!public\/(?:themes|session-theme)/.test(pattern)), false);
   }
   for (const name of ['public/session-theme.js', 'public/theme-settings.js', 'public/themes/halloween.css',
-    'public/themes/halloween-lockscreen.css', 'public/themes/halloween-ghost.png',
-    'public/themes/halloween-haunted-night.webp', 'src/session-theme.js']) {
+    'public/themes/halloween-lockscreen.css', 'public/themes/halloween-ghost.png', 'src/session-theme.js']) {
     assert.ok(fs.statSync(path.join(root, name)).size > 0, name);
   }
+});
+
+test('Halloween accents never substitute scenery for operator-owned backgrounds and form images', () => {
+  const css = read('public/themes/halloween-lockscreen.css');
+  assert.doesNotMatch(css, /halloween-haunted-night/);
+  assert.doesNotMatch(css, /#bg-layer(?:::before|::after)?\s*\{/);
+  assert.doesNotMatch(css, /\.login-right::before\s*\{[^}]*url\(/);
 });
 
 test('Halloween mobile registration overrides the legacy inline desktop row reversal', () => {
