@@ -454,6 +454,9 @@
     flex-direction:column;
     align-items:center;
     backface-visibility:hidden;
+    opacity:1;
+    transform:translateY(0) rotateY(0);
+    transition:opacity .5s ease, transform .5s cubic-bezier(.4,0,.2,1);
   }
   .points-logo-face {
     position:absolute;
@@ -464,6 +467,7 @@
     opacity:0;
     transform:translateY(6px) rotateY(-32deg) scale(.88);
     backface-visibility:hidden;
+    transition:opacity .5s ease, transform .5s cubic-bezier(.4,0,.2,1);
   }
   .points-brand-logo {
     width:49px;
@@ -471,40 +475,28 @@
     object-fit:contain;
     filter:drop-shadow(2px 3px 2px rgba(55,31,0,.3));
   }
-  .points-zone.brand-ready .points-balance-face {
-    animation:points-balance-swap 6s cubic-bezier(.4,0,.2,1) infinite;
+  .points-zone[data-brand-face="logo"] .points-balance-face {
+    opacity:0;
+    transform:translateY(-6px) rotateY(32deg);
   }
-  .points-zone.brand-ready .points-logo-face {
-    animation:points-logo-swap 6s cubic-bezier(.4,0,.2,1) infinite;
+  .points-zone[data-brand-face="logo"] .points-logo-face {
+    opacity:1;
+    transform:translateY(0) rotateY(0) scale(1);
   }
-  .points-zone.brand-ready .points-brand-logo {
-    animation:points-logo-tilt 6s ease-in-out infinite;
-  }
-  @keyframes points-balance-swap {
-    0%,41%,100% { opacity:1; transform:translateY(0) rotateY(0); }
-    50%,91% { opacity:0; transform:translateY(-6px) rotateY(32deg); }
-  }
-  @keyframes points-logo-swap {
-    0%,41%,100% { opacity:0; transform:translateY(6px) rotateY(-32deg) scale(.88); }
-    50%,91% { opacity:1; transform:translateY(0) rotateY(0) scale(1); }
+  .points-zone[data-brand-face="logo"] .points-brand-logo {
+    animation:points-logo-tilt 3s ease-in-out infinite;
   }
   @keyframes points-logo-tilt {
-    0%,41%,100% { transform:rotateX(0) rotateY(0) rotateZ(-5deg); }
-    50% { transform:rotateX(8deg) rotateY(-12deg) rotateZ(-6deg); }
-    70% { transform:rotateX(-6deg) rotateY(14deg) rotateZ(5deg); }
-    91% { transform:rotateX(5deg) rotateY(-8deg) rotateZ(-3deg); }
+    0%,100% { transform:rotateX(8deg) rotateY(-12deg) rotateZ(-6deg); }
+    50% { transform:rotateX(-6deg) rotateY(14deg) rotateZ(5deg); }
   }
-  /* Reading or using the controls takes priority over the branding animation. */
-  .points-zone:hover .points-balance-face,
-  .points-zone:focus-within .points-balance-face,
-  .points-zone:hover .points-logo-face,
-  .points-zone:focus-within .points-logo-face,
-  .points-zone:hover .points-brand-logo,
-  .points-zone:focus-within .points-brand-logo { animation:none; }
+  /* Reduced motion removes movement, not the three-second content rotation. */
   @media (prefers-reduced-motion:reduce) {
-    .points-zone.brand-ready .points-balance-face,
-    .points-zone.brand-ready .points-logo-face,
-    .points-zone.brand-ready .points-brand-logo { animation:none; }
+    .points-zone .points-balance-face,
+    .points-zone .points-logo-face { transition:none; transform:none; }
+    .points-zone[data-brand-face="logo"] .points-balance-face,
+    .points-zone[data-brand-face="logo"] .points-logo-face { transform:none; }
+    .points-zone[data-brand-face="logo"] .points-brand-logo { animation:none; }
   }
   .main-section {
     flex:1 1 auto;
@@ -790,9 +782,7 @@
           <span class="pts-label">BALANCE</span>
         </div>
         <div class="points-logo-face" aria-hidden="true">
-          <img class="points-brand-logo" src="icon.png" alt="" width="49" height="49"
-            onload="this.closest('.points-zone').classList.add('brand-ready')"
-            onerror="this.closest('.points-zone').classList.remove('brand-ready')">
+          <img class="points-brand-logo" id="points-brand-logo" src="icon.png" alt="" width="49" height="49">
         </div>
       </div>
       <button class="games-zone-btn" id="games-btn" type="button">BETTING GAMES</button>
@@ -2830,5 +2820,6 @@
       }
     }, 1000);
   </script>
+  <script src="session-brand.js"></script>
 </body>
 </html>

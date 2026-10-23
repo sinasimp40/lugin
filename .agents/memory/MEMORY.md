@@ -1,6 +1,7 @@
 - [Monthly points ranking](monthly-points-ranking.md) — only rankings reset monthly; spendable member balances carry over, and historical credits/debits remain intact.
 - [Shutdown timer ownership](shutdown-timer-ownership.md) — idle shutdown is main-process authoritative; startup restoration shows the lock screen without starting the idle deadline.
 - [Session visibility reliability](session-visibility-reliability.md) — reject stale logout events and require repeated hotspot confirmation before removing an active session overlay.
+- [Session logo rotation](session-logo-rotation.md) — balance/logo rotation must remain visible with reduced motion, hover, and button focus.
 - [Attendance history and network trust](attendance-trust-and-history.md) — kiosk-only mission editing, shared daily target, and live Points-timed rewards without offline replay.
 - [Betting game presentation](betting-game-presentation.md) — private odds, exclusive wheel/dice/off, confirmed two-dice rules, and balances held until the result.
 - [Betting policy compatibility](betting-policy-compatibility.md) — old Points builds may acknowledge writes while dropping newer spin/stake settings; verify before claiming a policy is live.
