@@ -95,6 +95,7 @@ test('switching session drawers measures the new panel instead of keeping the pr
   const view = new Function('document', 'window', 'setTimeout', 'clearTimeout', 'requestAnimationFrame', `
     let activeDrawer = null, drawerHeightFloor = 0, drawerResizeTimer = null, sessionOverlayPlacement = 'above';
     const pendingWinNotices = new Map();
+    const recentWinNotices = new Map();
     let sessionUsername = 'mem-current', timeLeft = 100;
     const previewMode = true, OVERLAY_SCALE = 0.72;
     ${page.slice(resizeStart, resizeEnd)}

@@ -33,7 +33,7 @@ test('Points exposes only recent, revealed, positive wheel wins without financia
   }
 });
 
-test('session popup retains multiple recent winners and holds the spinner until reveal', () => {
+test('each winner gets an independently dismissible popup, without interrupting tools or revealing a spin early', () => {
   const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'session.html'), 'utf8');
   const start = page.indexOf('    const MAX_RECENT_WIN_NOTICES =');
   const end = page.indexOf('    function wheelPendingKey(', start);
@@ -41,6 +41,7 @@ test('session popup retains multiple recent winners and holds the spinner until 
   function makeNode(id = '') {
     return {
       id, className:'', textContent:'', children:[],
+      setAttribute() {},
       replaceChildren() { this.children = []; },
       appendChild(child) { this.children.push(child); return child; }
     };
@@ -54,6 +55,7 @@ test('session popup retains multiple recent winners and holds the spinner until 
     function closeDrawer() {
       if (activeDrawer === 'wins') {
         pendingWinNotices.clear();
+        recentWinNotices.clear();
       }
       activeDrawer = null;
       showLatestWinNotice();
@@ -61,13 +63,14 @@ test('session popup retains multiple recent winners and holds the spinner until 
     ${page.slice(start, end)}
     return {
       receiveWinNotice, releaseDeferredWinNotices, ready:finishInitialSessionStatus,
+      dismiss:dismissWinNotice,
       done:() => { wheelRequestId = null; },
       spin:() => { wheelRequestId = 'spin-two'; },
       close:closeDrawer,
       setDrawer:view => { activeDrawer = view; },
       current:() => ({
         drawer:activeDrawer,
-        winners:document.getElementById('wins-view').children.filter(row => row.children.length).map(row => ({
+        winners:document.getElementById('wins-view').children.filter(popup => popup.className === 'win-popup').map(popup => popup.children[1]).map(row => ({
           username:row.children[0].textContent,
           detail:row.children[1].textContent,
           multiplier:row.children[2].textContent
@@ -98,8 +101,7 @@ test('session popup retains multiple recent winners and holds the spinner until 
   assert.deepEqual(state.current(), {
     drawer:'wins',
     winners:[
-      { username:'mem-current', detail:'WHEEL WINNER', multiplier:'5×' },
-      { username:'mem-other', detail:'WHEEL WINNER', multiplier:'2×' }
+      { username:'mem-current', detail:'WHEEL WINNER', multiplier:'5×' }
     ]
   });
   state.close();
@@ -113,8 +115,6 @@ test('session popup retains multiple recent winners and holds the spinner until 
     drawer:'wins',
     winners:[
       { username:'mem-newer', detail:'WHEEL WINNER', multiplier:'3×' },
-      { username:'mem-other', detail:'WHEEL WINNER', multiplier:'2×' },
-      { username:'mem-current', detail:'WHEEL WINNER', multiplier:'5×' },
       { username:'mem-other', detail:'WHEEL WINNER', multiplier:'2×' }
     ]
   }, 'all pending winners appear after Order closes');
@@ -133,8 +133,14 @@ test('session popup retains multiple recent winners and holds the spinner until 
   assert.equal(state.current().winners[0].username, 'mem-fresh');
   assert.ok(state.current().winners.some(win => win.username === 'mem-current'),
     'the deferred winner is added after the member result is revealed');
-  state.close();
-  assert.equal(state.current().drawer, null, 'X closes the popup and does not reopen an older win');
+  const count = state.current().winners.length;
+  assert.equal(count, 6, 'each unique win has its own popup, including out-of-order wins');
+  assert.equal(list.children.every(popup => popup.children[0].children[1].type === 'button'), true);
+  list.children.find(popup => popup.children[1].children[0].textContent === 'mem-diana').children[0].children[1].onclick();
+  assert.equal(state.current().winners.length, count - 1, 'one X closes only that winner');
+  assert.equal(state.current().drawer, 'wins', 'other winners remain visible');
+  for (const id of ['other', 'newer', 'stale', 'deferred', 'still-latest']) state.dismiss(id);
+  assert.equal(state.current().drawer, null, 'closing the last winner collapses the overlay');
   pending = true;
   state.receiveWinNotice({ id:'stored', username:'mem-current', multiplier:3, createdAt:800 });
   assert.equal(state.current().drawer, null, 'a persisted retry must not reveal the result');

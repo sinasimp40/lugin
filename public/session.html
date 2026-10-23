@@ -402,16 +402,26 @@
   }
   .wins-drawer .drawer-close:hover, .wins-drawer .drawer-close:focus-visible { background:#cd943a; color:#111; }
   .wins-drawer .drawer-body { padding:11px 13px; }
-  .wins-list { display:flex; flex-direction:column; gap:6px; max-height:240px; overflow-y:auto; }
+  .drawer.wins-drawer { background:transparent; border:0; box-shadow:none; }
+  .drawer.wins-drawer::before { display:none; }
+  .wins-drawer .drawer-head { display:none; }
+  .wins-drawer .drawer-body { padding:0; }
+  .wins-list { display:flex; flex-direction:column; gap:8px; max-height:340px; overflow-y:auto; }
+  .win-popup {
+    flex:none; border:1px solid #a37738; border-top:2px solid #ffdf91; border-radius:4px;
+    background:radial-gradient(ellipse at 100% 100%,rgba(223,136,30,.20),transparent 65%),linear-gradient(125deg,#242017,#111516);
+    box-shadow:inset 0 0 18px rgba(255,197,78,.06);
+  }
+  .win-popup-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 10px; border-bottom:1px solid rgba(255,216,136,.2); color:#ffdf9e; font:700 10px 'Orbitron',sans-serif; letter-spacing:1px; }
+  .win-popup-close { flex:none; width:24px; height:22px; border:1px solid #8c6c3a; border-radius:3px; background:#382b19; color:#ffe0a2; cursor:pointer; font:18px 'Share Tech Mono',monospace; -webkit-app-region:no-drag; }
+  .win-popup-close:hover, .win-popup-close:focus-visible { background:#8c6c3a; color:#fff; }
   .win-entry {
     display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:2px 12px;
-    min-height:36px; padding:6px 9px; border:1px solid rgba(255,217,129,.22);
-    border-left:2px solid #d49a40; border-radius:2px;
-    background:linear-gradient(100deg,rgba(255,197,78,.10),rgba(20,19,15,.42));
+    min-height:58px; padding:10px 12px;
   }
-  .win-entry-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#fff6de; font:700 13px 'Share Tech Mono',monospace; }
+  .win-entry-name { min-width:0; overflow-wrap:anywhere; color:#fff6de; font:700 18px 'Share Tech Mono',monospace; }
   .win-entry-detail { color:#d0ae75; font:9px 'Share Tech Mono',monospace; letter-spacing:.7px; }
-  .win-entry-multiplier { grid-column:2; grid-row:1 / span 2; color:#fff0a6; font:800 19px 'Orbitron',sans-serif; text-shadow:0 0 10px rgba(255,193,60,.4); }
+  .win-entry-multiplier { grid-column:2; grid-row:1 / span 2; color:#fff0a6; font:800 26px 'Orbitron',sans-serif; text-shadow:0 0 10px rgba(255,193,60,.4); }
   .wins-empty { color:#d0ae75; font:11px 'Share Tech Mono',monospace; padding:12px; text-align:center; }
   .points-zone {
     display:none;
@@ -650,8 +660,7 @@
   .demo-lab select { width:100%; margin:0 0 6px; padding:7px; border:1px solid #5e5c24; background:#11120d; color:#f3efbb; font:11px 'Share Tech Mono',monospace; }
   .demo-lab-note { font:9px/1.4 'Share Tech Mono',monospace; color:#a09d70; }
   @keyframes dice-toss { from { transform:translateY(-5px) rotate(-8deg); } to { transform:translateY(3px) rotate(8deg); } }
-  @media (prefers-reduced-motion:reduce) { .dice-choice { transition:none; } .dice-cube.rolling { animation:none; } }
-  @media (prefers-reduced-motion: reduce) { .wheel-labels { transition:none; } }
+  @media (prefers-reduced-motion:reduce) { .dice-choice { transition:none; } }
   .attendance-view { min-width:0; }
   .attendance-toolbar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:9px; }
   .attendance-month-label { color:#ffe0a4; font:800 15px 'Orbitron',monospace; letter-spacing:.5px; }
@@ -1001,7 +1010,7 @@
     let drawerResizeTimer = null;
     let drawerHeightFloor = 0;
     let overlayWidth = 0;
-    const MAX_RECENT_WIN_NOTICES = 6;
+    const MAX_RECENT_WIN_NOTICES = 120;
     const MAX_QUEUED_WIN_NOTICES = 120;
     const seenWinNoticeIds = new Set();
     const deferredWinNotices = new Map();
@@ -1023,6 +1032,21 @@
         list.appendChild(empty);
       } else {
         for (const win of wins) {
+          const popup = document.createElement('section');
+          popup.className = 'win-popup';
+          const head = document.createElement('div');
+          head.className = 'win-popup-head';
+          const heading = document.createElement('span');
+          heading.textContent = 'WINNER ANNOUNCEMENT';
+          const close = document.createElement('button');
+          close.className = 'win-popup-close';
+          close.type = 'button';
+          close.textContent = '×';
+          close.title = `Dismiss ${win.username}'s win`;
+          close.setAttribute('aria-label', close.title);
+          close.onclick = () => dismissWinNotice(win.id);
+          head.appendChild(heading);
+          head.appendChild(close);
           const row = document.createElement('div');
           row.className = 'win-entry';
           const name = document.createElement('span');
@@ -1038,10 +1062,18 @@
           row.appendChild(name);
           row.appendChild(detail);
           row.appendChild(multiplier);
-          list.appendChild(row);
+          popup.appendChild(head);
+          popup.appendChild(row);
+          list.appendChild(popup);
         }
       }
       if (activeDrawer === 'wins') resizeDrawerToContent();
+    }
+    function dismissWinNotice(id) {
+      recentWinNotices.delete(id);
+      pendingWinNotices.delete(id);
+      if (!recentWinNotices.size && activeDrawer === 'wins') closeDrawer();
+      else renderRecentWinNotices();
     }
     function showLatestWinNotice() {
       if (activeDrawer || !pendingWinNotices.size ||
@@ -1078,7 +1110,7 @@
       }
       if (!sessionUsername || timeLeft <= 0) return;
       seenWinNoticeIds.add(win.id);
-      if (seenWinNoticeIds.size > 100) seenWinNoticeIds.delete(seenWinNoticeIds.values().next().value);
+      if (seenWinNoticeIds.size > 512) seenWinNoticeIds.delete(seenWinNoticeIds.values().next().value);
       if (String(win.username).toLowerCase() === String(sessionUsername).toLowerCase() &&
           (wheelRequestId || readPendingWheel(sessionUsername))) {
         deferredWinNotices.set(win.id, win);
@@ -1364,6 +1396,7 @@
       clearTimeout(drawerResizeTimer);
       if (activeDrawer === 'wins') {
         pendingWinNotices.clear();
+        recentWinNotices.clear();
       }
       activeDrawer = null;
       const drawer = document.getElementById('drawer');
@@ -1393,6 +1426,9 @@
 
     async function openDrawer(view) {
       if (activeDrawer === view) { closeDrawer(); return; }
+      if (activeDrawer === 'wins' && view !== 'wins') {
+        for (const [id, win] of recentWinNotices) pendingWinNotices.set(id, win);
+      }
       activeDrawer = view;
       let placement = 'above';
       if (!previewMode && window.electronAPI && window.electronAPI.getSessionOverlayPlacement) {
@@ -1576,7 +1612,7 @@
     }
     function beginReelRoll(multipliers) {
       const labels = document.getElementById('wheel-labels');
-      if (!labels.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      if (!labels.animate) return;
       if (wheelReelAnimation) wheelReelAnimation.cancel();
       const cycle = wheelReelCycleLength * 82;
       wheelReelAnimation = labels.animate([
@@ -1770,7 +1806,7 @@
           document.getElementById('dice-stage').setAttribute('aria-label', 'Two dice rolling');
           window.DenfiDiceAnimation.begin([
             document.getElementById('dice-one'), document.getElementById('dice-two')
-          ], matchMedia('(prefers-reduced-motion: reduce)').matches);
+          ]);
         }
         if (requestGame === 'wheel') beginReelRoll(wheelData.multipliers);
         let spin;
@@ -1853,7 +1889,7 @@
           const rollingRequestId = wheelRequestId;
           await window.DenfiDiceAnimation.roll([
             document.getElementById('dice-one'), document.getElementById('dice-two')
-          ], dice, { reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
+          ], dice);
           if (String(sessionUsername).toLowerCase() !== String(requestUsername).toLowerCase() ||
               wheelRequestId !== rollingRequestId) {
             // Keep the old member's stored receipt recoverable, but never
@@ -1911,7 +1947,7 @@
         targetTile.className = result === 0 ? 'wheel-label is-loss' : 'wheel-label';
         targetTile.textContent = result === 0 ? 'LOSE 0×' : `${result}×`;
         wheelReelOffset = -(targetIndex * tileWidth);
-        const settle = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 4200;
+        const settle = 4200;
         document.getElementById('wheel-result').textContent = 'REVEALING...';
         button.textContent = 'SPINNING...';
         if (labels.animate) {

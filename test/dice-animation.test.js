@@ -4,6 +4,29 @@ const { begin, stop, roll } = require('../public/dice-animation');
 const fs = require('node:fs');
 const path = require('node:path');
 
+test('the session keeps Wheel and Dice rolls enabled when Windows requests reduced motion', () => {
+  const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'session.html'), 'utf8');
+  const start = page.indexOf('    function beginReelRoll(');
+  const end = page.indexOf('    function stopReelRoll(', start);
+  const animations = [];
+  const labels = { animate:(frames, options) => {
+    animations.push({ frames, options });
+    return { cancel() {} };
+  } };
+  const begin = new Function('document', 'matchMedia', `
+    let wheelReelAnimation = null, wheelReelOffset = 0, wheelReelCycleLength = 48;
+    ${page.slice(start, end)}
+    return beginReelRoll;
+  `)({ getElementById:() => labels }, () => ({ matches:true }));
+  begin([0, 2, 5]);
+  assert.equal(animations.length, 1, 'the Wheel visibly moves even with Windows animation effects disabled');
+  assert.equal(animations[0].options.iterations, Infinity);
+  assert.match(page, /const settle = 4200;/, 'the reel does not skip its landing animation');
+  assert.match(page, /DenfiDiceAnimation\.begin\(\[[\s\S]*?\]\);/);
+  assert.match(page, /DenfiDiceAnimation\.roll\(\[[\s\S]*?\], dice\);/);
+  assert.doesNotMatch(page, /reducedMotion:\s*matchMedia/);
+});
+
 test('dice presentation has readable ranges, centered dice without a total, and explicit win/loss labels', () => {
   const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'session.html'), 'utf8');
   const start = page.indexOf('    function diceOutcomeText(');

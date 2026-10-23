@@ -57,17 +57,17 @@ Cross-PC win announcements must originate from the shared Points ledger, not fro
 
 **How to apply:** Keep announcements idempotent by spin identity, tolerate session WebSocket startup and reconnect races, and never include private odds or financial details in the shared feed.
 
-Multiple public winners must not overwrite one another in the popup or be skipped by voice announcements.
+Each public winner must receive a separate, independently closable popup; do not merge winners into a recent-winners list. Voice must announce every winner serially.
 
-**Why:** The owner reported that two or more winners resulted in only one visible/spoken winner and asked for this to be corrected.
+**Why:** The owner corrected the list interpretation: “if win more than 2, it show all winners each popup and the winner announcement voice will also tell all.”
 
-**How to apply:** Retain multiple recent winning events, queue voice serially, and preserve identity deduplication and the winning member's result-reveal delay. This supersedes the earlier single-latest-winner popup behavior.
+**How to apply:** Keep separate winner cards without replacing another undismissed winner, queue voice serially, and preserve identity deduplication and the winning member's result-reveal delay. This supersedes both the single-latest-winner and combined-list interpretations.
 
-Keep a visible, roughly five-second dice rolling phase before showing the result or updated balance, including on Windows PCs with animation effects disabled. Reduced-motion mode should change faces without rapid spatial tumbling, not skip straight to the result.
+Keep the Wheel's rolling and landing animation and the roughly five-second Dice tumble visible before showing the result or updated balance, including on Windows PCs with animation effects disabled.
 
-**Why:** The owner reported that the built Windows app did not visibly roll the dice and showed the result too quickly. Windows reduced-motion preferences can bypass the normal animation path.
+**Why:** The owner explicitly asked to “turn back the betting animation in wheel and dice when its roll.” Windows reduced-motion preferences had bypassed or reduced the normal animation path.
 
-**How to apply:** Preserve the minimum reveal delay in every rendering mode and keep server-confirmed faces, balances, and announcements held until the roll finishes. Browser checks should explicitly cover reduced motion; they do not prove packaged Windows behavior.
+**How to apply:** Do not let the Windows preference disable these betting roll animations; preserve the minimum reveal delay and keep server-confirmed faces, balances, and announcements held until the roll finishes. Leave unrelated UI motion preferences intact. Browser checks do not prove packaged Windows behavior.
 
 The owner describes betting as “offline gambling, not real money—it’s points for my computer shop.”
 
