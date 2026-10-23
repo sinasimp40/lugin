@@ -23,3 +23,7 @@ data/
 *.7z
 *.exe
 *.log
+
+# Generated, isolated design previews (rebuild from scripts and theme CSS).
+/public/halloween-mockups/
+/mockups/halloween/_extracted-session.html

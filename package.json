@@ -45,6 +45,7 @@
       "server.js",
       "src/**/*",
       "public/**/*",
+      "!public/halloween-mockups/**/*",
       "build/**/*",
       "icon.ico",
       "icon.png",

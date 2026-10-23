@@ -420,3 +420,17 @@ mtime_ms = 1791287968964
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:2647f59a-d41d-42a8-aa51-cc46d911f962/a38609b9-9fa4-4594-998b-a2eefb60899c/88b59022-9918-44bc-8934-3ceffecdc5f3"
 storage_version_token = "1791287994448879"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "kqWGu3nCMJwfLdylCIEMK"
+uri = "file://public/halloween-mockups/index.html"
+type = "html"
+title = "Compare 3 Halloween Session Mockups"
+description = "Interactive theme-only comparison: Pumpkin Ember, Spectral Glass, and Haunted Moon. Includes transparent 3D web artwork, adjustable preview width, full-username testing, and original controls in safe demo mode."
+logical_id = "0a33c2a4-f417-4a47-a403-fb0665b2f196"
+content_hash = "sha256:32313e690cb0b444ba2c98a1bec69894b33563b60d87194c8bcbb0236657a91c"
+size = 2623124
+mtime_ms = 1792748480839
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:0ae45259-097b-42c8-94a6-be7b3123f378/0a33c2a4-f417-4a47-a403-fb0665b2f196/440539dc-ba5f-4417-b496-601e7044643f"
+storage_version_token = "1792748578752334"
+content_type = "text/html"

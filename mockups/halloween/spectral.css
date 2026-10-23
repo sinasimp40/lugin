@@ -1,0 +1,364 @@
+/* Spectral Glass — a cool, haunted-glass treatment for the extracted strip.
+   Paint only: layout, measured dimensions, type, and existing motion stay intact. */
+:root {
+  --spectral-ink: #101b23;
+  --spectral-deep: #14252d;
+  --spectral-glass: rgba(144, 213, 211, 0.11);
+  --spectral-line: rgba(170, 231, 223, 0.48);
+  --spectral-mist: #ddf6ed;
+  --spectral-ectoplasm: #a8ead2;
+  --spectral-aqua: #82d7d1;
+  --spectral-lilac: #b9b2df;
+}
+
+.strip {
+  background:
+    radial-gradient(ellipse at 46% 120%, rgba(98, 174, 174, 0.22), transparent 56%),
+    radial-gradient(ellipse at 18% -48%, rgba(206, 239, 226, 0.17), transparent 58%),
+    linear-gradient(112deg, #20363c 0%, #14262f 48%, #182430 100%);
+  border-color: rgba(167, 226, 218, 0.66);
+  border-left-color: rgba(184, 239, 227, 0.76);
+  border-right-color: rgba(166, 219, 226, 0.6);
+  box-shadow:
+    0 0 12px rgba(117, 198, 193, 0.19),
+    inset 0 1px 0 rgba(236, 255, 249, 0.23),
+    inset 0 0 0 1px rgba(193, 235, 230, 0.09);
+}
+
+/* Transparent ghost artwork is supplied by the comparison harness. */
+.strip::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 132px;
+  width: 82px;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.48;
+  background-image:
+    linear-gradient(90deg, rgba(20, 38, 47, 0.2), rgba(20, 38, 47, 0.02) 48%, rgba(20, 38, 47, 0.18)),
+    var(--halloween-art, url("../../attached_assets/halloween/ghost.png"));
+  background-size: 100% 100%, contain;
+  background-position: center, center;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 0 8px rgba(160, 225, 218, 0.24));
+}
+
+.neon-line-left,
+.neon-line-right {
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(180, 241, 226, 0.72) 22%,
+    rgba(153, 224, 221, 0.94) 50%,
+    rgba(180, 241, 226, 0.72) 78%,
+    transparent
+  );
+  box-shadow: 0 0 7px rgba(157, 232, 218, 0.4), 0 0 14px rgba(156, 203, 225, 0.2);
+}
+
+.neon-glow-left,
+.neon-glow-right {
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(143, 221, 207, 0.15), transparent 72%);
+}
+
+.sweep {
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(214, 251, 236, 0.025),
+    rgba(198, 248, 232, 0.09),
+    rgba(190, 229, 245, 0.035),
+    transparent
+  );
+}
+
+.scanline {
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(188, 237, 231, 0.014) 2px,
+    rgba(188, 237, 231, 0.014) 4px
+  );
+}
+
+.points-zone.active {
+  background: linear-gradient(155deg, rgba(182, 239, 220, 0.18), rgba(109, 180, 190, 0.1));
+  border-color: rgba(177, 235, 221, 0.35);
+  box-shadow: inset -4px 0 10px rgba(195, 246, 227, 0.07);
+}
+
+.points-zone .pts-value {
+  color: var(--spectral-mist);
+  text-shadow: 0 0 9px rgba(171, 241, 219, 0.42), 0 0 18px rgba(137, 213, 211, 0.2);
+}
+
+.points-zone .pts-label {
+  color: rgba(200, 244, 228, 0.73);
+}
+
+.points-zone .games-zone-btn,
+.points-zone .games-zone-btn.active {
+  border-color: rgba(185, 240, 223, 0.58);
+  background: linear-gradient(180deg, rgba(124, 184, 176, 0.78), rgba(58, 108, 112, 0.9));
+  color: #f0fff7;
+}
+
+.points-zone .games-zone-btn:hover {
+  border-color: rgba(226, 255, 240, 0.88);
+  background: linear-gradient(180deg, rgba(156, 213, 197, 0.9), rgba(87, 150, 150, 0.96));
+  color: #fff;
+}
+
+.strip.danger-mode .points-zone {
+  border-color: rgba(221, 177, 190, 0.2);
+  background: linear-gradient(180deg, rgba(185, 137, 157, 0.11), rgba(185, 137, 157, 0.035));
+}
+
+.strip.danger-mode .points-zone .pts-value {
+  color: rgba(232, 204, 218, 0.64);
+}
+
+.strip.danger-mode .points-zone .pts-label {
+  color: rgba(232, 204, 218, 0.45);
+}
+
+.timer {
+  color: #ddf7ee;
+  text-shadow: 0 1px 6px rgba(203, 250, 233, 0.2), 0 0 13px rgba(143, 218, 213, 0.16);
+}
+
+.timer.critical {
+  color: #f0c9d7;
+  text-shadow: 0 0 10px rgba(231, 166, 191, 0.56), 0 0 22px rgba(190, 143, 184, 0.28);
+}
+
+.user {
+  color: #d8eee8;
+  text-shadow: 0 0 5px rgba(179, 233, 219, 0.13);
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.status-dot {
+  background: #a8ead2;
+  box-shadow: 0 0 4px rgba(168, 234, 210, 0.58), 0 0 8px rgba(130, 215, 209, 0.28);
+}
+
+.pc-label {
+  border-color: rgba(177, 233, 222, 0.48);
+  background: linear-gradient(180deg, rgba(172, 226, 214, 0.21), rgba(119, 181, 189, 0.08));
+  color: #e0fff1;
+  text-shadow: 0 1px 3px rgba(5, 17, 23, 0.72);
+  box-shadow: inset 0 1px 0 rgba(245, 255, 248, 0.15), 0 0 8px rgba(150, 216, 214, 0.12);
+}
+
+.pc-label::before {
+  color: var(--spectral-ectoplasm);
+}
+
+.strip.danger-mode .pc-label {
+  border-color: rgba(226, 178, 195, 0.64);
+  background: linear-gradient(180deg, rgba(185, 137, 157, 0.2), rgba(151, 106, 131, 0.07));
+  color: #f0d7e2;
+  box-shadow: inset 0 1px 0 rgba(255, 244, 249, 0.1), 0 0 8px rgba(209, 160, 188, 0.14);
+}
+
+.strip.danger-mode .pc-label::before {
+  color: #e6b3ca;
+}
+
+.quick-btn,
+#rank-btn,
+#attendance-btn,
+.shop-btn,
+.rank-btn,
+.attendance-btn {
+  border-color: rgba(172, 229, 219, 0.54);
+  background: linear-gradient(180deg, rgba(99, 148, 151, 0.88), rgba(48, 87, 98, 0.95));
+  color: #effff8;
+  text-shadow: 0 1px 2px rgba(8, 24, 31, 0.7);
+  box-shadow: inset 0 1px 0 rgba(239, 255, 248, 0.17), 0 1px 4px rgba(5, 16, 22, 0.28);
+}
+
+#rank-btn,
+.rank-btn {
+  border-color: rgba(199, 192, 231, 0.58);
+  background: linear-gradient(180deg, rgba(121, 119, 156, 0.88), rgba(69, 70, 101, 0.96));
+  color: #f2efff;
+}
+
+#attendance-btn,
+.attendance-btn {
+  border-color: rgba(190, 239, 214, 0.63);
+  background: linear-gradient(180deg, rgba(104, 161, 139, 0.88), rgba(49, 101, 94, 0.96));
+  color: #eafff2;
+}
+
+.quick-btn:hover,
+.quick-btn.active,
+#rank-btn:hover,
+#rank-btn.active,
+#attendance-btn:hover,
+#attendance-btn.active,
+.shop-btn:hover,
+.rank-btn:hover,
+.attendance-btn:hover {
+  border-color: rgba(231, 255, 245, 0.9);
+  background: linear-gradient(180deg, rgba(152, 210, 195, 0.96), rgba(77, 135, 138, 0.98));
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(250, 255, 251, 0.24), 0 0 8px rgba(166, 234, 218, 0.2);
+}
+
+#rank-btn:hover,
+#rank-btn.active,
+.rank-btn:hover {
+  background: linear-gradient(180deg, rgba(174, 167, 206, 0.96), rgba(101, 99, 143, 0.98));
+}
+
+.logout-btn {
+  border-color: rgba(198, 168, 190, 0.62);
+  background: linear-gradient(180deg, rgba(127, 89, 112, 0.93), rgba(76, 54, 74, 0.97));
+  color: #f8e9f2;
+  text-shadow: 0 1px 2px rgba(24, 11, 23, 0.7);
+  box-shadow: inset 0 1px 0 rgba(255, 246, 250, 0.13), 0 1px 4px rgba(8, 15, 22, 0.3);
+}
+
+.logout-btn:hover {
+  border-color: rgba(234, 203, 222, 0.84);
+  background: linear-gradient(180deg, rgba(157, 115, 144, 0.96), rgba(100, 68, 96, 0.98));
+  color: #fff8fc;
+  box-shadow: inset 0 1px 0 rgba(255, 247, 251, 0.19), 0 0 8px rgba(214, 169, 203, 0.19);
+}
+
+.strip.danger-mode {
+  border-color: rgba(204, 154, 174, 0.62);
+  box-shadow: 0 0 12px rgba(205, 148, 176, 0.18), inset 0 1px 0 rgba(248, 227, 237, 0.18);
+}
+
+.strip.danger-mode .neon-line-left,
+.strip.danger-mode .neon-line-right {
+  background: linear-gradient(180deg, transparent, rgba(222, 174, 195, 0.8), rgba(202, 150, 186, 0.88), transparent);
+  box-shadow: 0 0 7px rgba(219, 165, 193, 0.38), 0 0 14px rgba(202, 150, 186, 0.18);
+}
+
+.strip.danger-mode .neon-glow-left,
+.strip.danger-mode .neon-glow-right {
+  background: radial-gradient(ellipse at center, rgba(207, 155, 187, 0.16), transparent 72%);
+}
+
+.strip.danger-mode .status-dot {
+  background: #dfabc4;
+  box-shadow: 0 0 4px rgba(223, 171, 196, 0.56), 0 0 8px rgba(208, 153, 189, 0.24);
+}
+
+.strip.danger-mode .user {
+  color: rgba(239, 213, 228, 0.82);
+}
+
+.strip.danger-mode .logout-btn {
+  border-color: rgba(220, 174, 193, 0.64);
+  background: linear-gradient(180deg, rgba(117, 78, 99, 0.94), rgba(68, 45, 63, 0.97));
+  color: #f4dce8;
+}
+
+.strip.danger-mode .sweep {
+  background: linear-gradient(90deg, transparent, rgba(246, 219, 235, 0.025), rgba(238, 201, 225, 0.08), transparent);
+}
+
+.drawer {
+  border-color: rgba(173, 225, 220, 0.42);
+  background:
+    radial-gradient(ellipse at 78% 0%, rgba(139, 202, 202, 0.15), transparent 55%),
+    linear-gradient(135deg, #20343c 0%, #15252e 58%, #1b2734 100%);
+  box-shadow: 0 -12px 34px rgba(5, 15, 21, 0.68), inset 0 1px 0 rgba(229, 255, 246, 0.14);
+}
+
+.drawer-head {
+  border-bottom-color: rgba(181, 232, 220, 0.2);
+  background: rgba(11, 25, 32, 0.26);
+}
+
+.drawer-title {
+  color: #c9f0e1;
+}
+
+.drawer-close {
+  color: #a8c8c7;
+}
+
+.product {
+  border-color: rgba(175, 227, 218, 0.2);
+  background: rgba(169, 226, 215, 0.055);
+}
+
+.product-name {
+  color: #e3f3ed;
+}
+
+.product-price,
+.rank-no {
+  color: #c3eddc;
+}
+
+.add-btn {
+  border-color: rgba(175, 231, 216, 0.7);
+  background: linear-gradient(180deg, #a9ddcb, #6baea8);
+  color: #14282f;
+}
+
+.empty-state,
+.drawer-note,
+.cart-summary {
+  color: #a6c2c1;
+}
+
+.cart-bar {
+  border-top-color: rgba(177, 227, 217, 0.22);
+  background: rgba(13, 27, 34, 0.8);
+}
+
+.cart-summary strong,
+.rank-points {
+  color: #d9f4e8;
+}
+
+.clear-cart {
+  color: #a8c8c7;
+}
+
+.order-btn {
+  border-color: rgba(196, 239, 220, 0.78);
+  background: linear-gradient(180deg, #c5ecda, #7fbeb5);
+  color: #172a30;
+}
+
+.rank-row {
+  border-color: rgba(174, 224, 218, 0.17);
+  background: rgba(221, 246, 237, 0.035);
+}
+
+.rank-row.me {
+  border-color: rgba(187, 235, 220, 0.6);
+  background: rgba(153, 216, 196, 0.13);
+}
+
+.rank-points span {
+  color: #9ab4b7;
+}
+
+.drawer-note {
+  border-top-color: rgba(174, 224, 218, 0.17);
+}
+
+.toast {
+  border-color: rgba(170, 226, 202, 0.66);
+  background: #203a36;
+  color: #c6f0d8;
+}
