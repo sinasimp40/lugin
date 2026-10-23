@@ -64,6 +64,8 @@ The application is built using Electron for the desktop client, with a Node.js (
 - The server listens on `0.0.0.0` and uses Replit's assigned `PORT` (default `5000`).
 - Electron kiosk features and Windows system controls only work in the packaged Windows desktop app.
 - MikroTik and JuanFi features require network access to the pisonet hardware and will not work from Replit unless those services are made securely reachable.
+- The browser preview runs in the default `auto-shutdown` role. A fresh workspace reports no registered administrator; complete the app's existing administrator setup before changing protected settings. No external-service credentials are required just to open the browser interface.
+- A “No Denfi Points server found on network” startup message is expected in this hosted workspace without a reachable Points server; it does not prevent the browser interface from loading. Keep Points sync endpoints on a trusted private network rather than exposing them publicly to make the preview connect.
 
 ## Daily attendance
 - The Admin → Attendance page configures a member-only login reward or daily play-time target and fixed point reward. It is off by default.
