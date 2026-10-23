@@ -15,3 +15,4 @@
 - [Telegram duplicates](telegram-duplicate-policy.md) — prioritize no duplicate sends over automatic retry of uncertain delivery; update Points and every kiosk together.
 - [Workspace cleanup](workspace-cleanup.md) — completed demos and generated releases are disposable; preserve runtime screens, offline voice, data, and recovery history.
 - [Session username visibility](session-username-visibility.md) — show full names by widening the bar, including with tools open; verify rendered fit and native applied bounds.
+- [Session logo motion](session-logo-motion.md) — the owner disliked strong left-right motion; keep the logo centered with only a slow, subtle 3D tilt.

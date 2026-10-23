@@ -41,11 +41,12 @@
   visibility: visible;
 }
 .points-zone[data-logo-phase="logo"] .points-logo img {
-  animation: points-logo-sway 2.5s ease-in-out infinite;
+  animation: points-logo-sway 5s ease-in-out infinite;
 }
 @keyframes points-logo-sway {
-  0%, 100% { transform: perspective(260px) translateX(-5px) rotateY(-24deg) rotateZ(-3deg); }
-  50% { transform: perspective(260px) translateX(5px) rotateY(24deg) rotateZ(3deg); }
+  0%, 50%, 100% { transform: perspective(260px) rotateY(0deg); }
+  25% { transform: perspective(260px) rotateY(-8deg); }
+  75% { transform: perspective(260px) rotateY(8deg); }
 }
 @media (prefers-reduced-motion: reduce) {
   .points-zone[data-logo-phase="logo"] .points-logo img { animation: none; }

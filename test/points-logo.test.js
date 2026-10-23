@@ -88,7 +88,13 @@ test('logo is the supplied asset and stays isolated from overlay sizing', () => 
   assert.deepEqual(fs.readFileSync(path.join(root, 'assets/icon.png')), fs.readFileSync(path.join(root, 'public/icon.png')));
   const css = fs.readFileSync(path.join(root, 'public/points-logo.css'), 'utf8');
   assert.match(css, /position: absolute/);
-  assert.match(css, /rotateY\(-24deg\)/);
-  assert.match(css, /rotateY\(24deg\)/);
+  assert.match(css, /points-logo-sway 5s ease-in-out infinite/);
+  assert.match(css, /rotateY\(-8deg\)/);
+  assert.match(css, /rotateY\(8deg\)/);
+  assert.doesNotMatch(css, /translateX|rotateZ/);
   assert.doesNotMatch(css, /display:\s*none/);
+  const session = fs.readFileSync(path.join(root, 'public/session.html'), 'utf8');
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  assert.match(session, /href="\/points-logo\.css"/);
+  assert.ok(config.build.files.includes('public/**/*'), 'Windows build includes the same animation');
 });
