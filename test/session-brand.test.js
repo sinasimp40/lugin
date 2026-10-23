@@ -15,7 +15,7 @@ function harness({ complete = true, naturalWidth = 256 } = {}) {
   };
   const clock = {
     setInterval(fn, delay) {
-      assert.equal(delay, 3000);
+      assert.equal(delay, 5000);
       jobs.set(++id, fn);
       return id;
     },
@@ -25,7 +25,7 @@ function harness({ complete = true, naturalWidth = 256 } = {}) {
   return { zone, image, listeners, jobs, dispose, tick: () => [...jobs.values()].forEach(fn => fn()) };
 }
 
-test('cached logo rotates every three seconds repeatedly without relying on CSS animation', () => {
+test('cached logo rotates every five seconds repeatedly without relying on CSS animation', () => {
   const h = harness();
   assert.equal(h.zone.dataset.brandFace, 'balance');
   for (let i = 0; i < 20; i++) {

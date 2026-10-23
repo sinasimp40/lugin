@@ -19,7 +19,7 @@
       timer = clock.setInterval(() => {
         logoVisible = !logoVisible;
         zone.dataset.brandFace = logoVisible ? 'logo' : 'balance';
-      }, 3000);
+      }, 5000);
     }
     image.addEventListener('load', start);
     image.addEventListener('error', stop);
