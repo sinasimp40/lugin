@@ -1,0 +1,52 @@
+/* Keep both faces inside the existing fixed-width balance panel. */
+.points-zone {
+  perspective: 260px;
+}
+.points-zone > .pts-value,
+.points-zone > .pts-label,
+.points-zone > .games-zone-btn {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity .28s ease, visibility .28s;
+}
+.points-zone > .points-logo {
+  position: absolute;
+  inset: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .28s ease, visibility .28s;
+}
+.points-logo img {
+  width: 64px;
+  height: 64px;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+.points-zone[data-logo-phase="logo"] > .pts-value,
+.points-zone[data-logo-phase="logo"] > .pts-label,
+.points-zone[data-logo-phase="logo"] > .games-zone-btn {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.points-zone[data-logo-phase="logo"] > .points-logo {
+  opacity: 1;
+  visibility: visible;
+}
+.points-zone[data-logo-phase="logo"] .points-logo img {
+  animation: points-logo-sway 2.5s ease-in-out infinite;
+}
+@keyframes points-logo-sway {
+  0%, 100% { transform: perspective(260px) translateX(-5px) rotateY(-24deg) rotateZ(-3deg); }
+  50% { transform: perspective(260px) translateX(5px) rotateY(24deg) rotateZ(3deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .points-zone[data-logo-phase="logo"] .points-logo img { animation: none; }
+}

@@ -706,6 +706,7 @@
 </style>
 <link rel="stylesheet" href="/withdrawal.css">
 <link rel="stylesheet" href="/order-status.css">
+<link rel="stylesheet" href="/points-logo.css">
 </head>
 <body>
   <div class="overlay-shell">
@@ -728,6 +729,9 @@
       <span class="pts-value" id="points-value"></span>
       <span class="pts-label">BALANCE</span>
       <button class="games-zone-btn" id="games-btn" type="button">BETTING GAMES</button>
+      <div class="points-logo" aria-hidden="true">
+        <img id="points-logo-image" src="/icon.png" alt="" draggable="false">
+      </div>
     </div>
     <div class="main-section">
       <div class="top-row">
@@ -834,6 +838,7 @@
   <script src="/dice-animation.js"></script>
   <script src="/order-pickup-sound.js"></script>
   <script src="/order-status.js"></script>
+  <script src="/points-logo.js"></script>
   <script>
     (function() {
       const c = document.getElementById('bg-anim');
