@@ -1922,9 +1922,24 @@
             <button class="admin-tab" onclick="switchAdminView('advertising',this)"><span class="admin-tab-mark"></span>Advertising</button>
             <button class="admin-tab" onclick="switchAdminView('attendance',this)"><span class="admin-tab-mark"></span>Attendance</button>
             <button class="admin-tab" onclick="switchAdminView('withdrawal',this)"><span class="admin-tab-mark"></span>Withdrawal</button>
+            <button class="admin-tab" onclick="switchAdminView('theme',this)"><span class="admin-tab-mark"></span>Theme Settings</button>
             <button class="admin-tab" onclick="switchAdminView('security',this)"><span class="admin-tab-mark"></span>Security</button>
           </nav>
           <main class="admin-workspace">
+            <section class="admin-page" id="admin-page-theme">
+              <div class="admin-page-intro"><div><h2>Theme Settings</h2><p>One shared session theme for all connected shop PCs.</p></div></div>
+              <div class="admin-section">
+                <h3>Session view theme</h3>
+                <p>Denfi Points saves this selection. Updated Auto Shutdown PCs apply it automatically without logging players out or restarting their session. Disconnected PCs retain their last confirmed theme and refresh when reconnected.</p>
+                <form id="theme-settings-form">
+                  <div class="form-group"><label for="admin-session-theme">Theme</label><select id="admin-session-theme" disabled><option value="default">Default</option><option value="halloween">Halloween</option></select></div>
+                  <button class="btn-admin" id="admin-theme-save" type="submit" disabled>Save shared theme</button>
+                  <button class="btn-admin" id="admin-theme-reload" type="button">Reload selection</button>
+                  <p id="admin-theme-status" role="status" aria-live="polite" style="margin-top:14px"></p>
+                </form>
+                <p style="margin-top:16px">Halloween uses the approved transparent ghost, slow back-and-forth animation, and glass colors. The username, buttons, betting animations, and logo effects keep their original functionality. Update both Denfi Points and every Auto Shutdown boot image to enable this feature.</p>
+              </div>
+            </section>
             <section class="admin-page active" id="admin-page-runtime">
               <div class="admin-page-intro"><div><h2>Runtime</h2><p>Machine identity, timing and shop-hours controls.</p></div></div>
               <div class="admin-grid">
@@ -2051,7 +2066,7 @@
             </section>
           </main>
         </div>
-        <footer class="admin-footer"><span class="admin-footer-note">Changes apply to this kiosk immediately</span><button class="btn-admin danger" onclick="stopApp()">Stop application</button></footer>
+        <footer class="admin-footer"><span class="admin-footer-note">Local settings apply here; shared policies sync through Denfi Points</span><button class="btn-admin danger" onclick="stopApp()">Stop application</button></footer>
       </div>
     </div>
   </div>
@@ -2069,6 +2084,7 @@
       if (workspace) workspace.scrollTop = 0;
       if (view === 'betting' && !adminWheelLoaded) loadAdminWheel();
       if (view === 'withdrawal' && window.DenfiWithdrawalAdmin) window.DenfiWithdrawalAdmin.load();
+      if (view === 'theme' && window.DenfiThemeAdmin) window.DenfiThemeAdmin.load();
     }
 
     var _confirmPending = false;
@@ -3706,7 +3722,7 @@
       setTimeout(() => document.getElementById('admin-pw-input').focus(), 100);
     }
 
-    function closeAdmin() { document.getElementById('admin-modal').classList.remove('active'); adminToken = null; }
+    function closeAdmin() { document.getElementById('admin-modal').classList.remove('active'); adminToken = null; if (window.DenfiThemeAdmin) window.DenfiThemeAdmin.reset(); }
 
     function showAdminMsg(id, msg, type) {
       const el = document.getElementById(id);
@@ -3738,6 +3754,7 @@
       document.getElementById('admin-auth-view').style.display = 'none';
       document.getElementById('admin-panel-view').style.display = 'block';
       document.getElementById('admin-box').classList.remove('auth-mode');
+      if (document.getElementById('admin-page-theme').classList.contains('active') && window.DenfiThemeAdmin) window.DenfiThemeAdmin.load();
       const resp = await fetch('/api/admin/settings', { headers: { 'x-admin-token': adminToken } }).then(r => r.json()).catch(() => ({}));
       if (resp.settings) {
         document.getElementById('admin-computer-name').value = resp.settings.computerName || '';
@@ -5583,6 +5600,7 @@
   </script>
   <script src="/attendance-calendar.js"></script>
   <script src="/withdrawal-admin.js"></script>
+  <script src="/theme-settings.js"></script>
   <link rel="stylesheet" href="/manual-points.css" />
   <script src="/manual-points.js"></script>
 </body>

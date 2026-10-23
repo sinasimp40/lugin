@@ -3,8 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-test('mockup ghost floats both directions inside the details area without intercepting controls', () => {
-  const css = fs.readFileSync(path.join(__dirname, '../mockups/halloween/spectral.css'), 'utf8');
+test('Halloween ghost floats both directions inside the details area without intercepting controls', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../public/themes/halloween.css'), 'utf8');
   const ghost = css.slice(css.indexOf('.strip::after'), css.indexOf('/* Travel'));
   assert.match(ghost, /left: 140px/);
   assert.match(ghost, /right: 132px/);

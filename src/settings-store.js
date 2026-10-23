@@ -331,6 +331,8 @@ function getSettings() {
   }
   return {
     computerName: s.computerName !== undefined ? s.computerName : 'COMPUTER SHOP',
+    sessionTheme: s.sessionTheme === 'halloween' ? 'halloween' : 'default',
+    sessionThemeRevision: s.sessionThemeRevision || 'initial',
     autoShutdownSeconds: s.autoShutdownSeconds !== undefined ? s.autoShutdownSeconds : 180,
     backgroundImage: s.backgroundImage || null,
     loginImage: s.loginImage || null,
@@ -366,6 +368,7 @@ function getSettings() {
 function getPublicSettings() {
   const s = getSettings();
   return {
+    sessionTheme: s.sessionTheme,
     computerName: s.computerName,
     autoShutdownSeconds: s.autoShutdownSeconds,
     backgroundImage: s.backgroundImage,
@@ -409,6 +412,11 @@ function isWithinCurfew() {
 
 function updateSettings(updates) {
   const s = load();
+  if (['default', 'halloween'].includes(updates.sessionTheme)) s.sessionTheme = updates.sessionTheme;
+  if (typeof updates.sessionThemeRevision === 'string' &&
+      /^(initial|[a-f0-9-]{36})$/.test(updates.sessionThemeRevision)) {
+    s.sessionThemeRevision = updates.sessionThemeRevision;
+  }
   if (updates.computerName !== undefined) s.computerName = updates.computerName;
   if (updates.autoShutdownSeconds !== undefined) s.autoShutdownSeconds = parseInt(updates.autoShutdownSeconds) || 0;
   if (updates.backgroundImage !== undefined) s.backgroundImage = updates.backgroundImage;

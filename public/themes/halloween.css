@@ -1,5 +1,4 @@
-/* Spectral Glass — a cool, haunted-glass treatment for the extracted strip.
-   Paint only: controls and layout stay intact; ghost motion is mockup-only. */
+/* Halloween — approved glass treatment. Paint only; original controls and native sizing stay intact. */
 :root {
   --spectral-ink: #101b23;
   --spectral-deep: #14252d;
@@ -25,7 +24,7 @@
     inset 0 0 0 1px rgba(193, 235, 230, 0.09);
 }
 
-/* Transparent ghost artwork is supplied by the comparison harness. */
+/* Bundled artwork works without internet on diskless kiosk clients. */
 .strip::after {
   content: "";
   position: absolute;
@@ -39,7 +38,7 @@
   opacity: 0.48;
   background-image:
     linear-gradient(90deg, rgba(20, 38, 47, 0.2), rgba(20, 38, 47, 0.02) 48%, rgba(20, 38, 47, 0.18)),
-    var(--halloween-art, url("../../attached_assets/halloween/ghost.png"));
+    url("./halloween-ghost.png");
   background-size: 100% 100%, min(82px, 100%) auto;
   background-position: center, 100% 50%;
   background-repeat: no-repeat;
@@ -103,6 +102,7 @@
   );
 }
 
+.points-zone,
 .points-zone.active {
   background: linear-gradient(155deg, rgba(182, 239, 220, 0.18), rgba(109, 180, 190, 0.1));
   border-color: rgba(177, 235, 221, 0.35);

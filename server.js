@@ -910,6 +910,8 @@ app.post('/api/admin/settings', verifyToken, (req, res) => {
   delete body.attendanceTargetSeed;
   delete body.attendancePoints;
   delete body.wheel;
+  delete body.sessionTheme;
+  delete body.sessionThemeRevision;
   if (coinLogsReadOnly) {
     delete body.coinRates;
     delete body.pointRates;
@@ -2546,6 +2548,11 @@ app.get('/api/session/wheel', requireLocalWheelPlayer, async (req, res) => {
   } catch (error) {
     wheelErrorResponse(res, error);
   }
+});
+
+require('./src/session-theme').registerSessionTheme(app, {
+  settings, appRole, verifyToken, authorizeKioskMission,
+  getPointsUrl: () => syncServerUrl, broadcastSettings,
 });
 
 require('./src/withdrawal-routes').registerWithdrawalRoutes(app, {

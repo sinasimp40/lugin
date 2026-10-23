@@ -707,6 +707,8 @@
 <link rel="stylesheet" href="/withdrawal.css">
 <link rel="stylesheet" href="/order-status.css">
 <link rel="stylesheet" href="/points-logo.css">
+<link id="session-halloween-theme" rel="stylesheet" href="/themes/halloween.css" media="not all">
+<script src="/session-theme.js"></script>
 </head>
 <body>
   <div class="overlay-shell">
@@ -2406,8 +2408,9 @@
           } else if (msg.type === 'order-status' || msg.type === 'order_status') {
             const orderUpdate = msg.order || (msg.data && (msg.data.order || msg.data.data || msg.data)) || msg;
             if (window.DenfiOrderStatus) window.DenfiOrderStatus.update(orderUpdate);
-          } else if (msg.type === 'settings' && activeDrawer === 'shop') {
-            loadProducts();
+          } else if (msg.type === 'settings') {
+            if (window.DenfiSessionTheme) window.DenfiSessionTheme.apply(msg.data?.sessionTheme);
+            if (activeDrawer === 'shop') loadProducts();
           } else if (msg.type === 'wheel-win') {
             receiveWinNotice(msg.data);
           } else if (msg.type === 'logged-out') {

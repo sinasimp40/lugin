@@ -1,10 +1,10 @@
 ---
 name: Halloween session theme
-description: Preferred Halloween mockup direction and the boundary between theme exploration and production.
+description: Approved Halloween design and server-authoritative theme switching for diskless PCs.
 ---
 
-The owner liked the Spectral Glass session mockup with its transparent 3D ghost and asked to explore the ghost moving from end to end and back.
+The owner approved the Spectral Glass design, including the transparent 3D ghost moving end to end and back, as the production **Halloween** session theme. Keep the original look available as **Default**.
 
-**Why:** They attached that mockup and said “this is good” before requesting an animated mockup.
+**Why:** After approving the animated mockup, the owner requested Default/Halloween choices in Auto Shutdown's admin panel, shared through Denfi Points because the shop's PCs use a diskless setup.
 
-**How to apply:** Continue refinements from Spectral Glass, retaining original controls, full usernames, and the existing logo effect. This is approval for mockup exploration, not permission to apply the theme or animation to the live session or Windows executable.
+**How to apply:** Denfi Points owns the selection; updated kiosks automatically apply confirmed server changes without interrupting sessions. Preserve original controls, full usernames, betting animations, and the logo effect. Retain only assets required by the production theme; the owner requested removal of mockups to reduce file size.
