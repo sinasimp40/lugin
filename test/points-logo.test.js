@@ -98,3 +98,12 @@ test('logo is the supplied asset and stays isolated from overlay sizing', () => 
   assert.match(session, /href="\/points-logo\.css"/);
   assert.ok(config.build.files.includes('public/**/*'), 'Windows build includes the same animation');
 });
+
+test('light sweep is masked to the logo, follows its tilt, and cannot block controls', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../public/points-logo.css'), 'utf8');
+  assert.match(css, /mask: url\("\/icon\.png"\) center \/ contain no-repeat/);
+  assert.match(css, /\.points-logo::after\s*\{[^}]*pointer-events: none/s);
+  assert.match(css, /animation: points-logo-sway 5s ease-in-out infinite,\s*points-logo-light-sweep 5s ease-in-out infinite/);
+  assert.match(css, /@keyframes points-logo-light-sweep/);
+  assert.match(css, /background-position: -150% 0; opacity: 0/);
+});
