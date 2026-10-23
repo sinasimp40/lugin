@@ -1932,7 +1932,15 @@
                 <h3>Session view theme</h3>
                 <p>Denfi Points saves this selection. Updated Auto Shutdown PCs apply it automatically without logging players out or restarting their session. Disconnected PCs retain their last confirmed theme and refresh when reconnected.</p>
                 <form id="theme-settings-form">
-                  <div class="form-group"><label for="admin-session-theme">Theme</label><select id="admin-session-theme" disabled><option value="default">Default</option><option value="halloween">Halloween</option></select></div>
+                  <div class="form-group">
+                    <div id="admin-theme-label">Theme</div>
+                    <input id="admin-session-theme" type="hidden" value="default">
+                    <div id="admin-theme-choices" role="group" aria-labelledby="admin-theme-label" style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0">
+                      <button type="button" class="btn-admin theme-choice" data-theme-value="default" aria-pressed="true">Default</button>
+                      <button type="button" class="btn-admin theme-choice" data-theme-value="halloween" aria-pressed="false">Halloween</button>
+                    </div>
+                    <p id="admin-theme-selection">Selected: Default. Choose a theme, then save it to Denfi Points.</p>
+                  </div>
                   <button class="btn-admin" id="admin-theme-save" type="submit" disabled>Save shared theme</button>
                   <button class="btn-admin" id="admin-theme-reload" type="button">Reload selection</button>
                   <p id="admin-theme-status" role="status" aria-live="polite" style="margin-top:14px"></p>
@@ -5601,6 +5609,7 @@
   <script src="/attendance-calendar.js"></script>
   <script src="/withdrawal-admin.js"></script>
   <script src="/theme-settings.js"></script>
+  <link rel="stylesheet" href="/theme-settings.css">
   <link rel="stylesheet" href="/manual-points.css" />
   <script src="/manual-points.js"></script>
 </body>

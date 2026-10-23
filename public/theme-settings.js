@@ -6,8 +6,29 @@
   const save = document.getElementById('admin-theme-save');
   const reload = document.getElementById('admin-theme-reload');
   const status = document.getElementById('admin-theme-status');
-  let revision = null, busy = false, sequence = 0;
-  function controls() { save.disabled = busy || revision === null; reload.disabled = busy; select.disabled = busy || revision === null; }
+  const selection = document.getElementById('admin-theme-selection');
+  const choices = Array.from(document.querySelectorAll('[data-theme-value]'));
+  let revision = null, busy = false, sequence = 0, pending = false;
+  const label = value => value === 'halloween' ? 'Halloween' : 'Default';
+  function controls() {
+    save.disabled = busy || revision === null;
+    reload.disabled = busy;
+    choices.forEach(button => {
+      button.disabled = busy;
+      button.setAttribute('aria-pressed', String(button.dataset.themeValue === select.value));
+    });
+    selection.textContent = 'Selected: ' + label(select.value) + (pending ?
+      '. Not published. ' + (revision === null ?
+        'Connect Denfi Points in Runtime, reload the selection, then save the shared theme.' :
+        'Click Save shared theme to apply this to connected PCs.') :
+      '. Choose a theme, then save it to Denfi Points.');
+  }
+  choices.forEach(button => button.addEventListener('click', () => {
+    if (busy) return;
+    select.value = button.dataset.themeValue;
+    pending = true;
+    controls();
+  }));
   async function request(options) {
     const token = window.getDenfiAdminToken();
     if (!token) throw new Error('Sign in to the admin panel first.');
@@ -27,7 +48,8 @@
     try {
       const value = await request();
       if (current !== sequence) return;
-      select.value = value.theme; revision = value.revision;
+      if (!pending) select.value = value.theme;
+      revision = value.revision;
       status.textContent = 'Active on Denfi Points: ' + (value.theme === 'halloween' ? 'Halloween' : 'Default') + '.';
     } catch (error) {
       if (current === sequence) status.textContent = error.message + ' No change was published.';
@@ -43,6 +65,7 @@
         body: JSON.stringify({ theme: select.value, expectedRevision: revision }) });
       if (current !== sequence) return;
       revision = value.revision; select.value = value.theme;
+      pending = false;
       status.textContent = 'Verified: ' + (value.theme === 'halloween' ? 'Halloween' : 'Default') +
         ' is saved on Denfi Points. Connected PCs apply it automatically, normally within 5 seconds.';
     } catch (error) {
@@ -55,7 +78,7 @@
   reload.addEventListener('click', load);
   window.DenfiThemeAdmin = {
     load,
-    reset() { ++sequence; revision = null; busy = false; controls(); status.textContent = ''; },
+    reset() { ++sequence; revision = null; busy = false; pending = false; select.value = 'default'; controls(); status.textContent = ''; },
   };
   controls();
 })();

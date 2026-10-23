@@ -1,0 +1,19 @@
+.theme-choice.btn-admin {
+  min-width: 140px;
+  min-height: 42px;
+  touch-action: manipulation;
+}
+.theme-choice.btn-admin[aria-pressed="true"] {
+  border-color: #ffac44;
+  background: #60360c;
+  color: #fff1da;
+  box-shadow: inset 0 0 0 1px #ffac44;
+}
+.theme-choice.btn-admin:focus-visible {
+  outline: 2px solid #ffe0ac;
+  outline-offset: 3px;
+}
+#admin-theme-selection {
+  margin-bottom: 14px;
+  color: #c9b8a2;
+}
