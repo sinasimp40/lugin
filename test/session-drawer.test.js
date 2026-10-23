@@ -94,7 +94,8 @@ test('switching session drawers measures the new panel instead of keeping the pr
   window.parent = window;
   const view = new Function('document', 'window', 'setTimeout', 'clearTimeout', 'requestAnimationFrame', `
     let activeDrawer = null, drawerHeightFloor = 0, drawerResizeTimer = null, sessionOverlayPlacement = 'above';
-    let displayedWinNotice = null, pendingWinNotice = null, sessionUsername = 'mem-current', timeLeft = 100;
+    const pendingWinNotices = new Map();
+    let sessionUsername = 'mem-current', timeLeft = 100;
     const previewMode = true, OVERLAY_SCALE = 0.72;
     ${page.slice(resizeStart, resizeEnd)}
     ${page.slice(resizeEnd, openStart)}
@@ -110,8 +111,8 @@ test('switching session drawers measures the new panel instead of keeping the pr
     function resizeOrderOverlayToContent() {}
     return {
       openDrawer, closeDrawer, resizeDrawerToContent, floor:() => drawerHeightFloor,
-      active:() => activeDrawer, setPending:() => { pendingWinNotice = { id:'another-win' }; },
-      pending:() => pendingWinNotice
+      active:() => activeDrawer, setPending:() => { pendingWinNotices.set('another-win', { id:'another-win' }); },
+      pending:() => pendingWinNotices.size
     };
   `)(document, window,
     callback => { queued = callback; return 1; }, () => { queued = null; }, callback => callback());
@@ -146,11 +147,11 @@ test('switching session drawers measures the new panel instead of keeping the pr
   await view.openDrawer('wins');
   flush();
   assert.equal(elements.get('wins-view').style.display, '', 'the win popup uses the shared drawer');
-   assert.equal(elements.get('drawer-title').textContent, 'LATEST WIN');
+  assert.equal(elements.get('drawer-title').textContent, 'RECENT WINNERS');
   assert.equal(heights.at(-1), Math.ceil((150 + 70) * 0.72));
   view.setPending();
   view.closeDrawer();
   assert.equal(view.active(), null, 'the shared X closes the win popup');
-  assert.equal(view.pending(), null, 'the shared X clears a pending win too');
+  assert.equal(view.pending(), 0, 'the shared X clears pending wins too');
   assert.equal(drawer.classList.contains('active'), false);
 });

@@ -57,6 +57,12 @@ Cross-PC win announcements must originate from the shared Points ledger, not fro
 
 **How to apply:** Keep announcements idempotent by spin identity, tolerate session WebSocket startup and reconnect races, and never include private odds or financial details in the shared feed.
 
+Multiple public winners must not overwrite one another in the popup or be skipped by voice announcements.
+
+**Why:** The owner reported that two or more winners resulted in only one visible/spoken winner and asked for this to be corrected.
+
+**How to apply:** Retain multiple recent winning events, queue voice serially, and preserve identity deduplication and the winning member's result-reveal delay. This supersedes the earlier single-latest-winner popup behavior.
+
 Keep a visible, roughly five-second dice rolling phase before showing the result or updated balance, including on Windows PCs with animation effects disabled. Reduced-motion mode should change faces without rapid spatial tumbling, not skip straight to the result.
 
 **Why:** The owner reported that the built Windows app did not visibly roll the dice and showed the result too quickly. Windows reduced-motion preferences can bypass the normal animation path.

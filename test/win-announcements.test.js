@@ -67,7 +67,7 @@ test('session popup retains multiple recent winners and holds the spinner until 
       setDrawer:view => { activeDrawer = view; },
       current:() => ({
         drawer:activeDrawer,
-        winners:list.children.map(row => ({
+        winners:document.getElementById('wins-view').children.filter(row => row.children.length).map(row => ({
           username:row.children[0].textContent,
           detail:row.children[1].textContent,
           multiplier:row.children[2].textContent
@@ -114,7 +114,8 @@ test('session popup retains multiple recent winners and holds the spinner until 
     winners:[
       { username:'mem-newer', detail:'WHEEL WINNER', multiplier:'3×' },
       { username:'mem-other', detail:'WHEEL WINNER', multiplier:'2×' },
-      { username:'mem-current', detail:'WHEEL WINNER', multiplier:'5×' }
+      { username:'mem-current', detail:'WHEEL WINNER', multiplier:'5×' },
+      { username:'mem-other', detail:'WHEEL WINNER', multiplier:'2×' }
     ]
   }, 'all pending winners appear after Order closes');
   state.receiveWinNotice({ id:'latest', username:'mem-diana', multiplier:5, createdAt:600 });
@@ -213,15 +214,16 @@ test('one Points win reaches two separate connected kiosks exactly once', { time
       { id:'earlier-win', source:'wheel', username:'mem-earlier', station:'PC 02',
         multiplier:2, timestamp:earlier - 25000 },
       { id:'test-loss', source:'wheel', username:'mem-unlucky', multiplier:0, timestamp:now },
-      { id:'test-win', source:'wheel', username:'mem-winner', station:'PC 04', multiplier:5, timestamp:now }
+      { id:'test-win', source:'wheel', username:'mem-winner', station:'PC 04', multiplier:5, timestamp:now },
+      { id:'test-win-two', source:'wheel', username:'mem-second', station:'PC 05', multiplier:2, timestamp:now }
     ], memberPoints:{} }));
     const deadline = Date.now() + 11500;
-    while (received.some(list => list.length < 2) && Date.now() < deadline) {
+    while (received.some(list => list.length < 3) && Date.now() < deadline) {
       await new Promise(resolve => setTimeout(resolve, 150));
     }
     assert.deepEqual(received.map(list => list.map(win => [win.id, win.username, win.multiplier])),
-      [[['earlier-win','mem-earlier',2], ['test-win','mem-winner',5]],
-        [['earlier-win','mem-earlier',2], ['test-win','mem-winner',5]]]);
+      [[['earlier-win','mem-earlier',2], ['test-win','mem-winner',5], ['test-win-two','mem-second',2]],
+        [['earlier-win','mem-earlier',2], ['test-win','mem-winner',5], ['test-win-two','mem-second',2]]]);
     const replayed = await new Promise((resolve, reject) => {
       const socket = new WebSocket(`ws://127.0.0.1:${kioskPorts[0]}/ws/session`);
       sockets.push(socket);
@@ -237,7 +239,7 @@ test('one Points win reaches two separate connected kiosks exactly once', { time
     });
     assert.equal(replayed.id, 'test-win', 'a viewer connecting just after settlement still receives the alert');
     await new Promise(resolve => setTimeout(resolve, 2200));
-    assert.deepEqual(received.map(list => list.length), [2, 2], 'polling does not replay the same win');
+    assert.deepEqual(received.map(list => list.length), [3, 3], 'polling does not replay the same win');
   } finally {
     for (const socket of sockets) socket.close();
     for (const child of children) child.kill();

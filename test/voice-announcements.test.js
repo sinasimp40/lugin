@@ -153,14 +153,15 @@ test('public wins are spoken on every PC, including locked kiosks', async () => 
 });
 
 test('a burst of more than 24 public wins remains queued and is spoken in order', async () => {
-  const h = harness();
+  const played = [];
+  const h = harness({ play:async wav => { played.push(wav); h.advance(5000); } });
   active(h.coordinator);
   for (let i = 0; i < 40; i++) {
     assert.equal(h.coordinator.publicWin(win(`burst-${i}`, `mem-winner-${i}`)), true);
   }
   await idle(h.coordinator);
   assert.equal(h.generated.length, 40);
-  assert.equal(h.played.length, 40);
+  assert.equal(played.length, 40, 'later queued winners are not lost after 90 seconds of speech');
   assert.match(h.generated[0], /winner 0, you won/);
   assert.match(h.generated.at(-1), /winner 39, you won/);
 });
