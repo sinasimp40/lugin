@@ -448,3 +448,59 @@ mtime_ms = 1792749081603
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:0ae45259-097b-42c8-94a6-be7b3123f378/662edf3b-46db-45ef-b740-3d9e0744a1af/c62bb5b3-1c62-4379-a5a6-3d42137cb6a7"
 storage_version_token = "1792749089269114"
 content_type = "text/html"
+
+[[outputs]]
+id = "TGlPi2oaoyt9OFBYfQ7Fp"
+uri = "file://attached_assets/halloween-lock-launcher-preview.jpg"
+type = "image"
+title = "Halloween — Lock screen and Login launcher"
+description = "Full-screen Halloween background with transparent ghost, Login button, and shutdown countdown."
+logical_id = "3eb77305-7c1c-4d43-ae20-c1c303738687"
+content_hash = "sha256:bf8ae6f3a4adbc2e345c07a5268c2575f0297e0a03e28e2ceee840b227099151"
+size = 61282
+mtime_ms = 1792758438971
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:0ae45259-097b-42c8-94a6-be7b3123f378/3eb77305-7c1c-4d43-ae20-c1c303738687/49bf3705-c601-483f-b9a7-a3baf4a018a9"
+storage_version_token = "1792758450328362"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "OCSwb_ET5tqiw6xMYPmUK"
+uri = "file://attached_assets/testing_screenshot/nmx0cm.jpg"
+type = "image"
+title = "Halloween — Login form"
+description = "Teal glass login form with the Halloween ghost artwork."
+logical_id = "ce36b243-a790-4261-bf98-072e3c461315"
+content_hash = "sha256:8dfaf44dfb8a8b9b1becf9d8c001ad75dfad5e4aa693f59ca05da5b1b6d4396b"
+size = 53665
+mtime_ms = 1792753002331
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:0ae45259-097b-42c8-94a6-be7b3123f378/ce36b243-a790-4261-bf98-072e3c461315/43db3e53-cf34-4119-9219-00d8c30ef44e"
+storage_version_token = "1792758450905392"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "FkTwphmzABzB1TupQ-VnC"
+uri = "file://attached_assets/testing_screenshot/leee9o.jpg"
+type = "image"
+title = "Halloween — Registration form"
+description = "Lilac Halloween registration form. The screenshot also shows the required-username validation message."
+logical_id = "4cb9c409-a2c8-40b2-a4a0-2598579c6028"
+content_hash = "sha256:3ec728af86080db17508cee19049e740b8cb79a490b6a0ccad5763399cd54459"
+size = 54475
+mtime_ms = 1792753002331
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:0ae45259-097b-42c8-94a6-be7b3123f378/4cb9c409-a2c8-40b2-a4a0-2598579c6028/84d49d53-a862-47e1-b7e2-bb70b6fea874"
+storage_version_token = "1792758451431215"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "Od2a66OCF5pacTrMWZuyD"
+uri = "file://attached_assets/testing_screenshot/jkp6a3.jpg"
+type = "image"
+title = "Halloween — Curfew-hours screen"
+description = "Halloween curfew screen with the restricted-hours notice and shutdown countdown."
+logical_id = "12fa50d9-8946-47f6-85fb-a03c9e73a94f"
+content_hash = "sha256:9a42e0662cd2add082d266b9fed7cb314a92d52720becec211f96c00a0c7eba1"
+size = 44394
+mtime_ms = 1792753002331
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:0ae45259-097b-42c8-94a6-be7b3123f378/12fa50d9-8946-47f6-85fb-a03c9e73a94f/d97819c8-fc4c-481d-83ae-68f3220c5e98"
+storage_version_token = "1792758451978747"
+content_type = "image/jpeg"
