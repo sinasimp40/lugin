@@ -1193,29 +1193,22 @@
       } catch (_) {}
     }
     function measureIntrinsicWidth(element) {
-      if (element && element.id === 'username') {
-        const style = getComputedStyle(element);
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        if (context) {
-          context.font = style.font;
-          const text = element.textContent || '';
-          const spacing = parseFloat(style.letterSpacing) || 0;
-          return Math.ceil(context.measureText(text).width + Math.max(0, text.length - 1) * spacing + 2);
-        }
-      }
       if (!element || !element.classList.contains('active') && element.id === 'pc-label') return 0;
       const clone = element.cloneNode(true);
+      clone.removeAttribute('id');
       clone.style.position = 'absolute';
       clone.style.left = '-10000px';
       clone.style.top = '-10000px';
+      clone.style.visibility = 'hidden';
       clone.style.width = 'max-content';
       clone.style.maxWidth = 'none';
       clone.style.minWidth = '0';
       clone.style.flex = '0 0 auto';
       clone.style.overflow = 'visible';
       document.body.appendChild(clone);
-      const width = clone.getBoundingClientRect().width;
+      // Measure real laid-out glyphs outside the scaled, shrinking flex row.
+      // Canvas font shorthand/fallback metrics can differ from Windows text.
+      const width = Math.ceil(Math.max(clone.getBoundingClientRect().width, clone.scrollWidth)) + 2;
       clone.remove();
       return width;
     }
@@ -1246,13 +1239,13 @@
         const rowGap = parseFloat(rowStyle.gap) || 0;
         const userWidth = measureIntrinsicWidth(user);
         const pcWidth = measureIntrinsicWidth(pc);
-        const logicalWidth = withdrawalWidth + pointsWidth + mainPadding + statusWidth + userWidth + pcWidth + (rowGap * 2) + actionWidth + 4;
+        const timerWidth = measureIntrinsicWidth(document.getElementById('timer'));
+        const rowWidth = statusWidth + userWidth + pcWidth + (rowGap * 2);
+        const logicalWidth = withdrawalWidth + pointsWidth + mainPadding + Math.max(timerWidth, rowWidth) + actionWidth + 4;
         const measuredWidth = Math.max(MIN_OVERLAY_WIDTH, Math.min(MAX_OVERLAY_WIDTH, Math.ceil(logicalWidth * OVERLAY_SCALE)));
-        // Keep the window steady while a drawer is open; Windows repaints transparent
-        // windows on every bounds change, including changes caused by points polling.
-        // Avoid changing the bounds of a transparent native window while
-        // the drawer is being used; Windows flashes on every bounds change.
-        if (activeDrawer) return;
+        // Never shrink an open tool, but allow one necessary growth for a
+        // changed username rather than leaving it clipped until the tool closes.
+        if (activeDrawer && measuredWidth <= overlayWidth) return;
         const targetWidth = measuredWidth;
         if (targetWidth === overlayWidth) return;
         overlayWidth = targetWidth;
@@ -1286,6 +1279,9 @@
     // Initial measurements can use fallback fonts. Measure again once the
     // actual fonts are ready, rather than keeping a clipped startup width.
     if (document.fonts) document.fonts.ready.then(resizeOverlayToContent);
+    // Retry layout after native bounds/DPI changes, including initial show.
+    // Equal target widths are ignored above, preventing resize loops.
+    window.addEventListener('resize', resizeOverlayToContent);
 
     function setOverlayExpanded(expanded) {
       if (window.electronAPI && window.electronAPI.resizeSessionOverlay) {
@@ -2520,7 +2516,8 @@
 
     async function loadStatus() {
       if (previewMode) {
-        sessionUsername = 'mem-player-one';
+        const demoUsername = new URLSearchParams(location.search).get('username') || '';
+        sessionUsername = /^mem-[a-z0-9._-]{1,80}$/i.test(demoUsername) ? demoUsername : 'mem-player-one';
         syncOrderStatusSession();
         timeLeft = 5278;
         setDisplayedUsername(sessionUsername);

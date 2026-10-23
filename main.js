@@ -1376,7 +1376,7 @@ ipcMain.on('session-overlay-size', (event, mode) => {
         : currentSessionHeight;
   const nextHeight = Math.max(SESSION_HEIGHT, Math.min(desiredHeight, workArea.height));
   const direction = currentSessionPlacement;
-  if (currentSessionWidth === nextWidth && currentSessionHeight === nextHeight) {
+  if (bounds.width === nextWidth && bounds.height === nextHeight) {
     sessionWindow.webContents.send('session-overlay-placement', direction);
     return;
   }
@@ -1396,6 +1396,10 @@ ipcMain.on('session-overlay-size', (event, mode) => {
   // Windows animates transparent BrowserWindow bounds by repeatedly
   // repainting the entire surface; switching drawers then flashes the strip.
   sessionWindow.setBounds({ x, y, width: nextWidth, height: nextHeight }, false);
+  // Track the actual native size, not an assumed successful resize.
+  const appliedBounds = sessionWindow.getBounds();
+  currentSessionWidth = appliedBounds.width;
+  currentSessionHeight = appliedBounds.height;
   sessionWindow.webContents.send('session-overlay-placement', direction);
 });
 

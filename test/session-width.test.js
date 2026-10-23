@@ -24,11 +24,11 @@ function harness() {
     ${constants}
     let activeDrawer = null, overlayWidth = 0;
     const previewMode = false;
-    function measureIntrinsicWidth(el) { return el.intrinsic; }
+    function measureIntrinsicWidth(el) { return el ? el.intrinsic : 0; }
     ${page.slice(start, end)}
     return { resizeOverlayToContent, setDisplayedUsername,
       drawer: value => { activeDrawer = value; }, width: () => overlayWidth };
-  `)(document, { electronAPI: { resizeSessionOverlayWidth: width => widths.push(width) } },
+  `)(document, { addEventListener() {}, electronAPI: { resizeSessionOverlayWidth: width => widths.push(width) } },
     callback => callback(), el => el.css);
   return { nodes, widths, view };
 }
@@ -48,24 +48,27 @@ test('session width includes withdrawal button, full username and PC label', () 
   assert.ok(widths.at(-1) <= 900);
 });
 
-test('username text is measured from its full content rather than the clipped flex box', () => {
+test('username uses real unscaled DOM glyph width, not its clipped flex box or canvas font metrics', () => {
   const start = page.indexOf('    function measureIntrinsicWidth(element)');
   const end = page.indexOf('    function resizeOverlayToContent()', start);
   assert.ok(start >= 0 && end > start);
   const text = 'mem-r'.padEnd(84, 'x');
-  const user = { id:'username', textContent:text };
-  const canvas = { getContext:() => ({
-    font:'',
-    measureText:value => ({ width:value.length * 7 })
-  }) };
-  const measure = new Function('document', 'getComputedStyle', `
+  let removed = false;
+  const clone = {
+    style:{}, scrollWidth:656, removeAttribute: name => assert.equal(name, 'id'),
+    getBoundingClientRect:() => ({ width:655.3 }), remove:() => { removed = true; }
+  };
+  const user = { id:'username', textContent:text, classList:{ contains:() => false }, cloneNode:() => clone };
+  const measure = new Function('document', `
     ${page.slice(start, end)}
     return measureIntrinsicWidth;
-  `)({ createElement:() => canvas }, () => ({ font:'8px monospace', letterSpacing:'0.5px' }));
-  assert.equal(measure(user), Math.ceil(text.length * 7 + (text.length - 1) * 0.5 + 2));
+  `)({ body:{ appendChild: element => assert.equal(element.style.width, 'max-content') } });
+  assert.equal(measure(user), 658);
+  assert.equal(clone.style.flex, '0 0 auto');
+  assert.ok(removed);
 });
 
-test('open drawers keep stable width; closing allows the new username width and repeated checks do not resize', () => {
+test('open drawers allow necessary username growth, never shrink or repeatedly resize', () => {
   const { nodes, widths, view } = harness();
   view.resizeOverlayToContent();
   const count = widths.length;
@@ -74,10 +77,23 @@ test('open drawers keep stable width; closing allows the new username width and 
   view.drawer('games');
   nodes.username.intrinsic = 600;
   view.setDisplayedUsername('mem-another-long-name');
-  assert.equal(widths.length, count, 'no transparent-window flicker while a drawer is open');
+  assert.equal(widths.length, count + 1, 'longer username can grow even with an open drawer');
+  view.resizeOverlayToContent();
+  assert.equal(widths.length, count + 1, 'no repeated transparent-window repaint');
+  nodes.username.intrinsic = 80;
+  view.resizeOverlayToContent();
+  assert.equal(widths.length, count + 1, 'no shrinking during tool use');
   view.drawer(null);
   view.resizeOverlayToContent();
-  assert.equal(widths.length, count + 1);
+  assert.equal(widths.length, count + 2);
+});
+
+test('a long timer is included even with a short username', () => {
+  const { nodes, widths, view } = harness();
+  nodes.username.intrinsic = 10;
+  nodes.timer = { intrinsic:400 };
+  view.resizeOverlayToContent();
+  assert.equal(widths.at(-1), Math.ceil((36 + 92 + 32 + 400 + 132 + 4) * .72));
 });
 
 test('renderer/native width limits match, with refresh after fonts and withdrawal visibility changes', () => {

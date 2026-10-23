@@ -14,3 +14,4 @@
 - [Order confirmations](order-confirmation-policy.md) — same-message Telegram handoff, private Heart voice, closable status notices, shared-bot coordination, and small-overlay checks.
 - [Telegram duplicates](telegram-duplicate-policy.md) — prioritize no duplicate sends over automatic retry of uncertain delivery; update Points and every kiosk together.
 - [Workspace cleanup](workspace-cleanup.md) — completed demos and generated releases are disposable; preserve runtime screens, offline voice, data, and recovery history.
+- [Session username visibility](session-username-visibility.md) — show full names by widening the bar, including with tools open; verify rendered fit and native applied bounds.
