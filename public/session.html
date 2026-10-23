@@ -483,15 +483,16 @@
     opacity:1;
   }
   .points-zone[data-brand-face="logo"] .points-brand-logo {
-    animation:points-logo-tilt 3s ease-in-out infinite;
+    animation:points-logo-tilt 3s ease-in-out 1 both;
   }
   .points-zone[data-brand-face="logo"] .games-zone-btn {
     visibility:hidden;
     pointer-events:none;
   }
   @keyframes points-logo-tilt {
-    0%,100% { transform:rotateY(-22deg); }
-    50% { transform:rotateY(22deg); }
+    0%,100% { transform:rotateY(0deg); }
+    25% { transform:rotateY(-22deg); }
+    75% { transform:rotateY(22deg); }
   }
   /* Keep the explicitly requested logo tilt in both system motion modes.
      Only the entry/exit transition follows the reduced-motion preference. */

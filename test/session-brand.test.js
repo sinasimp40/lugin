@@ -80,10 +80,12 @@ test('logo fills the panel, visibly tilts in either motion mode, and hides the b
   assert.match(styles, /perspective:600px/);
   assert.match(styles, /rotateY\(-22deg\)/);
   assert.match(styles, /rotateY\(22deg\)/);
-  assert.match(styles, /animation:points-logo-tilt 3s/);
+  assert.match(styles, /animation:points-logo-tilt 3s ease-in-out 1 both;/);
   assert.match(styles, /transform-origin:50% 50%/);
   const logoFace = styles.match(/\.points-logo-face\s*\{([^}]+)\}/)[1];
   const tilt = styles.match(/@keyframes points-logo-tilt\s*\{([\s\S]+?)\n  \}/)[1];
+  assert.match(tilt, /0%,100% \{ transform:rotateY\(0deg\); \}/);
+  assert.doesNotMatch(styles, /infinite/);
   assert.doesNotMatch(logoFace, /translate|scale|rotate/);
   assert.doesNotMatch(tilt, /rotateX|rotateZ|translate|scale/);
   assert.doesNotMatch(styles, /animation:none/);
