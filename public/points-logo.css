@@ -81,6 +81,6 @@
   75% { transform: perspective(260px) rotateY(8deg); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .points-zone[data-logo-phase="logo"] .points-logo img { animation: none; }
-  .points-zone[data-logo-phase="logo"] .points-logo::after { animation: none; opacity: 0; }
+  html:not([data-session-motion="full"]) .points-zone[data-logo-phase="logo"] .points-logo img { animation: none; }
+  html:not([data-session-motion="full"]) .points-zone[data-logo-phase="logo"] .points-logo::after { animation: none; opacity: 0; }
 }

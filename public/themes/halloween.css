@@ -57,7 +57,10 @@
   50% { transform: translateY(-2px); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .strip::after { animation: none; background-position: center, 100% 50%; }
+  html:not([data-session-motion="full"]) .strip::after {
+    animation: none;
+    background-position: center, 100% 50%;
+  }
 }
 
 .neon-line-left,

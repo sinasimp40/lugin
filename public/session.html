@@ -708,6 +708,12 @@
 <link rel="stylesheet" href="/order-status.css">
 <link rel="stylesheet" href="/points-logo.css">
 <link id="session-halloween-theme" rel="stylesheet" href="/themes/halloween.css" media="not all">
+<script>
+  // The operator explicitly uses these two decorative effects in the native
+  // session widget, including diskless Windows images with animations disabled.
+  // Do not change the OS preference or opt other app screens into motion.
+  if (window.electronAPI) document.documentElement.dataset.sessionMotion = 'full';
+</script>
 <script src="/session-theme.js"></script>
 </head>
 <body>
