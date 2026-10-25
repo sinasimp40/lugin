@@ -1413,12 +1413,13 @@
         const strip = document.getElementById('strip');
         if (!drawer || !strip || !drawer.classList.contains('active')) return;
         document.querySelector('.overlay-shell').style.setProperty('--denfi-order-strip-height', `${strip.offsetHeight}px`);
-        if (requestedView === 'bingo') {
+        const shrinkToContent = requestedView === 'bingo' || requestedView === 'wins';
+        if (shrinkToContent) {
           drawerHeightFloor = 0;
           drawer.style.minHeight = '';
         }
         const measuredHeight = drawer.offsetHeight;
-        if (requestedView === 'bingo') {
+        if (shrinkToContent) {
           drawerHeightFloor = measuredHeight;
         } else if (measuredHeight > drawerHeightFloor) {
           drawerHeightFloor = measuredHeight;
