@@ -99,7 +99,7 @@ function calcPoints(amount, pointRates) {
 function logPoints(log, pointRates) {
   return log.source === 'attendance' || log.source === 'wheel' ||
     log.source === 'withdrawal' || log.source === 'withdrawal-refund' ||
-    log.source === 'manual-adjustment'
+    log.source === 'manual-adjustment' || log.source === 'bingo'
     ? Number(log.points) || 0 : calcPoints(log.amount, pointRates);
 }
 

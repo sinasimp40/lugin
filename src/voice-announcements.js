@@ -54,6 +54,31 @@ function formatAnnouncement(event) {
     case 'order-preparing': return `Your order has been received and is being prepared. Please wait. ${name}.`;
     case 'order-ready': return `Your order is ready for pickup. ${name}.`;
     case 'order-complete': return `Your order is complete. Thank you ${name}.`;
+    case 'bingo-start': return 'Bingo Time! A special event has started. Join from your Bingo popup before the countdown ends. One point buys one card.';
+    case 'bingo-joined': {
+      if (!Number.isSafeInteger(event.cardCount) || event.cardCount < 1 || event.cardCount > 1000)
+        throw new Error('Invalid Bingo card count');
+      return `${name}, your Bingo bet is confirmed. You have ${event.cardCount} ${event.cardCount === 1 ? 'card' : 'cards'}. Good luck!`;
+    }
+    case 'bingo-failed': return event.insufficient
+      ? `${name}, not enough points for this Bingo entry. Your Bingo invitation is now closed.`
+      : `${name}, your Bingo entry was not accepted. Please check the message on your screen.`;
+    case 'bingo-cancelled': {
+      if (Number.isFinite(event.refundedPoints) && event.refundedPoints > 0)
+        return `${name}, Bingo has been cancelled.${event.insufficientParticipants ? ' Not enough participants joined.' : ''} Your ${event.refundedPoints} points have been refunded.`;
+      return 'The Bingo event has been cancelled. All accepted bets have been refunded.';
+    }
+    case 'bingo-call': {
+      if (!Number.isInteger(event.number) || event.number < 1 || event.number > 75 ||
+          event.letter !== 'BINGO'[Math.floor((event.number - 1) / 15)]) throw new Error('Invalid Bingo call');
+      return `${event.letter}. ${event.number}.`;
+    }
+    case 'bingo-win': {
+      if (!Number.isFinite(event.payout) || event.payout <= 0 || event.payout > 1000000 ||
+          !Number.isSafeInteger(event.winningCards) || event.winningCards < 1)
+        throw new Error('Invalid Bingo prize');
+      return `Bingo! ${name}, you won ${Number(event.payout.toFixed(2))} points with ${event.winningCards} winning ${event.winningCards === 1 ? 'card' : 'cards'}. Congratulations!`;
+    }
     default: throw new Error('Unknown voice announcement type');
   }
 }
@@ -69,6 +94,9 @@ class KioskVoiceCoordinator {
     this.interrupt = interrupt;
     this.onFinished = onFinished;
     this.currentEvent = null;
+    this.bingoMemberships = new Map();
+    this.latestBingoCalls = new Map();
+    this.finishedBingoRounds = new Set();
     this.sessionEpoch = 0;
     this.now = now;
     this.log = log;
@@ -115,7 +143,9 @@ class KioskVoiceCoordinator {
     const next = data.isLogin && Number(data.sessionTimeLeft) > 0 ? identity(data.username) : '';
     if (!this.sessionKnown || next !== this.activeUsername) {
       this.sessionEpoch++;
-      if (this.currentEvent && ['welcome', 'extended', 'loss', 'even', 'order-preparing', 'order-ready', 'order-complete'].includes(this.currentEvent.type)) {
+      this.bingoMemberships.clear();
+      this.latestBingoCalls.clear();
+      if (this.currentEvent && ['welcome', 'extended', 'loss', 'even', 'order-preparing', 'order-ready', 'order-complete', 'bingo-start', 'bingo-joined', 'bingo-failed', 'bingo-call', 'bingo-cancelled'].includes(this.currentEvent.type)) {
         try { this.interrupt?.(); }
         catch (error) { this.log(`[Voice] Could not stop stale speech: ${error.message}`); }
       }
@@ -160,6 +190,42 @@ class KioskVoiceCoordinator {
     if (this.closed || !this.prepare) return;
     try { this.prepare(event); }
     catch (error) { this.log(`[Voice] Preparation rejected: ${error.message}`); }
+  }
+  bingoEvent(event) {
+    if (!event || !['bingo-start', 'bingo-joined', 'bingo-failed', 'bingo-call', 'bingo-cancelled', 'bingo-win'].includes(event.type)) return false;
+    if (typeof event.id !== 'string' || !Number.isFinite(event.expiresAt) || !this.relevant(event)) return false;
+    try { formatAnnouncement(event); } catch (_) { return false; }
+    const round = event.eventId || event.id.split(':')[1];
+    if (!round) return false;
+    if (event.type === 'bingo-joined') this.bingoMemberships.set(round,identity(event.username));
+    if (event.type === 'bingo-call') {
+      // A current, private Points snapshot also restores membership if the
+      // once-only join announcement was heard before the voice process restarted.
+      if (event.joined === true) this.bingoMemberships.set(round,identity(event.username));
+      if (this.bingoMemberships.get(round) !== this.activeUsername ||
+          !Number.isSafeInteger(event.callIndex) || event.callIndex < 1 ||
+          event.callIndex <= (this.latestBingoCalls.get(round) || 0)) return false;
+      this.latestBingoCalls.set(round,event.callIndex);
+      const current = this.currentEvent;
+      if (current && (
+          ['welcome','extended'].includes(current.type) ||
+          ['bingo-call','bingo-start','bingo-joined','bingo-failed'].includes(current.type) &&
+          (current.eventId || current.id.split(':')[1]) === round)) {
+        try { this.interrupt?.(); } catch (_) {}
+      }
+    }
+    if (['bingo-win','bingo-cancelled'].includes(event.type)) {
+      this.finishedBingoRounds.add(round);
+      if (this.currentEvent?.type?.startsWith('bingo-') &&
+          !['bingo-win','bingo-cancelled'].includes(this.currentEvent.type) &&
+          (this.currentEvent.eventId || this.currentEvent.id.split(':')[1]) === round) {
+        try { this.interrupt?.(); } catch (_) {}
+      }
+    }
+    // Bound per-PC state; membership is also tied to the current member identity.
+    for (const collection of [this.bingoMemberships,this.latestBingoCalls,this.finishedBingoRounds])
+      while (collection.size > 100) collection.delete(collection.keys().next().value);
+    return this.enqueue(event);
   }
   publicWin(win, { replay = false } = {}) {
     if (replay || !win || typeof win.id !== 'string' || win.id.length > 120 ||
@@ -232,10 +298,16 @@ class KioskVoiceCoordinator {
   }
   relevant(event) {
     if (this.closed || this.now() >= event.expiresAt) return false;
+    if (event.type?.startsWith('bingo-')) {
+      const round=event.eventId || event.id?.split(':')[1];
+      if (!['bingo-win','bingo-cancelled'].includes(event.type) && this.finishedBingoRounds.has(round)) return false;
+      if (event.type === 'bingo-call' && event.callIndex < (this.latestBingoCalls.get(round) || 0)) return false;
+      if (['bingo-start','bingo-joined'].includes(event.type) && this.latestBingoCalls.has(round)) return false;
+    }
     if (event.orderId && ['served', 'cancelled'].includes(this.orderStates.get(event.orderId)) &&
         !(event.type === 'order-complete' && this.orderStates.get(event.orderId) === 'served')) return false;
     if (event.type === 'order-preparing' && this.orderStates.get(event.orderId) === 'ready') return false;
-    return !['welcome', 'extended', 'loss', 'even', 'order-preparing', 'order-ready', 'order-complete'].includes(event.type) ||
+    return !['welcome', 'extended', 'loss', 'even', 'order-preparing', 'order-ready', 'order-complete', 'bingo-start', 'bingo-joined', 'bingo-failed', 'bingo-call', 'bingo-cancelled'].includes(event.type) ||
       identity(event.username) === this.activeUsername &&
       (event.sessionEpoch === undefined || event.sessionEpoch === this.sessionEpoch);
   }
@@ -287,7 +359,9 @@ class KioskVoiceCoordinator {
     }
     this.persistSeen();
     this.prepareSafely(event);
-    this.queue.push({ event: { ...event, sessionEpoch: this.sessionEpoch }, text });
+    const item = { event: { ...event, sessionEpoch: this.sessionEpoch }, text };
+    if (['bingo-call','bingo-win','bingo-cancelled'].includes(event.type)) this.queue.unshift(item);
+    else this.queue.push(item);
     void this.drain();
     return true;
   }

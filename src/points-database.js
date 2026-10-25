@@ -349,4 +349,4 @@ function transaction(fn) {
   }
 }
 
-module.exports = { initialize, close, isActive, transaction };
+module.exports = { initialize, close, isActive, transaction, getActive: () => active };

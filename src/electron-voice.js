@@ -159,6 +159,15 @@ function startElectronVoice({ app, BrowserWindow, ipcMain, url, sessionWindow, l
         const message = JSON.parse(String(raw));
         if (message.type === 'status') coordinator.observeStatus(message.data);
         else if (message.type === 'voice-session-event') coordinator.sessionEvent(message.data);
+        else if (message.type === 'bingo-voice-event') {
+          coordinator.bingoEvent(message.data);
+          if (['bingo-joined','bingo-call'].includes(message.data?.type) &&
+              coordinator.activeUsername &&
+              coordinator.bingoMemberships.get(message.data.eventId || message.data.id?.split(':')[1]) === coordinator.activeUsername)
+            instant?.warmBingoCalls(()=>!!coordinator.currentEvent || coordinator.queue.length>0 ||
+              !Array.from(coordinator.bingoMemberships).some(([round,user])=>
+                user === coordinator.activeUsername && !coordinator.finishedBingoRounds.has(round))).catch(reportUnavailable);
+        }
         else if (message.type === 'order-prepare') coordinator.prepareOrder(message.data);
         else if (message.type === 'order-status') coordinator.orderStatus(message.data);
         else if (message.type === 'wheel-win') coordinator.publicWin(message.data, { replay: message.replay === true });

@@ -6,6 +6,7 @@
   <title>Denfi Auto Shutdown</title>
     <link rel="stylesheet" href="/attendance-calendar.css">
     <link rel="stylesheet" href="/withdrawal.css">
+    <link rel="stylesheet" href="/bingo.css">
     <style>
     @font-face {
       font-family: 'Orbitron';
@@ -1694,7 +1695,7 @@
       <div class="session-timer" id="timer-remaining">--:--:--</div>
       <div class="session-bottom">
         <div class="user-name" id="session-username">User</div>
-        <button class="btn-logout-sm" onclick="doLogout()">Logout</button>
+        <button class="btn-logout-sm" id="logout-btn" onclick="doLogout()">Logout</button>
         <div class="session-points" id="session-points"></div>
       </div>
       <div class="session-attendance" id="session-attendance">
@@ -1706,6 +1707,29 @@
       </div>
     </div>
   </div>
+  <section id="bingo-index-panel" class="bingo-index-panel bingo-drawer" aria-label="Bingo Time event" hidden>
+    <header class="drawer-head"><div class="drawer-title">BINGO TIME</div><button class="drawer-close" id="bingo-panel-close" type="button" aria-label="Close Bingo event">&times;</button></header>
+    <div class="drawer-body">
+      <section class="bingo-view" id="bingo-view" aria-label="Live shop Bingo">
+        <div class="bingo-topline"><span class="bingo-phase" id="bingo-phase">CONNECTING</span><span class="bingo-countdown" id="bingo-countdown" aria-live="off">--:--</span></div>
+        <div class="bingo-metrics"><div class="bingo-metric"><span>TOTAL POT</span><strong id="bingo-metric-pot">—</strong></div><div class="bingo-metric"><span>PLAYERS / CARDS</span><strong id="bingo-metric-players">—</strong></div></div>
+        <div class="bingo-current" aria-live="polite"><span class="bingo-ball is-empty" id="bingo-current-ball">—</span><div class="bingo-current-copy"><small>LAST CALLED</small><strong id="bingo-current-copy">Waiting for shop event</strong></div></div>
+        <div class="bingo-history" id="bingo-history" aria-label="Recent called numbers"><span class="bingo-history-label">CALLS</span></div>
+        <div class="bingo-ruleline">LINE WINS · 5 across, down, or diagonal. Free center is marked. Pot splits per winning card.</div>
+        <div id="bingo-status-msg" class="bingo-message" role="status" aria-live="polite" hidden></div>
+        <div id="bingo-card-area" class="bingo-card-wrap" aria-live="polite"></div>
+        <div id="bingo-winners" class="bingo-winners" role="status" aria-live="polite" hidden></div>
+        <div id="bingo-join-area" hidden>
+          <div class="bingo-invite">DO YOU WANT TO JOIN BINGO TIME?</div>
+          <form class="bingo-join" id="bingo-join-form">
+            <div><label for="bingo-amount">CARDS · 1 POINT EACH</label><input id="bingo-amount" type="number" min="1" step="1" value="1" inputmode="numeric" aria-describedby="bingo-balance"></div>
+            <button id="bingo-join-btn" type="submit">BUY CARDS</button><button id="bingo-decline" class="bingo-decline" type="button">NO, NOT NOW</button>
+            <div class="bingo-join-note">Balance: <span id="bingo-balance">—</span>. Each winning card gets an equal share of the pot, not each member.</div>
+          </form>
+        </div>
+      </section>
+    </div>
+  </section>
 
   <div id="attendance-modal" class="attendance-modal" role="dialog" aria-modal="true" aria-labelledby="attendance-modal-title" hidden>
     <div class="attendance-modal-panel">
@@ -1919,6 +1943,7 @@
             <div class="admin-nav-label">Settings</div>
             <button class="admin-tab active" onclick="switchAdminView('runtime',this)"><span class="admin-tab-mark"></span>Runtime</button>
              <button class="admin-tab" onclick="switchAdminView('betting',this)"><span class="admin-tab-mark"></span>Betting Games</button>
+            <button class="admin-tab" onclick="switchAdminView('bingo',this)"><span class="admin-tab-mark"></span>BINGO GAME</button>
             <button class="admin-tab" onclick="switchAdminView('appearance',this)"><span class="admin-tab-mark"></span>Appearance</button>
             <button class="admin-tab" onclick="switchAdminView('behavior',this)"><span class="admin-tab-mark"></span>Applications</button>
             <button class="admin-tab" onclick="switchAdminView('advertising',this)"><span class="admin-tab-mark"></span>Advertising</button>
@@ -1999,6 +2024,31 @@
                  </div>
                </div>
              </section>
+            <section class="admin-page bingo-admin" id="admin-page-bingo">
+              <div class="admin-page-intro"><div><h2>Bingo Time</h2><p>One shared 75-ball game for the whole shop. Denfi Points owns the draw and every payout.</p></div></div>
+              <div class="admin-grid"><div class="admin-section full-width">
+                <h3>Live event controls</h3>
+                <p style="font-size:11px;color:#aeb4b8;margin:0 0 10px">These shared settings govern the next event. An active event keeps the configuration captured when it started.</p>
+                <div id="bingo-admin-status" class="bingo-status" role="status" aria-live="polite">Checking central Bingo support…</div>
+                <div class="bingo-live" aria-live="polite">
+                  <div class="bingo-live-item"><span>Connection</span><strong id="bingo-admin-connection">—</strong></div>
+                  <div class="bingo-live-item"><span>Event</span><strong id="bingo-admin-phase">—</strong></div>
+                  <div class="bingo-live-item"><span>Pot / players</span><strong id="bingo-admin-summary">—</strong></div>
+                </div>
+                <div class="bingo-snapshot" id="bingo-admin-snapshot" hidden></div>
+                <div class="curfew-toggle-wrap"><label class="curfew-toggle"><input type="checkbox" id="bingo-enabled"><span class="slider"></span></label><span style="font-family:'Share Tech Mono',monospace;font-size:11px;color:#e0e0e0;letter-spacing:1px">Enable new Bingo events</span></div>
+                <div class="curfew-toggle-wrap"><label class="curfew-toggle"><input type="checkbox" id="bingo-allow-custom-stake" checked><span class="slider"></span></label><span style="font-family:'Share Tech Mono',monospace;font-size:11px;color:#e0e0e0;letter-spacing:1px">Allow custom card amount</span></div>
+                <p class="bingo-config-note">When off, each member may buy exactly one card in a new event. Active events keep the amount policy captured when they began.</p>
+                <div class="bingo-config-grid">
+                  <div class="form-group"><label for="bingo-join-seconds">Join window (30–300 sec)</label><input id="bingo-join-seconds" type="number" min="30" max="300" step="1" value="30"></div>
+                  <div class="form-group"><label for="bingo-draw-seconds">Draw interval (3–30 sec)</label><input id="bingo-draw-seconds" type="number" min="3" max="30" step="1" value="3"></div>
+                  <div class="form-group"><label for="bingo-max-cards">Cards per member (1–1000)</label><input id="bingo-max-cards" type="number" min="1" max="1000" step="1" value="100"></div>
+                </div>
+                <div id="bingo-admin-dirty" class="bingo-dirty">Unsaved local edits. Shared changes will not overwrite this editor.</div>
+                <div class="bingo-admin-actions"><button type="button" class="btn-admin" id="bingo-admin-refresh">Refresh central state</button><button type="button" class="btn-admin" id="bingo-admin-save">Publish to Denfi Points</button><button type="button" class="btn-admin danger" id="bingo-admin-cancel" disabled>Cancel active event and refund cards</button></div>
+                <div id="bingo-cancel-dialog" class="bingo-confirm" role="dialog" aria-modal="true" aria-labelledby="bingo-cancel-title" hidden><div class="bingo-confirm-panel"><h3 id="bingo-cancel-title">Cancel this Bingo event?</h3><p>This asks Denfi Points to cancel the active event and refund all card purchases. The central service remains authoritative.</p><div class="bingo-admin-actions"><button type="button" class="btn-admin" id="bingo-cancel-back">Keep event</button><button type="button" class="btn-admin danger" id="bingo-cancel-confirm">Confirm cancellation</button></div></div></div>
+              </div></div>
+            </section>
             <section class="admin-page" id="admin-page-appearance">
               <div class="admin-page-intro"><div><h2>Appearance</h2><p>Shape the lock screen without touching the customer flow.</p></div></div>
               <div class="admin-grid">
@@ -2081,9 +2131,11 @@
     </div>
   </div>
 
+  <script src="/win-notice-history.js"></script>
   <script>
     function switchAdminView(view, button) {
       if (button?.classList.contains('active')) return;
+      if (view !== 'bingo') window.DenfiBingoAdmin?.deactivate();
       document.querySelectorAll('.admin-page').forEach(function(page) {
         page.classList.toggle('active', page.id === 'admin-page-' + view);
       });
@@ -2094,6 +2146,7 @@
       if (workspace) workspace.scrollTop = 0;
       if (view === 'betting' && !adminWheelLoaded) loadAdminWheel();
       if (view === 'withdrawal' && window.DenfiWithdrawalAdmin) window.DenfiWithdrawalAdmin.load();
+      if (view === 'bingo' && window.DenfiBingoAdmin) window.DenfiBingoAdmin.activate();
       if (view === 'theme' && window.DenfiThemeAdmin) window.DenfiThemeAdmin.load();
     }
 
@@ -2127,6 +2180,38 @@
 
     let loginData = null;
     let sessionData = null;
+    let indexBingoOpen = false;
+    function setIndexBingoOpen(open) {
+      if (!open && window.DenfiBingoSession?.isLocked?.()) return;
+      const panel = document.getElementById('bingo-index-panel');
+      if (!panel) return;
+      indexBingoOpen = !!open;
+      panel.hidden = !indexBingoOpen;
+      panel.classList.toggle('active', indexBingoOpen);
+      if (indexBingoOpen) panel.querySelector('.drawer-close')?.focus();
+      const sessionPanel = document.getElementById('session-panel');
+      if (sessionPanel) document.documentElement.style.setProperty('--bingo-session-height', `${Math.ceil(sessionPanel.getBoundingClientRect().height)}px`);
+    }
+    window.DenfiBingoSessionContext = function() {
+      return {
+        username: localTimeLeft > 0 ? sessionData?.username || '' : '',
+        ready: !!sessionData,
+        activeDrawer: indexBingoOpen ? 'bingo' : (document.getElementById('attendance-modal')?.classList.contains('active') ? 'attendance' : null),
+        busy: !!document.getElementById('coin-modal')?.classList.contains('active'),
+        openBingo: () => setIndexBingoOpen(true),
+        closeDrawer: () => setIndexBingoOpen(false),
+        updateBalance: updateSessionPoints,
+        dismissRecentWins: () => document.querySelectorAll('.bingo-result-notice').forEach(notice => notice.remove()),
+        resize: () => {
+          const panel = document.getElementById('session-panel');
+          if (panel) document.documentElement.style.setProperty('--bingo-session-height', `${Math.ceil(panel.getBoundingClientRect().height)}px`);
+        }
+      };
+    };
+    document.getElementById('bingo-panel-close').addEventListener('click', () => window.DenfiBingoSession?.close());
+    document.getElementById('bingo-index-panel').addEventListener('keydown', event => {
+      if (event.key === 'Escape') { event.preventDefault(); window.DenfiBingoSession?.close(); }
+    });
     let statusInterval = null;
     let countdownInterval = null;
     let localTimeLeft = 0;
@@ -2171,6 +2256,7 @@
     let sessionWs = null;
     let wsReconnectTimer = null;
     let adminToken = null;
+    window.DenfiGetAdminToken = () => adminToken;
     window.getDenfiAdminToken = function() { return adminToken; };
     const adminMessageTimers = new Map();
     // Native file inputs can open behind the fullscreen Electron kiosk. Use
@@ -3045,6 +3131,7 @@
     }
 
     async function doLogout() {
+      window.DenfiBingoSession?.stop();
       const link = sessionData?.logoutLink || '';
       const ip = sessionData?.ip || loginData?.ip || '';
       const mac = sessionData?.mac || loginData?.mac || '';
@@ -3068,6 +3155,7 @@
 
     function showLoggedOut() {
       window.DenfiAttendance?.close();
+      window.DenfiBingoSession?.stop();
       if (countdownInterval) clearInterval(countdownInterval);
       if (statusInterval) clearInterval(statusInterval);
       countdownInterval = null; statusInterval = null;
@@ -3733,7 +3821,7 @@
       setTimeout(() => document.getElementById('admin-pw-input').focus(), 100);
     }
 
-    function closeAdmin() { document.getElementById('admin-modal').classList.remove('active'); adminToken = null; if (window.DenfiThemeAdmin) window.DenfiThemeAdmin.reset(); }
+    function closeAdmin() { window.DenfiBingoAdmin?.deactivate(); document.getElementById('admin-modal').classList.remove('active'); adminToken = null; if (window.DenfiThemeAdmin) window.DenfiThemeAdmin.reset(); }
 
     function showAdminMsg(id, msg, type) {
       const el = document.getElementById(id);
@@ -5615,5 +5703,7 @@
   <link rel="stylesheet" href="/theme-settings.css">
   <link rel="stylesheet" href="/manual-points.css" />
   <script src="/manual-points.js"></script>
+  <script src="/bingo-admin.js"></script>
+  <script src="/bingo-session.js"></script>
 </body>
 </html>

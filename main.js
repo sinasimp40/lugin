@@ -342,6 +342,7 @@ function warnOfflineVoice(error) {
 }
 let mediaPickerOpen = false;
 let sessionWindow;
+let bingoLockedSessionWindow = null;
 let isQuitting = false;
 let currentState = 'logged-out';
 let focusGuardInterval = null;
@@ -1210,6 +1211,13 @@ function showSessionWindow(onShown) {
   sessionWindow.on('hide', () => {
     if (currentState === 'logged-in' && !sessionHiddenForGame) setImmediate(restoreSessionOverlay);
   });
+  sessionWindow.on('close', event => {
+    if (!isQuitting && currentState === 'logged-in' && bingoLockedSessionWindow === managedSessionWindow) {
+      event.preventDefault();
+      sessionHiddenForGame = false;
+      setImmediate(restoreSessionOverlay);
+    }
+  });
   sessionWindow.on('minimize', () => {
     if (currentState === 'logged-in' && !sessionHiddenForGame) setImmediate(restoreSessionOverlay);
   });
@@ -1233,6 +1241,11 @@ function showSessionWindow(onShown) {
 
   function checkForegroundAndManage() {
     if (currentState !== 'logged-in' || sessionWindow !== managedSessionWindow || managedSessionWindow.isDestroyed()) return;
+    if (bingoLockedSessionWindow === managedSessionWindow) {
+      sessionHiddenForGame = false;
+      restoreSessionOverlay();
+      return;
+    }
     // A member is interacting with the session controls. Do not hide the
     // window based on a stale fullscreen-game probe from the last foreground.
     if (managedSessionWindow.isFocused()) {
@@ -1257,6 +1270,11 @@ function showSessionWindow(onShown) {
       foregroundProbePending = false;
       if (currentState !== 'logged-in' || sessionWindow !== managedSessionWindow || managedSessionWindow.isDestroyed()) return;
       if (checkSequence !== foregroundCheckSequence) return;
+      if (bingoLockedSessionWindow === managedSessionWindow) {
+        sessionHiddenForGame = false;
+        restoreSessionOverlay();
+        return;
+      }
       if (managedSessionWindow.isFocused()) {
         sessionHiddenForGame = false;
         restoreSessionOverlay();
@@ -1363,8 +1381,19 @@ ipcMain.on('session-state', (event, state) => {
   handleStateChange(state);
 });
 
+ipcMain.on('bingo-session-locked', (event, locked) => {
+  if (!sessionWindow || sessionWindow.isDestroyed() || event.sender !== sessionWindow.webContents ||
+      event.senderFrame !== sessionWindow.webContents.mainFrame) return;
+  bingoLockedSessionWindow = locked === true ? sessionWindow : null;
+  if (locked === true) {
+    if (sessionWindow.isMinimized()) sessionWindow.restore();
+    if (!sessionWindow.isAlwaysOnTop()) sessionWindow.setAlwaysOnTop(true,'screen-saver');
+    if (!sessionWindow.isVisible()) sessionWindow.showInactive();
+  }
+});
 ipcMain.on('session-overlay-size', (event, mode) => {
   if (!sessionWindow || sessionWindow.isDestroyed() || event.sender !== sessionWindow.webContents) return;
+  if (bingoLockedSessionWindow === sessionWindow && mode === 'collapsed') return;
   const isObjectRequest = mode && typeof mode === 'object';
   const requestedWidth = isObjectRequest ? Number(mode.width) : NaN;
   const requestedHeight = isObjectRequest ? Number(mode.height) : NaN;

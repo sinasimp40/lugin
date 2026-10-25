@@ -707,6 +707,7 @@
   .legend-swatch.future { background:#181818; }
 </style>
 <link rel="stylesheet" href="/withdrawal.css">
+<link rel="stylesheet" href="/bingo.css">
 <link rel="stylesheet" href="/order-status.css">
 <link rel="stylesheet" href="/points-logo.css">
 <link id="session-halloween-theme" rel="stylesheet" href="/themes/halloween.css" media="not all">
@@ -810,6 +811,28 @@
       <div id="wins-view" class="wins-list" style="display:none" role="status" aria-live="polite" aria-relevant="additions text">
         <div class="wins-empty">No recent winners.</div>
       </div>
+      <section class="bingo-view" id="bingo-view" style="display:none" aria-label="Bingo Time event">
+        <div class="bingo-topline"><span class="bingo-phase" id="bingo-phase">CONNECTING</span><span class="bingo-countdown" id="bingo-countdown" aria-live="off">--:--</span></div>
+        <div class="bingo-metrics">
+          <div class="bingo-metric"><span>TOTAL POT</span><strong id="bingo-metric-pot">—</strong></div>
+          <div class="bingo-metric"><span>PLAYERS / CARDS</span><strong id="bingo-metric-players">—</strong></div>
+        </div>
+        <div class="bingo-current" aria-live="polite"><span class="bingo-ball is-empty" id="bingo-current-ball">—</span><div class="bingo-current-copy"><small>LAST CALLED</small><strong id="bingo-current-copy">Waiting for shop event</strong></div></div>
+        <div class="bingo-history" id="bingo-history" aria-label="Recent called numbers"><span class="bingo-history-label">CALLS</span></div>
+        <div class="bingo-ruleline">LINE WINS · 5 across, down, or diagonal. Free center is marked. Pot splits per winning card.</div>
+        <div id="bingo-status-msg" class="bingo-message" role="status" aria-live="polite" hidden></div>
+        <div id="bingo-card-area" class="bingo-card-wrap" aria-live="polite"></div>
+        <div id="bingo-winners" class="bingo-winners" role="status" aria-live="polite" hidden></div>
+        <div id="bingo-join-area" hidden>
+          <div class="bingo-invite">DO YOU WANT TO JOIN BINGO TIME?</div>
+          <form class="bingo-join" id="bingo-join-form">
+            <div><label for="bingo-amount">CARDS · 1 POINT EACH</label><input id="bingo-amount" type="number" min="1" step="1" value="1" inputmode="numeric" aria-describedby="bingo-balance"></div>
+            <button id="bingo-join-btn" type="submit">BUY CARDS</button>
+            <button id="bingo-decline" class="bingo-decline" type="button">NO, NOT NOW</button>
+            <div class="bingo-join-note">Balance: <span id="bingo-balance">—</span>. 5 in a row, column, or diagonal wins; free center is marked. Pot is split per winning card, not per member.</div>
+          </form>
+        </div>
+      </section>
       <div id="wheel-view" class="wheel-view">
         <div class="wheel-intro"><div class="wheel-kicker" id="wheel-kicker">MULTIPLIER REEL<span class="demo-badge" id="wheel-demo-badge" hidden>DEMO</span></div><div class="wheel-balance" id="wheel-balance">0 PTS</div></div>
         <div class="wheel-warning" id="wheel-warning">FULL BALANCE AT STAKE. 0× LOSES IT.</div>
@@ -847,6 +870,7 @@
   </section>
   </div>
 
+  <script src="/win-notice-history.js"></script>
   <script src="/withdrawal-session.js"></script>
   <script src="/reel-sequence.js"></script>
   <link rel="stylesheet" href="/dice-animation.css" />
@@ -1075,10 +1099,15 @@
           const detail = document.createElement('span');
           detail.className = 'win-entry-detail';
           const side = win.choice === 'high' ? ' HIGH' : win.choice === 'low' ? ' LOW' : '';
-          detail.textContent = `${win.game === 'dice' ? `DICE${side}` : 'WHEEL'} WINNER`;
+          const refunded = win.game === 'bingo-refund';
+          const bingo = win.game === 'bingo';
+          detail.textContent = refunded ? 'BINGO REFUND · POINTS RETURNED' :
+            bingo ? `BINGO · ${win.winningCards} WINNING CARD${win.winningCards === 1 ? '' : 'S'}` :
+              `${win.game === 'dice' ? `DICE${side}` : 'WHEEL'} WINNER`;
           const multiplier = document.createElement('strong');
           multiplier.className = 'win-entry-multiplier';
-          multiplier.textContent = `${win.multiplier}×`;
+          multiplier.textContent = bingo || refunded ? `${Number(win.payout).toFixed(2)} PTS` : `${win.multiplier}×`;
+          if (refunded) detail.textContent += ` · ${win.reason || 'EVENT CANCELLED'}`;
           row.appendChild(name);
           row.appendChild(detail);
           row.appendChild(multiplier);
@@ -1120,9 +1149,15 @@
     }
     function receiveWinNotice(win) {
       if (!win || typeof win.id !== 'string' || !/^mem-[a-z0-9._-]{1,80}$/i.test(win.username || '') ||
-          !Number.isFinite(Number(win.multiplier)) || Number(win.multiplier) <= 1 ||
+          (win.game === 'bingo-refund'
+            ? !Number.isFinite(Number(win.payout)) || Number(win.payout) <= 0 ||
+              String(win.username).toLowerCase() !== String(sessionUsername || '').toLowerCase()
+            : win.game === 'bingo'
+              ? !Number.isFinite(Number(win.payout)) || Number(win.payout) <= 0 ||
+                !Number.isSafeInteger(win.winningCards) || win.winningCards < 1
+              : !Number.isFinite(Number(win.multiplier)) || Number(win.multiplier) <= 1) ||
           !Number.isSafeInteger(win.createdAt) || win.createdAt <= 0 ||
-          seenWinNoticeIds.has(win.id)) return;
+          seenWinNoticeIds.has(win.id) || window.DenfiWinNotices?.isSeen(win.id)) return;
       if (!initialSessionStatusKnown) {
         if (earlyWinNotices.size >= MAX_QUEUED_WIN_NOTICES) earlyWinNotices.delete(earlyWinNotices.keys().next().value);
         earlyWinNotices.set(win.id, win);
@@ -1130,6 +1165,7 @@
       }
       if (!sessionUsername || timeLeft <= 0) return;
       seenWinNoticeIds.add(win.id);
+      window.DenfiWinNotices?.markSeen(win.id);
       if (seenWinNoticeIds.size > 512) seenWinNoticeIds.delete(seenWinNoticeIds.values().next().value);
       if (String(win.username).toLowerCase() === String(sessionUsername).toLowerCase() &&
           (wheelRequestId || readPendingWheel(sessionUsername))) {
@@ -1377,8 +1413,14 @@
         const strip = document.getElementById('strip');
         if (!drawer || !strip || !drawer.classList.contains('active')) return;
         document.querySelector('.overlay-shell').style.setProperty('--denfi-order-strip-height', `${strip.offsetHeight}px`);
+        if (requestedView === 'bingo') {
+          drawerHeightFloor = 0;
+          drawer.style.minHeight = '';
+        }
         const measuredHeight = drawer.offsetHeight;
-        if (measuredHeight > drawerHeightFloor) {
+        if (requestedView === 'bingo') {
+          drawerHeightFloor = measuredHeight;
+        } else if (measuredHeight > drawerHeightFloor) {
           drawerHeightFloor = measuredHeight;
           drawer.style.minHeight = `${drawerHeightFloor}px`;
         }
@@ -1409,6 +1451,8 @@
     }
 
     function closeDrawer() {
+      if (activeDrawer === 'bingo' && window.DenfiBingoSession?.isLocked?.()) return;
+      if (activeDrawer === 'bingo') window.DenfiBingoSession?.rememberDismissal();
       clearTimeout(drawerResizeTimer);
       if (activeDrawer === 'wins') {
         pendingWinNotices.clear();
@@ -1417,6 +1461,7 @@
       activeDrawer = null;
       const drawer = document.getElementById('drawer');
       drawer.classList.remove('active');
+      drawer.classList.remove('bingo-drawer');
       drawer.style.minHeight = '';
       drawerHeightFloor = 0;
       const shell = document.querySelector('.overlay-shell');
@@ -1441,7 +1486,9 @@
     }
 
     async function openDrawer(view) {
+      if (window.DenfiBingoSession?.isLocked?.() && (view !== 'bingo' || activeDrawer === 'bingo')) return;
       if (activeDrawer === view) { closeDrawer(); return; }
+      if (activeDrawer === 'bingo') window.DenfiBingoSession?.rememberDismissal();
       if (activeDrawer === 'wins' && view !== 'wins') {
         for (const [id, win] of recentWinNotices) pendingWinNotices.set(id, win);
       }
@@ -1466,15 +1513,17 @@
       document.getElementById('attendance-btn').classList.toggle('active', view === 'attendance');
       document.getElementById('games-btn').classList.toggle('active', view === 'games');
       document.getElementById('withdraw-btn').classList.toggle('active', view === 'withdrawal');
+      document.getElementById('drawer').classList.toggle('bingo-drawer', view === 'bingo');
       document.getElementById('store-view').style.display = view === 'shop' ? '' : 'none';
       document.getElementById('rank-view').style.display = view === 'rank' ? '' : 'none';
       document.getElementById('attendance-view').style.display = view === 'attendance' ? '' : 'none';
       document.getElementById('wins-view').style.display = view === 'wins' ? '' : 'none';
       document.getElementById('wheel-view').style.display = view === 'games' ? 'block' : 'none';
+      document.getElementById('bingo-view').style.display = view === 'bingo' ? 'block' : 'none';
       document.getElementById('withdrawal-view').style.display = view === 'withdrawal' ? 'block' : 'none';
       document.getElementById('cart-bar').style.display = view === 'shop' ? 'flex' : 'none';
       document.getElementById('rank-note').style.display = view === 'rank' ? '' : 'none';
-      document.getElementById('drawer-title').textContent = view === 'shop' ? 'QUICK ORDER' : view === 'rank' ? 'TOP 5 REGULARS' : view === 'attendance' ? 'ATTENDANCE' : view === 'wins' ? 'RECENT WINNERS' : view === 'withdrawal' ? 'WITHDRAW POINTS' : 'BETTING GAMES';
+      document.getElementById('drawer-title').textContent = view === 'shop' ? 'QUICK ORDER' : view === 'rank' ? 'TOP 5 REGULARS' : view === 'attendance' ? 'ATTENDANCE' : view === 'wins' ? 'RECENT WINNERS' : view === 'withdrawal' ? 'WITHDRAW POINTS' : view === 'bingo' ? 'BINGO TIME' : 'BETTING GAMES';
       resizeDrawerToContent();
       if (view === 'shop') loadProducts();
       else if (view === 'rank') loadLeaderboard();
@@ -1484,6 +1533,7 @@
         loadAttendance(attendanceMonth);
       } else if (view === 'games') loadWheel();
       else if (view === 'withdrawal' && window.DenfiWithdrawalSession) window.DenfiWithdrawalSession.refresh();
+      else if (view === 'bingo') window.DenfiBingoSession?.refresh();
     }
 
     function isMemberSession() {
@@ -2794,6 +2844,31 @@
     if (previewMode && new URLSearchParams(location.search).get('games') === '1') {
       openDrawer('games');
     }
+    window.DenfiBingoSessionContext = function() {
+      return {
+        username: timeLeft > 0 ? sessionUsername : '',
+        ready: initialSessionStatusKnown,
+        activeDrawer,
+        busy: timeLeft <= 0 || wheelSpinInFlight ||
+          document.getElementById('place-order')?.textContent === 'SENDING...' ||
+          (!!activeDrawer && activeDrawer !== 'bingo'),
+        openBingo: () => {
+          if (wheelSpinInFlight || document.getElementById('place-order')?.textContent === 'SENDING...') return;
+          openDrawer('bingo');
+        },
+        closeDrawer,
+        notifyWin: receiveWinNotice,
+        notifyRefund: receiveWinNotice,
+        dismissRecentWins: () => {
+          pendingWinNotices.clear();
+          recentWinNotices.clear();
+          earlyWinNotices.clear();
+          if (activeDrawer === 'wins') closeDrawer();
+        },
+        updateBalance: setPoints,
+        resize: resizeDrawerToContent
+      };
+    };
     if (!previewMode) {
       connectWs();
       pollOrderStatuses();
@@ -2807,5 +2882,6 @@
       }
     }, 1000);
   </script>
+  <script src="/bingo-session.js"></script>
 </body>
 </html>

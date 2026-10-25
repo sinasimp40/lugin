@@ -1537,6 +1537,12 @@ app.get('/api/admin/telegram/deliveries', verifyToken, async (req, res) => {
 });
 
 const orderWorkflow = require('./src/order-workflow');
+require('./src/bingo-demo-routes').registerBingoDemoRoutes(app);
+const bingoService = require('./src/bingo-routes').registerBingoRoutes(app, {
+  settings, coinLogs, appRole, verifyToken, authorizeKioskMission,
+  requireLocalPlayer: requireLocalWheelPlayer, activeMember: activeWheelMember,
+  fetchPoints: fetchPointsWheel, broadcast,
+});
 const orderWorkflowClient = appRole === 'auto-shutdown' ? orderWorkflow.createClient({
   getSyncUrl: () => syncServerUrl,
   getTelegram: () => settings.getTelegramSettings(),
@@ -1544,8 +1550,12 @@ const orderWorkflowClient = appRole === 'auto-shutdown' ? orderWorkflow.createCl
   onStatus: order => broadcast({ type: 'order-status', data: orderWorkflow.publicOrder(order) }),
 }) : null;
 if (appRole === 'points') {
+  app.use('/api/sync/order-workflow', authorizeKioskMission);
   orderWorkflow.installHubRoutes(app, orderWorkflow.createHub({
     filename: () => path.join(orderStore.getDataDir(), 'order-workflow.json'),
+    onChannelPost: input => bingoService.start(input),
+    bingoEdits: botHash => bingoService.edits(botHash),
+    bingoEdited: (botHash, key, version) => bingoService.edited(botHash, key, version),
   }));
 }
 if (orderWorkflowClient) {

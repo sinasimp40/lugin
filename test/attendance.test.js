@@ -13,7 +13,9 @@ test('daily progress accumulates confirmed time across sessions but not gaps or 
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'denfi-attendance-'));
   attendance.setDataDir(dir);
   try {
-    const start = new Date(2026, 8, 24, 10, 0).getTime();
+    const day = new Date();
+    day.setHours(10, 0, 0, 0);
+    const start = day.getTime();
     attendance.record('mem-alice', true, start);
     attendance.record('mem-alice', true, start + 2000);
     attendance.record('', true, start + 3000);

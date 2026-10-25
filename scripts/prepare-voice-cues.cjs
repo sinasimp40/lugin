@@ -2,7 +2,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { CUES } = require('../src/instant-voice');
+const { CUES, BINGO_CUES } = require('../src/instant-voice');
 const { createKokoroEngine } = require('../src/kokoro-engine.cjs');
 
 async function main() {
@@ -14,7 +14,7 @@ async function main() {
   let engine;
   const entries = {};
   try {
-    for (const [type, text] of Object.entries(CUES)) {
+    for (const [type, text] of Object.entries({...CUES,...BINGO_CUES})) {
       let wav;
       try { wav = await fs.readFile(path.join(output, `${type}.wav`)); } catch {}
       const sha = wav && crypto.createHash('sha256').update(wav).digest('hex');

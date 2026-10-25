@@ -80,7 +80,7 @@ test('switching session drawers measures the new panel instead of keeping the pr
   for (const id of ['shop-btn', 'rank-btn', 'attendance-btn', 'games-btn', 'withdraw-btn']) {
     elements.set(id, { classList:classes() });
   }
-  for (const id of ['store-view', 'rank-view', 'attendance-view', 'wins-view', 'wheel-view', 'withdrawal-view', 'cart-bar', 'rank-note', 'drawer-title']) {
+  for (const id of ['store-view', 'rank-view', 'attendance-view', 'wins-view', 'wheel-view', 'bingo-view', 'withdrawal-view', 'cart-bar', 'rank-note', 'drawer-title']) {
     elements.set(id, { style:{}, textContent:'' });
   }
   const document = {

@@ -19,6 +19,7 @@ test('native resizing checks actual bounds, not an already-cached requested widt
   const run = new Function('ipcMain', 'sessionWindow', 'require', `
     const SESSION_WIDTH=331, SESSION_HEIGHT=70, SESSION_MAX_WIDTH=900, SESSION_EXPANDED_HEIGHT=600;
     let currentSessionWidth=500, currentSessionHeight=70, currentSessionPlacement='above';
+    const bingoLockedSessionWindow = null;
     ${main.slice(start, end)}
   `);
   run({ on:(name, fn) => { handler = fn; } }, sessionWindow, () => ({

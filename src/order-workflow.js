@@ -33,7 +33,7 @@ function orderKeyboard(order) {
   return { inline_keyboard: action ? [[{ text: action[0], callback_data: `do:${action[1]}:${order.id}` }]] : [] };
 }
 
-function createHub({ filename, now = Date.now }) {
+function createHub({ filename, now = Date.now, onChannelPost, bingoEdits, bingoEdited }) {
   const leases = new Map();
   function load() {
     const file = filename();
@@ -100,11 +100,15 @@ function createHub({ filename, now = Date.now }) {
     }
     return publicOrder(order);
   }
-  function claim(botHash, owner) {
+  function claim(botHash, owner, channelId) {
     if (!validKey(botHash) || !validKey(owner)) throw new Error('Invalid callback consumer');
     const old = leases.get(botHash);
     if (old && old.expiresAt > now() && old.owner !== owner) return { acquired: false };
     const lease = old?.owner === owner ? old : { owner, token: crypto.randomBytes(32).toString('hex') };
+    if (channelId !== undefined) {
+      if (!/^(?:-?\d{1,30}|@[A-Za-z0-9_]{5,64})$/.test(String(channelId))) throw new Error('Invalid Telegram channel');
+      lease.channelId = String(channelId);
+    }
     lease.expiresAt = now() + 30000;
     leases.set(botHash, lease);
     return { acquired: true, token: lease.token, offset: load().cursors[botHash] || 0 };
@@ -121,6 +125,15 @@ function createHub({ filename, now = Date.now }) {
     for (const update of updates.sort((a, b) => a.update_id - b.update_id)) {
       if (!Number.isSafeInteger(update.update_id) || update.update_id < (data.cursors[botHash] || 0)) continue;
       const query = update.callback_query;
+      const post = update.channel_post;
+      const configuredChannel = leases.get(botHash)?.channelId;
+      if (onChannelPost && post?.chat?.type === 'channel' && configuredChannel &&
+          (configuredChannel === String(post.chat.id) ||
+            configuredChannel.toLowerCase() === '@' + String(post.chat.username || '').toLowerCase()) &&
+          /^\/bingo(?:@[a-z0-9_]+)?\s*$/i.test(post.text || '') &&
+          Number.isSafeInteger(post.date) && Math.abs(now() - post.date * 1000) <= 120000) {
+        onChannelPost({ botHash, chatId: String(post.chat.id), messageId: post.message_id });
+      }
       if (query && typeof query.id === 'string') {
         const match = /^do:([pr]):([a-z0-9]{8,32})$/i.exec(query.data || '');
         const order = match && data.orders.find(item => item.id === match[2] && item.botHash === botHash);
@@ -154,7 +167,16 @@ function createHub({ filename, now = Date.now }) {
     if (order && order.status === status) { order.editNeeded = false; save(data); }
     return { success: true };
   }
-  return { register, state, transition, claim, consume, edits, edited };
+  function eventEdits(botHash, token) {
+    authorize(botHash, token);
+    return { messages: bingoEdits ? bingoEdits(botHash) : [] };
+  }
+  function eventEdited(botHash, token, key, version) {
+    authorize(botHash, token);
+    bingoEdited?.(botHash, key, version);
+    return { success: true };
+  }
+  return { register, state, transition, claim, consume, edits, edited, eventEdits, eventEdited };
 }
 
 function installHubRoutes(app, hub) {
@@ -167,10 +189,12 @@ function installHubRoutes(app, hub) {
   app.get(root + '/state/:id', wrap(req => ({ order: hub.state(req.params.id, req.headers['x-order-key']) })));
   app.post(root + '/state/:id', wrap(req => ({
     order: hub.transition(req.params.id, req.headers['x-order-key'], req.body.status) })));
-  app.post(root + '/claim', wrap(req => hub.claim(req.body.botHash, req.body.owner)));
+  app.post(root + '/claim', wrap(req => hub.claim(req.body.botHash, req.body.owner, req.body.channelId)));
   app.post(root + '/consume', wrap(req => hub.consume(req.body.botHash, req.headers['x-order-lease'], req.body.updates)));
   app.post(root + '/edits', wrap(req => ({ orders: hub.edits(req.body.botHash, req.headers['x-order-lease']) })));
   app.post(root + '/edited', wrap(req => hub.edited(req.body.botHash, req.headers['x-order-lease'], req.body.id, req.body.status)));
+  app.post(root + '/bingo-edits', wrap(req => hub.eventEdits(req.body.botHash, req.headers['x-order-lease'])));
+  app.post(root + '/bingo-edited', wrap(req => hub.eventEdited(req.body.botHash, req.headers['x-order-lease'], req.body.key, req.body.version)));
 }
 
 function createClient({ getSyncUrl, getTelegram, store, onStatus, fetchImpl = fetch, log = console.log }) {
@@ -242,11 +266,11 @@ function createClient({ getSyncUrl, getTelegram, store, onStatus, fetchImpl = fe
         const result = await hub('/state/' + order.id, undefined, { 'x-order-key': order.workflowKey });
         apply(result.order);
       }
-      const lease = await hub('/claim', { botHash, owner });
+      const lease = await hub('/claim', { botHash, owner, channelId: config.channelId });
       if (lease.acquired) {
         const headers = { 'x-order-lease': lease.token };
         const updates = await telegram('getUpdates', { offset: lease.offset, limit: 30, timeout: 0,
-          allowed_updates: ['callback_query'] });
+          allowed_updates: ['callback_query', 'channel_post'] });
         if (Array.isArray(updates) && updates.length) {
           const result = await hub('/consume', { botHash, updates }, headers);
           for (const answer of result.answers) {
@@ -259,6 +283,12 @@ function createClient({ getSyncUrl, getTelegram, store, onStatus, fetchImpl = fe
           await telegram('editMessageText', { chat_id: order.chatId, message_id: order.messageId,
             text: orderMessage(order), reply_markup: orderKeyboard(order) });
           await hub('/edited', { botHash, id: order.id, status: order.status }, headers);
+        }
+        const bingo = await hub('/bingo-edits', { botHash }, headers);
+        for (const message of bingo.messages || []) {
+          await telegram('editMessageText', { chat_id: message.chatId,
+            message_id: message.messageId, text: message.text });
+          await hub('/bingo-edited', { botHash, key: message.key, version: message.version }, headers);
         }
       }
       lastError = '';

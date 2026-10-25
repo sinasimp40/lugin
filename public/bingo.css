@@ -1,0 +1,115 @@
+/* BINGO TIME — Denfi's neighborhood game-night colorway */
+.bingo-drawer {
+  --bingo-ink:#f5f0dc; --bingo-muted:#aaa58f; --bingo-citrus:#f4ef12;
+  --bingo-deep:#11140f; --bingo-panel:#1b2018; --bingo-line:rgba(244,239,18,.24);
+  background:
+    radial-gradient(ellipse at 92% 0%,rgba(244,239,18,.12),transparent 45%),
+    linear-gradient(145deg,#20251b,#10130f 72%);
+  color:var(--bingo-ink); border-color:rgba(244,239,18,.62); border-top:3px solid var(--bingo-citrus);
+}
+.bingo-drawer .drawer-head { min-height:38px; padding:4px 10px 4px 13px; border-color:var(--bingo-line); }
+.bingo-drawer .drawer-title { color:var(--bingo-citrus); font-size:12px; letter-spacing:2px; }
+.bingo-drawer .drawer-close { color:#e5e1bb; width:30px; height:28px; border:1px solid var(--bingo-line); border-radius:3px; line-height:20px; }
+.bingo-drawer .drawer-close { display:none !important; }
+.bingo-session-locked #drawer-close { display:none !important; }
+.bingo-opener,.session-bingo-line { display:none !important; }
+.bingo-result-notice { position:fixed; z-index:1002; top:16px; right:16px; max-width:calc(100vw - 32px); padding:16px; border:2px solid #f4ef12; background:#171b14; color:#f5f0dc; font:700 14px/1.5 'Share Tech Mono',monospace; box-shadow:0 8px 32px #0009; }
+.bingo-drawer .drawer-body { padding:9px 11px; overflow:hidden; }
+.bingo-view { min-width:0; font-family:'Share Tech Mono',monospace; }
+.bingo-topline { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }
+.bingo-phase { font:700 9px 'Orbitron',monospace; letter-spacing:1.3px; color:#d4d09d; }
+.bingo-countdown { color:var(--bingo-citrus); font:700 13px 'Orbitron',monospace; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.bingo-metrics { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; }
+.bingo-metric { min-width:0; padding:6px 8px; border:1px solid var(--bingo-line); background:rgba(244,239,18,.045); }
+.bingo-metric span { display:block; color:var(--bingo-muted); font-size:8px; letter-spacing:1px; }
+.bingo-metric strong { display:block; margin-top:3px; color:var(--bingo-ink); font:700 15px 'Orbitron',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bingo-current { display:flex; align-items:center; gap:10px; padding:7px 9px; margin-bottom:8px; border:1px solid rgba(244,239,18,.45); background:linear-gradient(100deg,rgba(244,239,18,.12),rgba(244,239,18,.025)); }
+.bingo-ball { display:grid; place-items:center; flex:0 0 39px; width:39px; height:39px; border-radius:50%; background:var(--bingo-citrus); color:#17180d; font:800 15px 'Orbitron',monospace; box-shadow:inset 0 -3px 0 rgba(0,0,0,.12); }
+.bingo-ball.is-empty { background:#262b1f; border:1px solid var(--bingo-line); color:#a4a184; box-shadow:none; }
+.bingo-current-copy { min-width:0; }
+.bingo-current-copy small,.bingo-history-label { display:block; color:var(--bingo-muted); font-size:8px; letter-spacing:1px; }
+.bingo-current-copy strong { display:block; color:#fffdb6; font:700 11px 'Orbitron',monospace; margin-top:3px; }
+.bingo-history { display:flex; gap:4px; overflow:hidden; white-space:nowrap; align-items:center; margin:0 0 8px; min-height:18px; }
+.bingo-history .bingo-history-label { flex:0 0 auto; margin-right:3px; }
+.bingo-history-ball { padding:3px 5px; border:1px solid rgba(244,239,18,.2); background:#20241b; color:#eae7c8; font-size:9px; }
+.bingo-ruleline { margin:0 0 7px; color:#aca98c; font-size:8px; line-height:1.35; }
+.bingo-card-wrap { padding:7px; border:1px solid rgba(244,239,18,.28); background:#11140f; }
+.bingo-card-head { display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:5px; color:#e8e6be; font-size:9px; }
+.bingo-card { min-width:0; border:1px solid transparent; padding:3px; }
+.bingo-card-count { margin-bottom:6px; color:#d4d09d; font-size:9px; }
+.bingo-card-list { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; max-height:360px; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.bingo-card-list.is-multi { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.bingo-card-list:focus-visible { outline:1px solid #f4ef12; outline-offset:2px; }
+.bingo-card-list.is-multi .bingo-cell { font-size:13px; }
+.bingo-card-list.is-multi .bingo-cell.free { font-size:8px; }
+.bingo-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:3px; max-width:250px; margin-inline:auto; }
+.bingo-letter { display:grid; place-items:center; height:17px; color:#f4ef12; font:700 9px 'Orbitron',monospace; }
+.bingo-cell { display:grid; place-items:center; min-width:0; height:28px; border:1px solid rgba(244,239,18,.17); background:#252a20; color:#f2f0d9; font:700 clamp(9px,3.4vw,13px) 'Orbitron',monospace; font-variant-numeric:tabular-nums; }
+.bingo-cell.marked { background:#f4ef12; color:#15160c; border-color:#fffdb0; }
+.bingo-cell.free { background:#59600e; color:#ffffbf; border-color:#f4ef12; font-size:7px; }
+.bingo-card.is-winner { border-color:#d4e875; box-shadow:inset 0 0 0 1px rgba(212,232,117,.42); }
+.bingo-card.is-winner .bingo-card-head { color:#efffa8; }
+.bingo-card-foot { display:flex; justify-content:space-between; color:#a8a58c; font-size:8px; margin-top:5px; }
+.bingo-message { padding:7px 8px; border:1px solid var(--bingo-line); color:#d3d1ae; background:rgba(255,255,255,.025); font-size:9px; line-height:1.4; margin:7px 0; }
+.bingo-message.error { color:#ffe2a0; border-color:#a87928; background:rgba(138,91,10,.18); }
+.bingo-join { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:5px; align-items:end; margin-top:8px; }
+.bingo-join label { display:block; color:#cbc9a5; font-size:8px; letter-spacing:.5px; margin-bottom:4px; }
+.bingo-join input { width:100%; min-width:0; height:32px; padding:0 8px; border:1px solid rgba(244,239,18,.48); background:#0c0f0c; color:#fffed0; font:700 13px 'Orbitron',monospace; }
+.bingo-join input:focus-visible,.bingo-drawer button:focus-visible { outline:2px solid #fffca0; outline-offset:1px; }
+.bingo-join button,.bingo-decline { min-height:32px; padding:0 8px; border:1px solid #e4df22; background:#d5d113; color:#17180d; font:700 9px 'Orbitron',monospace; cursor:pointer; }
+.bingo-join button:disabled { opacity:.4; cursor:not-allowed; }
+.bingo-decline { background:transparent; color:#b8b496; border-color:rgba(244,239,18,.2); }
+.bingo-join-note { grid-column:1/-1; color:#99977e; font-size:8px; line-height:1.35; }
+.bingo-winners { padding:7px 8px; margin-top:7px; border-left:2px solid #d6e879; background:rgba(214,232,121,.08); color:#eff7b6; font-size:9px; line-height:1.45; }
+.bingo-invite { margin-top:8px; color:#fffdb0; font:700 9px 'Orbitron',monospace; letter-spacing:.6px; }
+.bingo-opener { display:none; -webkit-app-region:no-drag; min-height:18px; padding:1px 3px; border:1px solid rgba(244,239,18,.7); border-radius:3px; background:#66620b; color:#fffda1; font:700 9px 'Orbitron',monospace; cursor:pointer; }
+.bingo-opener.event-active { display:block; }
+.action-area:has(.bingo-opener.event-active) { padding-top:2px; padding-bottom:2px; }
+.action-area:has(.bingo-opener.event-active) .quick-btn { min-height:17px; height:17px; padding:0 2px; font-size:12px; line-height:15px; }
+.action-area .bingo-opener.event-active { min-height:17px; height:17px; padding:0 2px; line-height:15px; }
+.action-area:has(.bingo-opener.event-active) .logout-btn { min-height:18px; height:18px; padding:0 8px; }
+.session-bingo-line { display:flex; justify-content:flex-end; }
+.session-bingo-line .bingo-opener { width:100%; min-height:22px; font-size:9px; letter-spacing:1px; }
+#session-panel.bingo-active { height:136px !important; }
+#session-panel.attendance-visible.bingo-active { height:190px !important; }
+.bingo-index-panel { position:fixed; z-index:101; right:10px; bottom:calc(18px + var(--bingo-session-height, 136px)); display:none; flex-direction:column; width:min(350px,calc(100vw - 20px)); max-height:calc(100dvh - var(--bingo-session-height, 136px) - 32px); overflow:auto; border:1px solid rgba(244,239,18,.62); border-top:3px solid #f4ef12; box-shadow:0 14px 38px rgba(0,0,0,.68); }
+.bingo-index-panel,.bingo-index-panel * { -webkit-app-region:no-drag; }
+.bingo-index-panel.active { display:flex; }
+.bingo-index-panel[hidden] { display:none; }
+.bingo-index-panel .drawer-head { position:sticky; top:0; z-index:2; display:flex; justify-content:space-between; align-items:center; min-height:38px; padding:4px 10px 4px 13px; background:#171b14; border-bottom:1px solid rgba(244,239,18,.24); }
+.bingo-index-panel .drawer-title { color:#f4ef12; font:800 12px 'Orbitron',monospace; letter-spacing:2px; }
+.bingo-index-panel .drawer-close { width:30px; height:28px; padding:0; border:1px solid rgba(244,239,18,.25); background:#20251a; color:#e5e1bb; cursor:pointer; }
+.bingo-index-panel .drawer-body { padding:9px 11px; overflow:visible; }
+.bingo-index-panel .bingo-view { display:block; }
+.bingo-index-panel .bingo-join button { white-space:nowrap; }
+.bingo-index-panel button:focus-visible { outline:2px solid #fffca0; outline-offset:1px; }
+.bingo-index-panel .bingo-card-area { min-width:0; }
+.bingo-admin { --bingo-a:#f4ef12; }
+.bingo-admin .bingo-status { margin:12px 0; padding:10px 12px; border:1px solid rgba(244,239,18,.28); background:rgba(244,239,18,.045); color:#dbd9b4; font:11px/1.5 'Share Tech Mono',monospace; }
+.bingo-admin .bingo-status.error { border-color:#a87928; color:#ffe2a0; }
+.bingo-admin .bingo-live { display:grid; grid-template-columns:repeat(auto-fit,minmax(125px,1fr)); gap:8px; margin:12px 0; }
+.bingo-admin .bingo-live-item { border:1px solid rgba(244,239,18,.2); padding:10px; background:rgba(244,239,18,.035); }
+.bingo-admin .bingo-live-item span { display:block; color:#969782; font:9px 'Share Tech Mono'; text-transform:uppercase; letter-spacing:1px; }
+.bingo-admin .bingo-live-item strong { display:block; color:#f4ef12; font:700 16px 'Orbitron'; margin-top:5px; }
+.bingo-admin .bingo-snapshot { margin:10px 0; padding:10px 12px; border-left:2px solid #d8d14c; background:rgba(244,239,18,.055); color:#e2dfb6; font:10px/1.5 'Share Tech Mono',monospace; }
+.bingo-admin .bingo-snapshot[hidden] { display:none; }
+.bingo-admin .bingo-conflict { color:#ffd88b; border-color:#a87928; }
+.bingo-admin .bingo-admin-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.bingo-admin .bingo-config-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); gap:12px; }
+.bingo-admin .bingo-config-note { margin:-4px 0 14px; color:#b6b49a; font:10px/1.45 'Share Tech Mono',monospace; }
+.bingo-admin .bingo-dirty { display:none; color:#efd583; font:10px 'Share Tech Mono'; margin-top:8px; }
+.bingo-admin .bingo-dirty.visible { display:block; }
+.bingo-confirm[hidden] { display:none; }
+.bingo-confirm { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:18px; background:rgba(7,9,7,.78); }
+.bingo-confirm-panel { width:min(440px,100%); padding:20px; border:1px solid rgba(244,239,18,.45); background:#171b14; box-shadow:0 16px 50px rgba(0,0,0,.5); }
+.bingo-confirm-panel h3 { color:#f4ef12; font:700 17px 'Orbitron',monospace; margin-bottom:10px; }
+.bingo-confirm-panel p { color:#c7c5a5; font:12px/1.55 'Share Tech Mono',monospace; }
+@media (max-width:390px) {
+  .bingo-drawer .drawer-body { padding:7px 8px; }
+  .bingo-metric { padding:5px 6px; }
+  .bingo-current { gap:7px; padding:6px; }
+  .bingo-ball { flex-basis:35px; width:35px; height:35px; }
+  .bingo-card-wrap { padding:5px; }
+  .bingo-join button,.bingo-decline { padding:0 6px; font-size:8px; }
+}
+@media (prefers-reduced-motion:reduce) { .bingo-drawer * { scroll-behavior:auto !important; } }

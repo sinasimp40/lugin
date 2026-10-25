@@ -2,6 +2,10 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { formatAnnouncement, spokenName, duration } = require('./voice-announcements');
+const BINGO_CUES = Object.fromEntries(Array.from({length:75},(_,i)=>{
+  const number=i+1;
+  return [`bingo-call-${number}`,`${'BINGO'[Math.floor(i/15)]}. ${number}.`];
+}));
 
 const CUES = Object.freeze({
   welcome: 'Welcome to Den Pie Computer Shop.',
@@ -18,6 +22,9 @@ const CUES = Object.freeze({
 function speechParts(event) {
   // Apply the same validation and financial-privacy rules as full announcements.
   formatAnnouncement(event);
+  // Bingo uses the same offline Heart engine, without requiring new packaged cue
+  // files. Prepare the complete announcement and play it through the serial queue.
+  if (event.type.startsWith('bingo-')) return { cue: null, body: formatAnnouncement(event) };
   const name = spokenName(event.username);
   let body;
   switch (event.type) {
@@ -47,6 +54,12 @@ class InstantVoice {
     this.play = play;
     this.prepared = new Map();
     this.closed = false;
+    // Optional in older installers. Missing number clips use the existing
+    // persistent Kokoro cache and are prepared during the joining countdown.
+    this.bingoClips = new Map(Array.from({length:75},(_,i)=>[i+1,
+      fs.readFile(path.join(cueDir,`bingo-call-${i+1}.wav`)).then(wav=>
+        wav.length>=44 && wav.length<=256*1024 && wav.toString('ascii',0,4)==='RIFF' &&
+        wav.toString('ascii',8,12)==='WAVE' ? wav : null).catch(()=>null)]));
     this.cues = new Map(Object.keys(CUES).map(type => {
       const loaded = fs.readFile(path.join(cueDir, `${type}.wav`)).then(wav => {
         if (wav.length < 44 || wav.length > 1024 * 1024 ||
@@ -65,7 +78,12 @@ class InstantVoice {
     if (!body) return null;
     if (this.prepared.has(body)) return this.prepared.get(body);
     const record = { bytes: 0 };
-    record.promise = Promise.resolve().then(() => this.generate(body)).then(wav => {
+    record.promise = Promise.resolve().then(async() => {
+      const cached = event.type === 'bingo-call' ? await this.bingoClips.get(event.number) : null;
+      const wav = cached || await this.generate(body);
+      if (event.type === 'bingo-call') this.bingoClips.set(event.number,Promise.resolve(wav));
+      return wav;
+    }).then(wav => {
       record.bytes = wav.byteLength || 0;
       let bytes = Array.from(this.prepared.values()).reduce((sum, entry) => sum + entry.bytes, 0);
       for (const [key, entry] of this.prepared) {
@@ -83,6 +101,20 @@ class InstantVoice {
     });
     return record;
   }
+  warmBingoCalls(shouldPause = () => false) {
+    if (this.bingoWarmTask) return this.bingoWarmTask;
+    this.bingoWarmTask = (async()=>{
+      for(let number=1;number<=75 && !this.closed;number++) {
+        while(!this.closed && shouldPause()) await new Promise(resolve=>{
+          const timer=setTimeout(resolve,250);timer.unref?.();
+        });
+        if(this.closed) return;
+        await this.prepare({type:'bingo-call',username:'mem-cache',
+          number,letter:'BINGO'[Math.floor((number-1)/15)]}).promise;
+      }
+    })().catch(error=>{this.bingoWarmTask=null;throw error;});
+    return this.bingoWarmTask;
+  }
   async announce(event, relevant) {
     if (this.closed || !relevant()) return;
     const cancelled = Symbol('cancelled');
@@ -92,10 +124,12 @@ class InstantVoice {
     try {
       const { cue } = speechParts(event);
       const prepared = this.prepare(event);
-      const opening = await Promise.race([this.cues.get(cue), interrupted]);
-      if (opening === cancelled || this.closed || !relevant()) return;
-      // The opening clip needs no model initialization or inference at event time.
-      await Promise.race([this.play(opening), interrupted]);
+      if (cue) {
+        const opening = await Promise.race([this.cues.get(cue), interrupted]);
+        if (opening === cancelled || this.closed || !relevant()) return;
+        // The opening clip needs no model initialization or inference at event time.
+        await Promise.race([this.play(opening), interrupted]);
+      }
       if (this.closed || !relevant() || !prepared) return;
       const body = await Promise.race([prepared.promise, interrupted]);
       if (body !== cancelled && !this.closed && relevant()) await this.play(body);
@@ -113,4 +147,4 @@ class InstantVoice {
   }
 }
 
-module.exports = { CUES, speechParts, InstantVoice };
+module.exports = { CUES, BINGO_CUES, speechParts, InstantVoice };

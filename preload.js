@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   resizeSessionOverlay: (expanded) => ipcRenderer.send('session-overlay-size', expanded ? 'expanded' : 'collapsed'),
   resizeSessionOverlayHeight: (height) => ipcRenderer.send('session-overlay-size', { height }),
   resizeSessionOverlayWidth: (width) => ipcRenderer.send('session-overlay-size', { width }),
+  setBingoSessionLocked: (locked) => ipcRenderer.send('bingo-session-locked', locked === true),
   getSessionOverlayPlacement: () => ipcRenderer.invoke('session-overlay-placement'),
   triggerShutdown: () => ipcRenderer.send('trigger-shutdown'),
   setIdleShutdownConfig: (seconds) => ipcRenderer.send('idle-shutdown-config', seconds),

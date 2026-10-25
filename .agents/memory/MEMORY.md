@@ -20,3 +20,4 @@
 - [Halloween session theme](halloween-session-theme.md) — approved ghost design as Halloween; Default/Halloween selection must be shared through Denfi Points for diskless PCs.
 - [Focus-dependent CPU](session-cpu-focus.md) — owner sees higher CPU after Alt+Tab; check native foreground work, not only animations.
 - [Repository freshness](repository-freshness.md) — imported files can lag GitHub; verify live upstream before declaring a repository feature absent.
+- [Shared Bingo](bingo-integration.md) — upstream Bingo in both desktop apps, with its own centrally enforced custom-card switch and frozen event rules.

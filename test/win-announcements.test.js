@@ -49,6 +49,7 @@ test('each winner gets an independently dismissible popup, without interrupting 
   const list = makeNode('wins-view');
   let pending = false;
   const state = new Function('document', 'readPendingWheel', 'resizeDrawerToContent', `
+    const window = {};
     let sessionUsername = 'mem-current', timeLeft = 100, wheelRequestId = 'spin-one';
     let activeDrawer = null;
     function openDrawer(view) { activeDrawer = view; }

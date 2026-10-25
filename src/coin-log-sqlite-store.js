@@ -265,7 +265,7 @@ function createStore(db) {
   function logPoints(log, pointRates) {
     return log.source === 'attendance' || log.source === 'wheel' ||
       log.source === 'withdrawal' || log.source === 'withdrawal-refund' ||
-      log.source === 'manual-adjustment'
+      log.source === 'manual-adjustment' || log.source === 'bingo'
       ? Number(log.points) || 0 : calcPoints(log.amount, pointRates);
   }
 
@@ -496,11 +496,22 @@ function createStore(db) {
     }
   }
 
+  function protectBingoLedger(username) {
+    const activeId = readMeta('bingo:active', null);
+    if (!activeId) return;
+    const row = db.prepare('SELECT payload FROM bingo_events WHERE id=?').get(activeId);
+    const event = row && JSON.parse(row.payload);
+    if (event && ['joining', 'drawing'].includes(event.phase) &&
+        (!username || event.participants.some(p => p.username === username))) {
+      throw new Error('Cancel the active Bingo event and confirm its refunds before deleting participant logs.');
+    }
+  }
   function deleteLog(logId) {
     return transaction(() => {
       const found = statements.getById.get(logId);
       if (!found) return false;
       const log = parseLog(found);
+      protectBingoLedger(log.username);
       if (log.source === 'withdrawal' && statements.unresolvedMember.get(log.username) &&
           findWithdrawal(log.requestId) && ['reserved', 'sending', 'unconfirmed'].includes(findWithdrawal(log.requestId).record.status)) {
         throw new Error('Cannot delete a withdrawal with an unresolved hold.');
@@ -513,6 +524,7 @@ function createStore(db) {
 
   function deleteMemberLogs(username) {
     return transaction(() => {
+      protectBingoLedger(username);
       if (statements.unresolvedMember.get(username)) {
         throw new Error('Cannot delete member logs while a withdrawal hold is unresolved.');
       }
@@ -526,6 +538,7 @@ function createStore(db) {
 
   function clearAllLogs() {
     transaction(() => {
+      protectBingoLedger();
       if (statements.unresolvedAny.get()) throw new Error('Cannot clear logs while a withdrawal hold is unresolved.');
       db.exec('DELETE FROM coin_logs');
       statements.deleteWithdrawals.run();
