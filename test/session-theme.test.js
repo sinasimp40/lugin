@@ -66,6 +66,50 @@ test('one authenticated kiosk publishes centrally; another polls, switches back,
   assert.equal(points.settings.getSettings().sessionTheme, 'default');
 });
 
+test('renderer checks read through Points without an admin reload and retain the last theme offline', async t => {
+  const points = await fixture(t, 'points');
+  let online = true;
+  const kiosk = await fixture(t, 'auto-shutdown', {
+    getPointsUrl: () => online ? points.url : '',
+  });
+  await kiosk.service.poll();
+  const saved = await points.request('/api/admin/session-theme', {
+    theme: 'halloween', expectedRevision: 'initial',
+  });
+  const live = await kiosk.request('/api/session-theme');
+  assert.equal(live.policy.theme, 'halloween');
+  assert.equal(live.connected, true);
+  assert.equal(kiosk.notices(), 1);
+  online = false;
+  const offline = await kiosk.request('/api/session-theme');
+  assert.equal(offline.policy.theme, 'halloween');
+  assert.equal(offline.connected, false);
+  await points.request('/api/admin/session-theme', {
+    theme: 'default', expectedRevision: saved.policy.revision,
+  });
+  online = true;
+  const restored = await kiosk.request('/api/session-theme');
+  assert.equal(restored.policy.theme, 'default');
+  assert.equal(restored.connected, true);
+});
+
+test('online PCs follow the timer without any renderer or admin request', async t => {
+  const points = await fixture(t, 'points');
+  const kiosk = await fixture(t, 'auto-shutdown', {
+    getPointsUrl: () => points.url, pollMs: 15,
+  });
+  await kiosk.service.poll();
+  await points.request('/api/admin/session-theme', {
+    theme: 'halloween', expectedRevision: 'initial',
+  });
+  const deadline = Date.now() + 1500;
+  while (kiosk.settings.getSettings().sessionTheme !== 'halloween' && Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 15));
+  }
+  assert.equal(kiosk.settings.getSettings().sessionTheme, 'halloween');
+  assert.equal(kiosk.notices(), 1);
+});
+
 test('authentication, strict choices, browser publication blocking and old Points builds', async t => {
   const p = await fixture(t, 'points');
   assert.equal((await p.request('/api/admin/session-theme', undefined, { 'x-admin-token': '' })).status, 401);

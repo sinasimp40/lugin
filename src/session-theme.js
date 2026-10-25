@@ -11,7 +11,8 @@ function registerSessionTheme(app, {
   broadcastSettings, fetchImpl = fetch, pollMs = 5000,
 }) {
   const points = appRole === 'points';
-  let generation = 0, polling = false, publishing = false;
+  let generation = 0, pollTask = null, publishing = false;
+  let connected = points;
   function policy() {
     const s = settings.getSettings();
     return { theme: THEMES.includes(s.sessionTheme) ? s.sessionTheme : 'default',
@@ -51,6 +52,7 @@ function registerSessionTheme(app, {
       throw fail('The theme connection changed. Reload Theme Settings.', 409);
     }
     if (!points) apply(value);
+    connected = true;
     return value;
   }
   const guarded = fn => async (req, res) => {
@@ -106,12 +108,26 @@ function registerSessionTheme(app, {
     } finally { publishing = false; }
   }));
   // Public renderer endpoint exposes only the locally confirmed theme, never admin access.
-  app.get('/api/session-theme', (req, res) => res.json(result(policy())));
-  async function poll() {
-    if (points || polling || publishing || !getPointsUrl()) return;
-    polling = true;
-    try { await refresh(); } catch (_) { /* Offline: preserve the last confirmed theme. */ }
-    finally { polling = false; }
+  app.get('/api/session-theme', guarded(async (req, res) => {
+    // A renderer refresh must have the same read-through behavior as Reload
+    // Selection, not merely return an indefinitely stale kiosk cache.
+    await poll();
+    res.set('Cache-Control', 'no-store');
+    res.json({ ...result(policy()), connected });
+  }));
+  function poll() {
+    if (points) return Promise.resolve();
+    if (pollTask) return pollTask;
+    if (publishing) return Promise.resolve();
+    if (!getPointsUrl()) {
+      connected = false;
+      return Promise.resolve();
+    }
+    // All renderers and the background timer share one network request.
+    pollTask = refresh().catch(() => {
+      connected = false; // Offline: preserve the last confirmed theme.
+    }).finally(() => { pollTask = null; });
+    return pollTask;
   }
   const timer = setInterval(poll, pollMs);
   timer.unref();

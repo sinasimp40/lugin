@@ -48,6 +48,7 @@
     try {
       const value = await request();
       if (current !== sequence) return;
+      window.DenfiSessionTheme?.apply(value.theme);
       if (!pending) select.value = value.theme;
       revision = value.revision;
       status.textContent = 'Active on Denfi Points: ' + (value.theme === 'halloween' ? 'Halloween' : 'Default') + '.';
@@ -64,6 +65,7 @@
       const value = await request({ method: 'POST',
         body: JSON.stringify({ theme: select.value, expectedRevision: revision }) });
       if (current !== sequence) return;
+      window.DenfiSessionTheme?.apply(value.theme);
       revision = value.revision; select.value = value.theme;
       pending = false;
       status.textContent = 'Verified: ' + (value.theme === 'halloween' ? 'Halloween' : 'Default') +
@@ -78,6 +80,21 @@
   reload.addEventListener('click', load);
   window.DenfiThemeAdmin = {
     load,
+    sync(value, connected) {
+      if (busy || !window.getDenfiAdminToken() ||
+          !['default', 'halloween'].includes(value?.theme) || !value.revision) return;
+      if (!connected) {
+        revision = null;
+        status.textContent = 'Denfi Points is disconnected. Keeping the last confirmed theme. Automatic updates resume when reconnected.';
+      } else {
+        const changed = revision !== value.revision;
+        revision = value.revision;
+        if (!pending) select.value = value.theme;
+        if (changed) status.textContent = 'Active on Denfi Points: ' + label(value.theme) +
+          '. Selection updated automatically.' + (pending ? ' Your unsaved choice is unchanged.' : '');
+      }
+      controls();
+    },
     reset() { ++sequence; revision = null; busy = false; pending = false; select.value = 'default'; controls(); status.textContent = ''; },
   };
   controls();

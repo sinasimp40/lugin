@@ -60,3 +60,23 @@ test('reconnect preserves the selected choice; verified save publishes it with t
   assert.equal(f.ids['admin-session-theme'].value, 'default');
   assert.ok(f.buttons.every(button => !button.disabled));
 });
+
+test('background confirmation updates the displayed selection without Reload Selection', () => {
+  const f = setup();
+  const sync = f.context.window.DenfiThemeAdmin.sync;
+  sync({ theme: 'halloween', revision: 'from-other-pc' }, true);
+  assert.equal(f.ids['admin-session-theme'].value, 'halloween');
+  assert.equal(f.buttons[1].attributes['aria-pressed'], 'true');
+  assert.match(f.ids['admin-theme-status'].textContent, /updated automatically/);
+  assert.equal(f.ids['admin-theme-save'].disabled, false);
+  f.buttons[0].listeners.click();
+  sync({ theme: 'halloween', revision: 'newer' }, true);
+  assert.equal(f.ids['admin-session-theme'].value, 'default', 'an unsaved admin choice stays selected');
+  assert.match(f.ids['admin-theme-status'].textContent, /unsaved choice is unchanged/);
+  assert.equal(f.published.length, 0, 'automatic refresh never publishes a draft');
+  sync({ theme: 'halloween', revision: 'newer' }, false);
+  assert.equal(f.ids['admin-theme-save'].disabled, true);
+  assert.match(f.ids['admin-theme-status'].textContent, /disconnected/);
+  sync({ theme: 'halloween', revision: 'newer' }, true);
+  assert.equal(f.ids['admin-theme-save'].disabled, false, 'reconnect needs no manual reload');
+});
