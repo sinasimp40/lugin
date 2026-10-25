@@ -24,42 +24,56 @@
     inset 0 0 0 1px rgba(193, 235, 230, 0.09);
 }
 
-/* Bundled artwork works without internet on diskless kiosk clients. */
-.strip::after {
-  content: "";
+/* Move a cached image layer, not a filtered full-width background. Animating
+   background-position repainted every frame in the transparent Windows widget. */
+.session-ghost-track {
+  display: block;
   position: absolute;
   top: 0;
   left: 140px;
   right: 132px;
-  width: auto;
   height: 100%;
+  overflow: hidden;
   pointer-events: none;
   z-index: 1;
+  contain: layout paint;
+}
+.session-ghost-flight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  will-change: transform;
+  animation: spectral-ghost-patrol 18s ease-in-out infinite;
+}
+.session-ghost-flight img {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(82px, 100%);
+  height: 100%;
+  object-fit: contain;
   opacity: 0.48;
-  background-image:
-    linear-gradient(90deg, rgba(20, 38, 47, 0.2), rgba(20, 38, 47, 0.02) 48%, rgba(20, 38, 47, 0.18)),
-    url("./halloween-ghost.png");
-  background-size: 100% 100%, min(82px, 100%) auto;
-  background-position: center, 100% 50%;
-  background-repeat: no-repeat;
+  pointer-events: none;
+  /* Constant glow is rasterized with the small image, never animated. */
   filter: drop-shadow(0 0 8px rgba(160, 225, 218, 0.24));
-  animation: spectral-ghost-patrol 18s ease-in-out infinite,
-    spectral-ghost-hover 4s ease-in-out infinite;
+  will-change: transform;
+  animation: spectral-ghost-hover 4s ease-in-out infinite;
 }
 
 /* Travel is relative to the available details area, never over the buttons. */
 @keyframes spectral-ghost-patrol {
-  0%, 100% { background-position: center, 100% 50%; }
-  50% { background-position: center, 0% 50%; }
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(calc(-100% + min(82px, 100%)), 0, 0); }
 }
 @keyframes spectral-ghost-hover {
-  0%, 100% { transform: translateY(2px); }
-  50% { transform: translateY(-2px); }
+  0%, 100% { transform: translate3d(0, 2px, 0); }
+  50% { transform: translate3d(0, -2px, 0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  html:not([data-session-motion="full"]) .strip::after {
+  html:not([data-session-motion="full"]) .session-ghost-flight,
+  html:not([data-session-motion="full"]) .session-ghost-flight img {
     animation: none;
-    background-position: center, 100% 50%;
+    will-change: auto;
   }
 }
 
