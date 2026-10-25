@@ -3,6 +3,35 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
+test('Bingo preview uses the isolated room member and dock placement, not the generic preview identity', async()=>{
+  const html=fs.readFileSync(path.join(__dirname,'../public/session.html'),'utf8');
+  const start=html.indexOf('    async function loadStatus()');
+  const end=html.indexOf('      try {',start);
+  assert.ok(start>=0 && end>start);
+  for(const [search,expected,placement] of [
+    ['?preview=1&bingoDemo=1&demoMember=mem-demo-pc1','mem-demo-pc1','above'],
+    ['?preview=1&bingoDemo=1&demoMember=mem-demo-pc3&demoPlacement=below','mem-demo-pc3','below'],
+    ['?preview=1&bingoDemo=1&demoMember=mem-demo-empty','mem-demo-empty','above'],
+    ['?preview=1&username=mem-custom-long-name','mem-custom-long-name','above'],
+    ['?preview=1&bingoDemo=1&demoMember=mem-real-account','mem-player-one','above'],
+  ]){
+    const run=new Function('location','URLSearchParams',`
+      const previewMode=true;
+      let sessionUsername='',sessionOverlayPlacement='above',timeLeft=0;
+      function syncOrderStatusSession(){}
+      function setDisplayedUsername(){}
+      function setPcLabel(){}
+      function setPoints(){}
+      function setAttendance(){}
+      function updateAttendanceButton(){}
+      function updateTimer(){}
+      function finishInitialSessionStatus(){}
+      ${html.slice(start,end)} }
+      return loadStatus().then(()=>({username:sessionUsername,placement:sessionOverlayPlacement}));
+    `);
+    assert.deepEqual(await run({search},URLSearchParams),{username:expected,placement});
+  }
+});
 test('demo polling never reparents the live iframe; only an explicit dock change moves it',()=>{
   const script=fs.readFileSync(path.join(__dirname,'../public/bingo-test.js'),'utf8');
   const begin=script.indexOf('  function applyDock(pc)');

@@ -2587,12 +2587,18 @@
 
     async function loadStatus() {
       if (previewMode) {
-        const demoUsername = new URLSearchParams(location.search).get('username') || '';
+        const previewParams = new URLSearchParams(location.search);
+        const bingoDemo = previewParams.get('bingoDemo') === '1';
+        const bingoMember = previewParams.get('demoMember');
+        const validBingoMember = bingoDemo &&
+          ['mem-demo-pc1', 'mem-demo-pc3', 'mem-demo-empty'].includes(bingoMember);
+        const demoUsername = validBingoMember ? bingoMember : previewParams.get('username') || '';
         sessionUsername = /^mem-[a-z0-9._-]{1,80}$/i.test(demoUsername) ? demoUsername : 'mem-player-one';
+        if (bingoDemo) sessionOverlayPlacement = previewParams.get('demoPlacement') === 'below' ? 'below' : 'above';
         syncOrderStatusSession();
         timeLeft = 5278;
         setDisplayedUsername(sessionUsername);
-        setPcLabel('PC-07');
+        setPcLabel(validBingoMember ? bingoMember === 'mem-demo-pc1' ? 'PC-01' : bingoMember === 'mem-demo-pc3' ? 'PC-03' : 'NO POINTS' : 'PC-07');
         setPoints(86.5);
         setAttendance({ enabled: true, seconds: 1800, minutes: 60, points: 5, awarded: false });
         updateAttendanceButton();
