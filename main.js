@@ -1176,6 +1176,8 @@ function showSessionWindow(onShown) {
   let foregroundCheckInterval = null;
   let sessionVisibilityGuardInterval = null;
   let foregroundCheckSequence = 0;
+  let foregroundProbePending = false;
+  const foregroundProbe = require('./src/foreground-probe').createForegroundProbe();
   const managedSessionWindow = sessionWindow;
 
   function restoreSessionOverlay() {
@@ -1199,6 +1201,7 @@ function showSessionWindow(onShown) {
   }
 
   sessionWindow.on('closed', () => {
+    foregroundProbe.close();
     if (clampMoveTimer) { clearTimeout(clampMoveTimer); clampMoveTimer = null; }
     if (bypassRefreshInterval) { clearInterval(bypassRefreshInterval); bypassRefreshInterval = null; }
     if (foregroundCheckInterval) { clearInterval(foregroundCheckInterval); foregroundCheckInterval = null; }
@@ -1237,7 +1240,6 @@ function showSessionWindow(onShown) {
       restoreSessionOverlay();
       return;
     }
-    const checkSequence = ++foregroundCheckSequence;
     if (process.platform !== 'win32') {
       restoreSessionOverlay();
       return;
@@ -1247,7 +1249,12 @@ function showSessionWindow(onShown) {
       restoreSessionOverlay();
       return;
     }
-    exec('powershell -NoProfile -Command "[System.Diagnostics.Process]::GetProcessById((Add-Type -MemberDefinition \'[DllImport(\\\"user32.dll\\\")] public static extern IntPtr GetForegroundWindow(); [DllImport(\\\"user32.dll\\\")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);\' -Name W -Namespace W -PassThru)::GetWindowThreadProcessId([W.W]::GetForegroundWindow(), [ref]($p = 0)) | Out-Null; $p).ProcessName"', { timeout: 3000, windowsHide: true }, (err, stdout) => {
+    // Never start overlapping probes while a helper is starting or busy.
+    if (foregroundProbePending) return;
+    foregroundProbePending = true;
+    const checkSequence = ++foregroundCheckSequence;
+    foregroundProbe.query((err, stdout) => {
+      foregroundProbePending = false;
       if (currentState !== 'logged-in' || sessionWindow !== managedSessionWindow || managedSessionWindow.isDestroyed()) return;
       if (checkSequence !== foregroundCheckSequence) return;
       if (managedSessionWindow.isFocused()) {

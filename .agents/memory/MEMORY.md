@@ -18,3 +18,4 @@
 - [Session logo motion](session-logo-motion.md) — the owner disliked strong left-right motion; keep the logo centered with only a slow, subtle 3D tilt.
 - [Mockup artifact registration](mockup-artifact-registration.md) — legacy sandbox registration failed; use isolated HTML previews without migrating the working desktop app.
 - [Halloween session theme](halloween-session-theme.md) — approved ghost design as Halloween; Default/Halloween selection must be shared through Denfi Points for diskless PCs.
+- [Focus-dependent CPU](session-cpu-focus.md) — owner sees higher CPU after Alt+Tab; check native foreground work, not only animations.
