@@ -20,3 +20,14 @@ The owner explicitly requires only the roughly 93 MB source for GitHub and appro
 **Why:** The owner said “i only need 93mb” and confirmed the source-only cleanup.
 
 **How to apply:** Treat the deliverable as source plus required offline voice resources, not a running installation or generated ZIP. Restore dependencies with `npm ci` when a requested run or build needs them. The approval concerned the cleanup of existing local data, not permission to erase future records.
+
+That earlier destructive cleanup approval is not standing permission to remove
+dependencies or records from a subsequently restored, working installation.
+
+**Why:** Later cleanup requests followed the owner asking to get the preview
+running again. Removing regenerated builds and mockups need not stop the app.
+
+**How to apply:** Report the source-and-runtime-assets size separately from
+installed dependencies and local recovery history. Keep the working preview
+unless the owner explicitly accepts a source-only workspace that cannot run
+until dependencies are reinstalled.

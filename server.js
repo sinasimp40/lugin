@@ -1537,7 +1537,6 @@ app.get('/api/admin/telegram/deliveries', verifyToken, async (req, res) => {
 });
 
 const orderWorkflow = require('./src/order-workflow');
-require('./src/bingo-demo-routes').registerBingoDemoRoutes(app);
 const bingoService = require('./src/bingo-routes').registerBingoRoutes(app, {
   settings, coinLogs, appRole, verifyToken, authorizeKioskMission,
   requireLocalPlayer: requireLocalWheelPlayer, activeMember: activeWheelMember,

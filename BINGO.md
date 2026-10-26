@@ -60,9 +60,3 @@ No real Telegram message was sent while validating the integration.
 - Session expiry, logout and shutdown remain authoritative. Other members must
   never see the previous member's cards.
 - Active participants' funding logs cannot be deleted before cancellation/refund.
-
-## Isolated sample
-
-`/bingo-test.html` uses separate, temporary fake ledgers and a simulated Telegram
-command. It is not connected to real members, payouts, or Telegram. Browser
-audio/native window behavior is not proof of Windows executable behavior.

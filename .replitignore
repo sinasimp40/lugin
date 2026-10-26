@@ -1,2 +1,5 @@
 /dist/
 /generated-artifacts/
+.cache/
+screenshots/
+attached_assets/testing_screenshot/
